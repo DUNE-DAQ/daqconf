@@ -40,10 +40,13 @@ import click
 @click.option('--pocket-url', default='127.0.0.1', help="URL for connecting to Pocket services")
 @click.option('--hsi-device-name', default="", help='Real HSI hardware only: device name of HSI hw')
 @click.option('--master-device-name', default="", help='Device name of timing master hw')
+@click.option('--master-clock-file', default="")
+@click.option('--master-clock-mode', default=-1)
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
 
-def cli(partition_name, disable_trace, host_thi, port_thi, host_tmc, timing_hw_connections_file, opmon_impl, ers_impl, pocket_url, hsi_device_name, master_device_name, debug, json_dir):
+def cli(partition_name, disable_trace, host_thi, port_thi, host_tmc, timing_hw_connections_file, opmon_impl, ers_impl, pocket_url, hsi_device_name, 
+        master_device_name, master_clock_file, master_clock_mode, debug, json_dir):
 
     if exists(json_dir):
         raise RuntimeError(f"Directory {json_dir} already exists")
@@ -111,11 +114,11 @@ def cli(partition_name, disable_trace, host_thi, port_thi, host_tmc, timing_hw_c
                                                                             topics=[],
                                                                             receivers=["thi.timing_cmds"])
     if master_device_name:
-        the_system.apps["tmc"] = get_tmc_app(
+        the_system.apps["mc"] = get_tmc_app(
             MASTER_DEVICE_NAME=master_device_name,
             HOST=host_tmc,
             DEBUG=debug)
-        add_network("tmc", the_system, verbose=debug)
+        add_network("mc", the_system, verbose=debug)
 
     if debug:
         the_system.export("global_system.dot")
@@ -139,7 +142,10 @@ def cli(partition_name, disable_trace, host_thi, port_thi, host_tmc, timing_hw_c
 
     system_command_datas['boot'] = boot
 
-    write_json_files(app_command_datas, system_command_datas, json_dir)
+    write_json_files(app_command_datas, system_command_datas, json_dir, verbose=debug)
+
+    from timinglibs.timing_rc_cmd_gen import generate_timing_rc_cmds
+    generate_timing_rc_cmds('mc', 'tmc', master_clock_file, master_clock_mode, json_dir, debug)
 
     console.log(f"Global aapp config generated in {json_dir}")
 
