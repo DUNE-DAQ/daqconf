@@ -13,7 +13,7 @@ Here are the steps that should be used when you first create your local software
 9. download a raw data file, either by running
    "`curl -o frames.bin -O https://cernbox.cern.ch/index.php/s/7qNnuxD8igDOVJT/download`"
    or clicking on the [CERNBox link](https://cernbox.cern.ch/index.php/s/7qNnuxD8igDOVJT/download)) and put it into `<work_dir>`
-11. `python -m daqconf.scripts.daq_multiru_gen -d ./frames.bin -o . -s 10 daq_fake`
+11. `daqconf_multiru_gen -d ./frames.bin -o . -s 10 daq_fake`
 12. `nanorc daq_fake boot init conf start 101 wait 2 resume wait 60 pause wait 2 stop scrap terminate`
 13. examine the contents of the HDf5 file with commands like the following:
    * `h5dump-shared -H -A swtest_run000101_0000_*.hdf5`
