@@ -49,10 +49,10 @@ def cli(partition_name, disable_trace, host_thi, port_thi, host_tmc, timing_hw_c
         raise RuntimeError(f"Directory {json_dir} already exists")
 
     console.log("Loading timing hardware config generator")
-    from .thi_gen import get_thi_app
+    from daqconf.apps.thi_gen import get_thi_app
 
     console.log("Loading timing master controller generator")
-    from .tmc_gen import get_tmc_app
+    from daqconf.apps.tmc_gen import get_tmc_app
 
     console.log(f"Generating configs for global thi host {host_thi}")
 
