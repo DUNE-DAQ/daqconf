@@ -125,7 +125,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
         raise RuntimeError(f"Directory {json_dir} already exists")
 
     console.log("Loading dataflow config generator")
-    from .dataflow_gen import get_dataflow_app
+    from a-p-p.dataflow_gen import get_dataflow_app
     if enable_dqm:
         console.log("Loading dqm config generator")
         from .dqm_gen import get_dqm_app

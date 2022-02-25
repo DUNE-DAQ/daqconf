@@ -1,4 +1,4 @@
-The intention of this page is to provide a few simple instructions that new or casual users can use to quickly demonstrate the operation of a small MiniDAQ system that uses emulators instead of real electronics.
+The intention of this page is to provide a few simple instructions that new or casual users can use to quickly demonstrate the operation of a small DAQ system that uses emulators instead of real electronics.
 
 The steps fall into a few general categories (setup the environment, generate the sample system configuration, and use _nanorc_ to run the sample system), and they draw on more detailed instructions from other repositories, for example, _[daq-buildtools](https://dune-daq-sw.readthedocs.io/en/latest/packages/daq-buildtools/)_ and _[nanorc](https://dune-daq-sw.readthedocs.io/en/latest/packages/nanorc/)_.
 
@@ -13,7 +13,7 @@ Here are the steps that should be used when you first create your local software
 9. download a raw data file, either by running 
    "`curl -o frames.bin -O https://cernbox.cern.ch/index.php/s/7qNnuxD8igDOVJT/download`"
    or clicking on the [CERNBox link](https://cernbox.cern.ch/index.php/s/7qNnuxD8igDOVJT/download)) and put it into `<work_dir>`
-11. `python -m minidaqapp.nanorc.mdapp_multiru_gen -d ./frames.bin -o . -s 10 mdapp_fake`
+11. `python -m daqconf.newconf.mdapp_multiru_gen -d ./frames.bin -o . -s 10 mdapp_fake`
 12. `nanorc mdapp_fake boot init conf start 101 wait 2 resume wait 60 pause wait 2 stop scrap terminate`
 13. examine the contents of the HDf5 file with commands like the following:
    * `h5dump-shared -H -A swtest_run000101_0000_*.hdf5`
