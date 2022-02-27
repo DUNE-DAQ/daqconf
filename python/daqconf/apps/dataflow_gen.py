@@ -13,7 +13,6 @@ moo.otypes.load_types('appfwk/app.jsonnet')
 moo.otypes.load_types('dfmodules/triggerrecordbuilder.jsonnet')
 moo.otypes.load_types('dfmodules/datawriter.jsonnet')
 moo.otypes.load_types('dfmodules/hdf5datastore.jsonnet')
-moo.otypes.load_types('dfmodules/tpsetwriter.jsonnet')
 moo.otypes.load_types('dfmodules/fragmentreceiver.jsonnet')
 moo.otypes.load_types('dfmodules/triggerdecisionreceiver.jsonnet')
 moo.otypes.load_types('nwqueueadapters/queuetonetwork.jsonnet')
@@ -31,7 +30,6 @@ import dunedaq.appfwk.app as app # AddressedCmd,
 import dunedaq.dfmodules.triggerrecordbuilder as trb
 import dunedaq.dfmodules.datawriter as dw
 import dunedaq.dfmodules.hdf5datastore as hdf5ds
-import dunedaq.dfmodules.tpsetwriter as tpsw
 import dunedaq.dfmodules.fragmentreceiver as frcv
 import dunedaq.dfmodules.triggerdecisionreceiver as tdrcv
 import dunedaq.nwqueueadapters.networktoqueue as ntoq
@@ -48,13 +46,8 @@ from appfwk.conf_utils import Direction, Connection, data_request_endpoint_name
 # Time to wait on pop()
 QUEUE_POP_WAIT_MS = 100
 
-def get_dataflow_app(RU_CONFIG=[],
-                     HOSTIDX=0,
-                     RUN_NUMBER=333,
+def get_dataflow_app(HOSTIDX=0,
                      OUTPUT_PATH=".",
-                     SYSTEM_TYPE="TPC",
-                     SOFTWARE_TPG_ENABLED=False,
-                     TPSET_WRITING_ENABLED=False,
                      PARTITION="UNKNOWN",
                      OPERATIONAL_ENVIRONMENT="swtest",
                      TPC_REGION_NAME_PREFIX="APA",
@@ -65,9 +58,6 @@ def get_dataflow_app(RU_CONFIG=[],
     """Generate the json configuration for the readout and DF process"""
 
     modules = []
-    total_link_count = 0
-    for ru in range(len(RU_CONFIG)):
-        total_link_count += RU_CONFIG[ru]["channel_count"]
 
     modules += [DAQModule(name = 'trb',
                           plugin = 'TriggerRecordBuilder',
@@ -110,19 +100,6 @@ def get_dataflow_app(RU_CONFIG=[],
                                                           detector_group_name="TPC",
                                                           region_name_prefix="TP_APA",
                                                           element_name_prefix="Link")])))))]
-
-    if TPSET_WRITING_ENABLED:
-        for idx in range(len(RU_CONFIG)):
-            modules += [DAQModule(name = f'tpset_subscriber_{idx}',
-                               plugin = "NetworkToQueue",
-                               connections = {'output':Connection(f"tpswriter.tpsets_from_netq")},
-                               conf = nor.Conf(name=f'{PARTITION}.tpsets_{idx}',
-                                               subscriptions=["TPSets"]))]
-
-        modules += [DAQModule(name = 'tpswriter',
-                           plugin = "TPSetWriter",
-                           connections = {'tpset_source': Connection("tpsets_from_netq")},
-                           conf = tpsw.ConfParams(max_file_size_bytes=1000000000))]
 
     mgraph=ModuleGraph(modules)
 

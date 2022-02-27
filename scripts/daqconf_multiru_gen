@@ -147,7 +147,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     from daqconf.apps.tprtc_gen import get_tprtc_app
     if enable_tpset_writing:
         console.log("Loading TPWriter config generator")
-        from .tpwriter_gen import get_tpwriter_app
+        from daqconf.apps.tpwriter_gen import get_tpwriter_app
 
     console.log(f"Generating configs for hosts trigger={host_trigger} DFO={host_dfo} dataflow={host_df} readout={host_ru} hsi={host_hsi} dqm={host_ru}")
 
