@@ -417,7 +417,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
 
     if enable_tpset_writing:
         tpw_name=f'tpwriter'
-        the_system.apps[tpw_name] = TPWriterApp(
+        the_system.apps[tpw_name] = get_tpwriter_app(
             RU_CONFIG = ru_configs, 
             HOST=host_tpw, 
             DEBUG=debug)
