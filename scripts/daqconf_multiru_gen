@@ -489,7 +489,8 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
                                                                             
     
     #     console.log(f"MDAapp config generated in {json_dir}")
-    from appfwk.conf_utils import connect_all_fragment_producers, add_network, make_app_command_data, set_mlt_links
+    from appfwk.conf_utils import connect_all_fragment_producers, add_network, make_app_command_data
+    from daqconf.core.fragment_producers import set_mlt_links
     if debug:
         the_system.export("system_no_frag_prod_connection.dot")
     connect_all_fragment_producers(the_system, verbose=debug)
