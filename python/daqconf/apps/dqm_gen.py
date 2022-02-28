@@ -136,7 +136,7 @@ def get_dqm_app(RU_CONFIG=[],
                               readout_window_offset=10**7 / DATA_RATE_SLOWDOWN_FACTOR, # 10^7 works fine for WIBs with no slowdown
                               df_seconds=DF_RATE * NUM_DF_APPS if MODE == 'df' else 0,
                               df_offset=DF_RATE * DQMIDX,
-                              df_algs_bitfield=algs_bitfield
+                              df_algs=algs_bitfield
                           )
                           )
                           ]
