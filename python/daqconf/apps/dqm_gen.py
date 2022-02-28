@@ -39,7 +39,7 @@ def get_dqm_app(RU_CONFIG=[],
                  RUN_NUMBER=333,
                  DATA_FILE="./frames.bin",
                  CLOCK_SPEED_HZ=50000000,
-                 RUIDX=0,
+                 DQMIDX=0,
                  SYSTEM_TYPE='TPC',
                  DQM_KAFKA_ADDRESS='',
                  DQM_CMAP='HD',
@@ -51,12 +51,14 @@ def get_dqm_app(RU_CONFIG=[],
                  HOST="localhost",
                  NUM_DF_APPS=1,
                  MODE="readout",
-                 DEBUG=False):
+                 DF_RATE=10,
+                 DEBUG=False,
+                 ):
 
         cmd_data = {}
 
-        MIN_LINK = RU_CONFIG[RUIDX]["start_channel"]
-        MAX_LINK = MIN_LINK + RU_CONFIG[RUIDX]["channel_count"]
+        MIN_LINK = RU_CONFIG[DQMIDX]["start_channel"]
+        MAX_LINK = MIN_LINK + RU_CONFIG[DQMIDX]["channel_count"]
 
         modules = []
 
@@ -73,7 +75,7 @@ def get_dqm_app(RU_CONFIG=[],
                                 plugin='FragmentReceiver',
                                 connections=connections,
                                 conf=frcv.ConfParams(general_queue_timeout=QUEUE_POP_WAIT_MS,
-                                                    connection_name=f"{PARTITION}.fragx_dqm_{RUIDX}")
+                                                    connection_name=f"{PARTITION}.fragx_dqm_{DQMIDX}")
                                 )
                                 ]
 
@@ -90,10 +92,10 @@ def get_dqm_app(RU_CONFIG=[],
                                 connections=connections,
                                 conf=trb.ConfParams(# This needs to be done in connect_fragment_producers
                                     general_queue_timeout=QUEUE_POP_WAIT_MS,
-                                    reply_connection_name=f"{PARTITION}.fragx_dqm_{RUIDX}",
+                                    reply_connection_name=f"{PARTITION}.fragx_dqm_{DQMIDX}",
                                     mon_connection_name=f"",
                                     map=trb.mapgeoidconnections([
-                                        trb.geoidinst(region=RU_CONFIG[RUIDX]["region_id"],
+                                        trb.geoidinst(region=RU_CONFIG[DQMIDX]["region_id"],
                                                         element=idx,
                                                         system=SYSTEM_TYPE,
                                                         connection_name=f"{PARTITION}.data_requests_for_{RU_NAME}") for idx in range(MIN_LINK, MAX_LINK)
@@ -112,7 +114,7 @@ def get_dqm_app(RU_CONFIG=[],
                               plugin='DQMProcessor',
                               connections=connections,
                               conf=dqmprocessor.Conf(
-                                  region=RU_CONFIG[RUIDX]["region_id"],
+                                  region=RU_CONFIG[DQMIDX]["region_id"],
                                   channel_map=DQM_CMAP, # 'HD' for horizontal drift or 'VD' for vertical drift
                                   mode=MODE,
                                   sdqm_hist=dqmprocessor.StandardDQM(**{'how_often' : DQM_RAWDISPLAY_PARAMS[0], 'unavailable_time' : DQM_RAWDISPLAY_PARAMS[1], 'num_frames' : DQM_RAWDISPLAY_PARAMS[2]}),
@@ -122,11 +124,13 @@ def get_dqm_app(RU_CONFIG=[],
                                   kafka_address=DQM_KAFKA_ADDRESS,
                                   link_idx=list(range(MIN_LINK, MAX_LINK)),
                                   clock_frequency=CLOCK_SPEED_HZ,
-                                  timesync_connection_name = f"{PARTITION}.timesync_{RUIDX}",
-                                  df2dqm_connection_name=f"{PARTITION}.tr_df2dqm_{RUIDX}" if RUIDX < NUM_DF_APPS else '',
-                                  dqm2df_connection_name=f"{PARTITION}.trmon_dqm2df_{RUIDX}" if RUIDX < NUM_DF_APPS else '',
+                                  timesync_connection_name = f"{PARTITION}.timesync_{DQMIDX}",
+                                  df2dqm_connection_name=f"{PARTITION}.tr_df2dqm_{DQMIDX}" if DQMIDX < NUM_DF_APPS else '',
+                                  dqm2df_connection_name=f"{PARTITION}.trmon_dqm2df_{DQMIDX}" if DQMIDX < NUM_DF_APPS else '',
                                   readout_window_offset=10**7 / DATA_RATE_SLOWDOWN_FACTOR, # 10^7 works fine for WIBs with no slowdown
-                                   )
+                                  df_seconds=DF_RATE * NUM_DF_APPS if MODE == 'df' else 0,
+                                  df_offset=DF_RATE * DQMIDX,
+                              )
                               )
                               ]
 
