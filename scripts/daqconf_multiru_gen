@@ -458,6 +458,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
                 MODE='df',
                 DF_RATE=dqm_df_rate,
                 DF_ALGS=dqm_df_algs,
+                DF_TIME_WINDOW=trigger_window_before_ticks + trigger_window_after_ticks,
                 DEBUG=debug)
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
 

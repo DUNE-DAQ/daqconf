@@ -53,6 +53,7 @@ def get_dqm_app(RU_CONFIG=[],
                  MODE="readout",
                  DF_RATE=10,
                  DF_ALGS='hist mean_rms fourier_sum',
+                 DF_TIME_WINDOW=trigger_window_before_ticks + trigger_window_after_ticks,
                  DEBUG=False,
                  ):
 
@@ -136,7 +137,8 @@ def get_dqm_app(RU_CONFIG=[],
                               readout_window_offset=10**7 / DATA_RATE_SLOWDOWN_FACTOR, # 10^7 works fine for WIBs with no slowdown
                               df_seconds=DF_RATE * NUM_DF_APPS if MODE == 'df' else 0,
                               df_offset=DF_RATE * DQMIDX,
-                              df_algs=algs_bitfield
+                              df_algs=algs_bitfield,
+                              df_frames=DF_TIME_WINDOW / 25,
                           )
                           )
                           ]
