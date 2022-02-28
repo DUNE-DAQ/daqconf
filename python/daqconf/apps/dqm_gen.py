@@ -52,6 +52,7 @@ def get_dqm_app(RU_CONFIG=[],
                  NUM_DF_APPS=1,
                  MODE="readout",
                  DF_RATE=10,
+                 DF_ALGS='hist mean_rms fourier_sum',
                  DEBUG=False,
                  ):
 
@@ -110,6 +111,14 @@ def get_dqm_app(RU_CONFIG=[],
                                                     queue_kind="FollySPSCQueue",
                                                     queue_capacity=100)
 
+        # Algorithms to run for TRs coming from DF
+        algs = DF_ALGS.split(' ')
+
+        algs_bitfield = 0
+        for i, name in enumerate(['hist', 'mean_rms', 'fourier', 'fourier_sum']):
+            if name in algs:
+                algs_bitfield |= 1<<i
+
         modules += [DAQModule(name='dqmprocessor',
                               plugin='DQMProcessor',
                               connections=connections,
@@ -130,6 +139,7 @@ def get_dqm_app(RU_CONFIG=[],
                                   readout_window_offset=10**7 / DATA_RATE_SLOWDOWN_FACTOR, # 10^7 works fine for WIBs with no slowdown
                                   df_seconds=DF_RATE * NUM_DF_APPS if MODE == 'df' else 0,
                                   df_offset=DF_RATE * DQMIDX,
+                                  df_algs_bitfield=algs_bitfield
                               )
                               )
                               ]

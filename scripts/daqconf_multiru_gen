@@ -107,6 +107,8 @@ import click
 @click.option('--dqm-meanrms-params', nargs=3, default=[10, 1, 100], help="Parameters that control the data sent for the mean/rms plot")
 @click.option('--dqm-fourier-params', nargs=3, default=[600, 60, 100], help="Parameters that control the data sent for the fourier transform plot")
 @click.option('--dqm-fouriersum-params', nargs=3, default=[600, 60, 1000], help="Parameters that control the data sent for the summed fourier transform plot")
+@click.option('--dqm-df-rate', nargs=1, default=10, help='How many seconds between requests to DF for Trigger Records')
+@click.option('--dqm-df-algs', nargs=1, default='hist mean_rms fourier_sum', help='Algorithms to be run on Trigger Records from DF (use quotes)')
 @click.option('--op-env', default='swtest', help="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files")
 @click.option('--tpc-region-name-prefix', default='APA', help="Prefix to be used for the 'Region' Group name inside the HDF5 file")
 @click.option('--max-file-size', default=4*1024*1024*1024, help="The size threshold when raw data files are closed (in bytes)")
@@ -120,9 +122,8 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
         ttcm_s1, ttcm_s2, trigger_activity_plugin, trigger_activity_config, trigger_candidate_plugin, trigger_candidate_config,
         control_timing_partition, timing_partition_master_device_name, timing_partition_id, timing_partition_trigger_mask, timing_partition_rate_control_enabled, timing_partition_spill_gate_enabled,
         enable_raw_recording, raw_recording_output_dir, frontend_type, opmon_impl, enable_dqm, ers_impl, dqm_impl, pocket_url, enable_software_tpg, tpg_channel_map, enable_tpset_writing, use_fake_data_producers, dqm_cmap,
-        dqm_rawdisplay_params, dqm_meanrms_params, dqm_fourier_params, dqm_fouriersum_params,
-        op_env, tpc_region_name_prefix, max_file_size, debug, json_dir):
-
+        dqm_rawdisplay_params, dqm_meanrms_params, dqm_fourier_params, dqm_fouriersum_params, dqm_df_rate,
+        dqm_df_algs, op_env, tpc_region_name_prefix, max_file_size, debug, json_dir):
 
     if exists(json_dir):
         raise RuntimeError(f"Directory {json_dir} already exists")
@@ -455,6 +456,8 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
                 PARTITION=partition_name,
                 HOST=host,
                 MODE='df',
+                DF_RATE=dqm_df_rate,
+                DF_ALGS=dqm_df_algs,
                 DEBUG=debug)
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
 
