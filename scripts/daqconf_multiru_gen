@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+
+
 import json
 import os
 import math
@@ -125,22 +128,22 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
         raise RuntimeError(f"Directory {json_dir} already exists")
 
     console.log("Loading dataflow config generator")
-    from .dataflow_gen import get_dataflow_app
+    from daqconf.apps.dataflow_gen import get_dataflow_app
     if enable_dqm:
         console.log("Loading dqm config generator")
-        from .dqm_gen import get_dqm_app
+        from daqconf.apps.dqm_gen import get_dqm_app
     console.log("Loading readout config generator")
-    from .readout_gen import get_readout_app
+    from daqconf.apps.readout_gen import get_readout_app
     console.log("Loading trigger config generator")
-    from .trigger_gen import get_trigger_app
+    from daqconf.apps.trigger_gen import get_trigger_app
     console.log("Loading DFO config generator")
-    from .dfo_gen import get_dfo_app
+    from daqconf.apps.dfo_gen import get_dfo_app
     console.log("Loading hsi config generator")
-    from .hsi_gen import get_hsi_app
+    from daqconf.apps.hsi_gen import get_hsi_app
     console.log("Loading fake hsi config generator")
-    from .fake_hsi_gen import get_fake_hsi_app
+    from daqconf.apps.fake_hsi_gen import get_fake_hsi_app
     console.log("Loading timing partition controller config generator")
-    from .tprtc_gen import get_tprtc_app
+    from daqconf.apps.tprtc_gen import get_tprtc_app
 
     console.log(f"Generating configs for hosts trigger={host_trigger} DFO={host_dfo} dataflow={host_df} readout={host_ru} hsi={host_hsi} dqm={host_ru}")
 
