@@ -11,6 +11,7 @@ from rich.console import Console
 from os.path import exists, join
 from appfwk.system import System
 from appfwk.conf_utils import AppConnection
+from daqconf.core.metadata import write_metadata_file
 
 CLOCK_SPEED_HZ = 50000000
 
@@ -542,25 +543,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     console.log(f"MDAapp config generated in {json_dir}")
 
     
-    console.log("Generating metadata file")
-    with open(join(json_dir, 'daqconf_multiru_gen.info'), 'w') as f:
-        daqconf_dir = os.path.dirname(os.path.abspath(__file__))
-        buildinfo_files = glob.glob('**/daqconf_build_info.json', recursive=True)
-        buildinfo = {}
-        for buildinfo_file in buildinfo_files:
-            if(os.path.dirname(os.path.abspath(buildinfo_file)) in daqconf_dir):
-                with open(buildinfo_file, 'r') as ff:
-                    try:
-                        buildinfo = json.load(ff)
-                    except json.decoder.JSONDecodeError as e:
-                        continue
-                break
-        daqconf_info = {
-            "command_line": ' '.join(sys.argv),
-            "daqconf_dir": daqconf_dir,
-            "build_info": buildinfo
-        }
-        json.dump(daqconf_info, f, indent=4, sort_keys=True)
+    write_metadata_file(json_dir, "daqconf_multiru_gen")
 
 if __name__ == '__main__':
     try:
