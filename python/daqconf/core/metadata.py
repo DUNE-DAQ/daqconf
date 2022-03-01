@@ -9,9 +9,10 @@ console = Console()
 def write_metadata_file(json_dir, generator):
     console.log("Generating metadata file")
     with open(join(json_dir, f"{generator}.info"), 'w') as f:
-        daqconf_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+        daqconf_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
 
-        buildinfo_file=join(daqconf_dir, "daqconf_build_info.json")
+        # build info file is one directory up from the main script (daqconf vs. daqconf/bin)
+        buildinfo_file=join(os.path.dirname(daqconf_dir), "daqconf_build_info.json")
         buildinfo = {}
         #console.log(f"Buildinfo file is {buildinfo_file}")
         if exists(buildinfo_file):
@@ -24,7 +25,7 @@ def write_metadata_file(json_dir, generator):
 
         daqconf_info = {
             "command_line": ' '.join(sys.argv),
-            "daqconf_dir": daqconf_dir,
+            "daqconf_exe_dir": daqconf_dir,
             "build_info": buildinfo
         }
         json.dump(daqconf_info, f, indent=4, sort_keys=True)
