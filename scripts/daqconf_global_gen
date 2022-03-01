@@ -10,6 +10,7 @@ from rich.console import Console
 from os.path import exists, join
 from appfwk.system import System
 from appfwk.conf_utils import AppConnection, add_network, make_app_command_data
+from daqconf.core.metadata import write_metadata_file
 
 CLOCK_SPEED_HZ = 50000000
 
@@ -144,7 +145,8 @@ def cli(partition_name, disable_trace, host_thi, port_thi, host_tmc, timing_hw_c
     write_json_files(app_command_datas, system_command_datas, json_dir)
 
     console.log(f"Global aapp config generated in {json_dir}")
-
+    
+    write_metadata_file(json_dir, "daqconf_global_gen")
 
 if __name__ == '__main__':
     try:
