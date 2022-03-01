@@ -30,7 +30,7 @@ import dunedaq.appfwk.cmd as cmd # AddressedCmd,
 import dunedaq.appfwk.app as app # AddressedCmd,
 import dunedaq.dfmodules.triggerrecordbuilder as trb
 import dunedaq.dfmodules.datawriter as dw
-import dunedaq.dfmodules.hdf5filelayout as h5fl
+import dunedaq.hdf5libs.hdf5filelayout as h5fl
 import dunedaq.dfmodules.hdf5datastore as hdf5ds
 import dunedaq.dfmodules.tpsetwriter as tpsw
 import dunedaq.dfmodules.fragmentreceiver as frcv
