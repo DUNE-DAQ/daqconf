@@ -4,11 +4,6 @@ import sys
 from rich.console import Console
 from os.path import exists, join
 
-CLOCK_SPEED_HZ = 50000000
-
-# Add -h as default help option
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-
 console = Console()
 
 def write_metadata_file(json_dir, generator):
