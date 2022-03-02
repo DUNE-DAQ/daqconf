@@ -52,6 +52,7 @@ from appfwk.conf_utils import Direction, Connection
 
 #===============================================================================
 def get_tmc_app(MASTER_DEVICE_NAME="",
+                MASTER_SEND_DELAYS_PERIOD=0,
                 MASTER_CLOCK_FILE="",
                 MASTER_CLOCK_MODE=-1,
                 HOST="localhost",
@@ -64,6 +65,7 @@ def get_tmc_app(MASTER_DEVICE_NAME="",
                         plugin = "TimingMasterController",
                         conf = tmc.ConfParams(
                                             device=MASTER_DEVICE_NAME,
+                                            send_endpoint_delays_period=MASTER_SEND_DELAYS_PERIOD,
                                             clock_config=MASTER_CLOCK_FILE,
                                             fanout_mode=MASTER_CLOCK_MODE,
                                             ))]
