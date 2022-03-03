@@ -104,12 +104,8 @@ def get_dataflow_app(RU_CONFIG=[],
                                                         detector_group_name="PDS"),
                                         h5fl.PathParams(detector_group_type="NDLArTPC",
                                                         detector_group_name="NDLArTPC"),
-                                        h5fl.PathParams(detector_group_type="Trigger",
-                                                        detector_group_name="Trigger"),
-                                        h5fl.PathParams(detector_group_type="TPC_TP",
-                                                        detector_group_name="TPC",
-                                                        region_name_prefix="TP_APA",
-                                                        element_name_prefix="Link")])))))]
+                                        h5fl.PathParams(detector_group_type="DataSelection",
+                                                        detector_group_name="Trigger")])))))]
 
     if TPSET_WRITING_ENABLED:
         for idx in range(len(RU_CONFIG)):
