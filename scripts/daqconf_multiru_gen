@@ -11,6 +11,7 @@ from rich.console import Console
 from os.path import exists, join
 from appfwk.system import System
 from appfwk.conf_utils import AppConnection
+from daqconf.core.metadata import write_metadata_file
 
 CLOCK_SPEED_HZ = 50000000
 
@@ -178,6 +179,15 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
 
     if (len(region_id) != len(host_ru)) and (len(region_id) != 1):
         raise Exception("--region-id should be specified either once only or once for each --host-ru!")
+
+    if use_hsi_hw and not hsi_device_name:
+        raise Exception("If --use-hsi-hw flag is set to true, --hsi-device-name must be specified!")
+
+    if control_timing_partition and not timing_partition_master_device_name:
+        raise Exception("If --control-timing-partition flag is set to true, --timing-partition-master-device-name must be specified!")
+
+    if control_hsi_hw and not use_hsi_hw:
+        raise Exception("HSI hardware control can only be enabled if HSI hardware is used!")
 
     if frontend_type == 'wib' or frontend_type == 'wib2':
         system_type = 'TPC'
@@ -467,10 +477,6 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
         if app.name=="__app":
             app.name=name
 
-    # TODO PAR 2021-12-11 Fix up the indexing here. There's one output
-    # endpoint per link in the ru apps (maybe there should just be one
-    # per app?), and all the TPSets from one RU go to the same TA
-    # input in the trigger app
     if enable_software_tpg:
         for ruidx,ru_app_name in enumerate(ru_app_names):
             ru_config = ru_configs[ruidx]
@@ -487,7 +493,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
                                       msg_module_name="TPSetNQ",
                                       topics=["TPSets"],
                                       receivers=[f"trigger.tpsets_into_buffer_ru{ruidx}_link{link}",
-                                                 f"trigger.tpsets_into_chain_apa{apa_idx}"])
+                                                 f"trigger.tpsets_into_chain_ru{ruidx}_link{link}"])
                     })
 
 
@@ -524,7 +530,9 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
                                                                             
     
     #     console.log(f"MDAapp config generated in {json_dir}")
-    from appfwk.conf_utils import connect_all_fragment_producers, add_network, make_app_command_data, set_mlt_links
+    from appfwk.conf_utils import add_network, make_app_command_data
+    from daqconf.core.fragment_producers import  connect_all_fragment_producers, set_mlt_links
+
     if debug:
         the_system.export("system_no_frag_prod_connection.dot")
     connect_all_fragment_producers(the_system, verbose=debug)
@@ -576,6 +584,8 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
 
     console.log(f"MDAapp config generated in {json_dir}")
 
+    
+    write_metadata_file(json_dir, "daqconf_multiru_gen")
 
 if __name__ == '__main__':
     try:

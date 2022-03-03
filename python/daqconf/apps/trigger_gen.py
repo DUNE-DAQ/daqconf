@@ -13,6 +13,7 @@ moo.otypes.load_types('trigger/moduleleveltrigger.jsonnet')
 moo.otypes.load_types('trigger/fakedataflow.jsonnet')
 moo.otypes.load_types('trigger/timingtriggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/tpsetbuffercreator.jsonnet')
+moo.otypes.load_types('trigger/faketpcreatorheartbeatmaker.jsonnet')
 
 # Import new types
 import dunedaq.trigger.triggeractivitymaker as tam
@@ -22,6 +23,7 @@ import dunedaq.trigger.moduleleveltrigger as mlt
 import dunedaq.trigger.fakedataflow as fdf
 import dunedaq.trigger.timingtriggercandidatemaker as ttcm
 import dunedaq.trigger.tpsetbuffercreator as buf
+import dunedaq.trigger.faketpcreatorheartbeatmaker as heartbeater
 
 from appfwk.app import App, ModuleGraph
 from appfwk.daqmodule import DAQModule
@@ -83,7 +85,16 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                               connections = {#'input' : Connection(f'tcm.taset_q'),
                                   'output': Connection(f'mlt.trigger_candidate_source')},
                               conf = config_tcm)]
-        
+
+
+        # Make one heartbeatmaker per link
+        for ruidx, ru_config in enumerate(RU_CONFIG):
+            for link_idx in range(ru_config["channel_count"]):
+                    modules += [DAQModule(name = f'heartbeatmaker_ru{ruidx}_link{link_idx}',
+                                          plugin = 'FakeTPCreatorHeartbeatMaker',
+                                          connections = {'tpset_sink': Connection(f"zip_{ru_config['region_id']}.input")},
+                                          conf = heartbeater.Conf(heartbeat_interval=5_000_000))]
+                    
         region_ids = set()
         for ru in range(len(RU_CONFIG)):
             ## 1 zipper/TAM per region id
@@ -159,14 +170,12 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     mgraph.add_endpoint("df_busy_signal", None, Direction.IN)
     if SOFTWARE_TPG_ENABLED:
         for ruidx, ru_config in enumerate(RU_CONFIG):
-            # 1 zipper input per region_id
-            # PL 2022-02-02: Maybe need to check that we don't create twice the same endpoint?
-            mgraph.add_endpoint(f"tpsets_into_chain_apa{ru_config['region_id']}", f"zip_{ru_config['region_id']}.input", Direction.IN)
-
             for link_idx in range(ru_config["channel_count"]):
                 # 1 buffer per link
                 buf_name=f'buf_ru{ruidx}_link{link_idx}'
                 global_link = link_idx+ru_config['start_channel'] # for the benefit of correct fragment geoid
+
+                mgraph.add_endpoint(f"tpsets_into_chain_ru{ruidx}_link{link_idx}", f"heartbeatmaker_ru{ruidx}_link{link_idx}.tpset_source", Direction.IN)
                 mgraph.add_endpoint(f"tpsets_into_buffer_ru{ruidx}_link{link_idx}", f"{buf_name}.tpset_source", Direction.IN)
                 mgraph.add_fragment_producer(region=ru_config['region_id'], element=global_link, system="DataSelection",
                                              requests_in=f"{buf_name}.data_request_source",

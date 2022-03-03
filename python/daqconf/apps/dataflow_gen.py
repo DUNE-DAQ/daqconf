@@ -30,6 +30,7 @@ import dunedaq.appfwk.cmd as cmd # AddressedCmd,
 import dunedaq.appfwk.app as app # AddressedCmd,
 import dunedaq.dfmodules.triggerrecordbuilder as trb
 import dunedaq.dfmodules.datawriter as dw
+import dunedaq.hdf5libs.hdf5filelayout as h5fl
 import dunedaq.dfmodules.hdf5datastore as hdf5ds
 import dunedaq.dfmodules.tpsetwriter as tpsw
 import dunedaq.dfmodules.fragmentreceiver as frcv
@@ -77,41 +78,40 @@ def get_dataflow_app(RU_CONFIG=[],
                                                 mon_connection_name=f"{PARTITION}.trmon_dqm2df_{HOSTIDX}",
                                                 map=trb.mapgeoidconnections([]))), # We patch this up in connect_fragment_producers
                 DAQModule(name = 'datawriter',
-                          plugin = 'DataWriter',
-                          connections = {},
-                          conf = dw.ConfParams(decision_connection=f"{PARTITION}.trigdec_{HOSTIDX}",
-                          token_connection=PARTITION+".triginh",
-                          data_store_parameters=hdf5ds.ConfParams(
-                                name="data_store",
-                                version = 3,
-                                operational_environment = OPERATIONAL_ENVIRONMENT,
-                                directory_path = OUTPUT_PATH,
-                                max_file_size_bytes = MAX_FILE_SIZE,
-                                disable_unique_filename_suffix = False,
-                                filename_parameters = hdf5ds.FileNameParams(
-                                    overall_prefix = OPERATIONAL_ENVIRONMENT,
-                                    digits_for_run_number = 6,
-                                    file_index_prefix = "",
-                                    digits_for_file_index = 4),
-                                    file_layout_parameters = hdf5ds.FileLayoutParams(
-                                        trigger_record_name_prefix= "TriggerRecord",
-                                        digits_for_trigger_number = 5,
-                                        path_param_list = hdf5ds.PathParamList(
-                                            [hdf5ds.PathParams(detector_group_type="TPC",
-                                                               detector_group_name="TPC",
-                                                               region_name_prefix=TPC_REGION_NAME_PREFIX,
-                                                               element_name_prefix="Link"),
-                                             hdf5ds.PathParams(detector_group_type="PDS",
-                                                               detector_group_name="PDS"),
-                                             hdf5ds.PathParams(detector_group_type="NDLArTPC",
-                                                               detector_group_name="NDLArTPC"),
-                                             hdf5ds.PathParams(detector_group_type="Trigger",
-                                                               detector_group_name="Trigger"),
-                                             hdf5ds.PathParams(detector_group_type="TPC_TP",
-                                                               detector_group_name="TPC",
-                                                               region_name_prefix="TP_APA",
-                                                               element_name_prefix="Link")])))))]
-            
+                       plugin = 'DataWriter',
+                       connections = {},
+                       conf = dw.ConfParams(decision_connection=f"{PARTITION}.trigdec_{HOSTIDX}",
+                           token_connection=PARTITION+".triginh",
+                           data_store_parameters=hdf5ds.ConfParams(
+                               name="data_store",
+                               operational_environment = OPERATIONAL_ENVIRONMENT,
+                               directory_path = OUTPUT_PATH,
+                               max_file_size_bytes = MAX_FILE_SIZE,
+                               disable_unique_filename_suffix = False,
+                               filename_parameters = hdf5ds.FileNameParams(
+                                   overall_prefix = OPERATIONAL_ENVIRONMENT,
+                                   digits_for_run_number = 6,
+                                   file_index_prefix = "",
+                                   digits_for_file_index = 4),
+                               file_layout_parameters = h5fl.FileLayoutParams(
+                                   trigger_record_name_prefix= "TriggerRecord",
+                                   digits_for_trigger_number = 5,
+                                   path_param_list = h5fl.PathParamList(
+                                       [h5fl.PathParams(detector_group_type="TPC",
+                                                        detector_group_name="TPC",
+                                                        region_name_prefix=TPC_REGION_NAME_PREFIX,
+                                                        element_name_prefix="Link"),
+                                        h5fl.PathParams(detector_group_type="PDS",
+                                                        detector_group_name="PDS"),
+                                        h5fl.PathParams(detector_group_type="NDLArTPC",
+                                                        detector_group_name="NDLArTPC"),
+                                        h5fl.PathParams(detector_group_type="Trigger",
+                                                        detector_group_name="Trigger"),
+                                        h5fl.PathParams(detector_group_type="TPC_TP",
+                                                        detector_group_name="TPC",
+                                                        region_name_prefix="TP_APA",
+                                                        element_name_prefix="Link")])))))]
+
     if TPSET_WRITING_ENABLED:
         for idx in range(len(RU_CONFIG)):
             modules += [DAQModule(name = f'tpset_subscriber_{idx}',
