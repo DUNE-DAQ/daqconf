@@ -29,6 +29,7 @@ import dunedaq.appfwk.cmd as cmd # AddressedCmd,
 import dunedaq.appfwk.app as app # AddressedCmd,
 import dunedaq.dfmodules.triggerrecordbuilder as trb
 import dunedaq.dfmodules.datawriter as dw
+import dunedaq.hdf5libs.hdf5filelayout as h5fl
 import dunedaq.dfmodules.hdf5datastore as hdf5ds
 import dunedaq.dfmodules.fragmentreceiver as frcv
 import dunedaq.dfmodules.triggerdecisionreceiver as tdrcv
@@ -64,6 +65,7 @@ def get_dataflow_app(HOSTIDX=0,
                           connections = {'trigger_record_output_queue': Connection('datawriter.trigger_record_input_queue')},
                           conf = trb.ConfParams(general_queue_timeout=QUEUE_POP_WAIT_MS,
                                                 reply_connection_name = "",
+                                                mon_connection_name=f"{PARTITION}.trmon_dqm2df_{HOSTIDX}",
                                                 map=trb.mapgeoidconnections([]))), # We patch this up in connect_fragment_producers
                 DAQModule(name = 'datawriter',
                        plugin = 'DataWriter',
@@ -72,7 +74,6 @@ def get_dataflow_app(HOSTIDX=0,
                            token_connection=PARTITION+".triginh",
                            data_store_parameters=hdf5ds.ConfParams(
                                name="data_store",
-                               version = 3,
                                operational_environment = OPERATIONAL_ENVIRONMENT,
                                directory_path = OUTPUT_PATH,
                                max_file_size_bytes = MAX_FILE_SIZE,
@@ -82,29 +83,25 @@ def get_dataflow_app(HOSTIDX=0,
                                    digits_for_run_number = 6,
                                    file_index_prefix = "",
                                    digits_for_file_index = 4),
-                               file_layout_parameters = hdf5ds.FileLayoutParams(
+                               file_layout_parameters = h5fl.FileLayoutParams(
                                    trigger_record_name_prefix= "TriggerRecord",
                                    digits_for_trigger_number = 5,
-                                   path_param_list = hdf5ds.PathParamList(
-                                       [hdf5ds.PathParams(detector_group_type="TPC",
-                                                          detector_group_name="TPC",
-                                                          region_name_prefix=TPC_REGION_NAME_PREFIX,
-                                                          element_name_prefix="Link"),
-                                        hdf5ds.PathParams(detector_group_type="PDS",
-                                                          detector_group_name="PDS"),
-                                        hdf5ds.PathParams(detector_group_type="NDLArTPC",
-                                                          detector_group_name="NDLArTPC"),
-                                        hdf5ds.PathParams(detector_group_type="Trigger",
-                                                          detector_group_name="Trigger"),
-                                        hdf5ds.PathParams(detector_group_type="TPC_TP",
-                                                          detector_group_name="TPC",
-                                                          region_name_prefix="TP_APA",
-                                                          element_name_prefix="Link")])))))]
+                                   path_param_list = h5fl.PathParamList(
+                                       [h5fl.PathParams(detector_group_type="TPC",
+                                                        detector_group_name="TPC",
+                                                        region_name_prefix=TPC_REGION_NAME_PREFIX,
+                                                        element_name_prefix="Link"),
+                                        h5fl.PathParams(detector_group_type="PDS",
+                                                        detector_group_name="PDS"),
+                                        h5fl.PathParams(detector_group_type="NDLArTPC",
+                                                        detector_group_name="NDLArTPC"),
+                                        h5fl.PathParams(detector_group_type="DataSelection",
+                                                        detector_group_name="Trigger")])))))]
 
     mgraph=ModuleGraph(modules)
 
     mgraph.add_endpoint("trigger_decisions", "trb.trigger_decision_input_queue", Direction.IN)
-
+       
     df_app = App(modulegraph=mgraph, host=HOST)
 
     if DEBUG:

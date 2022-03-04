@@ -11,6 +11,7 @@ from rich.console import Console
 from os.path import exists, join
 from appfwk.system import System
 from appfwk.conf_utils import AppConnection
+from daqconf.core.metadata import write_metadata_file
 
 CLOCK_SPEED_HZ = 50000000
 
@@ -108,6 +109,8 @@ import click
 @click.option('--dqm-meanrms-params', nargs=3, default=[10, 1, 100], help="Parameters that control the data sent for the mean/rms plot")
 @click.option('--dqm-fourier-params', nargs=3, default=[600, 60, 100], help="Parameters that control the data sent for the fourier transform plot")
 @click.option('--dqm-fouriersum-params', nargs=3, default=[600, 60, 1000], help="Parameters that control the data sent for the summed fourier transform plot")
+@click.option('--dqm-df-rate', nargs=1, default=10, help='How many seconds between requests to DF for Trigger Records')
+@click.option('--dqm-df-algs', nargs=1, default='hist mean_rms fourier_sum', help='Algorithms to be run on Trigger Records from DF (use quotes)')
 @click.option('--op-env', default='swtest', help="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files")
 @click.option('--tpc-region-name-prefix', default='APA', help="Prefix to be used for the 'Region' Group name inside the HDF5 file")
 @click.option('--max-file-size', default=4*1024*1024*1024, help="The size threshold when raw data files are closed (in bytes)")
@@ -121,9 +124,8 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
         ttcm_s1, ttcm_s2, trigger_activity_plugin, trigger_activity_config, trigger_candidate_plugin, trigger_candidate_config,
         control_timing_partition, timing_partition_master_device_name, timing_partition_id, timing_partition_trigger_mask, timing_partition_rate_control_enabled, timing_partition_spill_gate_enabled,
         enable_raw_recording, raw_recording_output_dir, frontend_type, opmon_impl, enable_dqm, ers_impl, dqm_impl, pocket_url, enable_software_tpg, tpg_channel_map, enable_tpset_writing, use_fake_data_producers, dqm_cmap,
-        dqm_rawdisplay_params, dqm_meanrms_params, dqm_fourier_params, dqm_fouriersum_params,
-        op_env, tpc_region_name_prefix, max_file_size, debug, json_dir):
-
+        dqm_rawdisplay_params, dqm_meanrms_params, dqm_fourier_params, dqm_fouriersum_params, dqm_df_rate,
+        dqm_df_algs, op_env, tpc_region_name_prefix, max_file_size, debug, json_dir):
 
     if exists(json_dir):
         raise RuntimeError(f"Directory {json_dir} already exists")
@@ -182,6 +184,15 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     if (len(region_id) != len(host_ru)) and (len(region_id) != 1):
         raise Exception("--region-id should be specified either once only or once for each --host-ru!")
 
+    if use_hsi_hw and not hsi_device_name:
+        raise Exception("If --use-hsi-hw flag is set to true, --hsi-device-name must be specified!")
+
+    if control_timing_partition and not timing_partition_master_device_name:
+        raise Exception("If --control-timing-partition flag is set to true, --timing-partition-master-device-name must be specified!")
+
+    if control_hsi_hw and not use_hsi_hw:
+        raise Exception("HSI hardware control can only be enabled if HSI hardware is used!")
+
     if frontend_type == 'wib' or frontend_type == 'wib2':
         system_type = 'TPC'
     elif frontend_type == 'pacman':
@@ -230,11 +241,14 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     regionidx = 0
 
     ru_app_names=[f"ruflx{idx}" if use_felix else f"ruemu{idx}" for idx in range(len(host_ru))]
-    dqm_app_names = [f"dqm{idx}" for idx in range(len(host_ru))]
+    dqm_app_names = [f"dqm{idx}_ru" for idx in range(len(host_ru))]
     
     for hostidx,ru_host in enumerate(ru_app_names):
         if enable_dqm:
             the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.fragx_dqm_{hostidx}", topics=[], address=f"tcp://{{host_{ru_host}}}:{the_system.next_unassigned_port()}"))
+            # Create at most {number of df apps} endpoints
+            if hostidx < len(host_df):
+                the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.tr_df2dqm_{hostidx}", topics=[], address=f"tcp://{{host_{ru_host}}}:{the_system.next_unassigned_port()}"))
 
         the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.datareq_{hostidx}", topics=[], address=f"tcp://{{host_{ru_host}}}:{the_system.next_unassigned_port()}"))
 
@@ -284,7 +298,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
             PARTITION=partition_name,
             HOST=host_hsi,
             DEBUG=debug)
-    
+
     if control_hsi_hw and use_hsi_hw:
         the_system.app_connections[f"hsi.timing_cmds"] = AppConnection(nwmgr_connection=f"{global_partition_name}.timing_cmds",
                                                                             msg_type="dunedaq::timinglibs::timingcmd::TimingHwCmd",
@@ -369,24 +383,24 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
         ru_name = ru_app_names[i]
         the_system.apps[ru_name] = get_readout_app(
             PARTITION=partition_name,
-            RU_CONFIG=ru_configs,
-            EMULATOR_MODE = emulator_mode,
-            DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
-            DATA_FILE = data_file,
-            FLX_INPUT = use_felix,
-            SSP_INPUT = use_ssp,
-            CLOCK_SPEED_HZ = CLOCK_SPEED_HZ,
-            RUIDX = i,
-            RAW_RECORDING_ENABLED = enable_raw_recording,
-            RAW_RECORDING_OUTPUT_DIR = raw_recording_output_dir,
-            FRONTEND_TYPE = frontend_type,
-            SYSTEM_TYPE = system_type,
-            SOFTWARE_TPG_ENABLED = enable_software_tpg,
+                                              RU_CONFIG=ru_configs,
+                                              EMULATOR_MODE = emulator_mode,
+                                              DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
+                                              DATA_FILE = data_file,
+                                              FLX_INPUT = use_felix,
+                                              SSP_INPUT = use_ssp,
+                                              CLOCK_SPEED_HZ = CLOCK_SPEED_HZ,
+                                              RUIDX = i,
+                                              RAW_RECORDING_ENABLED = enable_raw_recording,
+                                              RAW_RECORDING_OUTPUT_DIR = raw_recording_output_dir,
+                                              FRONTEND_TYPE = frontend_type,
+                                              SYSTEM_TYPE = system_type,
+                                              SOFTWARE_TPG_ENABLED = enable_software_tpg,
             TPG_CHANNEL_MAP = tpg_channel_map,
-            USE_FAKE_DATA_PRODUCERS = use_fake_data_producers,
-            HOST=host,
-            LATENCY_BUFFER_SIZE=latency_buffer_size,
-            DEBUG=debug)
+                                              USE_FAKE_DATA_PRODUCERS = use_fake_data_producers,
+                                              HOST=host,
+                                              LATENCY_BUFFER_SIZE=latency_buffer_size,
+                                              DEBUG=debug)
         
         if debug:
             console.log(f"{ru_name} app: {the_system.apps[ru_name]}")
@@ -401,9 +415,8 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
                 RUN_NUMBER = run_number,
                 DATA_FILE = data_file,
                 CLOCK_SPEED_HZ = CLOCK_SPEED_HZ,
-                RUIDX = i,
+                DQMIDX = i,
                 SYSTEM_TYPE = system_type,
-                DQM_ENABLED=enable_dqm,
                 DQM_KAFKA_ADDRESS=dqm_kafka_address,
                 DQM_CMAP=dqm_cmap,
                 DQM_RAWDISPLAY_PARAMS=dqm_rawdisplay_params,
@@ -412,6 +425,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
                 DQM_FOURIERSUM_PARAMS=dqm_fouriersum_params,
                 PARTITION=partition_name,
                 HOST=host,
+                NUM_DF_APPS=len(host_df),
                 DEBUG=debug)
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
 
@@ -424,6 +438,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
         if debug: console.log(f"{tpw_name} app: {the_system.apps[tpw_name]}")
 
     df_app_names = []
+    dqm_df_app_names = [f"dqm{idx}_df" for idx in range(len(host_df))]
     for i,host in enumerate(host_df):
         app_name = f'dataflow{i}'
         df_app_names.append(app_name)
@@ -437,15 +452,38 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
             HOST=host,
             DEBUG=debug
         )
+        if enable_dqm:
+            dqm_name = dqm_df_app_names[i]
+            the_system.apps[dqm_name] = get_dqm_app(
+                RU_CONFIG = ru_configs,
+                RU_NAME=ru_name,
+                EMULATOR_MODE = emulator_mode,
+                DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
+                RUN_NUMBER = run_number,
+                DATA_FILE = data_file,
+                CLOCK_SPEED_HZ = CLOCK_SPEED_HZ,
+                DQMIDX = i,
+                SYSTEM_TYPE = system_type,
+                DQM_KAFKA_ADDRESS=dqm_kafka_address,
+                DQM_CMAP=dqm_cmap,
+                DQM_RAWDISPLAY_PARAMS=[0, 0, 0],
+                DQM_MEANRMS_PARAMS=[0, 0, 0],
+                DQM_FOURIER_PARAMS=[0, 0, 0],
+                DQM_FOURIERSUM_PARAMS=[0, 0, 0],
+                PARTITION=partition_name,
+                HOST=host,
+                MODE='df',
+                DF_RATE=dqm_df_rate,
+                DF_ALGS=dqm_df_algs,
+                DF_TIME_WINDOW=trigger_window_before_ticks + trigger_window_after_ticks,
+                DEBUG=debug)
+            if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
+
 
     for name,app in the_system.apps.items():
         if app.name=="__app":
             app.name=name
 
-    # TODO PAR 2021-12-11 Fix up the indexing here. There's one output
-    # endpoint per link in the ru apps (maybe there should just be one
-    # per app?), and all the TPSets from one RU go to the same TA
-    # input in the trigger app
     if enable_software_tpg:
         for ruidx,ru_app_name in enumerate(ru_app_names):
             ru_config = ru_configs[ruidx]
@@ -472,6 +510,9 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
                                                                                     msg_module_name="TriggerDecisionNQ",
                                                                                     topics=[],
                                                                                     receivers=[f"{df_app_name}.trigger_decisions"])
+
+        # Always enabled or it won't work at conf time because the endpoint is not there
+        the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.trmon_dqm2df_{i}", topics=[], address=f"tcp://{{host_{df_app_name}}}:{the_system.next_unassigned_port()}"))
     
     the_system.app_connections["hsi.hsievents"] = AppConnection(nwmgr_connection=f"{partition_name}.hsievents",
                                                                 topics=[],
@@ -487,7 +528,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
                                                                   topics=[],
                                                                   use_nwqa=False,
                                                                   receivers=["trigger.df_busy_signal"])
- 
+
     # TODO: How to do this more automatically?
     the_system.network_endpoints.append(nwmgr.Connection(name=f"{the_system.partition_name}.triginh",
                                                          topics=[],
@@ -495,7 +536,9 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
                                                                             
     
     #     console.log(f"MDAapp config generated in {json_dir}")
-    from appfwk.conf_utils import connect_all_fragment_producers, add_network, make_app_command_data, set_mlt_links
+    from appfwk.conf_utils import add_network, make_app_command_data
+    from daqconf.core.fragment_producers import  connect_all_fragment_producers, set_mlt_links
+
     if debug:
         the_system.export("system_no_frag_prod_connection.dot")
     connect_all_fragment_producers(the_system, verbose=debug)
@@ -527,7 +570,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     ####################################################################
     # Application command data generation
     ####################################################################
-    
+
     # Arrange per-app command data into the format used by util.write_json_files()
     app_command_datas = {
         name : make_app_command_data(the_system, app, verbose=debug)
@@ -549,6 +592,8 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
 
     console.log(f"MDAapp config generated in {json_dir}")
 
+    
+    write_metadata_file(json_dir, "daqconf_multiru_gen")
 
 if __name__ == '__main__':
     try:

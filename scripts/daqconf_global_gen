@@ -10,6 +10,7 @@ from rich.console import Console
 from os.path import exists, join
 from appfwk.system import System
 from appfwk.conf_utils import AppConnection, add_network, make_app_command_data
+from daqconf.core.metadata import write_metadata_file
 
 CLOCK_SPEED_HZ = 50000000
 
@@ -42,10 +43,13 @@ import click
 @click.option('--pocket-url', default='127.0.0.1', help="URL for connecting to Pocket services")
 @click.option('--hsi-device-name', default="", help='Real HSI hardware only: device name of HSI hw')
 @click.option('--master-device-name', default="", help='Device name of timing master hw')
+@click.option('--master-send-delays-period', default=0, help="Master controller continuously send delays period [ms] (to all endpoints). 0 for disable.")
+@click.option('--master-clock-file', default="", help='Path to custom PLL config file for master device')
+@click.option('--master-clock-mode', default=-1, help='Fanout mode for master device.')
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
 
-def cli(partition_name, disable_trace, host_thi, port_thi, host_tmc, timing_hw_connections_file, opmon_impl, ers_impl, pocket_url, hsi_device_name, master_device_name, debug, json_dir):
+def cli(partition_name, disable_trace, host_thi, port_thi, host_tmc, timing_hw_connections_file, opmon_impl, ers_impl, pocket_url, hsi_device_name, master_device_name, master_send_delays_period, master_clock_file, master_clock_mode, debug, json_dir):
 
     if exists(json_dir):
         raise RuntimeError(f"Directory {json_dir} already exists")
@@ -112,13 +116,16 @@ def cli(partition_name, disable_trace, host_thi, port_thi, host_tmc, timing_hw_c
                                                                             msg_module_name="TimingHwCmdNQ",
                                                                             topics=[],
                                                                             receivers=["thi.timing_cmds"])
-    the_system.apps["tmc"] = get_tmc_app(
-        MASTER_DEVICE_NAME=master_device_name,
-        HOST=host_tmc,
-        DEBUG=debug)
-    add_network("tmc", the_system, verbose=debug)
+    if master_device_name:
+        the_system.apps["tmc"] = get_tmc_app(
+            MASTER_DEVICE_NAME=master_device_name,
+            MASTER_SEND_DELAYS_PERIOD=master_send_delays_period,
+            MASTER_CLOCK_FILE=master_clock_file,
+            MASTER_CLOCK_MODE=master_clock_mode,
+            HOST=host_tmc,
+            DEBUG=debug)
+        add_network("tmc", the_system, verbose=debug)
 
-    
     if debug:
         the_system.export("global_system.dot")
 
@@ -141,10 +148,11 @@ def cli(partition_name, disable_trace, host_thi, port_thi, host_tmc, timing_hw_c
 
     system_command_datas['boot'] = boot
 
-    write_json_files(app_command_datas, system_command_datas, json_dir)
+    write_json_files(app_command_datas, system_command_datas, json_dir, verbose=debug)
 
     console.log(f"Global aapp config generated in {json_dir}")
-
+    
+    write_metadata_file(json_dir, "daqconf_global_gen")
 
 if __name__ == '__main__':
     try:

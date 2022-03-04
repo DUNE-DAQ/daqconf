@@ -131,7 +131,7 @@ def get_readout_app(RU_CONFIG=[],
         #                                     sender_config=nos.Conf(name=f"{PARTITION}.tpsets_{RUIDX}",
         #                                                            topic="TPSets",
         #                                                            stype="msgpack")))]
-    if FRONTEND_TYPE == 'wib':
+    if FRONTEND_TYPE == 'wib' and not USE_FAKE_DATA_PRODUCERS:
         modules += [DAQModule(name = "errored_frame_consumer",
                            plugin = "ErroredFrameConsumer",
                            connections={})]
@@ -142,8 +142,19 @@ def get_readout_app(RU_CONFIG=[],
     for idx in range(MIN_LINK,MAX_LINK):
         if USE_FAKE_DATA_PRODUCERS:
             modules += [DAQModule(name = f"fakedataprod_{idx}",
-                               plugin='FakeDataProd',
-                               connections={'input': Connection(f'data_request_{idx}')})]
+                                  plugin='FakeDataProd',
+                                  connections={},
+                                  conf = fdp.ConfParams(
+                                  system_type = SYSTEM_TYPE,
+                                  apa_number = RU_CONFIG[RUIDX]["region_id"],
+                                  link_number = idx,
+                                  time_tick_diff = 25,
+                                  frame_size = 464,
+                                  response_delay = 0,
+                                  fragment_type = "FakeData",
+                                  timesync_connection_name = f"{PARTITION}.timesync_{RUIDX}",
+                                  timesync_topic_name = "Timesync",
+                                  ))]
         else:
             connections = {}
             # connections['raw_input']      = Connection(f"{FRONTEND_TYPE}_link_{idx}", Direction.IN)
@@ -304,16 +315,23 @@ def get_readout_app(RU_CONFIG=[],
             mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{idx}", f"datahandler_{idx}.tpset_out",    Direction.OUT)
             mgraph.add_endpoint(f"timesync_{idx+RU_CONFIG[RUIDX]['channel_count']}", f"tp_datahandler_{idx}.timesync",    Direction.OUT)
 
-        # Add fragment producers for raw data
-        mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = idx, system = SYSTEM_TYPE,
-                                     requests_in   = f"datahandler_{idx}.data_requests_0",
-                                     fragments_out = f"datahandler_{idx}.fragment_queue")
+        
+        if USE_FAKE_DATA_PRODUCERS:
+            # Add fragment producers for fake data. This call is necessary to create the RequestReceiver instance, but we don't need the generated FragmentSender or its queues...
+            mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = idx, system = SYSTEM_TYPE,
+                                         requests_in   = f"fakedataprod_{idx}.data_request_input_queue",
+                                         fragments_out = f"fakedataprod_{idx}.fragment_queue")
+        else:
+            # Add fragment producers for raw data
+            mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = idx, system = SYSTEM_TYPE,
+                                         requests_in   = f"datahandler_{idx}.data_requests_0",
+                                         fragments_out = f"datahandler_{idx}.fragment_queue")
 
-        # Add fragment producers for TPC TPs. Make sure the element index doesn't overlap with the ones for raw data
-        if SOFTWARE_TPG_ENABLED:
-            mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = idx + total_link_count, system = SYSTEM_TYPE,
-                                         requests_in   = f"tp_datahandler_{idx}.data_requests_0",
-                                         fragments_out = f"tp_datahandler_{idx}.fragment_queue")
+            # Add fragment producers for TPC TPs. Make sure the element index doesn't overlap with the ones for raw data
+            if SOFTWARE_TPG_ENABLED:
+                mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = idx + total_link_count, system = SYSTEM_TYPE,
+                                             requests_in   = f"tp_datahandler_{idx}.data_requests_0",
+                                             fragments_out = f"tp_datahandler_{idx}.fragment_queue")
 
     readout_app = App(mgraph, host=HOST)
     if DEBUG:
