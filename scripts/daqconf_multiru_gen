@@ -30,6 +30,7 @@ import moo.otypes
 moo.otypes.load_types('networkmanager/nwmgr.jsonnet')
 import dunedaq.networkmanager.nwmgr as nwmgr
 
+
 import click
 
 @click.command(context_settings=CONTEXT_SETTINGS)
@@ -531,7 +532,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     
     #     console.log(f"MDAapp config generated in {json_dir}")
     from appfwk.conf_utils import add_network, make_app_command_data
-    from daqconf.core.fragment_producers import  connect_all_fragment_producers, set_mlt_links
+    from daqconf.core.fragment_producers import  connect_all_fragment_producers, set_mlt_links, remove_mlt_link
 
     if debug:
         the_system.export("system_no_frag_prod_connection.dot")
@@ -541,9 +542,33 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     # console.log("After connecting fragment producers, the_system.app_connections:", the_system.app_connections)
 
     set_mlt_links(the_system, "trigger", verbose=debug)
+
     mlt_links=the_system.apps["trigger"].modulegraph.get_module("mlt").conf.links
     if debug:
         console.log(f"After set_mlt_links, mlt_links is {mlt_links}")
+
+    # HACK HACK HACK P. Rodrigues 2022-03-04 We decided not to request
+    # TPs from readout for the 2.10 release. It would be nice to
+    # achieve this by just not adding fragment producers for the
+    # relevant links in readout_gen.py, but then the necessary input
+    # and output queues for the DataLinkHandler modules are not
+    # created. So instead we do it this roundabout way: the fragment
+    # producers are all created, they are added to the MLT's list of
+    # links to read out from (in set_mlt_links above), and then
+    # removed here. We rely on a convention that TP links have element
+    # value > 1000.
+    #
+    # This code should be removed after 2.10, when we will have
+    # decided how to handle raw TP data as fragments
+    for link in mlt_links:
+        if link["system"] == system_type and link["element"] > 1000:
+            remove_mlt_link(the_system, link)
+
+    mlt_links=the_system.apps["trigger"].modulegraph.get_module("mlt").conf.links
+    if debug:
+        console.log(f"After remove_mlt_links, mlt_links is {mlt_links}")
+    # END HACK
+        
     add_network("trigger", the_system, verbose=debug)
     add_network("dfo", the_system, verbose=debug)
 
