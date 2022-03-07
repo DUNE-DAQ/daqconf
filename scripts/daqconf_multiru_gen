@@ -556,12 +556,12 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     # producers are all created, they are added to the MLT's list of
     # links to read out from (in set_mlt_links above), and then
     # removed here. We rely on a convention that TP links have element
-    # value > 1000.
+    # value >= 1000.
     #
     # This code should be removed after 2.10, when we will have
     # decided how to handle raw TP data as fragments
     for link in mlt_links:
-        if link["system"] == system_type and link["element"] > 1000:
+        if link["system"] == system_type and link["element"] >= 1000:
             remove_mlt_link(the_system, link)
 
     mlt_links=the_system.apps["trigger"].modulegraph.get_module("mlt").conf.links
