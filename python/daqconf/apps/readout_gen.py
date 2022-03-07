@@ -328,8 +328,24 @@ def get_readout_app(RU_CONFIG=[],
                                          fragments_out = f"datahandler_{idx}.fragment_queue")
 
             # Add fragment producers for TPC TPs. Make sure the element index doesn't overlap with the ones for raw data
+            #
+            # NB We decided not to request TPs from readout for the
+            # 2.10 release. It would be nice to achieve this by just
+            # not adding fragment producers for the relevant links
+            # here, but then the necessary input and output queues for
+            # the DataLinkHandler modules are not created, so we can't
+            # init. So instead we do it this roundabout way: the
+            # fragment producers are all created, and then they are
+            # eventually removed from the MLT's list of links to
+            # request data from. That removal is done in
+            # daqconf_multiru_gen, which relies on a convention that
+            # TP links have element value > 1000.
+            #
+            # This situation should change after release 2.10, when
+            # real firmware TPs become available
             if SOFTWARE_TPG_ENABLED:
-                mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = idx + total_link_count, system = SYSTEM_TYPE,
+                assert total_link_count < 1000
+                mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = idx + 1000, system = SYSTEM_TYPE,
                                              requests_in   = f"tp_datahandler_{idx}.data_requests_0",
                                              fragments_out = f"tp_datahandler_{idx}.fragment_queue")
 
