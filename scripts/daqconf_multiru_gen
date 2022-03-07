@@ -432,7 +432,12 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     if enable_tpset_writing:
         tpw_name=f'tpwriter'
         the_system.apps[tpw_name] = get_tpwriter_app(
-            RU_CONFIG = ru_configs, 
+            OUTPUT_PATH = output_path,
+            OPERATIONAL_ENVIRONMENT = op_env,
+            TPC_REGION_NAME_PREFIX = tpc_region_name_prefix,
+            MAX_FILE_SIZE = max_file_size,
+            DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
+            CLOCK_SPEED_HZ = CLOCK_SPEED_HZ,
             HOST=host_tpw, 
             DEBUG=debug)
         if debug: console.log(f"{tpw_name} app: {the_system.apps[tpw_name]}")
