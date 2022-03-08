@@ -52,8 +52,9 @@ def get_dataflow_app(HOSTIDX=0,
                      PARTITION="UNKNOWN",
                      OPERATIONAL_ENVIRONMENT="swtest",
                      TPC_REGION_NAME_PREFIX="APA",
-                     HOST="localhost",
                      MAX_FILE_SIZE=4*1024*1024*1024,
+                     MAX_TRIGGER_RECORD_WINDOW=0,
+                     HOST="localhost",
                      DEBUG=False):
 
     """Generate the json configuration for the readout and DF process"""
@@ -65,6 +66,7 @@ def get_dataflow_app(HOSTIDX=0,
                           connections = {'trigger_record_output_queue': Connection('datawriter.trigger_record_input_queue')},
                           conf = trb.ConfParams(general_queue_timeout=QUEUE_POP_WAIT_MS,
                                                 reply_connection_name = "",
+                                                max_time_window=MAX_TRIGGER_RECORD_WINDOW,
                                                 mon_connection_name=f"{PARTITION}.trmon_dqm2df_{HOSTIDX}",
                                                 map=trb.mapgeoidconnections([]))), # We patch this up in connect_fragment_producers
                 DAQModule(name = 'datawriter',

@@ -170,6 +170,7 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         new_trb_map = old_trb_conf.map + trb_geoid_to_connection
         df_mgraph.reset_module_conf("trb", trb.ConfParams(general_queue_timeout=old_trb_conf.general_queue_timeout,
                                                           reply_connection_name = fragment_connection_name,
+                                                          max_time_window = old_trb_conf.max_time_window,
                                                           mon_connection_name=old_trb_conf.mon_connection_name,
                                                           map=trb.mapgeoidconnections(new_trb_map)))
 
