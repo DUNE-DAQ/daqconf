@@ -197,7 +197,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
         system_type = 'PDS'
 
     if opmon_impl == 'cern':
-        info_svc_uri = "influx://188.185.88.195:80/write?db=db1"
+        info_svc_uri = "influx://opmondb.cern.ch:31002/write?db=influxdb"
     elif opmon_impl == 'pocket':
         info_svc_uri = "influx://" + pocket_url + ":31002/write?db=influxdb"
     else:
@@ -208,10 +208,10 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
 
     if ers_impl == 'cern':
         use_kafka = True
-        ers_settings["INFO"] =    "erstrace,throttle,lstdout,erskafka(dqmbroadcast:9092)"
-        ers_settings["WARNING"] = "erstrace,throttle,lstdout,erskafka(dqmbroadcast:9092)"
-        ers_settings["ERROR"] =   "erstrace,throttle,lstdout,erskafka(dqmbroadcast:9092)"
-        ers_settings["FATAL"] =   "erstrace,lstdout,erskafka(dqmbroadcast:9092)"
+        ers_settings["INFO"] =    "erstrace,throttle,lstdout,erskafka(monkafka.cern.ch:30092)"
+        ers_settings["WARNING"] = "erstrace,throttle,lstdout,erskafka(monkafka.cern.ch:30092)"
+        ers_settings["ERROR"] =   "erstrace,throttle,lstdout,erskafka(monkafka.cern.ch:30092)"
+        ers_settings["FATAL"] =   "erstrace,lstdout,erskafka(monkafka.cern.ch:30092)"
     elif ers_impl == 'pocket':
         use_kafka = True
         ers_settings["INFO"] =    "erstrace,throttle,lstdout,erskafka(" + pocket_url + ":30092)"
@@ -225,7 +225,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
         ers_settings["ERROR"] =   "erstrace,throttle,lstdout"
         ers_settings["FATAL"] =   "erstrace,lstdout"
 
-    dqm_kafka_address = "dqmbroadcast:9092" if dqm_impl == 'cern' else pocket_url + ":30092" if dqm_impl == 'pocket' else ''
+    dqm_kafka_address = "monkafka.cern.ch:30092" if dqm_impl == 'cern' else pocket_url + ":30092" if dqm_impl == 'pocket' else ''
 
     if control_hsi_hw or control_timing_partition:
         the_system.network_endpoints.append(nwmgr.Connection(name=f"{global_partition_name}.timing_cmds",  topics=[], address="tcp://{"+host_global+"}:"+f"{port_global}"))
