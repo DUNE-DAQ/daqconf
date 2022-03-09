@@ -103,7 +103,9 @@ def get_hsi_app(RUN_NUMBER = 333,
                                                         rising_edge_mask=HSI_RE_MASK,
                                                         falling_edge_mask=HSI_FE_MASK,
                                                         invert_edge_mask=HSI_INV_MASK,
-                                                        data_source=HSI_SOURCE)),
+                                                        data_source=HSI_SOURCE),
+                                extra_commands = {"start": startpars,
+                                                  "resume": resumepars}),
                         ] )
     
     mgraph = ModuleGraph(modules)
