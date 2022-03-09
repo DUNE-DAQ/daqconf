@@ -13,8 +13,6 @@ from appfwk.system import System
 from appfwk.conf_utils import AppConnection
 from daqconf.core.metadata import write_metadata_file
 
-CLOCK_SPEED_HZ = 50000000
-
 # Add -h as default help option
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -42,6 +40,7 @@ import click
 @click.option('-e', '--emulator-mode', is_flag=True, help="If active, timestamps of data frames are overwritten when processed by the readout. This is necessary if the felix card does not set correct timestamps.")
 @click.option('-s', '--data-rate-slowdown-factor', default=1)
 @click.option('-r', '--run-number', default=333)
+@click.option('--clock-speed-hz', type=int, default=50000000)
 @click.option('-t', '--trigger-rate-hz', default=1.0, help='Fake HSI only: rate at which fake HSIEvents are sent. 0 - disable HSIEvent generation.')
 @click.option('-b', '--trigger-window-before-ticks', default=1000)
 @click.option('-a', '--trigger-window-after-ticks', default=1000)
@@ -119,7 +118,7 @@ import click
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
 
-def cli(global_partition_name, host_global, port_global, partition_name, number_of_data_producers, emulator_mode, data_rate_slowdown_factor, run_number, trigger_rate_hz, trigger_window_before_ticks, trigger_window_after_ticks,
+def cli(global_partition_name, host_global, port_global, partition_name, number_of_data_producers, emulator_mode, data_rate_slowdown_factor, run_number, clock_speed_hz, trigger_rate_hz, trigger_window_before_ticks, trigger_window_after_ticks,
         token_count, data_file, output_path, disable_trace, use_felix, use_ssp, host_df, host_dfo, host_ru, host_trigger, host_hsi, host_tpw, host_tprtc, region_id, latency_buffer_size,
         hsi_hw_connections_file, hsi_device_name, hsi_readout_period, control_hsi_hw, hsi_endpoint_address, hsi_endpoint_partition, hsi_re_mask, hsi_fe_mask, hsi_inv_mask, hsi_source,
         use_hsi_hw, hsi_device_id, mean_hsi_signal_multiplicity, hsi_signal_emulation_mode, enabled_hsi_signals,
@@ -271,7 +270,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     if use_hsi_hw:
         the_system.apps["hsi"] = get_hsi_app(
             RUN_NUMBER = run_number,
-            CLOCK_SPEED_HZ = CLOCK_SPEED_HZ,
+            CLOCK_SPEED_HZ = clock_speed_hz,
             TRIGGER_RATE_HZ = trigger_rate_hz,
             CONTROL_HSI_HARDWARE=control_hsi_hw,
             CONNECTIONS_FILE=hsi_hw_connections_file,
@@ -290,7 +289,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     else:
         the_system.apps["hsi"] = get_fake_hsi_app(
             RUN_NUMBER = run_number,
-            CLOCK_SPEED_HZ = CLOCK_SPEED_HZ,
+            CLOCK_SPEED_HZ = clock_speed_hz,
             DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
             TRIGGER_RATE_HZ = trigger_rate_hz,
             HSI_DEVICE_ID = hsi_device_id,
@@ -391,7 +390,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
                                               DATA_FILE = data_file,
                                               FLX_INPUT = use_felix,
                                               SSP_INPUT = use_ssp,
-                                              CLOCK_SPEED_HZ = CLOCK_SPEED_HZ,
+                                              CLOCK_SPEED_HZ = clock_speed_hz,
                                               RUIDX = i,
                                               RAW_RECORDING_ENABLED = enable_raw_recording,
                                               RAW_RECORDING_OUTPUT_DIR = raw_recording_output_dir,
@@ -416,7 +415,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
                 DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
                 RUN_NUMBER = run_number,
                 DATA_FILE = data_file,
-                CLOCK_SPEED_HZ = CLOCK_SPEED_HZ,
+                CLOCK_SPEED_HZ = clock_speed_hz,
                 DQMIDX = i,
                 SYSTEM_TYPE = system_type,
                 DQM_KAFKA_ADDRESS=dqm_kafka_address,
@@ -439,7 +438,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
             TPC_REGION_NAME_PREFIX = tpc_region_name_prefix,
             MAX_FILE_SIZE = max_file_size,
             DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
-            CLOCK_SPEED_HZ = CLOCK_SPEED_HZ,
+            CLOCK_SPEED_HZ = clock_speed_hz,
             HOST=host_tpw, 
             DEBUG=debug)
         if debug: console.log(f"{tpw_name} app: {the_system.apps[tpw_name]}")
@@ -469,7 +468,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
                 DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
                 RUN_NUMBER = run_number,
                 DATA_FILE = data_file,
-                CLOCK_SPEED_HZ = CLOCK_SPEED_HZ,
+                CLOCK_SPEED_HZ = clock_speed_hz,
                 DQMIDX = i,
                 SYSTEM_TYPE = system_type,
                 DQM_KAFKA_ADDRESS=dqm_kafka_address,
