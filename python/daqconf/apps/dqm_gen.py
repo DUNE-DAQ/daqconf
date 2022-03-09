@@ -59,14 +59,14 @@ def get_dqm_app(RU_CONFIG=[],
 
     cmd_data = {}
 
-    MIN_LINK = RU_CONFIG[DQMIDX]["start_channel"]
-    MAX_LINK = MIN_LINK + RU_CONFIG[DQMIDX]["channel_count"]
-
     modules = []
 
     connections = {}
 
     if MODE == 'readout':
+
+        MIN_LINK = RU_CONFIG[DQMIDX]["start_channel"]
+        MAX_LINK = MIN_LINK + RU_CONFIG[DQMIDX]["channel_count"]
 
         connections['output'] = Connection(f'trb_dqm.data_fragment_input_queue',
                                            queue_name='data_fragments_q',
@@ -108,6 +108,10 @@ def get_dqm_app(RU_CONFIG=[],
                                                                  queue_name='trigger_decision_q_dqm',
                                                                  queue_kind="FollySPSCQueue",
                                                                  queue_capacity=100)
+    # if this is a DQM-DF app
+    else:
+        MIN_LINK = RU_CONFIG[0]["start_channel"]
+        MAX_LINK = RU_CONFIG[-1]["start_channel"] + RU_CONFIG[-1]["channel_count"]
 
     # Algorithms to run for TRs coming from DF
     algs = DF_ALGS.split(' ')
@@ -117,11 +121,13 @@ def get_dqm_app(RU_CONFIG=[],
         if name in algs:
             algs_bitfield |= 1<<i
 
+    print('Inside DQM', MODE, DQMIDX, NUM_DF_APPS)
+
     modules += [DAQModule(name='dqmprocessor',
                           plugin='DQMProcessor',
                           connections=connections,
                           conf=dqmprocessor.Conf(
-                              region=RU_CONFIG[DQMIDX]["region_id"],
+                              region=RU_CONFIG[DQMIDX if MODE == 'readout' else 0]["region_id"],
                               channel_map=DQM_CMAP, # 'HD' for horizontal drift or 'VD' for vertical drift
                               mode=MODE,
                               sdqm_hist=dqmprocessor.StandardDQM(**{'how_often' : DQM_RAWDISPLAY_PARAMS[0], 'unavailable_time' : DQM_RAWDISPLAY_PARAMS[1], 'num_frames' : DQM_RAWDISPLAY_PARAMS[2]}),
