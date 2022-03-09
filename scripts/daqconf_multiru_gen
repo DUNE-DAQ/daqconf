@@ -249,8 +249,6 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
         if enable_dqm:
             the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.fragx_dqm_{hostidx}", topics=[], address=f"tcp://{{host_{ru_host}}}:{the_system.next_unassigned_port()}"))
             # Create at most {number of df apps} endpoints
-            if hostidx < len(host_df):
-                the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.tr_df2dqm_{hostidx}", topics=[], address=f"tcp://{{host_{ru_host}}}:{the_system.next_unassigned_port()}"))
 
         the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.datareq_{hostidx}", topics=[], address=f"tcp://{{host_{ru_host}}}:{the_system.next_unassigned_port()}"))
 
@@ -447,6 +445,9 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     df_app_names = []
     dqm_df_app_names = [f"dqm{idx}_df" for idx in range(len(host_df))]
     for i,host in enumerate(host_df):
+        if enable_dqm:
+            the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.tr_df2dqm_{i}", topics=[], address=f"tcp://{{host_{ru_df}}}:{the_system.next_unassigned_port()}"))
+
         app_name = f'dataflow{i}'
         df_app_names.append(app_name)
         the_system.apps[app_name] = get_dataflow_app(
