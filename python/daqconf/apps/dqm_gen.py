@@ -121,8 +121,6 @@ def get_dqm_app(RU_CONFIG=[],
         if name in algs:
             algs_bitfield |= 1<<i
 
-    print('Inside DQM', MODE, DQMIDX, NUM_DF_APPS)
-
     modules += [DAQModule(name='dqmprocessor',
                           plugin='DQMProcessor',
                           connections=connections,
