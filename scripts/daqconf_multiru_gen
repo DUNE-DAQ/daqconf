@@ -365,16 +365,21 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
             host_id_dict[host_ru[hostidx]] = 0
         hostidx = hostidx + 1
 
-
+        
     # Set up the nwmgr endpoints for TPSets. Need to wait till now to do this so that ru_configs is filled
     if enable_software_tpg:
-        for apa_idx,ru_app_name in enumerate(ru_app_names):
-            ru_config=ru_configs[apa_idx]
-            min_link=ru_config["start_channel"]
-            max_link=min_link+ru_config["channel_count"]
-            for link in range(min_link, max_link):
-                the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.tpsets_apa{apa_idx}_link{link}", topics=["TPSets"], address = f"tcp://{{host_{ru_app_name}}}:{the_system.next_unassigned_port()}"))
-
+        for ruidx,ru_app_name in enumerate(ru_app_names):
+            ru_config = ru_configs[ruidx]
+            apa_idx = ru_config['region_id']
+            for link in range(ru_config["channel_count"]):
+                # PL 2022-02-02: global_link is needed here to have non-overlapping app connections if len(ru)>1 with the same region_id
+                # Adding the ru number here too, in case we have many region_ids
+                global_link = link+ru_config["start_channel"]
+                connection_name = f"{partition_name}.tpsets_apa{apa_idx}_link{global_link}"
+                console.log(f"Creating connection with name {connection_name}")
+                the_system.network_endpoints.append(nwmgr.Connection(name=connection_name,
+                                                                     topics=["TPSets"],
+                                                                     address = f"tcp://{{host_{ru_app_name}}}:{the_system.next_unassigned_port()}"))
 
 
     mgraphs_readout = []
