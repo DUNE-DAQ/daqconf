@@ -249,8 +249,6 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
         if enable_dqm:
             the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.fragx_dqm_{hostidx}", topics=[], address=f"tcp://{{host_{ru_host}}}:{the_system.next_unassigned_port()}"))
             # Create at most {number of df apps} endpoints
-            if hostidx < len(host_df):
-                the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.tr_df2dqm_{hostidx}", topics=[], address=f"tcp://{{host_{ru_host}}}:{the_system.next_unassigned_port()}"))
 
         the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.datareq_{hostidx}", topics=[], address=f"tcp://{{host_{ru_host}}}:{the_system.next_unassigned_port()}"))
 
@@ -447,6 +445,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     df_app_names = []
     dqm_df_app_names = [f"dqm{idx}_df" for idx in range(len(host_df))]
     for i,host in enumerate(host_df):
+
         app_name = f'dataflow{i}'
         df_app_names.append(app_name)
         the_system.apps[app_name] = get_dataflow_app(
@@ -479,11 +478,12 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
                 DQM_FOURIER_PARAMS=[0, 0, 0],
                 DQM_FOURIERSUM_PARAMS=[0, 0, 0],
                 PARTITION=partition_name,
-                HOST=host,
+                HOST=host_ru[i%len(host_ru)],
                 MODE='df',
                 DF_RATE=dqm_df_rate,
                 DF_ALGS=dqm_df_algs,
                 DF_TIME_WINDOW=trigger_window_before_ticks + trigger_window_after_ticks,
+                NUM_DF_APPS=len(host_df),
                 DEBUG=debug)
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
 
@@ -521,6 +521,9 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
 
         # Always enabled or it won't work at conf time because the endpoint is not there
         the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.trmon_dqm2df_{i}", topics=[], address=f"tcp://{{host_{df_app_name}}}:{the_system.next_unassigned_port()}"))
+
+        if enable_dqm:
+            the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.tr_df2dqm_{i}", topics=[], address=f"tcp://{{host_{ru_app_names[i % len(ru_app_names)]}}}:{the_system.next_unassigned_port()}"))
     
     the_system.app_connections["hsi.hsievents"] = AppConnection(nwmgr_connection=f"{partition_name}.hsievents",
                                                                 topics=[],
