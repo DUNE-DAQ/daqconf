@@ -64,7 +64,7 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
     the_system = System(partition_name, first_port=port_thi)
    
     if opmon_impl == 'cern':
-        info_svc_uri = "influx://188.185.88.195:80/write?db=db1"
+        info_svc_uri = "influx://opmondb.cern.ch:31002/write?db=influxdb"
     elif opmon_impl == 'pocket':
         info_svc_uri = "influx://" + pocket_url + ":31002/write?db=influxdb"
     else:
@@ -74,10 +74,10 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
 
     if ers_impl == 'cern':
         use_kafka = True
-        ers_settings["INFO"] =    "erstrace,throttle,lstdout,erskafka(dqmbroadcast:9092)"
-        ers_settings["WARNING"] = "erstrace,throttle,lstdout,erskafka(dqmbroadcast:9092)"
-        ers_settings["ERROR"] =   "erstrace,throttle,lstdout,erskafka(dqmbroadcast:9092)"
-        ers_settings["FATAL"] =   "erstrace,lstdout,erskafka(dqmbroadcast:9092)"
+        ers_settings["INFO"] =    "erstrace,throttle,lstdout,erskafka(monkafka.cern.ch:30092)"
+        ers_settings["WARNING"] = "erstrace,throttle,lstdout,erskafka(monkafka.cern.ch:30092)"
+        ers_settings["ERROR"] =   "erstrace,throttle,lstdout,erskafka(monkafka.cern.ch:30092)"
+        ers_settings["FATAL"] =   "erstrace,lstdout,erskafka(monkafka.cern.ch:30092)"
     elif ers_impl == 'pocket':
         use_kafka = True
         ers_settings["INFO"] =    "erstrace,throttle,lstdout,erskafka(" + pocket_url + ":30092)"
