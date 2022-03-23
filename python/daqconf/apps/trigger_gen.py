@@ -148,7 +148,8 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                          s2=ttcm.map_t(signal_type=TTCM_S2,
                                                        time_before=TRIGGER_WINDOW_BEFORE_TICKS,
                                                        time_after=TRIGGER_WINDOW_AFTER_TICKS),
-                                         hsievent_connection_name = PARTITION+".hsievents"))]
+                                         hsievent_connection_name = PARTITION+".hsievents",
+					 hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH))]
     
     # We need to populate the list of links based on the fragment
     # producers available in the system. This is a bit of a
