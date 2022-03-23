@@ -56,6 +56,20 @@ def set_mlt_links(the_system, mlt_app_name="trigger", verbose=False):
                                                    dfo_busy_connection=old_mlt_conf.dfo_busy_connection,
                                                    hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough))
 
+def remove_mlt_link(the_system, geoid, mlt_app_name="trigger"):
+    """
+    Remove the given geoid (which should be a dict with keys "system", "region", "element") from the list of links to request data from in the MLT.
+    """
+    mgraph = the_system.apps[mlt_app_name].modulegraph
+    old_mlt_conf = mgraph.get_module("mlt").conf
+    mlt_links = old_mlt_conf.links
+    if geoid not in mlt_links:
+        raise ValueError(f"GeoID {geoid} not in MLT links list")
+    mlt_links.remove(geoid)
+    mgraph.reset_module_conf("mlt", mlt.ConfParams(links=mlt_links, 
+                                                   dfo_connection=old_mlt_conf.dfo_connection, 
+                                                   dfo_busy_connection=old_mlt_conf.dfo_busy_connection))
+    
 def connect_fragment_producers(app_name, the_system, verbose=False):
     """Connect the data request and fragment sending queues from all of
        the fragment producers in the app with name `app_name` to the
@@ -157,6 +171,7 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         new_trb_map = old_trb_conf.map + trb_geoid_to_connection
         df_mgraph.reset_module_conf("trb", trb.ConfParams(general_queue_timeout=old_trb_conf.general_queue_timeout,
                                                           reply_connection_name = fragment_connection_name,
+                                                          max_time_window = old_trb_conf.max_time_window,
                                                           mon_connection_name=old_trb_conf.mon_connection_name,
                                                           map=trb.mapgeoidconnections(new_trb_map)))
 
