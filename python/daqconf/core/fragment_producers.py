@@ -68,7 +68,8 @@ def remove_mlt_link(the_system, geoid, mlt_app_name="trigger"):
     mlt_links.remove(geoid)
     mgraph.reset_module_conf("mlt", mlt.ConfParams(links=mlt_links, 
                                                    dfo_connection=old_mlt_conf.dfo_connection, 
-                                                   dfo_busy_connection=old_mlt_conf.dfo_busy_connection))
+                                                   dfo_busy_connection=old_mlt_conf.dfo_busy_connection,
+                                                   hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough))
     
 def connect_fragment_producers(app_name, the_system, verbose=False):
     """Connect the data request and fragment sending queues from all of
