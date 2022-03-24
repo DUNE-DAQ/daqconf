@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+
+import json
+import requests
+from pathlib import Path
+import os
+import rich.traceback
+from rich.console import Console
+import click
+
+console = Console()
+
+def dump_json_recursively(json_data, path, verbose):
+    for f in json_data['files']:
+        if verbose:
+            console.log(f'Dumping {path/f["name"]}.json')
+        with open(path/(f['name']+'.json'), 'w') as outfile:
+            json.dump(f['configuration'], outfile, indent=4)
+            
+    for d in json_data['dirs']:
+        dirname = path/d['name']
+        dirname.mkdir(exist_ok=True)
+        dump_json_recursively(d['dir_content'], dirname, verbose)
+    
+
+# Add -h as default help option
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('--url', default='np04-srv-010.cern.ch:31011', help='Where the configuration utility lives')
+@click.option('-v','--version', default='latest', help='Which version of the configuration')
+@click.option('-l','--list-conf', is_flag=True, default=False, help='List all the configurations available')
+@click.option('-lv','--list-version', is_flag=True, default=False, help='List all the configurations version available for a particular name')
+@click.option('-f','--force', is_flag=True, default=False, help='Overwrite the output dir')
+@click.option('-o','--output', default=None, help='Output dir (default is ${PWD}/name)')
+@click.option('--verbose', is_flag=True, default=False)
+@click.argument('name', type=str, default='')
+
+def cli(url, version, list_conf, list_version, force, output, verbose, name):
+    r = None
+    
+    if list_conf or not name:
+        r = requests.get('http://'+url+'/listConfigs')
+        console.print('List of available configurations below:')
+        for conf in r.json()['configs']:
+            console.print(conf)
+        exit()
+
+    
+    if list_version:
+        r = requests.get('http://'+url+'/listVersions?name='+name)
+        console.print(f'List of available versions for configuration \'{name}\' below:')
+        for ver in r.json()['versions']:
+            console.print(ver)
+        exit()
+
+    if version == 'latest':
+        r = requests.get('http://'+url+'/retrieveLast?name='+name)
+    else:
+        r = requests.get('http://'+url+'/retrieveVersion?name='+name+'&version='+str(version))
+
+    if r.status_code == 200:
+        config = json.loads(r.json())
+        if not output: output=name
+        output=Path(output)
+        if os.path.exists(output) and not force:
+            raise RuntimeError(f'{output} path already exists, use -o to specify a different output directory or --force')
+        output.mkdir(parents=True, exist_ok=True)
+        dump_json_recursively(config, output, verbose)
+        console.print(f'Configuration \'{name}\' is in:\n{output}/')
+    else:
+        raise RuntimeError(f'Unexpected HTTP status code: {r.status_code}')
+
+if __name__ == '__main__':
+    try:
+        cli(show_default=True, standalone_mode=True)
+    except Exception as e:
+        console.print_exception()

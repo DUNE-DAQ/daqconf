@@ -32,6 +32,8 @@ import dunedaq.networkmanager.nwmgr as nwmgr
 import click
 
 @click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-u', '--upload', is_flag=True, default=False, help='Whether to upload the configuration to the configuration service and not create file')
+@click.option('--url', default='np04-srv-010.cern.ch:31011', help='Where the configuration utility lives')
 @click.option('-g', '--global-partition-name', default="global", help="Name of the global partition to use, for ERS and OPMON and timing commands")
 @click.option('--host-global', default='np04-srv-012.cern.ch', help='Host to run the (global) timing hardware interface app on')
 @click.option('--port-global', default=12345, help='Port to host running the (global) timing hardware interface app on')
@@ -118,7 +120,7 @@ import click
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
 
-def cli(global_partition_name, host_global, port_global, partition_name, number_of_data_producers, emulator_mode, data_rate_slowdown_factor, run_number, clock_speed_hz, trigger_rate_hz, trigger_window_before_ticks, trigger_window_after_ticks,
+def cli(upload, url, global_partition_name, host_global, port_global, partition_name, number_of_data_producers, emulator_mode, data_rate_slowdown_factor, run_number, clock_speed_hz, trigger_rate_hz, trigger_window_before_ticks, trigger_window_after_ticks,
         token_count, data_file, output_path, disable_trace, use_felix, use_ssp, host_df, host_dfo, host_ru, host_trigger, host_hsi, host_tpw, host_tprtc, region_id, latency_buffer_size,
         hsi_hw_connections_file, hsi_device_name, hsi_readout_period, control_hsi_hw, hsi_endpoint_address, hsi_endpoint_partition, hsi_re_mask, hsi_fe_mask, hsi_inv_mask, hsi_source,
         use_hsi_hw, hsi_device_id, mean_hsi_signal_multiplicity, hsi_signal_emulation_mode, enabled_hsi_signals,
@@ -128,7 +130,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
         dqm_rawdisplay_params, dqm_meanrms_params, dqm_fourier_params, dqm_fouriersum_params, dqm_df_rate,
         dqm_df_algs, op_env, tpc_region_name_prefix, max_file_size, max_trigger_record_window, debug, json_dir):
 
-    if exists(json_dir):
+    if exists(json_dir) and not upload:
         raise RuntimeError(f"Directory {json_dir} already exists")
 
     console.log("Loading dataflow config generator")
@@ -155,7 +157,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     console.log(f"Generating configs for hosts trigger={host_trigger} DFO={host_dfo} dataflow={host_df} readout={host_ru} hsi={host_hsi} dqm={host_ru}")
 
     the_system = System(partition_name, first_port=port_global)
-   
+
     total_number_of_data_producers = 0
 
     if use_ssp:
@@ -243,7 +245,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
 
     ru_app_names=[f"ruflx{idx}" if use_felix else f"ruemu{idx}" for idx in range(len(host_ru))]
     dqm_app_names = [f"dqm{idx}_ru" for idx in range(len(host_ru))]
-    
+
     for hostidx,ru_host in enumerate(ru_app_names):
         if enable_dqm:
             the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.fragx_dqm_{hostidx}", topics=[], address=f"tcp://{{host_{ru_host}}}:{the_system.next_unassigned_port()}"))
@@ -254,7 +256,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
         # Should end up something like 'network_endpoints[timesync_0]:
         # "tcp://{host_ru0}:12347"'
         the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.timesync_{hostidx}", topics=["Timesync"], address=f"tcp://{{host_{ru_host}}}:{the_system.next_unassigned_port()}"))
-        
+
         cardid = 0
         if host_ru[hostidx] in host_id_dict:
             host_id_dict[host_ru[hostidx]] = host_id_dict[host_ru[hostidx]] + 1
@@ -352,7 +354,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
 
     #-------------------------------------------------------------------
     # Readout apps
-    
+
     cardid = {}
     host_id_dict = {}
 
@@ -365,7 +367,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
             host_id_dict[host_ru[hostidx]] = 0
         hostidx = hostidx + 1
 
-        
+
     # Set up the nwmgr endpoints for TPSets. Need to wait till now to do this so that ru_configs is filled
     if enable_software_tpg:
         for ruidx,ru_app_name in enumerate(ru_app_names):
@@ -405,7 +407,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
                                               HOST=host,
                                               LATENCY_BUFFER_SIZE=latency_buffer_size,
                                               DEBUG=debug)
-        
+
         if debug:
             console.log(f"{ru_name} app: {the_system.apps[ru_name]}")
 
@@ -442,7 +444,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
             MAX_FILE_SIZE = max_file_size,
             DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
             CLOCK_SPEED_HZ = clock_speed_hz,
-            HOST=host_tpw, 
+            HOST=host_tpw,
             DEBUG=debug)
         if debug: console.log(f"{tpw_name} app: {the_system.apps[tpw_name]}")
 
@@ -528,7 +530,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
 
         if enable_dqm:
             the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.tr_df2dqm_{i}", topics=[], address=f"tcp://{{host_{ru_app_names[i % len(ru_app_names)]}}}:{the_system.next_unassigned_port()}"))
-    
+
     the_system.app_connections["hsi.hsievents"] = AppConnection(nwmgr_connection=f"{partition_name}.hsievents",
                                                                 topics=[],
                                                                 use_nwqa=False,
@@ -548,8 +550,8 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     the_system.network_endpoints.append(nwmgr.Connection(name=f"{the_system.partition_name}.triginh",
                                                          topics=[],
                                                          address=f"tcp://{{host_dfo}}:{the_system.next_unassigned_port()}"))
-                                                                            
-    
+
+
     #     console.log(f"MDAapp config generated in {json_dir}")
     from appfwk.conf_utils import add_network, make_app_command_data
     from daqconf.core.fragment_producers import  connect_all_fragment_producers, set_mlt_links, remove_mlt_link
@@ -557,7 +559,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     if debug:
         the_system.export("system_no_frag_prod_connection.dot")
     connect_all_fragment_producers(the_system, verbose=debug)
-    
+
     # console.log("After connecting fragment producers, trigger mgraph:", the_system.apps['trigger'].modulegraph)
     # console.log("After connecting fragment producers, the_system.app_connections:", the_system.app_connections)
 
@@ -588,7 +590,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     if debug:
         console.log(f"After remove_mlt_links, mlt_links is {mlt_links}")
     # END HACK
-        
+
     add_network("trigger", the_system, verbose=debug)
     add_network("dfo", the_system, verbose=debug)
 
@@ -623,16 +625,18 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     system_command_datas = make_system_command_datas(the_system)
     # Override the default boot.json with the one from minidaqapp
     boot = generate_boot(the_system.apps, partition_name=partition_name, ers_settings=ers_settings, info_svc_uri=info_svc_uri,
-                              disable_trace=disable_trace, use_kafka=use_kafka)
+                         disable_trace=disable_trace, use_kafka=use_kafka)
 
     system_command_datas['boot'] = boot
 
-    write_json_files(app_command_datas, system_command_datas, json_dir, verbose=debug)
-
-    console.log(f"MDAapp config generated in {json_dir}")
-
-    
-    write_metadata_file(json_dir, "daqconf_multiru_gen")
+    if upload:
+        from daqconf.core.upload_conf import upload_conf
+        docid, name, version = upload_conf(url, app_command_datas, system_command_datas, name=json_dir, verbose=debug)
+        console.log(f"daqconfig '{name}' v{version} uploaded (docid: {docid})")
+    else:
+        write_json_files(app_command_datas, system_command_datas, json_dir, verbose=debug)
+        console.log(f"daqconfig generated in {json_dir}")
+        write_metadata_file(json_dir, "daqconf_multiru_gen")
 
 if __name__ == '__main__':
     try:
