@@ -1,20 +1,15 @@
-The intention of this page is to provide a few simple configurations that new or casual users can use in order to test the operation of a small MiniDAQ system that uses emulators instead of real electronics.
+The intention of this page is to provide a few simple configurations that new or casual users can use in order to test the operation of a small demo system that uses emulators instead of real electronics.
 
 After you have successfully followed the steps described in [Instructions for casual or first-time users](InstructionsForCasualUsers.md), we will focus now on a few variations to the default configuration used in those instructions.
 
 After you have setup the environment and downloaded the fake input data file
 1. `cd <work_dir>`
-2. `source /cvmfs/dunedaq.opensciencegrid.org/setup_dunedaq.sh`
-3. `setup_dbt dunedaq-v2.8.0`
+2. `source ./dbt-env.sh`
 4. `dbt-workarea-env`
-5. download a raw data file, either by running
-   "`curl -o frames.bin -O https://cernbox.cern.ch/index.php/s/7qNnuxD8igDOVJT/download`"
-   or clicking on the [CERNBox link](https://cernbox.cern.ch/index.php/s/7qNnuxD8igDOVJT/download)) and put it into `<work_dir>`
 
-
-Now we generate some sample system configurations and use _[nanorc](https://dune-daq-sw.readthedocs.io/en/latest/packages/nanorc/)_ to run MiniDAQ app with them.
+Now we generate some sample system configurations and use _[nanorc](https://dune-daq-sw.readthedocs.io/en/latest/packages/nanorc/)_ to run a demo system with them.
 The tools to generate these configurations consist of a single Python script that generates MiniDAQ system configurations with different characteristics based on command-line parameters that are given to the script. This script is daqconf/scripts/daqconf_multiru_gen.py.
-The config_gen files under `python/daqconf/` directory were developed to work with _nanorc_ package, which itself can be seen as a basic Finite State Machine that sends commands and drives the MiniDAQ app.
+The config_gen files under `python/daqconf/` directory were developed to work with _nanorc_ package, which itself can be seen as a basic Finite State Machine that sends commands and drives the demo system.
 
 The created configurations will be called `daq_fake` and there will be a `daq_fake` directory created containing the produced configuration to be used with  _nanorc_.
 The configurations can be run interactively with `nanorc daq_fake` from the `<work_dir>`.
