@@ -33,7 +33,7 @@ import click
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('-u', '--upload', is_flag=True, default=False, help='Whether to upload the configuration to the configuration service and not create file')
-@click.option('--url', default='np04-srv-010.cern.ch:31011', help='Where the configuration utility lives')
+@click.option('--url', default='np04-srv-015.cern.ch:31011', help='Where the configuration utility lives')
 @click.option('-g', '--global-partition-name', default="global", help="Name of the global partition to use, for ERS and OPMON and timing commands")
 @click.option('--host-global', default='np04-srv-012.cern.ch', help='Host to run the (global) timing hardware interface app on')
 @click.option('--port-global', default=12345, help='Port to host running the (global) timing hardware interface app on')

@@ -13,7 +13,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 console = Console()
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.option('--url', default='np04-srv-010.cern.ch:31011', help='Where the configuration utility lives')
+@click.option('--url', default='np04-srv-015.cern.ch:31011', help='Where the configuration utility lives')
 @click.option('--name', default=None, help='What name for the configuration')
 @click.argument('json_dir', type=click.Path(exists=True))
 

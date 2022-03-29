@@ -26,7 +26,7 @@ def dump_json_recursively(json_data, path, verbose):
 # Add -h as default help option
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.option('--url', default='np04-srv-010.cern.ch:31011', help='Where the configuration utility lives')
+@click.option('--url', default='np04-srv-015.cern.ch:31011', help='Where the configuration utility lives')
 @click.option('-v','--version', default='latest', help='Which version of the configuration')
 @click.option('-l','--list-conf', is_flag=True, default=False, help='List all the configurations available')
 @click.option('-lv','--list-version', is_flag=True, default=False, help='List all the configurations version available for a particular name')
