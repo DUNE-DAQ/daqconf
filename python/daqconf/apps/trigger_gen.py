@@ -14,6 +14,8 @@ moo.otypes.load_types('trigger/fakedataflow.jsonnet')
 moo.otypes.load_types('trigger/timingtriggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/tpsetbuffercreator.jsonnet')
 moo.otypes.load_types('trigger/faketpcreatorheartbeatmaker.jsonnet')
+moo.otypes.load_types('trigger/tpbuffer.jsonnet')
+moo.otypes.load_types('readoutlibs/readoutconfig.jsonnet')
 
 # Import new types
 import dunedaq.trigger.triggeractivitymaker as tam
@@ -24,6 +26,9 @@ import dunedaq.trigger.fakedataflow as fdf
 import dunedaq.trigger.timingtriggercandidatemaker as ttcm
 import dunedaq.trigger.tpsetbuffercreator as buf
 import dunedaq.trigger.faketpcreatorheartbeatmaker as heartbeater
+import dunedaq.trigger.tpbufferconfig as bufferconf
+
+import dunedaq.readoutlibs.readoutconfig as readoutconf
 
 from appfwk.app import App, ModuleGraph
 from appfwk.daqmodule import DAQModule
@@ -133,11 +138,21 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
             for idy in range(RU_CONFIG[ru]["channel_count"]):
                 # 1 buffer per TPG channel
                 modules += [DAQModule(name = f'buf_ru{ru}_link{idy}',
-                                      plugin = 'TPSetBufferCreator',
+                                      plugin = 'TPBuffer',
                                       connections = {},#'tpset_source': Connection(f"tpset_q_for_buf{ru}_{idy}"),#already in request_receiver
                                       #'data_request_source': Connection(f"data_request_q{ru}_{idy}"), #ditto
                                       # 'fragment_sink': Connection('qton_fragments.fragment_q')},
-                                   conf = buf.Conf(tpset_buffer_size=10000, region=RU_CONFIG[ru]["region_id"], element=idy + RU_CONFIG[ru]["start_channel"]))]
+                                      conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 100_000,
+                                                                                                                region_id = 0,
+                                                                                                                element_id = idy),
+                                                             requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = 100_000,
+                                                                                                                  pop_limit_pct = 0.8,
+                                                                                                                  pop_size_pct = 0.1,
+                                                                                                                  region_id = 0,
+                                                                                                                  element_id = idy,
+                                                                                                                  # output_file = f"output_{idx + MIN_LINK}.out",
+                                                                                                                  stream_buffer_size = 8388608,
+                                                                                                                  enable_raw_recording = False)))]
 
     modules += [DAQModule(name = 'ttcm',
                           plugin = 'TimingTriggerCandidateMaker',
