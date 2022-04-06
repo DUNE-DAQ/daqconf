@@ -26,6 +26,9 @@ moo.otypes.load_types('rcif/cmd.jsonnet')
 moo.otypes.load_types('appfwk/cmd.jsonnet')
 moo.otypes.load_types('appfwk/app.jsonnet')
 
+moo.otypes.load_types('timing/timingrccmd.jsonnet')
+moo.otypes.load_types('timing/definitions.jsonnet')
+
 moo.otypes.load_types('timinglibs/timingmastercontroller.jsonnet')
 moo.otypes.load_types('nwqueueadapters/queuetonetwork.jsonnet')
 moo.otypes.load_types('nwqueueadapters/networktoqueue.jsonnet')
@@ -38,6 +41,10 @@ import dunedaq.cmdlib.cmd as basecmd # AddressedCmd,
 import dunedaq.rcif.cmd as rccmd # AddressedCmd, 
 import dunedaq.appfwk.cmd as cmd # AddressedCmd, 
 import dunedaq.appfwk.app as app # AddressedCmd,
+
+import dunedaq.timing.timingrccmd as trccmd
+import dunedaq.timing.definitions as tdefs
+
 import dunedaq.timinglibs.timingmastercontroller as tmc
 import dunedaq.nwqueueadapters.networktoqueue as ntoq
 import dunedaq.nwqueueadapters.queuetonetwork as qton
@@ -61,14 +68,36 @@ def get_tmc_app(MASTER_DEVICE_NAME="",
     modules = {}
 
     ## TODO all the connections...
-    modules = [DAQModule(name = "tmc",
-                        plugin = "TimingMasterController",
-                        conf = tmc.ConfParams(
-                                            device=MASTER_DEVICE_NAME,
-                                            send_endpoint_delays_period=MASTER_SEND_DELAYS_PERIOD,
-                                            clock_config=MASTER_CLOCK_FILE,
-                                            fanout_mode=MASTER_CLOCK_MODE,
-                                            ))]
+    modules = [
+        DAQModule(
+            name = "tmc",
+            plugin = "TimingMasterController",
+            conf = tmc.ConfParams(
+                device=MASTER_DEVICE_NAME,
+                send_endpoint_delays_period=MASTER_SEND_DELAYS_PERIOD,
+                clock_config=MASTER_CLOCK_FILE,
+                fanout_mode=MASTER_CLOCK_MODE,
+            ),
+            extra_commands = {
+                "master_configure": trccmd.IOResetCmdPayload(
+                    clock_config=MASTER_CLOCK_FILE,
+                    fanout_mode=MASTER_CLOCK_MODE,
+                    soft=False),
+                "set_endpoint_delay": trccmd.TimingMasterSetEndpointDelayCmdPayload(
+                    address=0,
+                    coarse_delay=0,
+                    fine_delay=0,
+                    phase_delay=0,
+                    measure_rtt=False,
+                    control_sfp=False,
+                    sfp_mux=-1),
+                "send_fl_command": trccmd.TimingMasterSendFLCmdCmdPayload(
+                    fl_cmd_id=tdefs.FixedLengthCommandType('Echo'),
+                    channel=0,
+                    number_of_commands_to_send=1)
+            }
+        )
+    ]
 
     mgraph = ModuleGraph(modules)
     

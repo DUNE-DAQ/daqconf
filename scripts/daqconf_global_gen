@@ -133,14 +133,19 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
     ####################################################################
 
     # Arrange per-app command data into the format used by util.write_json_files()
-    app_command_datas = {
-        name : make_app_command_data(the_system, app, verbose=debug)
-        for name,app in the_system.apps.items()
-    }
+    app_command_datas = {}
+    for name,app in the_system.apps.items():
+        app_command_datas[name] = make_app_command_data(the_system, app, verbose=debug)
 
     # Make boot.json config
     from appfwk.conf_utils import make_system_command_datas,generate_boot, write_json_files
-    system_command_datas = make_system_command_datas(the_system, verbose=debug)
+
+    system_command_datas = make_system_command_datas(the_system, verbose=debug,
+                                                     extra_commands={
+                                                         'master_configure'  :['tmc'],
+                                                         'set_endpoint_delay':['tmc'],
+                                                         'send_fl_command'   :['tmc'],
+                                                     })
     # Override the default boot.json with the one from minidaqapp
     boot = generate_boot(the_system.apps, partition_name=partition_name, ers_settings=ers_settings, info_svc_uri=info_svc_uri,
                               disable_trace=disable_trace, use_kafka=use_kafka)
@@ -149,7 +154,7 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
 
     write_json_files(app_command_datas, system_command_datas, json_dir, verbose=debug)
 
-    console.log(f"Global aapp config generated in {json_dir}")
+    console.log(f"Global app config generated in {json_dir}")
     
     write_metadata_file(json_dir, "daqconf_global_gen")
 
