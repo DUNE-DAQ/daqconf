@@ -17,6 +17,7 @@ moo.otypes.load_types('nwqueueadapters/networkobjectsender.jsonnet')
 moo.otypes.load_types('flxlibs/felixcardreader.jsonnet')
 moo.otypes.load_types('readoutlibs/sourceemulatorconfig.jsonnet')
 moo.otypes.load_types('readoutlibs/readoutconfig.jsonnet')
+moo.otypes.load_types('readoutmodules/cpupinner.jsonnet')
 moo.otypes.load_types('lbrulibs/pacmancardreader.jsonnet')
 moo.otypes.load_types('dfmodules/fakedataprod.jsonnet')
 moo.otypes.load_types('networkmanager/nwmgr.jsonnet')
@@ -31,6 +32,7 @@ import dunedaq.nwqueueadapters.queuetonetwork as qton
 import dunedaq.nwqueueadapters.networkobjectreceiver as nor
 import dunedaq.nwqueueadapters.networkobjectsender as nos
 import dunedaq.readoutlibs.sourceemulatorconfig as sec
+import dunedaq.readoutmodules.cpupinner as pin
 import dunedaq.flxlibs.felixcardreader as flxcr
 import dunedaq.readoutlibs.readoutconfig as rconf
 import dunedaq.lbrulibs.pacmancardreader as pcr
@@ -86,6 +88,16 @@ def get_readout_app(RU_CONFIG=[],
     if DEBUG: print(f"ReadoutApp.__init__ with RUIDX={RUIDX}, MIN_LINK={MIN_LINK}, MAX_LINK={MAX_LINK}")
     modules = []
 
+    modules += [DAQModule(name = "cpupinner",
+                          plugin = "CPUPinner",
+                          connections = {},
+                          conf = pin.Conf(thread_confs = pin.ThreadConfs([
+                              pin.ThreadConf(name = "fakeprod-0",      cpu_set = [0]),
+                              pin.ThreadConf(name = "postprocess-0-0", cpu_set = [2]),
+                              pin.ThreadConf(name = "ind-hits-0-0",    cpu_set = [4]),
+                              pin.ThreadConf(name = "consumer-0",      cpu_set = [24]),
+                          ])))]
+    
     total_link_count = 0
     for ru in range(len(RU_CONFIG)):
         if RU_CONFIG[ru]['region_id'] == RU_CONFIG[RUIDX]['region_id']:
