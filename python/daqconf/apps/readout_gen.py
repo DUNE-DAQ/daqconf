@@ -52,6 +52,14 @@ QUEUE_POP_WAIT_MS = 100
 # local clock speed Hz
 # CLOCK_SPEED_HZ = 50000000;
 
+def make_cpu_pin_conf(json_filename):
+    with open(json_filename) as f:
+        j = json.load(f)
+        thread_confs = []
+        for tc in j:
+            thread_confs.append(pin.ThreadConf(name = tc["name"], cpu_set = tc["cpu_set"]))
+        return pin.Conf(thread_confs = pin.ThreadConfs(thread_confs))
+
 def get_readout_app(RU_CONFIG=[],
                     EMULATOR_MODE=False,
                     DATA_RATE_SLOWDOWN_FACTOR=1,
@@ -71,6 +79,7 @@ def get_readout_app(RU_CONFIG=[],
                     PARTITION="UNKNOWN",
                     LATENCY_BUFFER_SIZE=499968,
                     HOST="localhost",
+                    CPU_PIN_FILE=None,
                     DEBUG=False):
     """Generate the json configuration for the readout and DF process"""
     NUMBER_OF_DATA_PRODUCERS = len(RU_CONFIG)
@@ -88,15 +97,11 @@ def get_readout_app(RU_CONFIG=[],
     if DEBUG: print(f"ReadoutApp.__init__ with RUIDX={RUIDX}, MIN_LINK={MIN_LINK}, MAX_LINK={MAX_LINK}")
     modules = []
 
-    modules += [DAQModule(name = "cpupinner",
-                          plugin = "CPUPinner",
-                          connections = {},
-                          conf = pin.Conf(thread_confs = pin.ThreadConfs([
-                              pin.ThreadConf(name = "fakeprod-0",      cpu_set = [0]),
-                              pin.ThreadConf(name = "postprocess-0-0", cpu_set = [2]),
-                              pin.ThreadConf(name = "ind-hits-0-0",    cpu_set = [4]),
-                              pin.ThreadConf(name = "consumer-0",      cpu_set = [24]),
-                          ])))]
+    if CPU_PIN_FILE is not None:
+        modules += [DAQModule(name = "cpupinner",
+                              plugin = "CPUPinner",
+                              connections = {},
+                              conf = make_cpu_pin_conf(CPU_PIN_FILE))]
     
     total_link_count = 0
     for ru in range(len(RU_CONFIG)):

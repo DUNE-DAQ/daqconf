@@ -1,0 +1,18 @@
+[
+    {
+        "name": "fakeprod-0",
+        "cpu_set": [0]
+    },
+    {
+        "name": "postprocess-0-0",
+        "cpu_set": [2]
+    },
+    {
+        "name": "ind-hits-0-0",
+        "cpu_set": [4]
+    },
+    {
+        "name": "consumer-0",
+        "cpu_set": [24]
+    }
+]
