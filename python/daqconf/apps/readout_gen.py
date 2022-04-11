@@ -17,6 +17,7 @@ moo.otypes.load_types('nwqueueadapters/networkobjectsender.jsonnet')
 moo.otypes.load_types('flxlibs/felixcardreader.jsonnet')
 moo.otypes.load_types('readoutlibs/sourceemulatorconfig.jsonnet')
 moo.otypes.load_types('readoutlibs/readoutconfig.jsonnet')
+moo.otypes.load_types('readoutmodules/cpupinner.jsonnet')
 moo.otypes.load_types('lbrulibs/pacmancardreader.jsonnet')
 moo.otypes.load_types('dfmodules/fakedataprod.jsonnet')
 moo.otypes.load_types('networkmanager/nwmgr.jsonnet')
@@ -31,6 +32,7 @@ import dunedaq.nwqueueadapters.queuetonetwork as qton
 import dunedaq.nwqueueadapters.networkobjectreceiver as nor
 import dunedaq.nwqueueadapters.networkobjectsender as nos
 import dunedaq.readoutlibs.sourceemulatorconfig as sec
+import dunedaq.readoutmodules.cpupinner as pin
 import dunedaq.flxlibs.felixcardreader as flxcr
 import dunedaq.readoutlibs.readoutconfig as rconf
 import dunedaq.lbrulibs.pacmancardreader as pcr
@@ -49,6 +51,14 @@ from appfwk.app import App,ModuleGraph
 QUEUE_POP_WAIT_MS = 100
 # local clock speed Hz
 # CLOCK_SPEED_HZ = 50000000;
+
+def make_cpu_pin_conf(json_filename):
+    with open(json_filename) as f:
+        j = json.load(f)
+        thread_confs = []
+        for tc in j:
+            thread_confs.append(pin.ThreadConf(name = tc["name"], cpu_set = tc["cpu_set"]))
+        return pin.Conf(thread_confs = pin.ThreadConfs(thread_confs))
 
 def get_readout_app(RU_CONFIG=[],
                     EMULATOR_MODE=False,
@@ -69,6 +79,7 @@ def get_readout_app(RU_CONFIG=[],
                     PARTITION="UNKNOWN",
                     LATENCY_BUFFER_SIZE=499968,
                     HOST="localhost",
+                    CPU_PIN_FILE=None,
                     DEBUG=False):
     """Generate the json configuration for the readout and DF process"""
     NUMBER_OF_DATA_PRODUCERS = len(RU_CONFIG)
@@ -86,6 +97,12 @@ def get_readout_app(RU_CONFIG=[],
     if DEBUG: print(f"ReadoutApp.__init__ with RUIDX={RUIDX}, MIN_LINK={MIN_LINK}, MAX_LINK={MAX_LINK}")
     modules = []
 
+    if CPU_PIN_FILE is not None:
+        modules += [DAQModule(name = "cpupinner",
+                              plugin = "CPUPinner",
+                              connections = {},
+                              conf = make_cpu_pin_conf(CPU_PIN_FILE))]
+    
     total_link_count = 0
     for ru in range(len(RU_CONFIG)):
         if RU_CONFIG[ru]['region_id'] == RU_CONFIG[RUIDX]['region_id']:
