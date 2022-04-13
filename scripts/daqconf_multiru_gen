@@ -234,7 +234,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     dqm_kafka_address = "monkafka.cern.ch:30092" if dqm_impl == 'cern' else pocket_url + ":30092" if dqm_impl == 'pocket' else ''
 
     if control_hsi_hw or control_timing_partition:
-        the_system.network_endpoints.append(nwmgr.Connection(name=f"{global_partition_name}.timing_cmds",  topics=[], address="tcp://{"+host_global+"}:"+f"{port_global}", fixed=true))
+        the_system.network_endpoints.append(nwmgr.Connection(name=f"{global_partition_name}.timing_cmds",  topics=[], address="tcp://{"+host_global+"}:"+f"{port_global}", fixed=True))
 
     host_id_dict = {}
     ru_configs = []
