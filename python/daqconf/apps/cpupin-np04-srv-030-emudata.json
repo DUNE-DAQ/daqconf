@@ -1,0 +1,140 @@
+[
+    {
+        "name": "flx-dma-0",
+        "cpu_set": [0]
+    },
+
+
+
+    {
+        "name": "ept-0-0-0",
+        "cpu_set": [2]
+    },
+    {
+        "name": "postprocess-0-0",
+        "cpu_set": [4]
+    },
+    {
+        "name": "ind-hits-0-0",
+        "cpu_set": [6]
+    },
+    {
+        "name": "consumer-0",
+        "cpu_set": [26]
+    },
+
+
+    {
+        "name": "ept-0-0-64",
+        "cpu_set": [10]
+    },
+    {
+        "name": "postprocess-0-1",
+        "cpu_set": [12]
+    },
+    {
+        "name": "ind-hits-0-1",
+        "cpu_set": [14]
+    },
+    {
+        "name": "consumer-1",
+        "cpu_set": [34]
+    },
+
+
+    {
+        "name": "ept-0-0-128",
+        "cpu_set": [16]
+    },
+    {
+        "name": "postprocess-0-2",
+        "cpu_set": [18]
+    },
+    {
+        "name": "ind-hits-0-2",
+        "cpu_set": [20]
+    },
+    {
+        "name": "consumer-2",
+        "cpu_set": [40]
+    },
+
+
+
+    {
+        "name": "ept-0-0-192",
+        "cpu_set": [22]
+    },
+    {
+        "name": "postprocess-0-3",
+        "cpu_set": [1]
+    },
+    {
+        "name": "ind-hits-0-3",
+        "cpu_set": [3]
+    },
+    {
+        "name": "consumer-3",
+        "cpu_set": [46]
+    },
+
+
+    
+    {
+        "name": "ept-0-0-256",
+        "cpu_set": [5]
+    },
+    {
+        "name": "postprocess-0-4",
+        "cpu_set": [7]
+    },
+    {
+        "name": "ind-hits-0-4",
+        "cpu_set": [9]
+    },
+    {
+        "name": "consumer-4",
+        "cpu_set": [29]
+    },
+
+
+    
+    {
+        "name": "ept-0-1-0",
+        "cpu_set": [11]
+    },
+    {
+        "name": "postprocess-0-5",
+        "cpu_set": [13]
+    },
+    {
+        "name": "ind-hits-0-5",
+        "cpu_set": [15]
+    },
+    {
+        "name": "consumer-5",
+        "cpu_set": [35]
+    },
+
+
+    
+    {
+        "name": "ept-0-1-64",
+        "cpu_set": [17]
+    },
+    {
+        "name": "postprocess-0-6",
+        "cpu_set": [19]
+    },
+    {
+        "name": "ind-hits-0-6",
+        "cpu_set": [21]
+    },
+    {
+        "name": "consumer-6",
+        "cpu_set": [41]
+    }
+
+
+
+]
