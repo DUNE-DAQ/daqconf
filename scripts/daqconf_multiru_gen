@@ -340,6 +340,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
         TRIGGER_WINDOW_AFTER_TICKS = trigger_window_after_ticks,
         HSI_TRIGGER_TYPE_PASSTHROUGH = hsi_trigger_type_passthrough,
         PARTITION=partition_name,
+        CHANNEL_MAP_NAME = tpg_channel_map,
         HOST=host_trigger,
         DEBUG=debug)
 
