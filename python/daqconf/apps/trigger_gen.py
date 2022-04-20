@@ -34,6 +34,7 @@ from appfwk.app import App, ModuleGraph
 from appfwk.daqmodule import DAQModule
 from appfwk.conf_utils import Direction, Connection
 
+TA_ELEMENT_ID = 10_000
 
 #FIXME maybe one day, triggeralgs will define schemas... for now allow a dictionary of 4byte int, 4byte floats, and strings
 moo.otypes.make_type(schema='number', dtype='i4', name='temp_integer', path='temptypes')
@@ -121,19 +122,34 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                               conf = tzip.ConfParams(cardinality=cardinality,
                                                                      max_latency_ms=1000,
                                                                      region_id=region_id,
-                                                                     # 2022-02-02 PL: Not sure what element_id should be,
-                                                                     # since zipper is merging the stream for the whole region_id
-                                                             element_id=0)),
+                                                                     element_id=TA_ELEMENT_ID)),
                                     
                             DAQModule(name = f'tam_{region_id}',
                                       plugin = 'TriggerActivityMaker',
-                                      connections = {'output': Connection('tcm.input')},
+                                      # connections = {'output': Connection('tcm.input')},
+                                      connections = {}, # We output to an external endpoint so we can send to TCMaker *and* TA buffer
                                       conf = tam.Conf(activity_maker=ACTIVITY_PLUGIN,
                                                       geoid_region=region_id,
                                                       geoid_element=0,  # 2022-02-02 PL: Same comment as above
                                                       window_time=10000,  # should match whatever makes TPSets, in principle
                                                       buffer_time=625000,  # 10ms in 62.5 MHz ticks
-                                                      activity_maker_config=temptypes.ActivityConf(**ACTIVITY_CONFIG)))]
+                                                      activity_maker_config=temptypes.ActivityConf(**ACTIVITY_CONFIG))),
+
+                            DAQModule(name = f'ta_buf_region_{region_id}',
+                                      plugin = 'TABuffer',
+                                      connections = {},
+                                      # PAR 2022-04-20 Not sure what to set the element id to so it doesn't collide with the region/element used by TP buffers. Make it some big number that shouldn't already be used by the TP buffer
+                                      conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 100_000,
+                                                                                                               region_id = region_id,
+                                                                                                               element_id = TA_ELEMENT_ID),
+                                                             requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = 100_000,
+                                                                                                                 pop_limit_pct = 0.8,
+                                                                                                                 pop_size_pct = 0.1,
+                                                                                                                 region_id = region_id,
+                                                                                                                 element_id = TA_ELEMENT_ID,
+                                                                                                                 # output_file = f"output_{idx + MIN_LINK}.out",
+                                                                                                                 stream_buffer_size = 8388608,
+                                                                                                                 enable_raw_recording = False)))]
 
             for idy in range(RU_CONFIG[ru]["channel_count"]):
                 # 1 buffer per TPG channel
@@ -198,6 +214,14 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                 mgraph.add_fragment_producer(region=ru_config['region_id'], element=global_link, system="DataSelection",
                                              requests_in=f"{buf_name}.data_request_source",
                                              fragments_out=f"{buf_name}.fragment_sink")
+        for region_id in region_ids:
+            buf_name = f'ta_buf_region_{region_id}'
+            mgraph.add_fragment_producer(region=region_id, element=TA_ELEMENT_ID, system="DataSelection",
+                                         requests_in=f"{buf_name}.data_request_source",
+                                         fragments_out=f"{buf_name}.fragment_sink")
+            mgraph.add_endpoint(f"tasets_from_maker_region_{region_id}", f"tam_{region_id}.output", Direction.OUT)
+            mgraph.add_endpoint(f"tasets_into_chain_region_{region_id}", f"tcm.input", Direction.IN)
+            mgraph.add_endpoint(f"tasets_into_buffer_region_{region_id}", f"{buf_name}.taset_source", Direction.IN)
 
 
     trigger_app = App(modulegraph=mgraph, host=HOST, name='TriggerApp')
