@@ -14,7 +14,7 @@ moo.otypes.load_types('trigger/fakedataflow.jsonnet')
 moo.otypes.load_types('trigger/timingtriggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/tpsetbuffercreator.jsonnet')
 moo.otypes.load_types('trigger/faketpcreatorheartbeatmaker.jsonnet')
-moo.otypes.load_types('trigger/tpbuffer.jsonnet')
+moo.otypes.load_types('trigger/txbuffer.jsonnet')
 moo.otypes.load_types('readoutlibs/readoutconfig.jsonnet')
 
 # Import new types
@@ -26,7 +26,7 @@ import dunedaq.trigger.fakedataflow as fdf
 import dunedaq.trigger.timingtriggercandidatemaker as ttcm
 import dunedaq.trigger.tpsetbuffercreator as buf
 import dunedaq.trigger.faketpcreatorheartbeatmaker as heartbeater
-import dunedaq.trigger.tpbufferconfig as bufferconf
+import dunedaq.trigger.txbufferconfig as bufferconf
 
 import dunedaq.readoutlibs.readoutconfig as readoutconf
 
