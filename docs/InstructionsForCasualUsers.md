@@ -6,8 +6,8 @@ Here are the steps that should be used when you first create your local software
 
 1. log into a system that has access to `/cvmfs/dunedaq.opensciencegrid.org/`
 2. `source /cvmfs/dunedaq.opensciencegrid.org/setup_dunedaq.sh`
-3. `setup_dbt dunedaq-v2.10.1`
-4. `dbt-create.py -c dunedaq-v2.10.1-c7 <work_dir>  # or dbt-create.py -c dunedaq-v2.10.1-cs8, depend on the OS on the computer`
+3. `setup_dbt dunedaq-v2.11.0`
+4. `dbt-create.py -c dunedaq-v2.11.0-c7 <work_dir>  # or dbt-create.py -c dunedaq-v2.11.0-cs8, depend on the OS on the computer`
 6. `cd <work_dir>`
 7. `dbt-workarea-env`
 9. download a raw data file, either by running
