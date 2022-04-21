@@ -46,9 +46,9 @@ import dunedaq.nwqueueadapters.networkobjectsender as nos
 import dunedaq.networkmanager.nwmgr as nwmgr
 
 from appfwk.utils import acmd, mcmd, mrccmd, mspec
-from appfwk.app import App, ModuleGraph
-from appfwk.daqmodule import DAQModule
-from appfwk.conf_utils import Direction, Connection
+from daqconf.core.app import App, ModuleGraph
+from daqconf.core.daqmodule import DAQModule
+from daqconf.core.conf_utils import Direction, Connection
 
 #===============================================================================
 def get_tmc_app(MASTER_DEVICE_NAME="",

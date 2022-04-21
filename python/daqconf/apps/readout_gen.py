@@ -42,9 +42,9 @@ from appfwk.utils import acmd, mcmd, mrccmd, mspec
 from os import path
 
 import json
-from appfwk.conf_utils import Direction, Connection
-from appfwk.daqmodule import DAQModule
-from appfwk.app import App,ModuleGraph
+from daqconf.core.conf_utils import Direction, Connection
+from daqconf.core.daqmodule import DAQModule
+from daqconf.core.app import App,ModuleGraph
 # Time to wait on pop()
 QUEUE_POP_WAIT_MS = 100
 # local clock speed Hz

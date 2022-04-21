@@ -11,9 +11,9 @@ moo.otypes.load_types('dfmodules/datafloworchestrator.jsonnet')
 # Import new types
 import dunedaq.dfmodules.datafloworchestrator as dfo
 
-from appfwk.app import App, ModuleGraph
-from appfwk.daqmodule import DAQModule
-from appfwk.conf_utils import Direction, Connection
+from daqconf.core.app import App, ModuleGraph
+from daqconf.core.daqmodule import DAQModule
+from daqconf.core.conf_utils import Direction, Connection
 
 
 #FIXME maybe one day, triggeralgs will define schemas... for now allow a dictionary of 4byte int, 4byte floats, and strings
