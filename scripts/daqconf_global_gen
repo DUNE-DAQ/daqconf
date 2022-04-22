@@ -94,33 +94,28 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
     # timing commands coming in outside data-taking partitions
     the_system.network_endpoints.append(nwmgr.Connection(name=partition_name + ".timing_cmds",  topics=[], address=f"tcp://{{host_thi}}:{port_thi}", fixed=True))
     
+    # hsi device info (out)
+    the_system.network_endpoints.append(nwmgr.Connection(name=partition_name + ".hsi_device_info",  topics=[], address=f"tcp://{{host_thi}}:{port_thi+1}"))
+
     # the timing hardware interface application
     the_system.apps["thi"] = get_thi_app(
+        PARTITION=partition_name,
         CONNECTIONS_FILE=timing_hw_connections_file,
         MASTER_DEVICE_NAME=master_device_name,
         HSI_DEVICE_NAME=hsi_device_name,
         HOST=host_thi,
         DEBUG=debug)
-        
-    the_system.app_connections[f"from_outside.timing_cmds"] = AppConnection(nwmgr_connection=partition_name + ".timing_cmds",
-                                                                            msg_type="dunedaq::timinglibs::timingcmd::TimingHwCmd",
-                                                                            msg_module_name="TimingHwCmdNQ",
-                                                                            topics=[],
-                                                                            receivers=["thi.timing_cmds"])
+
     add_network("thi", the_system, verbose=debug)
 
     # the timing master controller application
-    the_system.app_connections[f"tmc.timing_cmds"] = AppConnection(nwmgr_connection=partition_name + ".timing_cmds",
-                                                                            msg_type="dunedaq::timinglibs::timingcmd::TimingHwCmd",
-                                                                            msg_module_name="TimingHwCmdNQ",
-                                                                            topics=[],
-                                                                            receivers=["thi.timing_cmds"])
     if master_device_name:
         the_system.apps["tmc"] = get_tmc_app(
             MASTER_DEVICE_NAME=master_device_name,
             MASTER_SEND_DELAYS_PERIOD=master_send_delays_period,
             MASTER_CLOCK_FILE=master_clock_file,
             MASTER_CLOCK_MODE=master_clock_mode,
+            GLOBAL_PARTITION=partition_name,
             HOST=host_tmc,
             DEBUG=debug)
         add_network("tmc", the_system, verbose=debug)

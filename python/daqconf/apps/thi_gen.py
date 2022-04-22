@@ -50,6 +50,7 @@ from appfwk.conf_utils import Direction, Connection
 #===============================================================================
 def get_thi_app(GATHER_INTERVAL=1e6,
                 GATHER_INTERVAL_DEBUG=10e6,
+                PARTITION="UNKNOWN",
                 MASTER_DEVICE_NAME="",
                 HSI_DEVICE_NAME="",
                 CONNECTIONS_FILE="${TIMING_SHARE}/config/etc/connections.xml",
@@ -61,19 +62,23 @@ def get_thi_app(GATHER_INTERVAL=1e6,
     modules = [ 
                 DAQModule( name="thi",
                                 plugin="TimingHardwareManagerPDI",
-                                conf= thi.ConfParams(connections_file=CONNECTIONS_FILE,
+                                conf= thi.ConfParams(  
+                                                       hw_cmd_connection=PARTITION+".timing_cmds", 
+                                                       connections_file=CONNECTIONS_FILE,
                                                        gather_interval=GATHER_INTERVAL,
                                                        gather_interval_debug=GATHER_INTERVAL_DEBUG,
                                                        monitored_device_name_master=MASTER_DEVICE_NAME,
                                                        monitored_device_names_fanout=[],
                                                        monitored_device_name_endpoint="",
                                                        monitored_device_name_hsi=HSI_DEVICE_NAME,
-                                                       uhal_log_level=UHAL_LOG_LEVEL)),
+                                                       device_info_connection=PARTITION+'.hsi_device_info',
+                                                       uhal_log_level=UHAL_LOG_LEVEL
+                                                       )),
                 ]                
         
 
     mgraph = ModuleGraph(modules)
-    mgraph.add_endpoint("timing_cmds", "thi.timing_cmds_queue", Direction.IN)
+    mgraph.add_endpoint("timing_cmds", None, Direction.IN)
     
     thi_app = App(modulegraph=mgraph, host=HOST, name="THIApp")
     

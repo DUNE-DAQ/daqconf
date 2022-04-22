@@ -66,6 +66,7 @@ def get_tprtc_app(MASTER_DEVICE_NAME="",
     modules = [DAQModule(name = "tprtc",
                          plugin = "TimingPartitionController",
                          conf = tprtc.PartitionConfParams(
+                                             hw_cmd_connection=GLOBAL_PARTITION+".timing_cmds",
                                              device=MASTER_DEVICE_NAME,
                                              partition_id=TIMING_PARTITION,
                                              trigger_mask=TRIGGER_MASK,
@@ -75,8 +76,9 @@ def get_tprtc_app(MASTER_DEVICE_NAME="",
 
     mgraph = ModuleGraph(modules)
      
-    mgraph.add_endpoint("timing_cmds", "tprtc.hardware_commands_out", Direction.OUT)
-     
+    mgraph.add_endpoint("timing_cmds", None, Direction.OUT)
+    mgraph.add_endpoint("timing_device_info", None, Direction.IN)
+
     tprtc_app = App(modulegraph=mgraph, host=HOST, name="TPRTCApp")
      
     if DEBUG:

@@ -55,6 +55,7 @@ def get_tmc_app(MASTER_DEVICE_NAME="",
                 MASTER_SEND_DELAYS_PERIOD=0,
                 MASTER_CLOCK_FILE="",
                 MASTER_CLOCK_MODE=-1,
+                GLOBAL_PARTITION="UNKNOWN",
                 HOST="localhost",
                 DEBUG=False):
     
@@ -64,6 +65,7 @@ def get_tmc_app(MASTER_DEVICE_NAME="",
     modules = [DAQModule(name = "tmc",
                         plugin = "TimingMasterController",
                         conf = tmc.ConfParams(
+                                            hw_cmd_connection=GLOBAL_PARTITION+".timing_cmds",
                                             device=MASTER_DEVICE_NAME,
                                             send_endpoint_delays_period=MASTER_SEND_DELAYS_PERIOD,
                                             clock_config=MASTER_CLOCK_FILE,
@@ -72,8 +74,9 @@ def get_tmc_app(MASTER_DEVICE_NAME="",
 
     mgraph = ModuleGraph(modules)
     
-    mgraph.add_endpoint("timing_cmds", "tmc.hardware_commands_out", Direction.OUT)
-    
+    mgraph.add_endpoint("timing_cmds", None, Direction.OUT)
+    mgraph.add_endpoint("timing_device_info", None, Direction.IN)
+
     tmc_app = App(modulegraph=mgraph, host=HOST, name="TMCApp")
     
     if DEBUG:

@@ -80,7 +80,7 @@ def get_hsi_app(RUN_NUMBER = 333,
                                             readout_period=READOUT_PERIOD_US,
                                             hsi_device_name=HSI_DEVICE_NAME,
                                             uhal_log_level=UHAL_LOG_LEVEL,
-                                            hsievent_connection_name = f"{PARTITION}.hsievents"))]
+                                            hsievent_connection_name=PARTITION+".hsievents"))]
     
     trigger_interval_ticks=0
     if TRIGGER_RATE_HZ > 0:
@@ -95,7 +95,9 @@ def get_hsi_app(RUN_NUMBER = 333,
         modules.extend( [
                         DAQModule(name="hsic",
                                 plugin = "HSIController",
-                                conf = hsic.ConfParams( device=HSI_DEVICE_NAME,
+                                conf = hsic.ConfParams( 
+                                                        hw_cmd_connection=GLOBAL_PARTITION+".timing_cmds",
+                                                        device=HSI_DEVICE_NAME,
                                                         clock_frequency=CLOCK_SPEED_HZ,
                                                         trigger_interval_ticks=trigger_interval_ticks,
                                                         address=HSI_ENDPOINT_ADDRESS,
@@ -103,7 +105,8 @@ def get_hsi_app(RUN_NUMBER = 333,
                                                         rising_edge_mask=HSI_RE_MASK,
                                                         falling_edge_mask=HSI_FE_MASK,
                                                         invert_edge_mask=HSI_INV_MASK,
-                                                        data_source=HSI_SOURCE),
+                                                        data_source=HSI_SOURCE,
+                                                       ),
                                 extra_commands = {"start": startpars,
                                                   "resume": resumepars}),
                         ] )
@@ -111,9 +114,10 @@ def get_hsi_app(RUN_NUMBER = 333,
     mgraph = ModuleGraph(modules)
     
     if CONTROL_HSI_HARDWARE:
-        mgraph.add_endpoint("timing_cmds", "hsic.hardware_commands_out", Direction.OUT)
+        mgraph.add_endpoint("timing_cmds", None, Direction.OUT)
     
     mgraph.add_endpoint("hsievents", None,     Direction.OUT)
+    mgraph.add_endpoint("timing_device_info", None, Direction.IN)
     
     hsi_app = App(modulegraph=mgraph, host=HOST, name="HSIApp")
     
