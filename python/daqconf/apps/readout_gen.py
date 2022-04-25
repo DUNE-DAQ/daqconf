@@ -264,7 +264,7 @@ def get_readout_app(RU_CONFIG=[],
                                                  dma_block_size_kb = 4,
                                                  dma_memory_size_gb = 4,
                                                  numa_id = 0,
-                                                 num_links = RU_CONFIG[RUIDX]["channel_count"]))]
+                                                 links_enabled = [i for i in range(RU_CONFIG[RUIDX]["channel_count"])]))]
     
         else:
             fake_source = "fake_source"
