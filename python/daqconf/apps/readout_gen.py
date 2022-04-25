@@ -228,7 +228,7 @@ def get_readout_app(RU_CONFIG=[],
                                                  dma_block_size_kb = 4,
                                                  dma_memory_size_gb = 4,
                                                  numa_id = 0,
-                                                 num_links = min(5,RU_CONFIG[RUIDX]["channel_count"])))]
+                                                 links_enabled = [i for i in range(min(5, RU_CONFIG[RUIDX]["channel_count"]))]))]
             
             if RU_CONFIG[RUIDX]["channel_count"] > 5 :
                 connections = {}
@@ -248,7 +248,7 @@ def get_readout_app(RU_CONFIG=[],
                                                      dma_block_size_kb = 4,
                                                      dma_memory_size_gb = 4,
                                                      numa_id = 0,
-                                                     num_links = max(0, RU_CONFIG[RUIDX]["channel_count"] - 5)))]
+                                                     links_enabled = [i-5 for i in range(5, max(5, RU_CONFIG[RUIDX]["channel_count"]))]))]
                 
         elif SSP_INPUT:
             modules += [DAQModule(name = "ssp_0",
