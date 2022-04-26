@@ -106,48 +106,44 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                           connections = {'tpset_sink': Connection(f"zip_{ru_config['region_id']}.input")},
                                           conf = heartbeater.Conf(heartbeat_interval=5_000_000))]
                     
-        region_ids = set()
-        for ru in range(len(RU_CONFIG)):
+        region_ids = set([ru['region_id'] for ru in RU_CONFIG])
+        # Check that all of the region numbers were distinct
+        assert len(region_ids) == len(RU_CONFIG)
+        
+        for ru in RU_CONFIG:
             ## 1 zipper/TAM per region id
-            region_id = RU_CONFIG[ru]["region_id"]
-            skip=False
-            if region_id in region_ids: skip=True
+            region_id = ru["region_id"]
+            cardinality = ru['channel_count']
 
-            if not skip: # we only add Zipper/TAM is that region_id wasn't seen before (in a very clunky way)
-                region_ids.add(region_id)
-                cardinality = 0
-                for RU in RU_CONFIG:
-                    if RU['region_id'] == region_id:
-                        cardinality += RU['channel_count']
-                modules += [DAQModule(name = f'zip_{region_id}',
-                                      plugin = 'TPZipper',
-                                              connections = {# 'input' are App.network_endpoints, from RU
-                                                  'output': Connection(f'tam_{region_id}.input')},
-                                              conf = tzip.ConfParams(cardinality=cardinality,
-                                                                     max_latency_ms=1000,
-                                                                     region_id=region_id,
-                                                                     # 2022-02-02 PL: Not sure what element_id should be,
-                                                                     # since zipper is merging the stream for the whole region_id
-                                                             element_id=0)),
-                                    
-                            DAQModule(name = f'tam_{region_id}',
-                                      plugin = 'TriggerActivityMaker',
-                                      connections = {'output': Connection('tcm.input')},
-                                      conf = tam.Conf(activity_maker=ACTIVITY_PLUGIN,
-                                                      geoid_region=region_id,
-                                                      geoid_element=0,  # 2022-02-02 PL: Same comment as above
-                                                      window_time=10000,  # should match whatever makes TPSets, in principle
-                                                      buffer_time=625000,  # 10ms in 62.5 MHz ticks
-                                                      activity_maker_config=temptypes.ActivityConf(**ACTIVITY_CONFIG)))]
+            modules += [DAQModule(name = f'zip_{region_id}',
+                                  plugin = 'TPZipper',
+                                          connections = {# 'input' are App.network_endpoints, from RU
+                                              'output': Connection(f'tam_{region_id}.input')},
+                                          conf = tzip.ConfParams(cardinality=cardinality,
+                                                                 max_latency_ms=1000,
+                                                                 region_id=region_id,
+                                                                 # 2022-02-02 PL: Not sure what element_id should be,
+                                                                 # since zipper is merging the stream for the whole region_id
+                                                                 element_id=0)),
 
-            for idy in range(RU_CONFIG[ru]["channel_count"]):
+                        DAQModule(name = f'tam_{region_id}',
+                                  plugin = 'TriggerActivityMaker',
+                                  connections = {'output': Connection('tcm.input')},
+                                  conf = tam.Conf(activity_maker=ACTIVITY_PLUGIN,
+                                                  geoid_region=region_id,
+                                                  geoid_element=0,  # 2022-02-02 PL: Same comment as above
+                                                  window_time=10000,  # should match whatever makes TPSets, in principle
+                                                  buffer_time=625000,  # 10ms in 62.5 MHz ticks
+                                                  activity_maker_config=temptypes.ActivityConf(**ACTIVITY_CONFIG)))]
+
+            for idy in range(ru["channel_count"]):
                 # 1 buffer per TPG channel
-                modules += [DAQModule(name = f'buf_ru{ru}_link{idy}',
+                modules += [DAQModule(name = f'buf_ru{region_id}_link{idy}',
                                       plugin = 'TPSetBufferCreator',
                                       connections = {},#'tpset_source': Connection(f"tpset_q_for_buf{ru}_{idy}"),#already in request_receiver
                                       #'data_request_source': Connection(f"data_request_q{ru}_{idy}"), #ditto
                                       # 'fragment_sink': Connection('qton_fragments.fragment_q')},
-                                   conf = buf.Conf(tpset_buffer_size=10000, region=RU_CONFIG[ru]["region_id"], element=idy + RU_CONFIG[ru]["start_channel"]))]
+                                   conf = buf.Conf(tpset_buffer_size=10000, region=ru["region_id"], element=idy + ru["start_channel"]))]
 
     modules += [DAQModule(name = 'ttcm',
                           plugin = 'TimingTriggerCandidateMaker',

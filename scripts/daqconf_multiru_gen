@@ -58,7 +58,7 @@ import click
 @click.option('--host-hsi', default='localhost', help='Host to run the HSI app on')
 @click.option('--host-tpw', default='localhost', help='Host to run the TPWriter app on')
 @click.option('--host-tprtc', default='localhost', help='Host to run the timing partition controller app on')
-@click.option('--region-id', multiple=True, default=[0], help="Define the Region IDs for the RUs. If only specified once, will apply to all RUs.")
+@click.option('--region-id', multiple=True, default=[], help="Define the Region IDs for the RUs. Use one per readout unit. If no --region-id arguments are given, RUs are numbered sequentially from zero")
 @click.option('--latency-buffer-size', default=499968, help="Size of the latency buffers (in number of elements)")
 # hsi readout options
 @click.option('--hsi-hw-connections-file', default="${TIMING_SHARE}/config/etc/connections.xml", help='Real timing hardware only: path to hardware connections file')
@@ -185,9 +185,12 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     else:
         trigemu_token_count = 0
 
-    if (len(region_id) != len(host_ru)) and (len(region_id) != 1):
-        raise Exception("--region-id should be specified either once only or once for each --host-ru!")
+    if (len(region_id) != len(host_ru)) and (len(region_id) != 0):
+        raise Exception("--region-id should be specified once for each --host-ru or not at all!")
 
+    if len(set(region_id)) != len(region_id):
+        raise Exception(f"Duplicate region IDs specified: {region_id}")
+    
     if use_hsi_hw and not hsi_device_name:
         raise Exception("If --use-hsi-hw flag is set to true, --hsi-device-name must be specified!")
 
@@ -238,15 +241,20 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     if control_hsi_hw or control_timing_partition:
         the_system.network_endpoints.append(nwmgr.Connection(name=f"{global_partition_name}.timing_cmds",  topics=[], address="tcp://{"+host_global+"}:"+f"{port_global}", fixed=True))
 
+    if region_id == ():
+        region_id = range(len(host_ru))
+        console.log(f"--region-id not specified. Setting to {region_id}")
+
     host_id_dict = {}
     ru_configs = []
     ru_channel_counts = {}
+       
     for region in region_id: ru_channel_counts[region] = 0
-    regionidx = 0
 
     ru_app_names=[f"ruflx{idx}" if use_felix else f"ruemu{idx}" for idx in range(len(host_ru))]
     dqm_app_names = [f"dqm{idx}_ru" for idx in range(len(host_ru))]
-    
+
+    console.log(f"region_id = {region_id}")
     for hostidx,ru_host in enumerate(ru_app_names):
         if enable_dqm:
             the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.fragx_dqm_{hostidx}", topics=[], address=f"tcp://{{host_{ru_host}}}:{the_system.next_unassigned_port()}"))
@@ -264,9 +272,8 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
             cardid = host_id_dict[host_ru[hostidx]]
         else:
             host_id_dict[host_ru[hostidx]] = 0
-        ru_configs.append( {"host": host_ru[hostidx], "card_id": cardid, "region_id": region_id[regionidx], "start_channel": ru_channel_counts[region_id[regionidx]], "channel_count": number_of_data_producers} )
-        ru_channel_counts[region_id[regionidx]] += number_of_data_producers
-        if len(region_id) != 1: regionidx = regionidx + 1
+        ru_configs.append( {"host": host_ru[hostidx], "card_id": cardid, "region_id": region_id[hostidx], "start_channel": ru_channel_counts[region_id[hostidx]], "channel_count": number_of_data_producers} )
+        ru_channel_counts[region_id[hostidx]] += number_of_data_producers
 
     if use_hsi_hw:
         the_system.apps["hsi"] = get_hsi_app(
@@ -377,10 +384,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
             ru_config = ru_configs[ruidx]
             apa_idx = ru_config['region_id']
             for link in range(ru_config["channel_count"]):
-                # PL 2022-02-02: global_link is needed here to have non-overlapping app connections if len(ru)>1 with the same region_id
-                # Adding the ru number here too, in case we have many region_ids
-                global_link = link+ru_config["start_channel"]
-                connection_name = f"{partition_name}.tpsets_apa{apa_idx}_link{global_link}"
+                connection_name = f"{partition_name}.tpsets_apa{apa_idx}_link{link}"
                 console.log(f"Creating connection with name {connection_name}")
                 the_system.network_endpoints.append(nwmgr.Connection(name=connection_name,
                                                                      topics=["TPSets"],
@@ -506,13 +510,10 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
             ru_config = ru_configs[ruidx]
             apa_idx = ru_config['region_id']
             for link in range(ru_config["channel_count"]):
-                # PL 2022-02-02: global_link is needed here to have non-overlapping app connections if len(ru)>1 with the same region_id
-                # Adding the ru number here too, in case we have many region_ids
-                global_link = link+ru_config["start_channel"]
                 the_system.app_connections.update(
                     {
-                        f"{ru_app_name}.tpsets_ru{ruidx}_link{global_link}":
-                        AppConnection(nwmgr_connection=f"{partition_name}.tpsets_apa{apa_idx}_link{global_link}",
+                        f"{ru_app_name}.tpsets_ru{ruidx}_link{link}":
+                        AppConnection(nwmgr_connection=f"{partition_name}.tpsets_apa{apa_idx}_link{link}",
                                       msg_type="dunedaq::trigger::TPSet",
                                       msg_module_name="TPSetNQ",
                                       topics=["TPSets"],
