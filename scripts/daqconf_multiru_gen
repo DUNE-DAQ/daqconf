@@ -517,8 +517,8 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
                                       msg_type="dunedaq::trigger::TPSet",
                                       msg_module_name="TPSetNQ",
                                       topics=["TPSets"],
-                                      receivers=([f"trigger.tpsets_into_buffer_ru{ruidx}_link{link}",
-                                                  f"trigger.tpsets_into_chain_ru{ruidx}_link{link}"] +
+                                      receivers=([f"trigger.tpsets_into_buffer_ru{apa_idx}_link{link}",
+                                                  f"trigger.tpsets_into_chain_ru{apa_idx}_link{link}"] +
                                                  (["tpwriter.tpsets_into_writer"] if enable_tpset_writing else [])))
                     })
 

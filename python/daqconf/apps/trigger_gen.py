@@ -93,15 +93,16 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
         # Make one heartbeatmaker per link
         for ruidx, ru_config in enumerate(RU_CONFIG):
+            region_id = ru_config['region_id']
             for link_idx in range(ru_config["channel_count"]):
-                modules += [DAQModule(name = f'channelfilter_ru{ruidx}_link{link_idx}',
+                modules += [DAQModule(name = f'channelfilter_ru{region_id}_link{link_idx}',
                                           plugin = 'TPChannelFilter',
-                                          connections = {'tpset_sink': Connection(f'heartbeatmaker_ru{ruidx}_link{link_idx}.tpset_source')},
+                                          connections = {'tpset_sink': Connection(f'heartbeatmaker_ru{region_id}_link{link_idx}.tpset_source')},
                                           conf = chfilter.Conf(channel_map_name=CHANNEL_MAP_NAME,
                                                                keep_collection=True,
                                                                keep_induction=False))]
 
-                modules += [DAQModule(name = f'heartbeatmaker_ru{ruidx}_link{link_idx}',
+                modules += [DAQModule(name = f'heartbeatmaker_ru{region_id}_link{link_idx}',
                                           plugin = 'FakeTPCreatorHeartbeatMaker',
                                           connections = {'tpset_sink': Connection(f"zip_{ru_config['region_id']}.input")},
                                           conf = heartbeater.Conf(heartbeat_interval=5_000_000))]
@@ -179,14 +180,15 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     mgraph.add_endpoint("df_busy_signal", None, Direction.IN)
     if SOFTWARE_TPG_ENABLED:
         for ruidx, ru_config in enumerate(RU_CONFIG):
+            region_id = ru_config['region_id']
             for link_idx in range(ru_config["channel_count"]):
                 # 1 buffer per link
-                buf_name=f'buf_ru{ruidx}_link{link_idx}'
+                buf_name=f'buf_ru{region_id}_link{link_idx}'
                 global_link = link_idx+ru_config['start_channel'] # for the benefit of correct fragment geoid
 
-                mgraph.add_endpoint(f"tpsets_into_chain_ru{ruidx}_link{link_idx}", f"channelfilter_ru{ruidx}_link{link_idx}.tpset_source", Direction.IN)
-                mgraph.add_endpoint(f"tpsets_into_buffer_ru{ruidx}_link{link_idx}", f"{buf_name}.tpset_source", Direction.IN)
-                mgraph.add_fragment_producer(region=ru_config['region_id'], element=global_link, system="DataSelection",
+                mgraph.add_endpoint(f"tpsets_into_chain_ru{region_id}_link{link_idx}", f"channelfilter_ru{region_id}_link{link_idx}.tpset_source", Direction.IN)
+                mgraph.add_endpoint(f"tpsets_into_buffer_ru{region_id}_link{link_idx}", f"{buf_name}.tpset_source", Direction.IN)
+                mgraph.add_fragment_producer(region=region_id, element=global_link, system="DataSelection",
                                              requests_in=f"{buf_name}.data_request_source",
                                              fragments_out=f"{buf_name}.fragment_sink")
 
