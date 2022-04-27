@@ -21,6 +21,7 @@ moo.otypes.load_types('appfwk/app.jsonnet')
 moo.otypes.load_types('nwqueueadapters/networktoqueue.jsonnet')
 moo.otypes.load_types('nwqueueadapters/queuetonetwork.jsonnet')
 moo.otypes.load_types('networkmanager/nwmgr.jsonnet')
+moo.otypes.load_types('iomanager/connection.jsonnet')
 
 from appfwk.utils import acmd, mcmd, mspec
 import dunedaq.nwqueueadapters.networkobjectsender as nos
@@ -30,8 +31,10 @@ import dunedaq.nwqueueadapters.networktoqueue as ntoq
 import dunedaq.appfwk.app as appfwk  # AddressedCmd,
 import dunedaq.rcif.cmd as rccmd  # AddressedCmd,
 import dunedaq.networkmanager.nwmgr as nwmgr
+import dunedaq.iomanager.connection as conn
 
 from daqconf.core.daqmodule import DAQModule
+
 console = Console()
 
 ########################################################################
@@ -40,18 +43,9 @@ console = Console()
 #
 ########################################################################
 
-# TODO: Connections between modules are held in the module object, but
-# connections between applications are held in their own
-# structure. Not clear yet which is better, but should probably be
-# consistent either way
-
 # TODO: Understand whether extra_commands is actually needed. Seems like "resume" is already being sent to everyone?
 
 # TODO: Make these all dataclasses
-
-
-
-Connection = namedtuple("Connection", ['to', 'queue_kind', 'queue_capacity', 'queue_name', 'toposort'], defaults=("FollyMPMCQueue", 1000, None, True))
 
 class Direction(Enum):
     IN = 1
@@ -63,11 +57,12 @@ class Endpoint:
     #         self.__init_with_nwmgr(**kwargs)
     #     else:
     #         self.__init_with_external_name(**kwargs)
-    def __init__(self, external_name, internal_name, direction, topic=[]):
+    def __init__(self, external_name, internal_name, direction, topic=[], size_hint=1000):
         self.external_name = external_name
         self.internal_name = internal_name
         self.direction = direction
         self.topic = topic
+        self.size_hint = size_hint
 
     def __repr__(self):
         return f"{self.external_name}/{self.internal_name}"
@@ -86,7 +81,8 @@ Publisher = namedtuple(
 
 Sender = namedtuple("Sender", ['msg_type', 'msg_module_name', 'receiver'])
 
-AppConnection = namedtuple("AppConnection", ['nwmgr_connection', 'receivers', 'topics', 'msg_type', 'msg_module_name', 'use_nwqa'], defaults=[None, None, True])
+# AppConnection = namedtuple("AppConnection", ['nwmgr_connection', 'receivers', 'topics', 'msg_type', 'msg_module_name', 'use_nwqa'], defaults=[None, None, True])
+AppConnection = namedtuple("AppConnection", ['bind_apps', 'connect_apps'], defaults=[[],[]])
 
 ########################################################################
 #
@@ -98,9 +94,8 @@ def make_module_deps(modules):
     """
     Given a list of `module` objects, produce a dictionary giving
     the dependencies between them. A dependency is any connection between
-    modules (implemented using an appfwk queue). Connections whose
-    upstream ends begin with a '!' are not considered dependencies, to
-    allow us to break cycles in the DAG.
+    modules. Connections whose upstream ends begin with a '!' are not 
+    considered dependencies, to allow us to break cycles in the DAG.
 
     Returns a networkx DiGraph object where nodes are module names
     """
@@ -108,14 +103,6 @@ def make_module_deps(modules):
     deps = nx.DiGraph()
     for module in modules:
         deps.add_node(module.name)
-
-    # console.log("make_module_deps()")
-    for module in modules:
-        # console.log(f"{module.name}")
-        for upstream_name, downstream_connection in module.connections.items():
-            if downstream_connection.toposort and downstream_connection.to is not None:
-                other_mod = downstream_connection.to.split(".")[0]
-                deps.add_edge(module.name, other_mod)
 
     return deps
 
@@ -159,6 +146,114 @@ def add_one_command_data(command_data, command, default_params, app, module_orde
 
     command_data[command] = acmd(mod_and_params)
 
+def make_queue_connection(the_system, app, endpoint_name, in_apps, out_apps, size):
+    if len(in_apps) == 1 and len(out_apps) == 1:
+        console.log(f"Connection {endpoint_name}, SPSC Queue")
+        the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, service_type="kQueue", data_type="", uri=f"queue://FollySPSC:{size}")]
+    else:
+        console.log(f"Connection {endpoint_name}, MPMC Queue")
+        the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, service_type="kQueue", data_type="", uri=f"queue://FollyMPMC:{size}")]
+
+def make_network_connection(the_system, endpoint_name, in_apps, out_apps, topics):
+    if len(topics) == 0:
+        console.log(f"Connection {endpoint_name}, Network")
+        if len(in_apps) > 1:
+            raise ValueError(f"Connection with name {endpoint_name} has multiple receivers, which is unsupported for a network connection!")
+        the_system.app_connections[endpoint_name] = AppConnection(bind_apps=in_apps, connect_apps=out_apps)
+        port = the_system.next_unassigned_port()
+        address = f"tcp://{{host_{in_apps[0]}}}:{port}"
+        the_system.connections[in_apps[0]] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetwork", data_type="", uri=address)]
+        for app in set(out_apps):
+            the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetwork", data_type="", uri=address)]
+    else:
+        console.log(f"Connection {endpoint_name}, Pub/Sub")
+        for app in set(out_apps):
+            the_system.app_connections[endpoint_name] = AppConnection(bind_apps=[app], connect_apps=in_apps)
+            port = the_system.next_unassigned_port()
+            address = f"tcp://{{host_{app}}}:{port}"
+            the_system.connections[app] += [conn.ConnectionId(uid=f"{endpoint_name}.{app}", service_type="kPubSub", data_type="", uri=address, topics=topics)]
+            for in_app in set(in_apps):
+                the_system.connections[in_app] += [conn.ConnectionId(uid=f"{endpoint_name}.{app}", service_type="kPubSub", data_type="", uri=address, topics=topics)]
+
+
+def make_system_connections(the_system):
+    """Given a system with defined apps and endpoints, create the 
+    set of connections that satisfy the endpoints.
+
+    If an endpoint's ID only exists for one application, a queue will
+    be used. 
+
+    If an endpoint's ID exists for multiple applications, a network connection 
+    will be created, unless the inputs and outputs are exactly paired between 
+    those applications. (Each application in the set of applications that has 
+    that endpoint has exactly one input and one output with that endpoint name)
+
+    If a queue connection has a single producer and single consumer, it will use FollySPSC,
+    otherwise FollyMPMC will be used.
+
+    
+    """
+
+    endpoint_map = defaultdict(list)
+
+    for app in the_system.apps:
+      the_system.connections[app] = []
+      for endpoint in the_system.apps[app].modulegraph.endpoints:
+        console.log(f"Adding endpoint {endpoint.external_name}, app {the_system.apps[app].name}, direction {endpoint.direction}")
+        endpoint_map[endpoint.external_name] += [{"app": the_system.apps[app].name, "endpoint": endpoint}]
+
+    console.log(endpoint_map.items())
+    for endpoint_name,endpoints in endpoint_map.items():
+        console.log(f"Processing {endpoint_name} with defined endpoints {endpoints}")
+        if len(endpoints) < 2:
+            raise ValueError(f"Connection with name {endpoint_name} only has one endpoint!")
+        first_app = endpoints[0]["app"]
+        in_apps = []
+        out_apps = []
+        size = 0
+        topics = {}
+        for endpoint in endpoints:
+            direction = endpoint['endpoint'].direction
+            topics.update(endpoint['endpoint'].topic)
+            console.log(f"Direction is {direction}")
+            if direction == Direction.IN: 
+                in_apps += [endpoint["app"]]
+            else: 
+                out_apps += [endpoint["app"]]
+            if endpoint['endpoint'].size_hint > size:
+                size = endpoint['endpoint'].size_hint
+
+        if len(in_apps) == 0:
+            raise ValueError(f"Connection with name {endpoint_name} has no producers!")
+        if len(out_apps) == 0:
+            raise ValueError(f"Connection with name {endpoint_name} has no consumers!")
+
+        if all(first_app == elem["app"] for elem in endpoints):
+            make_queue_connection(the_system, first_app, endpoint_name, in_apps, out_apps, size)
+        elif len(in_apps) == len(out_apps):
+            paired_exactly = False
+            if len(set(in_apps)) == len(in_apps) and len(set(out_apps)) == len(out_apps):
+                paired_exactly = True
+                for in_app in in_apps:
+                    if(out_apps.count(in_app) != 1):
+                        paired_exactly = False
+                        break
+
+                if paired_exactly:
+                    for in_app in in_apps:
+                        for app_endpoint in the_system.apps[in_app].modulegraph.endpoints:
+                            if app_endpoint.external_name == endpoint_name:
+                                app_endpoint.external_name = f"{in_app}.{endpoint_name}"
+                        make_queue_connection(the_system, in_app, f"{in_app}.{endpoint_name}", [in_app], [in_app], size)
+
+            if paired_exactly == False:
+                make_network_connection(the_system, endpoint_name, in_apps, out_apps, topics)
+
+        else:
+            make_network_connection(the_system, endpoint_name, in_apps, out_apps, topics)
+        
+         
+
 def make_app_command_data(system, app, verbose=False):
     """Given an App instance, create the 'command data' suitable for
     feeding to nanorc. The needed queues are inferred from from
@@ -189,69 +284,22 @@ def make_app_command_data(system, app, verbose=False):
 
     command_data = {}
 
-    queue_specs = []
+    if len(system.connections) == 0:
+        make_system_connections(system)
 
-    app_qinfos = defaultdict(list)
-
-    # Infer the queues we need based on the connections between modules
-
-    # Terminology: an "endpoint" is "module.name"
-    for mod in modules:
-        name = mod.name
-        for from_name, downstream_connection in mod.connections.items():
-            # The name might be prefixed with a "!" to indicate that it doesn't participate in dependencies. Remove that here because "!" is illegal in actual queue names
-            from_name = from_name.replace("!", "")
-            from_endpoint = ".".join([name, from_name])
-            to_endpoint=downstream_connection.to
-            if verbose:
-                console.log(f"Making connection from {from_endpoint} to {to_endpoint}")
-            if to_endpoint is None:
-                continue
-            to_mod, to_name = to_endpoint.split(".")
-            queue_inst = f"{from_endpoint}_to_{to_endpoint}".replace(".", "")
-            # Is there already a queue connecting either endpoint? If so, we reuse it
-
-            # TODO: This is a bit complicated. Might be nicer to find
-            # the list of necessary queues in a first step, and then
-            # actually make the QueueSpec/QueueInfo objects
-            found_from = False
-            found_to = False
-            for k, v in app_qinfos.items():
-                for qi in v:
-                    test_endpoint = ".".join([k, qi.name])
-                    if test_endpoint == from_endpoint:
-                        found_from = True
-                        queue_inst = qi.inst
-                    if test_endpoint == to_endpoint:
-                        found_to = True
-                        queue_inst = qi.inst
-
-            if not (found_from or found_to):
-                queue_inst = queue_inst if downstream_connection.queue_name is None else downstream_connection.queue_name
-                if verbose:
-                    console.log(f"downstream_connection is {downstream_connection}, its queue_name is {downstream_connection.queue_name}")
-                    console.log(f"Creating {downstream_connection.queue_kind}({downstream_connection.queue_capacity}) queue with name {queue_inst} connecting {from_endpoint} to {to_endpoint}")
-                queue_specs.append(appfwk.QueueSpec(
-                    inst=queue_inst, kind=downstream_connection.queue_kind, capacity=downstream_connection.queue_capacity))
-
-            if not found_from:
-                if verbose:
-                    console.log(f"Adding output queue to module {name}: inst={queue_inst}, name={from_name}")
-                app_qinfos[name].append(appfwk.QueueInfo(
-                    name=from_name, inst=queue_inst, dir="output"))
-            if not found_to:
-                if verbose:
-                    console.log(f"Adding input queue to module {to_mod}: inst={queue_inst}, name={to_name}")
-                app_qinfos[to_mod].append(appfwk.QueueInfo(
-                    name=to_name, inst=queue_inst, dir="input"))
+    app_connrefs = defaultdict(list)
+    for endpoint in app.modulegraph.endpoints:
+        module, name = endpoint.internal_name.split(".")
+        console.log(f"module, name= {module}, {name}, endpoint.external_name={endpoint.external_name}, endpoint.direction={endpoint.direction}")
+        app_connrefs[module] += [conn.ConnectionRef(name=name, uid=endpoint.external_name, dir= "kInput" if endpoint.direction == Direction.IN else "kOutput")]
 
     if verbose:
         console.log(f"Creating mod_specs for {[ (mod.name, mod.plugin) for mod in modules ]}")
-    mod_specs = [ mspec(mod.name, mod.plugin, app_qinfos[mod.name]) for mod in modules ]
+    mod_specs = [ mspec(mod.name, mod.plugin, app_connrefs[mod.name]) for mod in modules ]
 
     # Fill in the "standard" command entries in the command_data structure
 
-    command_data['init'] = appfwk.Init(queues=queue_specs, modules=mod_specs, nwconnections=system.network_endpoints)
+    command_data['init'] = appfwk.Init(modules=mod_specs, connections=system.connections[app.name])
 
     # TODO: Conf ordering
     command_data['conf'] = acmd([

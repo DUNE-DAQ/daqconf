@@ -20,7 +20,7 @@ class ModuleGraph:
 
     def __init__(self, modules:[DAQModule]=None, endpoints=None, fragment_producers=None):
         self.modules=modules if modules else []
-        self.endpoints=endpoints if endpoints else dict()
+        self.endpoints=endpoints if endpoints else []
         self.fragment_producers = fragment_producers if  fragment_producers else dict()
 
     def __repr__(self):
@@ -44,23 +44,7 @@ class ModuleGraph:
             deps.add_node(module.name)
             modules_set.add(module.name)
 
-        for module in self.modules:
-            from_module = module.name
-            for connection in module.connections.values():
-                conn_data = connection.to.split(".")
-                if len(conn_data) != 2:
-                    raise RuntimeError(f'Bad connection: {conn_data} must be specified as module.queue_name')
-                to_module = conn_data[0]
-                if to_module == from_module:
-                    raise RuntimeError(f'Bad connection: {conn_data} you are connecting a {from_module} to itself!')
-                queue_name = conn_data[1]
-                if to_module in modules_set:
-                    deps.add_edge(from_module, to_module, label=queue_name)
-                else:
-                    raise RuntimeError(f"Bad connection {connection}: internal connection which doesn't connect to any module! Available modules: {modules_set}")
-
-        # now moving on to external links
-        for endpoint in self.endpoints.values():
+        for endpoint in self.endpoints:
             if endpoint.internal_name is None:
                 continue
             endpoint_internal_data = endpoint.internal_name.split(".")
@@ -144,12 +128,8 @@ class ModuleGraph:
         self.modules.append(mod)
         return mod
 
-    def add_connection(self, from_endpoint, to_endpoint):
-        from_mod, from_name=from_endpoint.split(".")
-        self.get_module(from_mod).connections[from_name]=Connection(to_endpoint)
-
     def add_endpoint(self, external_name, internal_name, inout, topic=[]):
-        self.endpoints[external_name] = Endpoint(external_name, internal_name, inout, topic)
+        self.endpoints += [Endpoint(external_name, internal_name, inout, topic)]
 
     def endpoint_names(self, inout=None):
         if inout is not None:
