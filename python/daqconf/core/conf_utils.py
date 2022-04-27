@@ -32,7 +32,6 @@ import dunedaq.rcif.cmd as rccmd  # AddressedCmd,
 import dunedaq.networkmanager.nwmgr as nwmgr
 
 from daqconf.core.daqmodule import DAQModule
-
 console = Console()
 
 ########################################################################
@@ -532,7 +531,7 @@ def make_system_command_datas(the_system, verbose=False):
 
     if the_system.app_start_order is None:
         app_deps = make_app_deps(the_system, verbose)
-        the_system.app_start_order = list(nx.algorithms.dag.topological_sort(app_deps))[::-1]
+        the_system.app_start_order = list(nx.algorithms.dag.topological_sort(app_deps))
 
     system_command_datas=dict()
 
