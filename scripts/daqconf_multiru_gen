@@ -355,22 +355,6 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
 
     # console.log("trigger cmd data:", cmd_data_trigger)
 
-    #-------------------------------------------------------------------
-    # Readout apps
-    
-    cardid = {}
-    host_id_dict = {}
-
-    for hostidx in range(len(host_ru)):
-        if host_ru[hostidx] in host_id_dict:
-            host_id_dict[host_ru[hostidx]] = host_id_dict[host_ru[hostidx]] + 1
-            cardid[hostidx] = host_id_dict[host_ru[hostidx]]
-        else:
-            cardid[hostidx] = 0
-            host_id_dict[host_ru[hostidx]] = 0
-        hostidx = hostidx + 1
-
-        
     # Set up the nwmgr endpoints for TPSets. Need to wait till now to do this so that ru_configs is filled
     if enable_software_tpg:
         for ruidx,ru_app_name in enumerate(ru_app_names):
