@@ -98,7 +98,7 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
 
     request_connection_name = f"{the_system.partition_name}.data_requests_for_{app_name}"
 
-    from appfwk.conf_utils import geoid_raw_str, Connection, Direction, AppConnection
+    from daqconf.core.conf_utils import geoid_raw_str, Connection, Direction, AppConnection
     
     geoid_to_queue_inst = []
     trb_geoid_to_connection = []

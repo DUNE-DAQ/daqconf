@@ -9,8 +9,8 @@ import glob
 import rich.traceback
 from rich.console import Console
 from os.path import exists, join
-from appfwk.system import System
-from appfwk.conf_utils import AppConnection
+from daqconf.core.system import System
+from daqconf.core.conf_utils import AppConnection
 from daqconf.core.metadata import write_metadata_file
 
 # Add -h as default help option
@@ -556,7 +556,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
                                                                             
     
     #     console.log(f"MDAapp config generated in {json_dir}")
-    from appfwk.conf_utils import add_network, make_app_command_data
+    from daqconf.core.conf_utils import add_network, make_app_command_data
     from daqconf.core.fragment_producers import  connect_all_fragment_producers, set_mlt_links, remove_mlt_link
 
     if debug:
@@ -624,7 +624,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     ##################################################################################
 
     # Make boot.json config
-    from appfwk.conf_utils import make_system_command_datas,generate_boot, write_json_files
+    from daqconf.core.conf_utils import make_system_command_datas,generate_boot, write_json_files
     system_command_datas = make_system_command_datas(the_system)
     # Override the default boot.json with the one from minidaqapp
     boot = generate_boot(the_system.apps, partition_name=partition_name, ers_settings=ers_settings, info_svc_uri=info_svc_uri,

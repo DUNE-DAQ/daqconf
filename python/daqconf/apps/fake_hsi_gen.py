@@ -34,9 +34,9 @@ import dunedaq.timinglibs.fakehsieventgenerator as fhsig
 
 from appfwk.utils import acmd, mcmd, mrccmd, mspec
     
-from appfwk.daqmodule import DAQModule
-from appfwk.app import ModuleGraph, App
-from appfwk.conf_utils import Direction
+from daqconf.core.daqmodule import DAQModule
+from daqconf.core.app import ModuleGraph, App
+from daqconf.core.conf_utils import Direction
         
 import math
 
