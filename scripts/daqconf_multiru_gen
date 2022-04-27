@@ -536,7 +536,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
 
         if enable_dqm:
             dqmidx = i % len(host_dqm)
-            the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.tr_df2dqm_{i}", topics=[], address=f"tcp://{{host_{dqm_df_app_names[i]}}}:{the_system.next_unassigned_port()}"))
+            the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.tr_df2dqm_{i}", topics=[], address=f"tcp://{{host_{dqm_df_app_names[dqmidx]}}}:{the_system.next_unassigned_port()}"))
     
     the_system.app_connections["hsi.hsievents"] = AppConnection(nwmgr_connection=f"{partition_name}.hsievents",
                                                                 topics=[],
