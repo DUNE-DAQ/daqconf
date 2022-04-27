@@ -1,5 +1,5 @@
 from daqconf.core.daqmodule import DAQModule
-from daqconf.core.conf_utils import Endpoint, Direction, GeoID, FragmentProducer, Connection
+from daqconf.core.conf_utils import Endpoint, Direction, GeoID, FragmentProducer
 import networkx as nx
 
 class ModuleGraph:
