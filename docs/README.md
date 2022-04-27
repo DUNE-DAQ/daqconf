@@ -12,5 +12,4 @@ and for a slightly more in-depth look into how to generate configurations for a 
 
 Finally, here's nice visual representation of the type of DAQ system which can be configured: 
 
-<img width="715" alt="Screen Shot 2022-03-29 at 3 11 47 PM" src="https://user-images.githubusercontent.com/36311946/160698842-396554e8-df3b-416e-88dc-0a1b4a9037ef.png">
-
+<img width="854" alt="v2 11 0_screenshot_21Apr2022" src="https://user-images.githubusercontent.com/36311946/164559614-19d5bd08-436a-4676-a44d-5d16b9e62d97.png">
