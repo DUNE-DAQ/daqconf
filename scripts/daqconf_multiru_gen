@@ -58,7 +58,7 @@ import click
 @click.option('--host-hsi', default='localhost', help='Host to run the HSI app on')
 @click.option('--host-tpw', default='localhost', help='Host to run the TPWriter app on')
 @click.option('--host-tprtc', default='localhost', help='Host to run the timing partition controller app on')
-@click.option('--host-dqm', default='localhost', help='Host to run the DQM aps on')
+@click.option('--host-dqm', multiple=True, default=['localhost'], help='Host to run the DQM aps on')
 @click.option('--region-id', multiple=True, default=[0], help="Define the Region IDs for the RUs. If only specified once, will apply to all RUs.")
 @click.option('--latency-buffer-size', default=499968, help="Size of the latency buffers (in number of elements)")
 # hsi readout options
@@ -135,6 +135,9 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
 
     if exists(json_dir):
         raise RuntimeError(f"Directory {json_dir} already exists")
+
+    print(f'{host_dqm=}')
+    print(type(host_dqm))
 
     console.log("Loading dataflow config generator")
     from daqconf.apps.dataflow_gen import get_dataflow_app
@@ -250,8 +253,9 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     dqm_app_names = [f"dqm{idx}_ru" for idx in range(len(host_ru))]
     
     for hostidx,ru_host in enumerate(ru_app_names):
+        dqmidx = hostidx % len(host_dqm)
         if enable_dqm:
-            the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.fragx_dqm_{hostidx}", topics=[], address=f"tcp://{{host_{host_dqm[hostidx % len(host_dqm)]}}}:{the_system.next_unassigned_port()}"))
+            the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.fragx_dqm_{hostidx}", topics=[], address=f"tcp://{{host_{dqm_app_names[hostidx]}}}:{the_system.next_unassigned_port()}"))
             # Create at most {number of df apps} endpoints
 
         the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.datareq_{hostidx}", topics=[], address=f"tcp://{{host_{ru_host}}}:{the_system.next_unassigned_port()}"))
@@ -435,7 +439,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
                 DQM_FOURIER_PARAMS=dqm_fourier_params,
                 DQM_FOURIERSUM_PARAMS=dqm_fouriersum_params,
                 PARTITION=partition_name,
-                HOST=host,
+                HOST=host_dqm[i % len(host_dqm)],
                 NUM_DF_APPS=len(host_df),
                 DEBUG=debug)
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
@@ -489,7 +493,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
                 DQM_FOURIER_PARAMS=[0, 0, 0],
                 DQM_FOURIERSUM_PARAMS=[0, 0, 0],
                 PARTITION=partition_name,
-                HOST=host_ru[i%len(host_ru)],
+                HOST=host_dqm[i % len(host_dqm)],
                 MODE='df',
                 DF_RATE=dqm_df_rate,
                 DF_ALGS=dqm_df_algs,
@@ -534,7 +538,8 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
         the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.trmon_dqm2df_{i}", topics=[], address=f"tcp://{{host_{df_app_name}}}:{the_system.next_unassigned_port()}"))
 
         if enable_dqm:
-            the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.tr_df2dqm_{i}", topics=[], address=f"tcp://{{host_{host_dqm[i % len(host_dqm)]}}}:{the_system.next_unassigned_port()}"))
+            dqmidx = i % len(host_dqm)
+            the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.tr_df2dqm_{i}", topics=[], address=f"tcp://{{host_{dqm_df_app_names[i]}}}:{the_system.next_unassigned_port()}"))
     
     the_system.app_connections["hsi.hsievents"] = AppConnection(nwmgr_connection=f"{partition_name}.hsievents",
                                                                 topics=[],
