@@ -72,6 +72,22 @@ class Endpoint:
     #     self.external_name = None
     #     self.direction = Direction.IN
 
+class Queue:
+    def __init__(self, push_module, pop_module, name, size):
+        self.name = name
+        self.size = size
+        self.push_modules = [push_module]
+        self.pop_modules = [pop_module]
+
+    def add_module_link(self, push_module, pop_module):
+        if push_module not in self.push_modules:
+            self.push_modules.append(push_module)
+        if pop_module not in self.pop_modules:
+            self.pop_modules.append(pop_module)
+
+    def __repr__(self):
+        return self.name
+
 GeoID = namedtuple('GeoID', ['system', 'region', 'element'])
 FragmentProducer = namedtuple('FragmentProducer', ['geoid', 'requests_in', 'fragments_out', 'queue_name'])
 
@@ -198,6 +214,9 @@ def make_system_connections(the_system):
 
     for app in the_system.apps:
       the_system.connections[app] = []
+      for queue in the_system.apps[app].modulegraph.queues:
+            make_queue_connection(the_system, app, f"{the_system.apps[app].name}.{queue.name}", queue.push_modules, queue.pop_modules, queue.size)
+
       for endpoint in the_system.apps[app].modulegraph.endpoints:
         console.log(f"Adding endpoint {endpoint.external_name}, app {the_system.apps[app].name}, direction {endpoint.direction}")
         endpoint_map[endpoint.external_name] += [{"app": the_system.apps[app].name, "endpoint": endpoint}]
@@ -292,6 +311,15 @@ def make_app_command_data(system, app, verbose=False):
         module, name = endpoint.internal_name.split(".")
         console.log(f"module, name= {module}, {name}, endpoint.external_name={endpoint.external_name}, endpoint.direction={endpoint.direction}")
         app_connrefs[module] += [conn.ConnectionRef(name=name, uid=endpoint.external_name, dir= "kInput" if endpoint.direction == Direction.IN else "kOutput")]
+
+    for queue in app.modulegraph.queues:
+        queue_uid = f"{app.name}.{queue.name}"
+        for push_mod in queue.push_modules:
+            module, name = push_mod.split(".")
+            app_connrefs[module] += [conn.ConnectionRef(name=name, uid=queue_uid, dir="kOutput")]
+        for pop_mod in queue.pop_modules:
+            module, name = pop_mod.split(".")
+            app_connrefs[module] += [conn.ConnectionRef(name=name, uid=queue_uid, dir="kInput")]
 
     if verbose:
         console.log(f"Creating mod_specs for {[ (mod.name, mod.plugin) for mod in modules ]}")
