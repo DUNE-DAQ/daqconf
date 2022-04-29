@@ -42,7 +42,7 @@ import dunedaq.networkmanager.nwmgr as nwmgr
 from appfwk.utils import acmd, mcmd, mrccmd, mspec
 from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
-from daqconf.core.conf_utils import Direction, Connection, data_request_endpoint_name
+from daqconf.core.conf_utils import Direction, data_request_endpoint_name
 
 # Time to wait on pop()
 QUEUE_POP_WAIT_MS = 100
@@ -63,7 +63,6 @@ def get_dataflow_app(HOSTIDX=0,
 
     modules += [DAQModule(name = 'trb',
                           plugin = 'TriggerRecordBuilder',
-                          connections = {'trigger_record_output_queue': Connection('datawriter.trigger_record_input_queue')},
                           conf = trb.ConfParams(general_queue_timeout=QUEUE_POP_WAIT_MS,
                                                 reply_connection_name = "",
                                                 max_time_window=MAX_TRIGGER_RECORD_WINDOW,
@@ -71,7 +70,6 @@ def get_dataflow_app(HOSTIDX=0,
                                                 map=trb.mapgeoidconnections([]))), # We patch this up in connect_fragment_producers
                 DAQModule(name = 'datawriter',
                        plugin = 'DataWriter',
-                       connections = {},
                        conf = dw.ConfParams(decision_connection=f"{PARTITION}.trigdec_{HOSTIDX}",
                            token_connection=PARTITION+".triginh",
                            data_store_parameters=hdf5ds.ConfParams(
@@ -102,7 +100,9 @@ def get_dataflow_app(HOSTIDX=0,
 
     mgraph=ModuleGraph(modules)
 
-    mgraph.add_endpoint("trigger_decisions", "trb.trigger_decision_input_queue", Direction.IN)
+    mgraph.connect_modules("trb.trigger_Record_output_queue", "datawriter.trigger_record_input_queue")
+
+    mgraph.add_endpoint(f"trigger_decisions_{HOSTIDX}", "trb.trigger_decision_input_queue", Direction.IN)
        
     df_app = App(modulegraph=mgraph, host=HOST)
 

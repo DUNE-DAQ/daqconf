@@ -45,7 +45,7 @@ import dunedaq.networkmanager.nwmgr as nwmgr
 from appfwk.utils import acmd, mcmd, mrccmd, mspec
 from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
-from daqconf.core.conf_utils import Direction, Connection
+from daqconf.core.conf_utils import Direction
 
 #===============================================================================
 def get_thi_app(GATHER_INTERVAL=1e6,

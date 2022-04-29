@@ -42,7 +42,7 @@ from appfwk.utils import acmd, mcmd, mrccmd, mspec
 from os import path
 
 import json
-from daqconf.core.conf_utils import Direction, Connection
+from daqconf.core.conf_utils import Direction, Queue
 from daqconf.core.daqmodule import DAQModule
 from daqconf.core.app import App,ModuleGraph
 # Time to wait on pop()
@@ -85,6 +85,7 @@ def get_readout_app(RU_CONFIG=[],
     
     if DEBUG: print(f"ReadoutApp.__init__ with RUIDX={RUIDX}, MIN_LINK={MIN_LINK}, MAX_LINK={MAX_LINK}")
     modules = []
+    queues = []
 
     total_link_count = 0
     for ru in range(len(RU_CONFIG)):
@@ -92,19 +93,9 @@ def get_readout_app(RU_CONFIG=[],
             total_link_count += RU_CONFIG[ru]["channel_count"]
 
     if SOFTWARE_TPG_ENABLED:
-        connections = {}
-
         for idx in range(MIN_LINK, MAX_LINK):
-            queue_inst = f"data_requests_{idx}"
-            connections[f'output_{idx}'] = Connection(f"datahandler_{idx}.data_requests_0",
-                                                      queue_name = queue_inst)
-            
-            queue_inst = f"tp_requests_{idx}"
-            connections[f'tp_output_{idx}'] = Connection(f"tp_datahandler_{idx}.data_requests_0",
-                                                             queue_name = queue_inst)
             modules += [DAQModule(name = f"tp_datahandler_{idx}",
                                plugin = "DataLinkHandler",
-                               connections =  {}, #{'fragment_queue': Connection('fragment_sender.input_queue')},
                                conf = rconf.Conf(readoutmodelconf = rconf.ReadoutModelConf(source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
                                                                                          region_id = RU_CONFIG[RUIDX]["region_id"],
                                                                                          element_id = total_link_count+idx),
@@ -123,18 +114,10 @@ def get_readout_app(RU_CONFIG=[],
                                                                                               # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                               stream_buffer_size = 100 if FRONTEND_TYPE=='pacman' else 8388608,
                                                                                               enable_raw_recording = False)))]
-        # modules += [DAQModule(name = f"tpset_publisher",
-        #                    plugin = "QueueToNetwork",
-        #                    # connections = {'input': Connection('tpset_queue', Direction.IN)},
-        #                    conf = qton.Conf(msg_type="dunedaq::trigger::TPSet",
-        #                                     msg_module_name="TPSetNQ",
-        #                                     sender_config=nos.Conf(name=f"{PARTITION}.tpsets_{RUIDX}",
-        #                                                            topic="TPSets",
-        #                                                            stype="msgpack")))]
+
     if FRONTEND_TYPE == 'wib' and not USE_FAKE_DATA_PRODUCERS:
         modules += [DAQModule(name = "errored_frame_consumer",
-                           plugin = "ErroredFrameConsumer",
-                           connections={})]
+                           plugin = "ErroredFrameConsumer")]
 
     # There are two flags to be checked so I think a for loop
     # is the closest way to the blocks that are being used here
@@ -143,7 +126,6 @@ def get_readout_app(RU_CONFIG=[],
         if USE_FAKE_DATA_PRODUCERS:
             modules += [DAQModule(name = f"fakedataprod_{idx}",
                                   plugin='FakeDataProd',
-                                  connections={},
                                   conf = fdp.ConfParams(
                                   system_type = SYSTEM_TYPE,
                                   apa_number = RU_CONFIG[RUIDX]["region_id"],
@@ -156,23 +138,14 @@ def get_readout_app(RU_CONFIG=[],
                                   timesync_topic_name = "Timesync",
                                   ))]
         else:
-            connections = {}
-            # connections['raw_input']      = Connection(f"{FRONTEND_TYPE}_link_{idx}", Direction.IN)
-            # connections['data_request_0'] = Connection(f'data_requests_{idx}',        Direction.IN)
-            # connections['fragment_queue'] = Connection('fragment_sender.input_queue')
             if SOFTWARE_TPG_ENABLED:
-                connections['tp_out']    = Connection(f"tp_datahandler_{idx}.raw_input",
-                                                      queue_name = f"sw_tp_link_{idx}",
-                                                      queue_kind = "FollySPSCQueue",
-                                                      queue_capacity = 100000)
-                # connections['tpset_out'] = Connection('tpset_queue',       Direction.OUT)
+                queues += [Queue(f"datahandler_{idx}.tp_out",f"tp_datahandler_{idx}.raw_input",f"sw_tp_link_{idx}",100000 )]                
                 
             if FRONTEND_TYPE == 'wib':
-                connections['errored_frames'] = Connection('errored_frame_consumer.input_queue')
+                queues += [Queue(f"datahandler_{idx}.errored_frames", 'errored_frame_consumer.input_queue', "errored_frames_q")]
 
             modules += [DAQModule(name = f"datahandler_{idx}",
                                   plugin = "DataLinkHandler", 
-                                  connections = connections,
                                   conf = rconf.Conf(
                                       readoutmodelconf= rconf.ReadoutModelConf(
                                           source_queue_timeout_ms= QUEUE_POP_WAIT_MS,
@@ -211,16 +184,11 @@ def get_readout_app(RU_CONFIG=[],
                     
     if not USE_FAKE_DATA_PRODUCERS:
         if FLX_INPUT:
-            connections = {}
             for idx in range(MIN_LINK, MIN_LINK + min(5, RU_CONFIG[RUIDX]["channel_count"])):
-                connections[f'output_{idx}'] = Connection(f"datahandler_{idx}.raw_input",
-                                                          queue_name = f'{FRONTEND_TYPE}_link_{idx}',
-                                                          queue_kind = "FollySPSCQueue",
-                                                          queue_capacity = 100000)
+                queues += [Queue(f'flxcard_0.output_{idx}',f"datahandler_{idx}.raw_input",f'{FRONTEND_TYPE}_link_{idx}', 100000 )]
             
             modules += [DAQModule(name = 'flxcard_0',
                                plugin = 'FelixCardReader',
-                               connections = connections,
                                conf = flxcr.Conf(card_id = RU_CONFIG[RUIDX]["card_id"],
                                                  logical_unit = 0,
                                                  dma_id = 0,
@@ -231,16 +199,11 @@ def get_readout_app(RU_CONFIG=[],
                                                  links_enabled = [i for i in range(min(5, RU_CONFIG[RUIDX]["channel_count"]))]))]
             
             if RU_CONFIG[RUIDX]["channel_count"] > 5 :
-                connections = {}
                 for idx in range(MIN_LINK+5, MAX_LINK):
-                    connections[f'output_{idx}'] = Connection(f"datahandler_{idx}.raw_input",
-                                                              queue_name = f'{FRONTEND_TYPE}_link_{idx}',
-                                                              queue_kind = "FollySPSCQueue",
-                                                              queue_capacity = 100000)
+                    queues += [Queue(f'flxcard_1.output_{idx}',f"datahandler_{idx}.raw_input",f'{FRONTEND_TYPE}_link_{idx}', 100000 )]
                     
                 modules += [DAQModule(name = "flxcard_1",
                                    plugin = "FelixCardReader",
-                                   connections = connections,
                                    conf = flxcr.Conf(card_id = RU_CONFIG[RUIDX]["card_id"],
                                                      logical_unit = 1,
                                                      dma_id = 0,
@@ -289,19 +252,15 @@ def get_readout_app(RU_CONFIG=[],
                                 zmq_receiver_timeout = 10000)
             modules += [DAQModule(name = fake_source,
                                plugin = card_reader,
-                               connections = {f'output_{idx}': Connection(f"datahandler_{idx}.raw_input",
-                                                                          queue_name = f'{FRONTEND_TYPE}_link_{idx}',
-                                                                          queue_kind = "FollySPSCQueue",
-                                                                          queue_capacity = 100000)
-                                              for idx in range(MIN_LINK, MAX_LINK)},
                                conf = conf)]
+            queues += [Queue(f"{fake_source}.output_{idx}",f"datahandler_{idx}.raw_input",f'{FRONTEND_TYPE}_link_{idx}', 100000) for idx in range(MIN_LINK, MAX_LINK)]
 
     # modules += [
     #     DAQModule(name = "fragment_sender",
     #                    plugin = "FragmentSender",
     #                    conf = None)]
                         
-    mgraph = ModuleGraph(modules)
+    mgraph = ModuleGraph(modules, queues=queues)
 
     for idx in range(MIN_LINK, MAX_LINK):
         # P. Rodrigues 2022-02-15 We don't make endpoints for the

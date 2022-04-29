@@ -50,7 +50,7 @@ import dunedaq.networkmanager.nwmgr as nwmgr
 from appfwk.utils import acmd, mcmd, mrccmd, mspec
 from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
-from daqconf.core.conf_utils import Direction, Connection
+from daqconf.core.conf_utils import Direction
 
 #===============================================================================
 def get_hsi_app(RUN_NUMBER = 333,

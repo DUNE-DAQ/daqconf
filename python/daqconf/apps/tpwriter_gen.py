@@ -42,7 +42,6 @@ def get_tpwriter_app(OUTPUT_PATH=".",
 
     modules += [DAQModule(name = 'tpswriter',
                           plugin = "TPStreamWriter",
-                          connections = {},
                           conf = tpsw.ConfParams(tp_accumulation_interval_ticks=ONE_SECOND_INTERVAL_TICKS,
                               data_store_parameters=hdf5ds.ConfParams(
                               name="tp_stream_writer",

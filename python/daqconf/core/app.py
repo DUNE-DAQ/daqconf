@@ -18,11 +18,31 @@ class ModuleGraph:
     changed without affecting other applications.
     """
 
-    def __init__(self, modules:[DAQModule]=None, endpoints=None, fragment_producers=None, queues=None):
+    def combine_queues(self, queues : [Queue]):
+        output_queues = []
+        
+        for q in queues:
+            match = False
+            for oq in output_queues:
+                if oq.name == q.name:
+                    match = True
+                    for push_mod in q.push_modules:
+                        if push_mod not in oq.push_modules:
+                            oq.push_modules.append(push_mod)
+                    for pop_mod in q.pop_modules:
+                        if pop_mod not in oq.pop_modules:
+                            oq.pop_modules.append(pop_mod)
+                    break
+            if not match:
+                output_queues.append(q)
+
+        return output_queues
+
+    def __init__(self, modules:[DAQModule]=None, endpoints:[Endpoint]=None, fragment_producers:{FragmentProducer}=None, queues:[Queue]=None):
         self.modules=modules if modules else []
         self.endpoints=endpoints if endpoints else []
         self.fragment_producers = fragment_producers if  fragment_producers else dict()
-        self.queues = queues if queues else []
+        self.queues = self.combine_queues(queues) if queues else []
 
     def __repr__(self):
         return f"modulegraph(modules={self.modules}, endpoints={self.endpoints}, fragment_producers={self.fragment_producers})"
@@ -121,8 +141,7 @@ class ModuleGraph:
                 old_module = self.modules[i]
                 new_module = DAQModule(name=name,
                                        plugin=old_module.plugin,
-                                       conf=new_conf,
-                                       connections=old_module.connections)
+                                       conf=new_conf)
                 self.modules[i] = new_module
                 return
         raise RuntimeError(f'Module {name} not found!')
@@ -143,14 +162,16 @@ class ModuleGraph:
     def add_endpoint(self, external_name, internal_name, inout, topic=[]):
         self.endpoints += [Endpoint(external_name, internal_name, inout, topic)]
 
-    def connect_modules(self, push_addr, pop_addr, queue_name = "", size_hint = 10):
+    def connect_modules(self, push_addr, pop_addr, queue_name = "", size_hint = 10, toposort = True):
         queue_start = push_addr.split(".")
         queue_end = pop_addr.split(".")
-        if len(queue_start) != 2 or len(queue_end) != 2 or queue_start[0] not in self.module_names() or queue_end[0] not in self.module_names():
+        if len(queue_start) < 2 or len(queue_end) < 2 or queue_start[0] not in self.module_names() or queue_end[0] not in self.module_names():
+            if verbose:
+                console.log(f"push_addr: {push_addr}, pop_addr: {pop_addr}")
             raise RuntimeError(f"connect_modules called with invalid parameters. push_addr and pop_addr must be of form <module>.<internal name>, and the module must already be in the module graph!")
 
         if queue_name == "":
-            self.queues.append(Queue(push_addr, pop_addr, push_addr + "_to_" + pop_addr, size_hint))
+            self.queues.append(Queue(push_addr, pop_addr, push_addr + "_to_" + pop_addr, size_hint, toposort))
         else:
             existing_queue = False
             for queue in self.queues:
@@ -158,7 +179,7 @@ class ModuleGraph:
                     queue.add_module_link(push_addr, pop_addr)
                     existing_queue = True
             if not existing_queue:
-                self.queues.append(Queue(push_addr, pop_addr, queue_name, size_hint))
+                self.queues.append(Queue(push_addr, pop_addr, queue_name, size_hint, toposort))
 
     def endpoint_names(self, inout=None):
         if inout is not None:

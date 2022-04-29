@@ -13,7 +13,7 @@ import dunedaq.dfmodules.datafloworchestrator as dfo
 
 from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
-from daqconf.core.conf_utils import Direction, Connection
+from daqconf.core.conf_utils import Direction
 
 
 #FIXME maybe one day, triggeralgs will define schemas... for now allow a dictionary of 4byte int, 4byte floats, and strings
@@ -61,7 +61,7 @@ def get_dfo_app(TOKEN_COUNT: int = 10,
         # We have an outgoing endpoint for trigger decisions, but the
         # TDs come directly from the DFO to a nwmgr connection, so the
         # queue we connect to is None
-        mgraph.add_endpoint(f"trigger_decisions{i}", None, Direction.OUT)
+        mgraph.add_endpoint(f"trigger_decisions_{i}", None, Direction.OUT)
         # mgraph.add_endpoint("tokens", "mlt.token_source", Direction.IN)
 
     dfo_app = App(modulegraph=mgraph, host=HOST, name='DFOApp')
