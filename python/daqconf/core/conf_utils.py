@@ -109,7 +109,7 @@ AppConnection = namedtuple("AppConnection", ['bind_apps', 'connect_apps'], defau
 #
 ########################################################################
 
-def make_module_deps(app, system_connections):
+def make_module_deps(app, system_connections, verbose=False):
     """
     Given a list of `module` objects, produce a dictionary giving
     the dependencies between them. A dependency is any connection between
@@ -138,7 +138,7 @@ def make_module_deps(app, system_connections):
             for other_endpoint in app.modulegraph.endpoints:
                 if other_endpoint.external_name == endpoint.external_name and other_endpoint.internal_name != endpoint.internal_name and other_endpoint.direction != Direction.IN:
                     other_mod, other_q = other_endpoint.internal_name.split(".")
-                    console.log(f"Adding generated dependency edge {other_mod} -> {mod_name}")
+                    if verbose: console.log(f"Adding generated dependency edge {other_mod} -> {mod_name}")
                     deps.add_edge(other_mod, mod_name)
                 
 
@@ -149,7 +149,7 @@ def make_module_deps(app, system_connections):
             for pop_addr in queue.pop_modules:
                 push_mod, push_name = push_addr.split(".", maxsplit=1)
                 pop_mod, pop_name = pop_addr.split(".", maxsplit=1)
-                console.log(f"Adding queue dependency edge {push_mod} -> {pop_mod}")
+                if verbose: console.log(f"Adding queue dependency edge {push_mod} -> {pop_mod}")
                 deps.add_edge(push_mod, pop_mod)
 
         
@@ -196,17 +196,20 @@ def add_one_command_data(command_data, command, default_params, app, module_orde
 
     command_data[command] = acmd(mod_and_params)
 
-def make_queue_connection(the_system, app, endpoint_name, in_apps, out_apps, size):
+def make_queue_connection(the_system, app, endpoint_name, in_apps, out_apps, size, verbose):
     if len(in_apps) == 1 and len(out_apps) == 1:
-        console.log(f"Connection {endpoint_name}, SPSC Queue")
+        if verbose:
+            console.log(f"Connection {endpoint_name}, SPSC Queue")
         the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, service_type="kQueue", data_type="", uri=f"queue://FollySPSC:{size}")]
     else:
-        console.log(f"Connection {endpoint_name}, MPMC Queue")
+        if verbose:
+            console.log(f"Connection {endpoint_name}, MPMC Queue")
         the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, service_type="kQueue", data_type="", uri=f"queue://FollyMPMC:{size}")]
 
-def make_network_connection(the_system, endpoint_name, in_apps, out_apps, topics):
+def make_network_connection(the_system, endpoint_name, in_apps, out_apps, topics, verbose):
     if len(topics) == 0:
-        console.log(f"Connection {endpoint_name}, Network")
+        if verbose:
+            console.log(f"Connection {endpoint_name}, Network")
         if len(in_apps) > 1:
             raise ValueError(f"Connection with name {endpoint_name} has multiple receivers, which is unsupported for a network connection!")
         the_system.app_connections[endpoint_name] = AppConnection(bind_apps=in_apps, connect_apps=out_apps)
@@ -216,7 +219,8 @@ def make_network_connection(the_system, endpoint_name, in_apps, out_apps, topics
         for app in set(out_apps):
             the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetwork", data_type="", uri=address)]
     else:
-        console.log(f"Connection {endpoint_name}, Pub/Sub")
+        if verbose:
+            console.log(f"Connection {endpoint_name}, Pub/Sub")
         for app in set(out_apps):
             the_system.app_connections[endpoint_name] = AppConnection(bind_apps=[app], connect_apps=in_apps)
             port = the_system.next_unassigned_port()
@@ -225,7 +229,7 @@ def make_network_connection(the_system, endpoint_name, in_apps, out_apps, topics
             for in_app in set(in_apps):
                 the_system.connections[in_app] += [conn.ConnectionId(uid=f"{endpoint_name}.{app}", service_type="kPubSub", data_type="", uri=address, topics=topics)]
 
-def make_system_connections(the_system):
+def make_system_connections(the_system, verbose=False):
     """Given a system with defined apps and endpoints, create the 
     set of connections that satisfy the endpoints.
 
@@ -248,15 +252,16 @@ def make_system_connections(the_system):
     for app in the_system.apps:
       the_system.connections[app] = []
       for queue in the_system.apps[app].modulegraph.queues:
-            make_queue_connection(the_system, app, f"{the_system.apps[app].name}.{queue.name}", queue.push_modules, queue.pop_modules, queue.size)
+            make_queue_connection(the_system, app, f"{the_system.apps[app].name}.{queue.name}", queue.push_modules, queue.pop_modules, queue.size, verbose)
 
       for endpoint in the_system.apps[app].modulegraph.endpoints:
-        console.log(f"Adding endpoint {endpoint.external_name}, app {app}, direction {endpoint.direction}")
+        if verbose:
+            console.log(f"Adding endpoint {endpoint.external_name}, app {app}, direction {endpoint.direction}")
         endpoint_map[endpoint.external_name] += [{"app": app, "endpoint": endpoint}]
 
-    console.log(endpoint_map.items())
     for endpoint_name,endpoints in endpoint_map.items():
-        console.log(f"Processing {endpoint_name} with defined endpoints {endpoints}")
+        if verbose:
+            console.log(f"Processing {endpoint_name} with defined endpoints {endpoints}")
         first_app = endpoints[0]["app"]
         in_apps = []
         out_apps = []
@@ -265,7 +270,6 @@ def make_system_connections(the_system):
         for endpoint in endpoints:
             direction = endpoint['endpoint'].direction
             topics.update(endpoint['endpoint'].topic)
-            console.log(f"Direction is {direction}")
             if direction == Direction.IN: 
                 in_apps += [endpoint["app"]]
             else: 
@@ -279,7 +283,7 @@ def make_system_connections(the_system):
             raise ValueError(f"Connection with name {endpoint_name} has no producers!")
 
         if all(first_app == elem["app"] for elem in endpoints):
-            make_queue_connection(the_system, first_app, endpoint_name, in_apps, out_apps, size)
+            make_queue_connection(the_system, first_app, endpoint_name, in_apps, out_apps, size, verbose)
         elif len(in_apps) == len(out_apps):
             paired_exactly = False
             if len(set(in_apps)) == len(in_apps) and len(set(out_apps)) == len(out_apps):
@@ -294,13 +298,13 @@ def make_system_connections(the_system):
                         for app_endpoint in the_system.apps[in_app].modulegraph.endpoints:
                             if app_endpoint.external_name == endpoint_name:
                                 app_endpoint.external_name = f"{in_app}.{endpoint_name}"
-                        make_queue_connection(the_system, in_app, f"{in_app}.{endpoint_name}", [in_app], [in_app], size)
+                        make_queue_connection(the_system, in_app, f"{in_app}.{endpoint_name}", [in_app], [in_app], size, verbose)
 
             if paired_exactly == False:
-                make_network_connection(the_system, endpoint_name, in_apps, out_apps, topics)
+                make_network_connection(the_system, endpoint_name, in_apps, out_apps, topics, verbose)
 
         else:
-            make_network_connection(the_system, endpoint_name, in_apps, out_apps, topics)
+            make_network_connection(the_system, endpoint_name, in_apps, out_apps, topics, verbose)
         
          
 
@@ -323,39 +327,39 @@ def make_app_command_data(system, app, appkey, verbose=False):
     command_data = {}
 
     if len(system.connections) == 0:
-        make_system_connections(system)
+        make_system_connections(system, verbose)
 
-    module_deps = make_module_deps(app, system.connections[appkey])
+    module_deps = make_module_deps(app, system.connections[appkey], verbose)
     if verbose:
         console.log(f"inter-module dependencies are: {module_deps}")
 
     stop_order = list(nx.algorithms.dag.topological_sort(module_deps))
     start_order = stop_order[::-1]
 
-    #if verbose:
-    console.log(f"Inferred module start order is {start_order}")
-    console.log(f"Inferred module stop order is {stop_order}")
+    if verbose:
+        console.log(f"Inferred module start order is {start_order}")
+        console.log(f"Inferred module stop order is {stop_order}")
 
     app_connrefs = defaultdict(list)
     for endpoint in app.modulegraph.endpoints:
         if endpoint.internal_name is None:
             continue
         module, name = endpoint.internal_name.split(".")
-        console.log(f"module, name= {module}, {name}, endpoint.external_name={endpoint.external_name}, endpoint.direction={endpoint.direction}")
+        if verbose:
+            console.log(f"module, name= {module}, {name}, endpoint.external_name={endpoint.external_name}, endpoint.direction={endpoint.direction}")
         app_connrefs[module] += [conn.ConnectionRef(name=name, uid=endpoint.external_name, dir= "kInput" if endpoint.direction == Direction.IN else "kOutput")]
 
     for queue in app.modulegraph.queues:
         queue_uid = f"{app.name}.{queue.name}"
         for push_mod in queue.push_modules:
             module, name = push_mod.split(".", maxsplit=1)
-            console.log(f"{push_mod}")
             app_connrefs[module] += [conn.ConnectionRef(name=name, uid=queue_uid, dir="kOutput")]
         for pop_mod in queue.pop_modules:
             module, name = pop_mod.split(".", maxsplit=1)
             app_connrefs[module] += [conn.ConnectionRef(name=name, uid=queue_uid, dir="kInput")]
 
     if verbose:
-        console.log(f"Creating mod_specs for {[ (mod.name, mod.plugin) for mod in modules ]}")
+        console.log(f"Creating mod_specs for {[ (mod.name, mod.plugin) for mod in app.modulegraph.modules ]}")
     mod_specs = [ mspec(mod.name, mod.plugin, app_connrefs[mod.name]) for mod in app.modulegraph.modules ]
 
     # Fill in the "standard" command entries in the command_data structure

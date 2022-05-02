@@ -54,10 +54,10 @@ class System:
             deps.add_node(app_name)
 
         for from_app_n, from_app in self.apps.items():
-            for from_ep in from_app.modulegraph.endpoints.values():
+            for from_ep in from_app.modulegraph.endpoints:
                 if from_ep.direction == Direction.OUT:
                     for to_app_n, to_app in self.apps.items():
-                        for to_ep in to_app.modulegraph.endpoints.values():
+                        for to_ep in to_app.modulegraph.endpoints:
                             if to_ep.direction == Direction.IN:
                                 if from_ep.external_name == to_ep.external_name:
                                     deps.add_edge(from_app_n, to_app_n, label=to_ep.external_name)
