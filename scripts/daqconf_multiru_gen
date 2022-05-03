@@ -272,6 +272,8 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
             HSI_SOURCE=hsi_source,
             PARTITION=partition_name,
             GLOBAL_PARTITION=global_partition_name,
+            TIMING_HOST=host_global,
+            TIMING_PORT=port_global,
             HOST=host_hsi,
             DEBUG=debug)
     else:
@@ -300,6 +302,8 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
             SPILL_GATE_ENABLED=timing_partition_spill_gate_enabled,
             PARTITION=partition_name,
             GLOBAL_PARTITION=global_partition_name,
+            TIMING_HOST=host_global,
+            TIMING_PORT=port_global,
             HOST=host_tprtc,
             DEBUG=debug)
 

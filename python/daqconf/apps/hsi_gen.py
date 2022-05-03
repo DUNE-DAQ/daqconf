@@ -69,6 +69,8 @@ def get_hsi_app(RUN_NUMBER = 333,
                 UHAL_LOG_LEVEL="notice",
                 PARTITION="UNKNOWN",
                 GLOBAL_PARTITION="UNKNOWN",
+                TIMING_HOST="np04-srv-012.cern.ch",
+                TIMING_PORT=12345,
                 HOST="localhost",
                 DEBUG=False):
     modules = {}
@@ -111,7 +113,7 @@ def get_hsi_app(RUN_NUMBER = 333,
     mgraph = ModuleGraph(modules)
     
     if CONTROL_HSI_HARDWARE:
-        mgraph.add_endpoint("timing_cmds", "hsic.hardware_commands_out", Direction.OUT)
+        mgraph.add_global_connection("timing_cmds", "hsic.hardware_commands_out", Direction.OUT, TIMING_HOST, TIMING_PORT)
     
     mgraph.add_endpoint("hsievents", None,     Direction.OUT)
     

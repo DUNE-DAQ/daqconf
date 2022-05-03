@@ -58,6 +58,8 @@ def get_tprtc_app(MASTER_DEVICE_NAME="",
                   SPILL_GATE_ENABLED=False,
                   PARTITION="UNKNOWN",
                   GLOBAL_PARTITION="UNKNOWN",
+                  TIMING_HOST="np04-srv-012.cern.ch",
+                  TIMING_PORT=12345,
                   HOST="localhost",
                   DEBUG=False):
     
@@ -75,7 +77,7 @@ def get_tprtc_app(MASTER_DEVICE_NAME="",
 
     mgraph = ModuleGraph(modules)
      
-    mgraph.add_endpoint("timing_cmds", "tprtc.hardware_commands_out", Direction.OUT)
+    mgraph.add_global_connection("timing_cmds", "tprtc.hardware_commands_out", Direction.OUT, TIMING_HOST, TIMING_PORT)
      
     tprtc_app = App(modulegraph=mgraph, host=HOST, name="TPRTCApp")
      
