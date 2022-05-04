@@ -206,17 +206,17 @@ def make_queue_connection(the_system, app, endpoint_name, in_apps, out_apps, siz
     if len(in_apps) == 1 and len(out_apps) == 1:
         if verbose:
             console.log(f"Connection {endpoint_name}, SPSC Queue")
-        the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, service_type="kQueue", data_type="", uri=f"queue://FollySPSC:{size}")]
+        the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, partition=the_system.partition_name, service_type="kQueue", data_type="", uri=f"queue://FollySPSC:{size}")]
     else:
         if verbose:
             console.log(f"Connection {endpoint_name}, MPMC Queue")
-        the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, service_type="kQueue", data_type="", uri=f"queue://FollyMPMC:{size}")]
+        the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, partition=the_system.partition_name service_type="kQueue", data_type="", uri=f"queue://FollyMPMC:{size}")]
 
-def make_global_connection(the_system, endpoint_name, app_name, host, port, verbose):
+def make_partition_connection(the_system, partition, endpoint_name, app_name, host, port, verbose):
     if verbose:
-        console.log(f"Connection {endpoint_name}, Global")
-    address = "global://" + host + f":{port}"
-    the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetwork", data_type="", uri=address)]
+        console.log(f"Connection {endpoint_name}, Cross-Partition")
+    address = "tcp://" + host + f":{port}"
+    the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetwork", data_type="", uri=address, partition=partition)]
 
 def make_network_connection(the_system, endpoint_name, in_apps, out_apps, topics, verbose):
     if len(topics) == 0:
@@ -227,9 +227,9 @@ def make_network_connection(the_system, endpoint_name, in_apps, out_apps, topics
         the_system.app_connections[endpoint_name] = AppConnection(bind_apps=in_apps, connect_apps=out_apps)
         port = the_system.next_unassigned_port()
         address = f"tcp://{{host_{in_apps[0]}}}:{port}"
-        the_system.connections[in_apps[0]] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetwork", data_type="", uri=address)]
+        the_system.connections[in_apps[0]] += [conn.ConnectionId(uid=endpoint_name, partition=the_system.partition_name, service_type="kNetwork", data_type="", uri=address)]
         for app in set(out_apps):
-            the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetwork", data_type="", uri=address)]
+            the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, partition=the_system.partition_name, service_type="kNetwork", data_type="", uri=address)]
     else:
         if verbose:
             console.log(f"Connection {endpoint_name}, Pub/Sub")
@@ -237,9 +237,9 @@ def make_network_connection(the_system, endpoint_name, in_apps, out_apps, topics
             the_system.app_connections[endpoint_name] = AppConnection(bind_apps=[app], connect_apps=in_apps)
             port = the_system.next_unassigned_port()
             address = f"tcp://{{host_{app}}}:{port}"
-            the_system.connections[app] += [conn.ConnectionId(uid=f"{endpoint_name}.{app}", service_type="kPubSub", data_type="", uri=address, topics=topics)]
+            the_system.connections[app] += [conn.ConnectionId(uid=f"{endpoint_name}.{app}", partition=the_system.partition_name, service_type="kPubSub", data_type="", uri=address, topics=topics)]
             for in_app in set(in_apps):
-                the_system.connections[in_app] += [conn.ConnectionId(uid=f"{endpoint_name}.{app}", service_type="kPubSub", data_type="", uri=address, topics=topics)]
+                the_system.connections[in_app] += [conn.ConnectionId(uid=f"{endpoint_name}.{app}", partition=the_system.partition_name, service_type="kPubSub", data_type="", uri=address, topics=topics)]
 
 def make_system_connections(the_system, verbose=False):
     """Given a system with defined apps and endpoints, create the 
@@ -265,8 +265,8 @@ def make_system_connections(the_system, verbose=False):
       the_system.connections[app] = []
       for queue in the_system.apps[app].modulegraph.queues:
             make_queue_connection(the_system, app, f"{the_system.apps[app].name}.{queue.name}", queue.push_modules, queue.pop_modules, queue.size, verbose)
-      for global_conn in the_system.apps[app].modulegraph.global_connections:
-            make_global_connection(the_system, global_conn.external_name, app, global_conn.host, global_conn.port, verbose)
+      for partition_conn in the_system.apps[app].modulegraph.partition_connections:
+            make_partition_connection(the_system,partition_conn.partition, partition_conn.external_name, app, partition_conn.host, partition_conn.port, verbose)
       for endpoint in the_system.apps[app].modulegraph.endpoints:
         if verbose:
             console.log(f"Adding endpoint {endpoint.external_name}, app {app}, direction {endpoint.direction}")
@@ -311,7 +311,7 @@ def make_system_connections(the_system, verbose=False):
                         for app_endpoint in the_system.apps[in_app].modulegraph.endpoints:
                             if app_endpoint.external_name == endpoint_name:
                                 app_endpoint.external_name = f"{in_app}.{endpoint_name}"
-                        make_queue_connection(the_system, in_app, f"{in_app}.{endpoint_name}", [in_app], [in_app], size, verbose)
+                        make_queue_connection(the_system,in_app, f"{in_app}.{endpoint_name}", [in_app], [in_app], size, verbose)
 
             if paired_exactly == False:
                 make_network_connection(the_system, endpoint_name, in_apps, out_apps, topics, verbose)
@@ -362,13 +362,13 @@ def make_app_command_data(system, app, appkey, verbose=False):
             console.log(f"module, name= {module}, {name}, endpoint.external_name={endpoint.external_name}, endpoint.direction={endpoint.direction}")
         app_connrefs[module] += [conn.ConnectionRef(name=name, uid=endpoint.external_name, dir= "kInput" if endpoint.direction == Direction.IN else "kOutput")]
 
-    for global_conn in app.modulegraph.global_connections:
-        if global_conn.internal_name is None:
+    for partition_conn in app.modulegraph.partition_connections:
+        if partition_conn.internal_name is None:
             continue
-        module, name = global_conn.internal_name.split(".")
+        module, name = partition_conn.internal_name.split(".")
         if verbose:
-            console.log(f"module, name= {module}, {name}, global_conn.external_name={global_conn.external_name}, global_conn.direction={global_conn.direction}")
-        app_connrefs[module] += [conn.ConnectionRef(name=name, uid=global_conn.external_name, dir= "kInput" if global_conn.direction == Direction.IN else "kOutput")]
+            console.log(f"module, name= {module}, {name}, partition_conn.external_name={partition_conn.external_name}, partition_conn.direction={partition_conn.direction}")
+        app_connrefs[module] += [conn.ConnectionRef(name=name, uid=partition_conn.external_name, dir= "kInput" if partition_conn.direction == Direction.IN else "kOutput")]
 
     for queue in app.modulegraph.queues:
         queue_uid = f"{app.name}.{queue.name}"
