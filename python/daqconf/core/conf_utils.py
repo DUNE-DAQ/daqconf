@@ -72,9 +72,10 @@ class Endpoint:
     #     self.external_name = None
     #     self.direction = Direction.IN
 
-class GlobalConnection(Endpoint):
-   def __init__(self, external_name, internal_name, direction, host, port, topic=[]):
+class PartitionConnection(Endpoint):
+   def __init__(self, partition_name, external_name, internal_name, direction, host, port, topic=[]):
         super().__init__(external_name, internal_name, direction, topic)
+        self.partition = partition_name
         self.host = host
         self.port = port
 
@@ -210,12 +211,12 @@ def make_queue_connection(the_system, app, endpoint_name, in_apps, out_apps, siz
     else:
         if verbose:
             console.log(f"Connection {endpoint_name}, MPMC Queue")
-        the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, partition=the_system.partition_name service_type="kQueue", data_type="", uri=f"queue://FollyMPMC:{size}")]
+        the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, partition=the_system.partition_name, service_type="kQueue", data_type="", uri=f"queue://FollyMPMC:{size}")]
 
 def make_partition_connection(the_system, partition, endpoint_name, app_name, host, port, verbose):
     if verbose:
         console.log(f"Connection {endpoint_name}, Cross-Partition")
-    address = "tcp://" + host + f":{port}"
+    address = f"tcp://{host}:{port}"
     the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetwork", data_type="", uri=address, partition=partition)]
 
 def make_network_connection(the_system, endpoint_name, in_apps, out_apps, topics, verbose):
@@ -266,7 +267,7 @@ def make_system_connections(the_system, verbose=False):
       for queue in the_system.apps[app].modulegraph.queues:
             make_queue_connection(the_system, app, f"{the_system.apps[app].name}.{queue.name}", queue.push_modules, queue.pop_modules, queue.size, verbose)
       for partition_conn in the_system.apps[app].modulegraph.partition_connections:
-            make_partition_connection(the_system,partition_conn.partition, partition_conn.external_name, app, partition_conn.host, partition_conn.port, verbose)
+            make_partition_connection(the_system, partition_conn.partition, partition_conn.external_name, app, partition_conn.host, partition_conn.port, verbose)
       for endpoint in the_system.apps[app].modulegraph.endpoints:
         if verbose:
             console.log(f"Adding endpoint {endpoint.external_name}, app {app}, direction {endpoint.direction}")

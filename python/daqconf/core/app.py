@@ -164,7 +164,7 @@ class ModuleGraph:
         self.endpoints += [Endpoint(external_name, internal_name, inout, topic)]
 
     def add_partition_connection(self, partition, external_name, internal_name, inout, host, port, topic=[]):
-        self.partition_connections += [PartitionConnection(external_name, internal_name, inout, host, port, topic)]
+        self.partition_connections += [PartitionConnection(partition, external_name, internal_name, inout, host, port, topic)]
 
     def connect_modules(self, push_addr, pop_addr, queue_name = "", size_hint = 10, toposort = True, verbose=False):
         queue_start = push_addr.split(".")
