@@ -31,6 +31,9 @@ from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Direction, Connection
 
+TC_REGION_ID = 20_000
+TC_ELEMENT_ID = 0
+
 
 #FIXME maybe one day, triggeralgs will define schemas... for now allow a dictionary of 4byte int, 4byte floats, and strings
 moo.otypes.make_type(schema='number', dtype='i4', name='temp_integer', path='temptypes')
@@ -79,12 +82,22 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     import temptypes
 
     modules = []
+
+    region_ids_set = set([ru["region_id"] for ru in RU_CONFIG])
     
     if SOFTWARE_TPG_ENABLED:
         config_tcm =  tcm.Conf(candidate_maker=CANDIDATE_PLUGIN,
                                candidate_maker_config=temptypes.CandidateConf(**CANDIDATE_CONFIG))
         
-        modules += [DAQModule(name = 'tcm',
+        modules += [DAQModule(name = 'tazipper',
+                              plugin = 'TAZipper',
+                              connections = {'output': Connection(f'tcm.input')},
+                              conf = tzip.ConfParams(cardinality=len(region_ids_set),
+                                                     max_latency_ms=10000,
+                                                     region_id=TC_REGION_ID,
+                                                     element_id=TC_ELEMENT_ID)),
+
+                    DAQModule(name = 'tcm',
                               plugin = 'TriggerCandidateMaker',
                               connections = {#'input' : Connection(f'tcm.taset_q'),
                                   'output': Connection(f'mlt.trigger_candidate_source')},
@@ -132,7 +145,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                     
                             DAQModule(name = f'tam_{region_id}',
                                       plugin = 'TriggerActivityMaker',
-                                      connections = {'output': Connection('tcm.input')},
+                                      connections = {'output': Connection('tazipper.input')},
                                       conf = tam.Conf(activity_maker=ACTIVITY_PLUGIN,
                                                       geoid_region=region_id,
                                                       geoid_element=0,  # 2022-02-02 PL: Same comment as above
