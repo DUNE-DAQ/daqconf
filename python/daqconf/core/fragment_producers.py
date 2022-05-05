@@ -104,11 +104,11 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         geoid_to_queue_inst.append(rrcv.geoidinst(region  = geoid.region,
                                                   element = geoid.element,
                                                   system  = geoid.system,
-                                                  queueinstance = queue_inst))
+                                                  connection_uid = queue_inst))
         trb_geoid_to_connection.append(trb.geoidinst(region  = geoid.region,
                                                      element = geoid.element,
                                                      system  = geoid.system,
-                                                     connection_name = request_connection_name))
+                                                     connection_uid = request_connection_name))
         
         # Connect the fragment output queue to the fragment sender
         app.modulegraph.connect_modules(producer.fragments_out, "fragment_sender.input_queue")
@@ -119,8 +119,8 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         console.log(f"Creating request_receiver for {app_name} with geoid_to_queue_inst: {geoid_to_queue_inst}")
     app.modulegraph.add_module("request_receiver",
                                plugin = "RequestReceiver",
-                               conf = rrcv.ConfParams(map = geoid_to_queue_inst,
-                                                      connection_name = request_connection_name))
+                               conf = rrcv.ConfParams(map = geoid_to_queue_inst ))
+
     
     for producer in producers.values():
         # It looks like RequestReceiver wants its endpoint names to
@@ -131,11 +131,12 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         queue_inst = f"data_request_q_for_{geoid_raw_str(producer.geoid)}"
         app.modulegraph.connect_modules(f"request_receiver.data_request_{geoid_raw_str(producer.geoid)}", producer.requests_in, queue_inst)
 
+                               
     # Connect request receiver to TRB output in DF app
     app.modulegraph.add_endpoint(request_connection_name,
-                                 internal_name = None, # Request receiver uses nwmgr, so no internal endpoint to connect to
+                                 internal_name = None, 
                                  inout = Direction.IN)
-
+                               
     df_apps = [ (name,app) for (name,app) in the_system.apps.items() if name.startswith("dataflow") ]
     # Connect fragment sender output to TRB in DF app (via FragmentReceiver)
     fragment_endpoint_name = "{app_name}.fragments"
@@ -147,11 +148,11 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         if df_mgraph.get_module("fragment_receiver") is None:
             df_mgraph.add_module("fragment_receiver",
                                  plugin = "FragmentReceiver",
-                                 conf = frcv.ConfParams(connection_name=fragment_connection_name))
+                                 conf = frcv.ConfParams())
             df_mgraph.connect_modules("fragment_receiver.output", "trb.data_fragment_all")
-            df_mgraph.add_endpoint(fragment_connection_name, None,    Direction.IN)
+            df_mgraph.add_endpoint(fragment_connection_name, "fragment_receiver.input", Direction.IN)
             
-        df_mgraph.add_endpoint(request_connection_name, None, Direction.OUT)
+        df_mgraph.add_endpoint(request_connection_name, f"trb.request_output_{app_name}", Direction.OUT)
 
         # Add the new geoid-to-connections map to the
         # TriggerRecordBuilder.
@@ -160,7 +161,7 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         df_mgraph.reset_module_conf("trb", trb.ConfParams(general_queue_timeout=old_trb_conf.general_queue_timeout,
                                                           reply_connection_name = fragment_connection_name,
                                                           max_time_window = old_trb_conf.max_time_window,
-                                                          mon_connection_name=old_trb_conf.mon_connection_name,
+                                                          #mon_connection_name=old_trb_conf.mon_connection_name,
                                                           map=trb.mapgeoidconnections(new_trb_map)))
 
 def connect_all_fragment_producers(the_system, dataflow_name="dataflow", verbose=False):

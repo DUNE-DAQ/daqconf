@@ -55,7 +55,7 @@ def get_dataflow_app(HOSTIDX=0,
                      MAX_FILE_SIZE=4*1024*1024*1024,
                      MAX_TRIGGER_RECORD_WINDOW=0,
                      HOST="localhost",
-                     HAS_DQM,
+                     HAS_DQM=False,
                      DEBUG=False):
 
     """Generate the json configuration for the readout and DF process"""
@@ -71,7 +71,6 @@ def get_dataflow_app(HOSTIDX=0,
                 DAQModule(name = 'datawriter',
                        plugin = 'DataWriter',
                        conf = dw.ConfParams(decision_connection=f"trigger_decisions_{HOSTIDX}",
-                           token_connection=PARTITION+".triginh",
                            data_store_parameters=hdf5ds.ConfParams(
                                name="data_store",
                                operational_environment = OPERATIONAL_ENVIRONMENT,
@@ -102,6 +101,7 @@ def get_dataflow_app(HOSTIDX=0,
 
     mgraph.connect_modules("trb.trigger_record_output", "datawriter.trigger_record_input_queue")
     mgraph.add_endpoint(f"trigger_decisions_{HOSTIDX}", "trb.trigger_decision_input", Direction.IN)
+    mgraph.add_endpoint("triginh", "datawriter.token_output", Direction.OUT)
     if HAS_DQM:
         mgraph.add_endpoint(f"trmon_dqm2df_{HOSTIDX}", "trb.mon_connection", Direction.IN)
 

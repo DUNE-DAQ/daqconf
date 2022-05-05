@@ -429,6 +429,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
             MAX_FILE_SIZE = max_file_size,
             MAX_TRIGGER_RECORD_WINDOW = max_trigger_record_window,
             HOST=host,
+            HAS_DQM=enable_dqm,
             DEBUG=debug
         )
         if enable_dqm:
