@@ -52,7 +52,7 @@ def get_dfo_app(TOKEN_COUNT: int = 10,
                           conf = dfo.ConfParams(dataflow_applications=df_app_configs))]
     
     mgraph = ModuleGraph(modules)
-    mgraph.add_endpoint("td_mlt_to_dfo", "dfo.td_connection", Direction.IN)
+    mgraph.add_endpoint("td_to_dfo", "dfo.td_connection", Direction.IN)
     mgraph.add_endpoint("triginh", "dfo.tocken_connection", Direction.IN)
     mgraph.add_endpoint("df_busy_signal", "dfo.busy_connection", Direction.OUT)
     for i in range(DF_COUNT):
