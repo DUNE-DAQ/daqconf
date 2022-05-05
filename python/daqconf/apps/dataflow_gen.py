@@ -55,6 +55,7 @@ def get_dataflow_app(HOSTIDX=0,
                      MAX_FILE_SIZE=4*1024*1024*1024,
                      MAX_TRIGGER_RECORD_WINDOW=0,
                      HOST="localhost",
+                     HAS_DQM,
                      DEBUG=False):
 
     """Generate the json configuration for the readout and DF process"""
@@ -66,7 +67,6 @@ def get_dataflow_app(HOSTIDX=0,
                           conf = trb.ConfParams(general_queue_timeout=QUEUE_POP_WAIT_MS,
                                                 reply_connection_name = "",
                                                 max_time_window=MAX_TRIGGER_RECORD_WINDOW,
-                                                mon_connection_name=f"{PARTITION}.trmon_dqm2df_{HOSTIDX}",
                                                 map=trb.mapgeoidconnections([]))), # We patch this up in connect_fragment_producers
                 DAQModule(name = 'datawriter',
                        plugin = 'DataWriter',
@@ -100,10 +100,11 @@ def get_dataflow_app(HOSTIDX=0,
 
     mgraph=ModuleGraph(modules)
 
-    mgraph.connect_modules("trb.trigger_Record_output_queue", "datawriter.trigger_record_input_queue")
+    mgraph.connect_modules("trb.trigger_record_output", "datawriter.trigger_record_input_queue")
+    mgraph.add_endpoint(f"trigger_decisions_{HOSTIDX}", "trb.trigger_decision_input", Direction.IN)
+    if HAS_DQM:
+        mgraph.add_endpoint(f"trmon_dqm2df_{HOSTIDX}", "trb.mon_connection", Direction.IN)
 
-    mgraph.add_endpoint(f"trigger_decisions_{HOSTIDX}", "trb.trigger_decision_input_queue", Direction.IN)
-       
     df_app = App(modulegraph=mgraph, host=HOST)
 
     if DEBUG:
