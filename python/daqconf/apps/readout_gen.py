@@ -126,8 +126,6 @@ def get_readout_app(RU_CONFIG=[],
                                   frame_size = 464,
                                   response_delay = 0,
                                   fragment_type = "FakeData",
-                                  timesync_connection_name = f"timesync_{RUIDX}",
-                                  timesync_topic_name = "Timesync",
                                   ))]
         else:
             if SOFTWARE_TPG_ENABLED:
