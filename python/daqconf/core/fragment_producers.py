@@ -91,7 +91,7 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
     # 2. Connect the relevant RequestReceiver output queue to the request input queue of the fragment producer
     # 3. Connect the fragment output queue of the producer module to the FragmentSender
 
-    request_connection_name = f"{the_system.partition_name}.data_requests_for_{app_name}"
+    request_connection_name = f"data_requests_for_{app_name}"
 
     from daqconf.core.conf_utils import geoid_raw_str, Direction
     
@@ -142,7 +142,7 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
     fragment_endpoint_name = "{app_name}.fragments"
 
     for df_name, df_app in df_apps:
-        fragment_connection_name = f"{the_system.partition_name}.fragments_to_{df_name}"
+        fragment_connection_name = f"fragments_to_{df_name}"
         app.modulegraph.add_endpoint(fragment_connection_name, None, Direction.OUT)
         df_mgraph = df_app.modulegraph
         if df_mgraph.get_module("fragment_receiver") is None:

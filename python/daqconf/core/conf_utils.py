@@ -265,7 +265,7 @@ def make_system_connections(the_system, verbose=False):
     for app in the_system.apps:
       the_system.connections[app] = []
       for queue in the_system.apps[app].modulegraph.queues:
-            make_queue_connection(the_system, app, f"{the_system.apps[app].name}.{queue.name}", queue.push_modules, queue.pop_modules, queue.size, verbose)
+            make_queue_connection(the_system, app, queue.name, queue.push_modules, queue.pop_modules, queue.size, verbose)
       for partition_conn in the_system.apps[app].modulegraph.partition_connections:
             make_partition_connection(the_system, partition_conn.partition, partition_conn.external_name, app, partition_conn.host, partition_conn.port, verbose)
       for endpoint in the_system.apps[app].modulegraph.endpoints:
