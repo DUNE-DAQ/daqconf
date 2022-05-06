@@ -261,7 +261,6 @@ def get_readout_app(RU_CONFIG=[],
         # of topics to connections, and looks up all the
         # connections for a given topic.
         #
-        mgraph.add_endpoint(f"timesync_{idx}", None,    Direction.OUT, ["Timesync"])
         if SOFTWARE_TPG_ENABLED:
             mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{idx}", f"datahandler_{idx}.tpset_out",    Direction.OUT)
             # mgraph.add_endpoint(f"timesync_{idx+RU_CONFIG[RUIDX]['channel_count']}", f"tp_datahandler_{idx}.timesync",    Direction.OUT)
@@ -272,11 +271,13 @@ def get_readout_app(RU_CONFIG=[],
             mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = idx, system = SYSTEM_TYPE,
                                          requests_in   = f"fakedataprod_{idx}.data_request_input_queue",
                                          fragments_out = f"fakedataprod_{idx}.fragment_queue")
+            mgraph.add_endpoint(f"timesync_{idx}", f"fakedataprod_{idx}.timesync_output",    Direction.OUT, ["Timesync"])
         else:
             # Add fragment producers for raw data
             mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = idx, system = SYSTEM_TYPE,
-                                         requests_in   = f"datahandler_{idx}.data_requests_0",
+                                         requests_in   = f"datahandler_{idx}.request_input",
                                          fragments_out = f"datahandler_{idx}.fragment_queue")
+            mgraph.add_endpoint(f"timesync_{idx}", f"datahandler_{idx}.timesync_output",    Direction.OUT, ["Timesync"])
 
             # Add fragment producers for TPC TPs. Make sure the element index doesn't overlap with the ones for raw data
             #
@@ -297,7 +298,7 @@ def get_readout_app(RU_CONFIG=[],
             if SOFTWARE_TPG_ENABLED:
                 assert total_link_count < 1000
                 mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = idx + 1000, system = SYSTEM_TYPE,
-                                             requests_in   = f"tp_datahandler_{idx}.data_requests_0",
+                                             requests_in   = f"tp_datahandler_{idx}.request_input",
                                              fragments_out = f"tp_datahandler_{idx}.fragment_queue")
 
     readout_app = App(mgraph, host=HOST)

@@ -167,7 +167,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     modules += [DAQModule(name = 'mlt',
                           plugin = 'ModuleLevelTrigger',
                           conf=mlt.ConfParams(links=[],  # To be updated later - see comment above
-                                              dfo_connection=f"td_mlt_to_dfo",
+                                              dfo_connection=f"td_to_dfo",
                                               dfo_busy_connection=f"df_busy_signal",
 					      hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH))]
 

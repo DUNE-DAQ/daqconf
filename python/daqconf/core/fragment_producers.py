@@ -134,7 +134,7 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
                                
     # Connect request receiver to TRB output in DF app
     app.modulegraph.add_endpoint(request_connection_name,
-                                 internal_name = None, 
+                                 internal_name = "request_receiver.input", 
                                  inout = Direction.IN)
                                
     df_apps = [ (name,app) for (name,app) in the_system.apps.items() if name.startswith("dataflow") ]
