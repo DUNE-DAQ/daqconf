@@ -53,7 +53,7 @@ def get_dfo_app(TOKEN_COUNT: int = 10,
     
     mgraph = ModuleGraph(modules)
     mgraph.add_endpoint("td_to_dfo", "dfo.td_connection", Direction.IN)
-    mgraph.add_endpoint("triginh", "dfo.tocken_connection", Direction.IN)
+    mgraph.add_endpoint("triginh", "dfo.token_connection", Direction.IN)
     mgraph.add_endpoint("df_busy_signal", "dfo.busy_connection", Direction.OUT)
     for i in range(DF_COUNT):
         mgraph.add_endpoint(f"trigger_decision_{i}", f"dfo.trigger_{i}_connection", Direction.OUT)
