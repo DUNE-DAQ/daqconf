@@ -4,8 +4,7 @@
 # that together form a MiniDAQApp with the same functionality as
 # MiniDAQApp v1, but in two processes.  One process contains the
 # TriggerDecisionEmulator, while the other process contains everything
-# else.  The network communication is done with the QueueToNetwork and
-# NetworkToQueue modules from the nwqueueadapters package.
+# else.
 #
 # As with testapp_noreadout_confgen.py
 # in this directory, no modules from the readout package are used: the

@@ -4,8 +4,7 @@
 # that together form a MiniDAQApp with the same functionality as
 # MiniDAQApp v1, but in two processes. One process contains the
 # TriggerDecisionEmulator, while the other process contains everything
-# else. The network communication is done with the QueueToNetwork and
-# NetworkToQueue modules from the nwqueueadapters package.
+# else.
 #
 # As with testapp_noreadout_confgen.py
 # in this directory, no modules from the readout package are used: the
@@ -28,10 +27,6 @@ moo.otypes.load_types('appfwk/app.jsonnet')
 
 moo.otypes.load_types('timinglibs/hsireadout.jsonnet')
 moo.otypes.load_types('timinglibs/hsicontroller.jsonnet')
-moo.otypes.load_types('nwqueueadapters/queuetonetwork.jsonnet')
-moo.otypes.load_types('nwqueueadapters/networktoqueue.jsonnet')
-moo.otypes.load_types('nwqueueadapters/networkobjectreceiver.jsonnet')
-moo.otypes.load_types('nwqueueadapters/networkobjectsender.jsonnet')
 moo.otypes.load_types('networkmanager/nwmgr.jsonnet')
 
 # Import new types
@@ -41,10 +36,6 @@ import dunedaq.appfwk.cmd as cmd # AddressedCmd,
 import dunedaq.appfwk.app as app # AddressedCmd,
 import dunedaq.timinglibs.hsireadout as hsi
 import dunedaq.timinglibs.hsicontroller as hsic
-import dunedaq.nwqueueadapters.networktoqueue as ntoq
-import dunedaq.nwqueueadapters.queuetonetwork as qton
-import dunedaq.nwqueueadapters.networkobjectreceiver as nor
-import dunedaq.nwqueueadapters.networkobjectsender as nos
 import dunedaq.networkmanager.nwmgr as nwmgr
 
 from appfwk.utils import acmd, mcmd, mrccmd, mspec

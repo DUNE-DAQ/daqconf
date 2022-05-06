@@ -10,10 +10,6 @@ moo.otypes.load_types('rcif/cmd.jsonnet')
 moo.otypes.load_types('appfwk/cmd.jsonnet')
 moo.otypes.load_types('appfwk/app.jsonnet')
 
-moo.otypes.load_types('nwqueueadapters/queuetonetwork.jsonnet')
-moo.otypes.load_types('nwqueueadapters/networktoqueue.jsonnet')
-moo.otypes.load_types('nwqueueadapters/networkobjectreceiver.jsonnet')
-moo.otypes.load_types('nwqueueadapters/networkobjectsender.jsonnet')
 moo.otypes.load_types('flxlibs/felixcardreader.jsonnet')
 moo.otypes.load_types('readoutlibs/sourceemulatorconfig.jsonnet')
 moo.otypes.load_types('readoutlibs/readoutconfig.jsonnet')
@@ -26,10 +22,6 @@ import dunedaq.cmdlib.cmd as basecmd # AddressedCmd,
 import dunedaq.rcif.cmd as rccmd # AddressedCmd,
 import dunedaq.appfwk.cmd as cmd # AddressedCmd,
 import dunedaq.appfwk.app as app # AddressedCmd,
-import dunedaq.nwqueueadapters.networktoqueue as ntoq
-import dunedaq.nwqueueadapters.queuetonetwork as qton
-import dunedaq.nwqueueadapters.networkobjectreceiver as nor
-import dunedaq.nwqueueadapters.networkobjectsender as nos
 import dunedaq.readoutlibs.sourceemulatorconfig as sec
 import dunedaq.flxlibs.felixcardreader as flxcr
 import dunedaq.readoutlibs.readoutconfig as rconf
