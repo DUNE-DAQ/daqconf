@@ -54,6 +54,8 @@ def get_thi_app(GATHER_INTERVAL=1e6,
                 HSI_DEVICE_NAME="",
                 CONNECTIONS_FILE="${TIMING_SHARE}/config/etc/connections.xml",
                 UHAL_LOG_LEVEL="notice",
+                TIMING_PARTITION="UNKNOWN",
+                TIMING_PORT=12345,
                 HOST="localhost",
                 DEBUG=False):
     
@@ -71,10 +73,9 @@ def get_thi_app(GATHER_INTERVAL=1e6,
                                                        uhal_log_level=UHAL_LOG_LEVEL)),
                 ]                
         
-
     mgraph = ModuleGraph(modules)
-    mgraph.add_endpoint("timing_cmds", "thi.timing_cmds_queue", Direction.IN)
-    
+    mgraph.add_partition_connection(TIMING_PARTITION, "timing_cmds", "thi.timing_cmds_in", Direction.IN, HOST, TIMING_PORT)
+
     thi_app = App(modulegraph=mgraph, host=HOST, name="THIApp")
     
     if DEBUG:

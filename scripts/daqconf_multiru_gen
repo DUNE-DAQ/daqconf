@@ -30,9 +30,9 @@ import moo.otypes
 import click
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.option('-g', '--global-partition-name', default="global", help="Name of the global partition to use, for ERS and OPMON and timing commands")
-@click.option('--host-global', default='np04-srv-012.cern.ch', help='Host to run the (global) timing hardware interface app on')
-@click.option('--port-global', default=12345, help='Port to host running the (global) timing hardware interface app on')
+@click.option('--timing-partition-name', default="timing", help="Name of the global partition to use, for ERS and OPMON and timing commands")
+@click.option('--host-timing', default='np04-srv-012.cern.ch', help='Host to run the (global) timing hardware interface app on')
+@click.option('--port-timing', default=12345, help='Port to host running the (global) timing hardware interface app on')
 @click.option('-p', '--partition-name', default="${USER}_test", help="Name of the partition to use, for ERS and OPMON")
 @click.option('-n', '--number-of-data-producers', default=2, help="Number of links to use for each readout application")
 @click.option('-e', '--emulator-mode', is_flag=True, help="If active, timestamps of data frames are overwritten when processed by the readout. This is necessary if the felix card does not set correct timestamps.")
@@ -118,7 +118,7 @@ import click
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
 
-def cli(global_partition_name, host_global, port_global, partition_name, number_of_data_producers, emulator_mode, data_rate_slowdown_factor, run_number, clock_speed_hz, trigger_rate_hz, trigger_window_before_ticks, trigger_window_after_ticks,
+def cli(timing_partition_name, host_timing, port_timing, partition_name, number_of_data_producers, emulator_mode, data_rate_slowdown_factor, run_number, clock_speed_hz, trigger_rate_hz, trigger_window_before_ticks, trigger_window_after_ticks,
         thread_pinning_file,
         token_count, data_file, output_path, disable_trace, use_felix, use_ssp, host_df, host_dfo, host_ru, host_trigger, host_hsi, host_tpw, host_tprtc, region_id, latency_buffer_size,
         hsi_hw_connections_file, hsi_device_name, hsi_readout_period, control_hsi_hw, hsi_endpoint_address, hsi_endpoint_partition, hsi_re_mask, hsi_fe_mask, hsi_inv_mask, hsi_source,
@@ -155,7 +155,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
 
     console.log(f"Generating configs for hosts trigger={host_trigger} DFO={host_dfo} dataflow={host_df} readout={host_ru} hsi={host_hsi} dqm={host_ru}")
 
-    the_system = System(partition_name, first_port=port_global)
+    the_system = System(partition_name, first_port=port_timing)
    
     total_number_of_data_producers = 0
 
@@ -271,9 +271,9 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
             HSI_INV_MASK=hsi_inv_mask,
             HSI_SOURCE=hsi_source,
             PARTITION=partition_name,
-            GLOBAL_PARTITION=global_partition_name,
-            TIMING_HOST=host_global,
-            TIMING_PORT=port_global,
+            TIMING_PARTITION=timing_partition_name,
+            TIMING_HOST=host_timing,
+            TIMING_PORT=port_timing,
             HOST=host_hsi,
             DEBUG=debug)
     else:
@@ -296,14 +296,14 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     if control_timing_partition:
         the_system.apps["tprtc"] = get_tprtc_app(
             MASTER_DEVICE_NAME=timing_partition_master_device_name,
-            TIMING_PARTITION=timing_partition_id,
+            TIMING_PARTITION_ID=timing_partition_id,
             TRIGGER_MASK=timing_partition_trigger_mask,
             RATE_CONTROL_ENABLED=timing_partition_rate_control_enabled,
             SPILL_GATE_ENABLED=timing_partition_spill_gate_enabled,
             PARTITION=partition_name,
-            GLOBAL_PARTITION=global_partition_name,
-            TIMING_HOST=host_global,
-            TIMING_PORT=port_global,
+            TIMING_PARTITION=timing_partition_name,
+            TIMING_HOST=host_timing,
+            TIMING_PORT=port_timing,
             HOST=host_tprtc,
             DEBUG=debug)
 
