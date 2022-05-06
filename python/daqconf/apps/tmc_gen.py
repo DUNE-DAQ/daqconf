@@ -48,7 +48,7 @@ import dunedaq.networkmanager.nwmgr as nwmgr
 from appfwk.utils import acmd, mcmd, mrccmd, mspec
 from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
-from daqconf.core.conf_utils import Direction, Connection
+from daqconf.core.conf_utils import Direction
 
 #===============================================================================
 def get_tmc_app(MASTER_DEVICE_NAME="",
@@ -56,6 +56,9 @@ def get_tmc_app(MASTER_DEVICE_NAME="",
                 MASTER_CLOCK_FILE="",
                 MASTER_CLOCK_MODE=-1,
                 HOST="localhost",
+                TIMING_PARTITION="UNKNOWN",
+                TIMING_HOST="np04-srv-012.cern.ch",
+                TIMING_PORT=12345,
                 DEBUG=False):
     
     modules = {}
@@ -72,8 +75,8 @@ def get_tmc_app(MASTER_DEVICE_NAME="",
 
     mgraph = ModuleGraph(modules)
     
-    mgraph.add_endpoint("timing_cmds", "tmc.hardware_commands_out", Direction.OUT)
-    
+    mgraph.add_partition_connection(TIMING_PARTITION, "timing_cmds", "tmc.hardware_commands_out", Direction.OUT, TIMING_HOST, TIMING_PORT)
+
     tmc_app = App(modulegraph=mgraph, host=HOST, name="TMCApp")
     
     if DEBUG:
