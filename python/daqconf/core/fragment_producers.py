@@ -82,9 +82,9 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
     
     # Create fragment sender. We can do this before looping over the
     # producers because it doesn't need any settings from them
-    app.modulegraph.add_module("fragment_sender",
-                               plugin = "FragmentSender",
-                               conf = None)
+#    app.modulegraph.add_module("fragment_sender",
+#                               plugin = "FragmentSender",
+#                               conf = None)
 
     # For each producer, we:
     # 1. Add it to the GeoID -> queue name map that is used in RequestReceiver
@@ -111,7 +111,7 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
                                                      connection_uid = request_connection_name))
         
         # Connect the fragment output queue to the fragment sender
-        app.modulegraph.connect_modules(producer.fragments_out, "fragment_sender.input_queue")
+#        app.modulegraph.connect_modules(producer.fragments_out, "fragment_sender.input_queue")
         
     # Create request receiver
 
