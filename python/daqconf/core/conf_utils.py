@@ -372,7 +372,7 @@ def make_app_command_data(system, app, appkey, verbose=False):
         app_connrefs[module] += [conn.ConnectionRef(name=name, uid=partition_conn.external_name, dir= "kInput" if partition_conn.direction == Direction.IN else "kOutput")]
 
     for queue in app.modulegraph.queues:
-        queue_uid = f"{app.name}.{queue.name}"
+        queue_uid = queue.name
         for push_mod in queue.push_modules:
             module, name = push_mod.split(".", maxsplit=1)
             app_connrefs[module] += [conn.ConnectionRef(name=name, uid=queue_uid, dir="kOutput")]
