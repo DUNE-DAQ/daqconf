@@ -274,10 +274,10 @@ def make_system_connections(the_system, verbose=False):
         in_apps = []
         out_apps = []
         size = 0
-        topics = {}
+        topics = []
         for endpoint in endpoints:
             direction = endpoint['endpoint'].direction
-            topics.update(endpoint['endpoint'].topic)
+            topics += endpoint['endpoint'].topic
             if direction == Direction.IN: 
                 in_apps += [endpoint["app"]]
             else: 
@@ -285,6 +285,10 @@ def make_system_connections(the_system, verbose=False):
             if endpoint['endpoint'].size_hint > size:
                 size = endpoint['endpoint'].size_hint
 
+        if len(topics) > 0:
+            make_network_connection(the_system, endpoint_name, in_apps, out_apps, topics, verbose)
+            continue
+            
         if len(in_apps) == 0:
             raise ValueError(f"Connection with name {endpoint_name} has no consumers!")
         if len(out_apps) == 0:

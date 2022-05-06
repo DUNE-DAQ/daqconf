@@ -80,6 +80,7 @@ def get_fake_hsi_app(RUN_NUMBER=333,
     #
     # mgraph.add_endpoint("time_sync", None, Direction.IN)
     mgraph.add_endpoint("hsievents", None, Direction.OUT)
+    mgraph.add_endpoint("timesyncs", None, Direction.IN, ["Timesync"])
     fake_hsi_app = App(modulegraph=mgraph, host=HOST, name="FakeHSIApp")
     
     if DEBUG:

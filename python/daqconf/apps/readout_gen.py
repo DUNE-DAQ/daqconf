@@ -66,7 +66,7 @@ def get_readout_app(RU_CONFIG=[],
     NUMBER_OF_DATA_PRODUCERS = len(RU_CONFIG)
     cmd_data = {}
     
-    required_eps = {f'{PARTITION}.timesync_{RUIDX}'}
+    required_eps = {f'timesync_{RUIDX}'}
     # if not required_eps.issubset([nw.name for nw in NW_SPECS]):
     #     raise RuntimeError(f"ERROR: not all the required endpoints ({', '.join(required_eps)}) found in list of endpoints {' '.join([nw.name for nw in NW_SPECS])}")
     
@@ -126,7 +126,7 @@ def get_readout_app(RU_CONFIG=[],
                                   frame_size = 464,
                                   response_delay = 0,
                                   fragment_type = "FakeData",
-                                  timesync_connection_name = f"{PARTITION}.timesync_{RUIDX}",
+                                  timesync_connection_name = f"timesync_{RUIDX}",
                                   timesync_topic_name = "Timesync",
                                   ))]
         else:
@@ -144,7 +144,7 @@ def get_readout_app(RU_CONFIG=[],
                                           # fake_trigger_flag=0, # default
                                           region_id = RU_CONFIG[RUIDX]["region_id"],
                                           element_id = idx,
-                                          timesync_connection_name = f"{PARTITION}.timesync_{RUIDX}",
+                                          timesync_connection_name = f"timesync_{RUIDX}",
                                           timesync_topic_name = "Timesync",
                                       ),
                                       latencybufferconf= rconf.LatencyBufferConf(
@@ -261,7 +261,7 @@ def get_readout_app(RU_CONFIG=[],
         # of topics to connections, and looks up all the
         # connections for a given topic.
         #
-        # mgraph.add_endpoint(f"timesync_{idx}", f"datahandler_{idx}.timesync",    Direction.OUT)
+        mgraph.add_endpoint(f"timesync_{idx}", None,    Direction.OUT, ["Timesync"])
         if SOFTWARE_TPG_ENABLED:
             mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{idx}", f"datahandler_{idx}.tpset_out",    Direction.OUT)
             # mgraph.add_endpoint(f"timesync_{idx+RU_CONFIG[RUIDX]['channel_count']}", f"tp_datahandler_{idx}.timesync",    Direction.OUT)
