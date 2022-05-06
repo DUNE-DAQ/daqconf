@@ -213,28 +213,18 @@ def make_partition_connection(the_system, partition, endpoint_name, app_name, ho
     address = f"tcp://{host}:{port}"
     the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetwork", data_type="", uri=address, partition=partition)]
 
-def make_network_connection(the_system, endpoint_name, in_apps, out_apps, topics, verbose):
-    if len(topics) == 0:
-        if verbose:
-            console.log(f"Connection {endpoint_name}, Network")
-        if len(in_apps) > 1:
-            raise ValueError(f"Connection with name {endpoint_name} has multiple receivers, which is unsupported for a network connection!")
-        the_system.app_connections[endpoint_name] = AppConnection(bind_apps=in_apps, connect_apps=out_apps)
-        port = the_system.next_unassigned_port()
-        address = f"tcp://{{host_{in_apps[0]}}}:{port}"
-        the_system.connections[in_apps[0]] += [conn.ConnectionId(uid=endpoint_name, partition=the_system.partition_name, service_type="kNetwork", data_type="", uri=address)]
-        for app in set(out_apps):
-            the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, partition=the_system.partition_name, service_type="kNetwork", data_type="", uri=address)]
-    else:
-        if verbose:
-            console.log(f"Connection {endpoint_name}, Pub/Sub")
-        for app in set(out_apps):
-            the_system.app_connections[endpoint_name] = AppConnection(bind_apps=[app], connect_apps=in_apps)
-            port = the_system.next_unassigned_port()
-            address = f"tcp://{{host_{app}}}:{port}"
-            the_system.connections[app] += [conn.ConnectionId(uid=f"{endpoint_name}.{app}", partition=the_system.partition_name, service_type="kPubSub", data_type="", uri=address, topics=topics)]
-            for in_app in set(in_apps):
-                the_system.connections[in_app] += [conn.ConnectionId(uid=f"{endpoint_name}.{app}", partition=the_system.partition_name, service_type="kPubSub", data_type="", uri=address, topics=topics)]
+def make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbose):
+    if verbose:
+        console.log(f"Connection {endpoint_name}, Network")
+    if len(in_apps) > 1:
+        raise ValueError(f"Connection with name {endpoint_name} has multiple receivers, which is unsupported for a network connection!")
+    the_system.app_connections[endpoint_name] = AppConnection(bind_apps=in_apps, connect_apps=out_apps)
+    
+    port = the_system.next_unassigned_port()
+    address = f'tcp://{{host_{in_apps[0]}}}:{port}'
+    the_system.connections[in_apps[0]] += [conn.ConnectionId(uid=endpoint_name, partition=the_system.partition_name, service_type="kNetwork", data_type="", uri=address)]
+    for app in set(out_apps):
+        the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, partition=the_system.partition_name, service_type="kNetwork", data_type="", uri=address)]
 
 def make_system_connections(the_system, verbose=False):
     """Given a system with defined apps and endpoints, create the 
@@ -255,6 +245,7 @@ def make_system_connections(the_system, verbose=False):
     """
 
     endpoint_map = defaultdict(list)
+    topic_map = defaultdict(list)
 
     for app in the_system.apps:
       the_system.connections[app] = []
@@ -263,9 +254,15 @@ def make_system_connections(the_system, verbose=False):
       for partition_conn in the_system.apps[app].modulegraph.partition_connections:
             make_partition_connection(the_system, partition_conn.partition, partition_conn.external_name, app, partition_conn.host, partition_conn.port, verbose)
       for endpoint in the_system.apps[app].modulegraph.endpoints:
-        if verbose:
-            console.log(f"Adding endpoint {endpoint.external_name}, app {app}, direction {endpoint.direction}")
-        endpoint_map[endpoint.external_name] += [{"app": app, "endpoint": endpoint}]
+        if len(endpoint.topic) == 0:
+            if verbose:
+                console.log(f"Adding endpoint {endpoint.external_name}, app {app}, direction {endpoint.direction}")
+            endpoint_map[endpoint.external_name] += [{"app": app, "endpoint": endpoint}]
+        else:
+            if verbose:
+                console.log(f"Getting topics for endpoint {endpoint.external_name}, app {app}, direction {endpoint.direction}")
+            for topic in endpoint.topic:
+                topic_map[topic] += [{"app": app, "endpoint": endpoint}]
 
     for endpoint_name,endpoints in endpoint_map.items():
         if verbose:
@@ -274,20 +271,14 @@ def make_system_connections(the_system, verbose=False):
         in_apps = []
         out_apps = []
         size = 0
-        topics = []
         for endpoint in endpoints:
             direction = endpoint['endpoint'].direction
-            topics += endpoint['endpoint'].topic
             if direction == Direction.IN: 
                 in_apps += [endpoint["app"]]
             else: 
                 out_apps += [endpoint["app"]]
             if endpoint['endpoint'].size_hint > size:
                 size = endpoint['endpoint'].size_hint
-
-        if len(topics) > 0:
-            make_network_connection(the_system, endpoint_name, in_apps, out_apps, topics, verbose)
-            continue
             
         if len(in_apps) == 0:
             raise ValueError(f"Connection with name {endpoint_name} has no consumers!")
@@ -313,10 +304,43 @@ def make_system_connections(the_system, verbose=False):
                         make_queue_connection(the_system,in_app, f"{in_app}.{endpoint_name}", [in_app], [in_app], size, verbose)
 
             if paired_exactly == False:
-                make_network_connection(the_system, endpoint_name, in_apps, out_apps, topics, verbose)
+                make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbose)
 
         else:
-            make_network_connection(the_system, endpoint_name, in_apps, out_apps, topics, verbose)
+            make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbose)
+
+    pubsub_connectionids = {}
+    for topic, endpoints in topic_map.items():
+        if verbose:
+            console.log(f"Processing {topic} with defined endpoints {endpoints}")
+
+        publishers = []
+        subscribers = [] # Only really care about the topics from here
+        topic_connectionids = []
+
+        for endpoint in endpoints:
+            direction = endpoint['endpoint'].direction
+            if direction == Direction.IN: 
+                subscribers += [endpoint["app"]]
+            else: 
+                publishers += [endpoint["app"]]
+                if endpoint['endpoint'].external_name not in pubsub_connectionids:
+                    port = the_system.next_unassigned_port()
+                    address = f'tcp://{{host_{endpoint["app"]}}}:{port}'
+                    pubsub_connectionids[endpoint['endpoint'].external_name] = conn.ConnectionId(uid=endpoint['endpoint'].external_name, partition=the_system.partition_name, service_type="kPubSub", data_type="", uri=address, topics=endpoint['endpoint'].topic)
+                    the_system.connections[endpoint['app']] += [pubsub_connectionids[endpoint['endpoint'].external_name]]
+                topic_connectionids += [pubsub_connectionids[endpoint['endpoint'].external_name]]
+
+        if len(subscribers) == 0:
+            raise ValueError(f"Topiic {topic} has no subscribers!")
+        if len(publishers) == 0:
+            raise ValueError(f"Topic {topic} has no publishers!")
+
+        the_system.app_connections[topic] = AppConnection(bind_apps=publishers, connect_apps=subscribers)
+        for subscriber in subscribers:
+            temp_list = the_system.connections[subscriber] + topic_connectionids
+            the_system.connections[subscriber] = list(set(temp_list))
+        
         
          
 

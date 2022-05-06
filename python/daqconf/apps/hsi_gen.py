@@ -107,7 +107,7 @@ def get_hsi_app(RUN_NUMBER = 333,
         mgraph.add_partition_connection(TIMING_PARTITION, "timing_cmds", "hsic.hardware_commands_out", Direction.OUT, TIMING_HOST, TIMING_PORT)
     
     mgraph.add_endpoint("hsievents", None,     Direction.OUT)
-    mgraph.add_endpoint("timesyncs", None, Direction.IN, ["Timesync"])
+    mgraph.add_endpoint(None, None, Direction.IN, ["Timesync"])
     
     hsi_app = App(modulegraph=mgraph, host=HOST, name="HSIApp")
     
