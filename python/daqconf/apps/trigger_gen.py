@@ -87,12 +87,21 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     import temptypes
 
     modules = []
-    
+
+    region_ids1 = set([ru["region_id"] for ru in RU_CONFIG])
+
     if SOFTWARE_TPG_ENABLED:
-        config_tcm =  tcm.Conf(candidate_maker=CANDIDATE_PLUGIN,
+        config_tcm = tcm.Conf(candidate_maker=CANDIDATE_PLUGIN,
                                candidate_maker_config=temptypes.CandidateConf(**CANDIDATE_CONFIG))
         
-        modules += [DAQModule(name = 'tcm',
+        modules += [DAQModule(name = 'tazipper',
+                              plugin = 'TAZipper',
+                              connections = {'output': Connection(f'tcm.input')},
+                              conf = tzip.ConfParams(cardinality=len(region_ids1),
+                                                     max_latency_ms=10000,
+                                                     region_id=TC_REGION_ID,
+                                                     element_id=TC_ELEMENT_ID)),
+                    DAQModule(name = 'tcm',
                               plugin = 'TriggerCandidateMaker',
                               connections = {},
                                   # 'output': Connection(f'mlt.trigger_candidate_source')},
@@ -197,7 +206,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                                   # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                                                   stream_buffer_size = 8388608,
                                                                                                                   enable_raw_recording = False)))]
-
+        assert(region_ids == region_ids1)
     modules += [DAQModule(name = 'ttcm',
                           plugin = 'TimingTriggerCandidateMaker',
                           connections={} if SOFTWARE_TPG_ENABLED else {"output": Connection("mlt.trigger_candidate_source")},
@@ -248,7 +257,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                          requests_in=f"{buf_name}.data_request_source",
                                          fragments_out=f"{buf_name}.fragment_sink")
             mgraph.add_endpoint(f"tasets_from_maker_region_{region_id}",  f"tam_{region_id}.output",  Direction.OUT)
-            mgraph.add_endpoint(f"tasets_into_chain_region_{region_id}",  f"tcm.input",               Direction.IN)
+            mgraph.add_endpoint(f"tasets_into_chain_region_{region_id}",  f"tazipper.input",          Direction.IN)
             mgraph.add_endpoint(f"tasets_into_buffer_region_{region_id}", f"{buf_name}.taset_source", Direction.IN)
 
         mgraph.add_endpoint(f"tcs_from_chain",  "tcm.output",                   Direction.OUT)
