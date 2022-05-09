@@ -87,7 +87,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                               plugin = 'TriggerCandidateMaker',
                               conf = config_tcm)]
 
-        queues += [Queue("tcm.output", "mlt.trigger_candidate_source")]
+        queues += [Queue("tcm.output", "mlt.trigger_candidate_source", "trigger_candidates")]
 
 
         # Make one heartbeatmaker per link
@@ -155,7 +155,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                        time_after=TRIGGER_WINDOW_AFTER_TICKS),
                                          hsievent_connection_name = "hsievents",
 					 hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH))]
-    queues += [Queue("ttcm.output", "mlt.trigger_candidate_source")]
+    queues += [Queue("ttcm.output", "mlt.trigger_candidate_source",  "trigger_candidates")]
     
     # We need to populate the list of links based on the fragment
     # producers available in the system. This is a bit of a
