@@ -62,7 +62,7 @@ def get_dataflow_app(HOSTIDX=0,
                                                 map=trb.mapgeoidconnections([]))), # We patch this up in connect_fragment_producers
                 DAQModule(name = 'datawriter',
                        plugin = 'DataWriter',
-                       conf = dw.ConfParams(decision_connection=f"trigger_decisions_{HOSTIDX}",
+                       conf = dw.ConfParams(decision_connection=f"trigger_decision_{HOSTIDX}",
                            data_store_parameters=hdf5ds.ConfParams(
                                name="data_store",
                                operational_environment = OPERATIONAL_ENVIRONMENT,
