@@ -91,7 +91,7 @@ def get_dataflow_app(HOSTIDX=0,
 
     mgraph=ModuleGraph(modules)
 
-    mgraph.connect_modules("trb.trigger_record_output", "datawriter.trigger_record_input")
+    mgraph.connect_modules("trb.trigger_record_output", "datawriter.trigger_record_input", "trigger_records")
     mgraph.add_endpoint(f"trigger_decision_{HOSTIDX}", "trb.trigger_decision_input", Direction.IN)
     mgraph.add_endpoint("triginh", "datawriter.token_output", Direction.OUT)
     if HAS_DQM:

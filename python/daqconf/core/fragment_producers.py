@@ -149,7 +149,7 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
             df_mgraph.add_module("fragment_receiver",
                                  plugin = "FragmentReceiver",
                                  conf = frcv.ConfParams())
-            df_mgraph.connect_modules("fragment_receiver.output", "trb.data_fragment_all")
+            df_mgraph.connect_modules("fragment_receiver.output", "trb.data_fragment_all", "fragments")
             df_mgraph.add_endpoint(fragment_connection_name, "fragment_receiver.input", Direction.IN)
             
         df_mgraph.add_endpoint(request_connection_name, f"trb.request_output_{app_name}", Direction.OUT)
