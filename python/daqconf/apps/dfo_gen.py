@@ -13,7 +13,7 @@ import dunedaq.dfmodules.datafloworchestrator as dfo
 
 from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
-from daqconf.core.conf_utils import Direction, Connection
+from daqconf.core.conf_utils import Direction
 
 
 #FIXME maybe one day, triggeralgs will define schemas... for now allow a dictionary of 4byte int, 4byte floats, and strings
@@ -44,25 +44,19 @@ def get_dfo_app(TOKEN_COUNT: int = 10,
     
     modules = []
     
-    df_app_configs = [dfo.app_config(decision_connection=f"{PARTITION}.trigdec_{dfidx}", 
+    df_app_configs = [dfo.app_config(connection_uid=f"trigger_decision_{dfidx}", 
                                      thresholds=dfo.busy_thresholds(free=max(1, int(TOKEN_COUNT/2)),
                                                                              busy=TOKEN_COUNT)) for dfidx in range(DF_COUNT)]
     modules += [DAQModule(name = "dfo",
                           plugin = "DataFlowOrchestrator",
-                          conf = dfo.ConfParams(token_connection = PARTITION+".triginh",
-                                                busy_connection = PARTITION+".df_busy_signal",
-                                                td_connection = PARTITION+".td_mlt_to_dfo",
-                                                dataflow_applications=df_app_configs))]
+                          conf = dfo.ConfParams(dataflow_applications=df_app_configs))]
     
     mgraph = ModuleGraph(modules)
-    mgraph.add_endpoint("td_to_dfo", None, Direction.IN)
-    mgraph.add_endpoint("df_busy_signal", None, Direction.OUT)
+    mgraph.add_endpoint("td_to_dfo", "dfo.td_connection", Direction.IN)
+    mgraph.add_endpoint("triginh", "dfo.token_connection", Direction.IN)
+    mgraph.add_endpoint("df_busy_signal", "dfo.busy_connection", Direction.OUT)
     for i in range(DF_COUNT):
-        # We have an outgoing endpoint for trigger decisions, but the
-        # TDs come directly from the DFO to a nwmgr connection, so the
-        # queue we connect to is None
-        mgraph.add_endpoint(f"trigger_decisions{i}", None, Direction.OUT)
-        # mgraph.add_endpoint("tokens", "mlt.token_source", Direction.IN)
+        mgraph.add_endpoint(f"trigger_decision_{i}", f"dfo.trigger_{i}_connection", Direction.OUT)
 
     dfo_app = App(modulegraph=mgraph, host=HOST, name='DFOApp')
     

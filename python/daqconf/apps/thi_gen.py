@@ -4,8 +4,7 @@
 # that together form a MiniDAQApp with the same functionality as
 # MiniDAQApp v1, but in two processes.  One process contains the
 # TriggerDecisionEmulator, while the other process contains everything
-# else.  The network communication is done with the QueueToNetwork and
-# NetworkToQueue modules from the nwqueueadapters package.
+# else.
 #
 # As with testapp_noreadout_confgen.py
 # in this directory, no modules from the readout package are used: the
@@ -24,10 +23,6 @@ moo.otypes.load_types('appfwk/cmd.jsonnet')
 moo.otypes.load_types('appfwk/app.jsonnet')
 
 moo.otypes.load_types('timinglibs/timinghardwaremanagerpdi.jsonnet')
-moo.otypes.load_types('nwqueueadapters/queuetonetwork.jsonnet')
-moo.otypes.load_types('nwqueueadapters/networktoqueue.jsonnet')
-moo.otypes.load_types('nwqueueadapters/networkobjectreceiver.jsonnet')
-moo.otypes.load_types('nwqueueadapters/networkobjectsender.jsonnet')
 moo.otypes.load_types('networkmanager/nwmgr.jsonnet')
 
 # Import new types
@@ -36,16 +31,12 @@ import dunedaq.rcif.cmd as rccmd # AddressedCmd,
 import dunedaq.appfwk.cmd as cmd # AddressedCmd,
 import dunedaq.appfwk.app as app # AddressedCmd,
 import dunedaq.timinglibs.timinghardwaremanagerpdi as thi
-import dunedaq.nwqueueadapters.networktoqueue as ntoq
-import dunedaq.nwqueueadapters.queuetonetwork as qton
-import dunedaq.nwqueueadapters.networkobjectreceiver as nor
-import dunedaq.nwqueueadapters.networkobjectsender as nos
 import dunedaq.networkmanager.nwmgr as nwmgr
 
 from appfwk.utils import acmd, mcmd, mrccmd, mspec
 from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
-from daqconf.core.conf_utils import Direction, Connection
+from daqconf.core.conf_utils import Direction
 
 #===============================================================================
 def get_thi_app(GATHER_INTERVAL=1e6,
@@ -54,6 +45,8 @@ def get_thi_app(GATHER_INTERVAL=1e6,
                 HSI_DEVICE_NAME="",
                 CONNECTIONS_FILE="${TIMING_SHARE}/config/etc/connections.xml",
                 UHAL_LOG_LEVEL="notice",
+                TIMING_PARTITION="UNKNOWN",
+                TIMING_PORT=12345,
                 HOST="localhost",
                 DEBUG=False):
     
@@ -71,10 +64,9 @@ def get_thi_app(GATHER_INTERVAL=1e6,
                                                        uhal_log_level=UHAL_LOG_LEVEL)),
                 ]                
         
-
     mgraph = ModuleGraph(modules)
-    mgraph.add_endpoint("timing_cmds", "thi.timing_cmds_queue", Direction.IN)
-    
+    mgraph.add_partition_connection(TIMING_PARTITION, "timing_cmds", "thi.timing_cmds_in", Direction.IN, HOST, TIMING_PORT)
+
     thi_app = App(modulegraph=mgraph, host=HOST, name="THIApp")
     
     if DEBUG:

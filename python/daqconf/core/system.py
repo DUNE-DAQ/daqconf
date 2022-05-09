@@ -17,12 +17,12 @@ class System:
     The same is true for application start order.
     """
 
-    def __init__(self, partition_name, apps=None, app_connections=None, network_endpoints=None, app_start_order=None,
+    def __init__(self, partition_name, apps=None, connections=None, app_connections=None, app_start_order=None,
                  first_port=12345):
         self.partition_name = partition_name
         self.apps=apps if apps else dict()
+        self.connections = connections if connections else dict()
         self.app_connections = app_connections if app_connections else dict()
-        self.network_endpoints = network_endpoints if network_endpoints else []
         self.app_start_order = app_start_order
         self._next_port = first_port
         self.digraph = None
@@ -30,8 +30,8 @@ class System:
     def __rich_repr__(self):
         yield "partition_name", self.partition_name
         yield "apps", self.apps
+        yield "connections", self.connections
         yield "app_connections", self.app_connections
-        yield "network_endpoints", self.network_endpoints
         yield "app_start_order", self.app_start_order
 
     def get_fragment_producers(self):
@@ -54,10 +54,10 @@ class System:
             deps.add_node(app_name)
 
         for from_app_n, from_app in self.apps.items():
-            for from_ep in from_app.modulegraph.endpoints.values():
+            for from_ep in from_app.modulegraph.endpoints:
                 if from_ep.direction == Direction.OUT:
                     for to_app_n, to_app in self.apps.items():
-                        for to_ep in to_app.modulegraph.endpoints.values():
+                        for to_ep in to_app.modulegraph.endpoints:
                             if to_ep.direction == Direction.IN:
                                 if from_ep.external_name == to_ep.external_name:
                                     deps.add_edge(from_app_n, to_app_n, label=to_ep.external_name)
@@ -74,15 +74,3 @@ class System:
         self._next_port += 1
         return self._next_port
     
-    def get_network_endpoint(self, name):
-        for spec in self.network_endpoints:
-            if spec.name == name:
-                return spec
-        raise ValueError(f"No network endpoint named {name}. Available endpoints are {[ e.name for e in self.network_endpoints]}")
-
-    def has_network_endpoint(self, name):
-        try:
-            self.get_network_endpoint(name)
-            return True
-        except ValueError:
-            return False

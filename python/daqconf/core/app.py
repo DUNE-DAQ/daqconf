@@ -1,5 +1,5 @@
 from daqconf.core.daqmodule import DAQModule
-from daqconf.core.conf_utils import Endpoint, Direction, GeoID, FragmentProducer, Connection
+from daqconf.core.conf_utils import Endpoint, Direction, GeoID, FragmentProducer, Queue, PartitionConnection
 import networkx as nx
 
 class ModuleGraph:
@@ -18,10 +18,32 @@ class ModuleGraph:
     changed without affecting other applications.
     """
 
-    def __init__(self, modules:[DAQModule]=None, endpoints=None, fragment_producers=None):
+    def combine_queues(self, queues : [Queue]):
+        output_queues = []
+        
+        for q in queues:
+            match = False
+            for oq in output_queues:
+                if oq.name == q.name:
+                    match = True
+                    for push_mod in q.push_modules:
+                        if push_mod not in oq.push_modules:
+                            oq.push_modules.append(push_mod)
+                    for pop_mod in q.pop_modules:
+                        if pop_mod not in oq.pop_modules:
+                            oq.pop_modules.append(pop_mod)
+                    break
+            if not match:
+                output_queues.append(q)
+
+        return output_queues
+
+    def __init__(self, modules:[DAQModule]=None, endpoints:[Endpoint]=None, fragment_producers:{FragmentProducer}=None, queues:[Queue]=None, partition_connections:[PartitionConnection]=None):
         self.modules=modules if modules else []
-        self.endpoints=endpoints if endpoints else dict()
+        self.endpoints=endpoints if endpoints else []
         self.fragment_producers = fragment_producers if  fragment_producers else dict()
+        self.queues = self.combine_queues(queues) if queues else []
+        self.partition_connections = partition_connections if partition_connections else []
 
     def __repr__(self):
         return f"modulegraph(modules={self.modules}, endpoints={self.endpoints}, fragment_producers={self.fragment_producers})"
@@ -44,23 +66,18 @@ class ModuleGraph:
             deps.add_node(module.name)
             modules_set.add(module.name)
 
-        for module in self.modules:
-            from_module = module.name
-            for connection in module.connections.values():
-                conn_data = connection.to.split(".")
-                if len(conn_data) != 2:
-                    raise RuntimeError(f'Bad connection: {conn_data} must be specified as module.queue_name')
-                to_module = conn_data[0]
-                if to_module == from_module:
-                    raise RuntimeError(f'Bad connection: {conn_data} you are connecting a {from_module} to itself!')
-                queue_name = conn_data[1]
-                if to_module in modules_set:
-                    deps.add_edge(from_module, to_module, label=queue_name)
-                else:
-                    raise RuntimeError(f"Bad connection {connection}: internal connection which doesn't connect to any module! Available modules: {modules_set}")
+        for queue in self.queues:
+            for pop_mod in queue.pop_modules:
+                for push_mod in queue.push_modules:
+                    queue_start = push_mod.split(".")
+                    if len(queue_start) != 2:
+                        raise RuntimeError(f"Bad queue config!: {queue} output module must be specified as module.queue_name")
+                    queue_end = pop_mod.split(".")
+                    if len(queue_end) != 2:
+                        raise RuntimeError(f"Bad queue config!: {queue} input module must be specified as module.queue_name")
+                    deps.add_edge(queue_start[0], queue_end[0], label=queue.name)
 
-        # now moving on to external links
-        for endpoint in self.endpoints.values():
+        for endpoint in self.endpoints:
             if endpoint.internal_name is None:
                 continue
             endpoint_internal_data = endpoint.internal_name.split(".")
@@ -125,8 +142,7 @@ class ModuleGraph:
                 old_module = self.modules[i]
                 new_module = DAQModule(name=name,
                                        plugin=old_module.plugin,
-                                       conf=new_conf,
-                                       connections=old_module.connections)
+                                       conf=new_conf)
                 self.modules[i] = new_module
                 return
         raise RuntimeError(f'Module {name} not found!')
@@ -144,12 +160,37 @@ class ModuleGraph:
         self.modules.append(mod)
         return mod
 
-    def add_connection(self, from_endpoint, to_endpoint):
-        from_mod, from_name=from_endpoint.split(".")
-        self.get_module(from_mod).connections[from_name]=Connection(to_endpoint)
+    def has_endpoint(self, external_name):
+        for endpoint in self.endpoints:
+            if endpoint.external_name == external_name:
+                return True
+        return False
 
     def add_endpoint(self, external_name, internal_name, inout, topic=[]):
-        self.endpoints[external_name] = Endpoint(external_name, internal_name, inout, topic)
+        if not self.has_endpoint(external_name):
+            self.endpoints += [Endpoint(external_name, internal_name, inout, topic)]
+
+    def add_partition_connection(self, partition, external_name, internal_name, inout, host, port, topic=[]):
+        self.partition_connections += [PartitionConnection(partition, external_name, internal_name, inout, host, port, topic)]
+
+    def connect_modules(self, push_addr, pop_addr, queue_name = "", size_hint = 10, toposort = True, verbose=False):
+        queue_start = push_addr.split(".")
+        queue_end = pop_addr.split(".")
+        if len(queue_start) < 2 or len(queue_end) < 2 or queue_start[0] not in self.module_names() or queue_end[0] not in self.module_names():
+            if verbose:
+                console.log(f"push_addr: {push_addr}, pop_addr: {pop_addr}")
+            raise RuntimeError(f"connect_modules called with invalid parameters. push_addr and pop_addr must be of form <module>.<internal name>, and the module must already be in the module graph!")
+
+        if queue_name == "":
+            self.queues.append(Queue(push_addr, pop_addr, push_addr + "_to_" + pop_addr, size_hint, toposort))
+        else:
+            existing_queue = False
+            for queue in self.queues:
+                if queue.name == queue_name:
+                    queue.add_module_link(push_addr, pop_addr)
+                    existing_queue = True
+            if not existing_queue:
+                self.queues.append(Queue(push_addr, pop_addr, queue_name, size_hint, toposort))
 
     def endpoint_names(self, inout=None):
         if inout is not None:

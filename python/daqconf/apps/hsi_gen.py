@@ -4,8 +4,7 @@
 # that together form a MiniDAQApp with the same functionality as
 # MiniDAQApp v1, but in two processes. One process contains the
 # TriggerDecisionEmulator, while the other process contains everything
-# else. The network communication is done with the QueueToNetwork and
-# NetworkToQueue modules from the nwqueueadapters package.
+# else.
 #
 # As with testapp_noreadout_confgen.py
 # in this directory, no modules from the readout package are used: the
@@ -28,10 +27,6 @@ moo.otypes.load_types('appfwk/app.jsonnet')
 
 moo.otypes.load_types('timinglibs/hsireadout.jsonnet')
 moo.otypes.load_types('timinglibs/hsicontroller.jsonnet')
-moo.otypes.load_types('nwqueueadapters/queuetonetwork.jsonnet')
-moo.otypes.load_types('nwqueueadapters/networktoqueue.jsonnet')
-moo.otypes.load_types('nwqueueadapters/networkobjectreceiver.jsonnet')
-moo.otypes.load_types('nwqueueadapters/networkobjectsender.jsonnet')
 moo.otypes.load_types('networkmanager/nwmgr.jsonnet')
 
 # Import new types
@@ -41,16 +36,12 @@ import dunedaq.appfwk.cmd as cmd # AddressedCmd,
 import dunedaq.appfwk.app as app # AddressedCmd,
 import dunedaq.timinglibs.hsireadout as hsi
 import dunedaq.timinglibs.hsicontroller as hsic
-import dunedaq.nwqueueadapters.networktoqueue as ntoq
-import dunedaq.nwqueueadapters.queuetonetwork as qton
-import dunedaq.nwqueueadapters.networkobjectreceiver as nor
-import dunedaq.nwqueueadapters.networkobjectsender as nos
 import dunedaq.networkmanager.nwmgr as nwmgr
 
 from appfwk.utils import acmd, mcmd, mrccmd, mspec
 from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
-from daqconf.core.conf_utils import Direction, Connection
+from daqconf.core.conf_utils import Direction
 
 #===============================================================================
 def get_hsi_app(RUN_NUMBER = 333,
@@ -68,7 +59,9 @@ def get_hsi_app(RUN_NUMBER = 333,
                 HSI_DEVICE_NAME="BOREAS_TLU",
                 UHAL_LOG_LEVEL="notice",
                 PARTITION="UNKNOWN",
-                GLOBAL_PARTITION="UNKNOWN",
+                TIMING_PARTITION="UNKNOWN",
+                TIMING_HOST="np04-srv-012.cern.ch",
+                TIMING_PORT=12345,
                 HOST="localhost",
                 DEBUG=False):
     modules = {}
@@ -80,7 +73,7 @@ def get_hsi_app(RUN_NUMBER = 333,
                                             readout_period=READOUT_PERIOD_US,
                                             hsi_device_name=HSI_DEVICE_NAME,
                                             uhal_log_level=UHAL_LOG_LEVEL,
-                                            hsievent_connection_name = f"{PARTITION}.hsievents"))]
+                                            hsievent_connection_name = "hsievents"))]
     
     trigger_interval_ticks=0
     if TRIGGER_RATE_HZ > 0:
@@ -111,9 +104,10 @@ def get_hsi_app(RUN_NUMBER = 333,
     mgraph = ModuleGraph(modules)
     
     if CONTROL_HSI_HARDWARE:
-        mgraph.add_endpoint("timing_cmds", "hsic.hardware_commands_out", Direction.OUT)
+        mgraph.add_partition_connection(TIMING_PARTITION, "timing_cmds", "hsic.hardware_commands_out", Direction.OUT, TIMING_HOST, TIMING_PORT)
     
     mgraph.add_endpoint("hsievents", None,     Direction.OUT)
+    mgraph.add_endpoint(None, None, Direction.IN, ["Timesync"])
     
     hsi_app = App(modulegraph=mgraph, host=HOST, name="HSIApp")
     

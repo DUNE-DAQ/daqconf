@@ -4,8 +4,7 @@
 # that together form a MiniDAQApp with the same functionality as
 # MiniDAQApp v1, but in two processes. One process contains the
 # TriggerDecisionEmulator, while the other process contains everything
-# else. The network communication is done with the QueueToNetwork and
-# NetworkToQueue modules from the nwqueueadapters package.
+# else.
 #
 # As with testapp_noreadout_confgen.py
 # in this directory, no modules from the readout package are used: the
@@ -27,10 +26,6 @@ moo.otypes.load_types('appfwk/cmd.jsonnet')
 moo.otypes.load_types('appfwk/app.jsonnet')
 
 moo.otypes.load_types('timinglibs/timingmastercontroller.jsonnet')
-moo.otypes.load_types('nwqueueadapters/queuetonetwork.jsonnet')
-moo.otypes.load_types('nwqueueadapters/networktoqueue.jsonnet')
-moo.otypes.load_types('nwqueueadapters/networkobjectreceiver.jsonnet')
-moo.otypes.load_types('nwqueueadapters/networkobjectsender.jsonnet')
 moo.otypes.load_types('networkmanager/nwmgr.jsonnet')
 
 # Import new types
@@ -39,16 +34,12 @@ import dunedaq.rcif.cmd as rccmd # AddressedCmd,
 import dunedaq.appfwk.cmd as cmd # AddressedCmd, 
 import dunedaq.appfwk.app as app # AddressedCmd,
 import dunedaq.timinglibs.timingmastercontroller as tmc
-import dunedaq.nwqueueadapters.networktoqueue as ntoq
-import dunedaq.nwqueueadapters.queuetonetwork as qton
-import dunedaq.nwqueueadapters.networkobjectreceiver as nor
-import dunedaq.nwqueueadapters.networkobjectsender as nos
 import dunedaq.networkmanager.nwmgr as nwmgr
 
 from appfwk.utils import acmd, mcmd, mrccmd, mspec
 from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
-from daqconf.core.conf_utils import Direction, Connection
+from daqconf.core.conf_utils import Direction
 
 #===============================================================================
 def get_tmc_app(MASTER_DEVICE_NAME="",
@@ -56,6 +47,9 @@ def get_tmc_app(MASTER_DEVICE_NAME="",
                 MASTER_CLOCK_FILE="",
                 MASTER_CLOCK_MODE=-1,
                 HOST="localhost",
+                TIMING_PARTITION="UNKNOWN",
+                TIMING_HOST="np04-srv-012.cern.ch",
+                TIMING_PORT=12345,
                 DEBUG=False):
     
     modules = {}
@@ -72,8 +66,8 @@ def get_tmc_app(MASTER_DEVICE_NAME="",
 
     mgraph = ModuleGraph(modules)
     
-    mgraph.add_endpoint("timing_cmds", "tmc.hardware_commands_out", Direction.OUT)
-    
+    mgraph.add_partition_connection(TIMING_PARTITION, "timing_cmds", "tmc.hardware_commands_out", Direction.OUT, TIMING_HOST, TIMING_PORT)
+
     tmc_app = App(modulegraph=mgraph, host=HOST, name="TMCApp")
     
     if DEBUG:
