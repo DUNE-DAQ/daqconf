@@ -73,7 +73,7 @@ def get_hsi_app(RUN_NUMBER = 333,
                                             readout_period=READOUT_PERIOD_US,
                                             hsi_device_name=HSI_DEVICE_NAME,
                                             uhal_log_level=UHAL_LOG_LEVEL,
-                                            hsievent_connection_name = f"{PARTITION}.hsievents"))]
+                                            hsievent_connection_name = "hsievents"))]
     
     trigger_interval_ticks=0
     if TRIGGER_RATE_HZ > 0:
