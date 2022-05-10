@@ -160,14 +160,14 @@ class ModuleGraph:
         self.modules.append(mod)
         return mod
 
-    def has_endpoint(self, external_name):
+    def has_endpoint(self, external_name, internal_name):
         for endpoint in self.endpoints:
-            if endpoint.external_name == external_name:
+            if endpoint.external_name == external_name and endpoint.internal_name == internal_name:
                 return True
         return False
 
     def add_endpoint(self, external_name, internal_name, inout, topic=[]):
-        if not self.has_endpoint(external_name):
+        if not self.has_endpoint(external_name, internal_name):
             self.endpoints += [Endpoint(external_name, internal_name, inout, topic)]
 
     def add_partition_connection(self, partition, external_name, internal_name, inout, host, port, topic=[]):
