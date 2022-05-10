@@ -4,8 +4,7 @@
 # that together form a MiniDAQApp with the same functionality as
 # MiniDAQApp v1, but in two processes.  One process contains the
 # TriggerDecisionEmulator, while the other process contains everything
-# else.  The network communication is done with the QueueToNetwork and
-# NetworkToQueue modules from the nwqueueadapters package.
+# else.
 #
 # As with testapp_noreadout_confgen.py
 # in this directory, no modules from the readout package are used: the
@@ -34,9 +33,9 @@ import dunedaq.timinglibs.fakehsieventgenerator as fhsig
 
 from appfwk.utils import acmd, mcmd, mrccmd, mspec
     
-from appfwk.daqmodule import DAQModule
-from appfwk.app import ModuleGraph, App
-from appfwk.conf_utils import Direction
+from daqconf.core.daqmodule import DAQModule
+from daqconf.core.app import ModuleGraph, App
+from daqconf.core.conf_utils import Direction
         
 import math
 
@@ -67,7 +66,7 @@ def get_fake_hsi_app(RUN_NUMBER=333,
                                               mean_signal_multiplicity=MEAN_SIGNAL_MULTIPLICITY,
                                               signal_emulation_mode=SIGNAL_EMULATION_MODE,
                                               enabled_signals=ENABLED_SIGNALS,
-                                              hsievent_connection_name=PARTITION+".hsievents",
+                                              hsievent_connection_name="hsievents",
                                               timesync_topic="Timesync"),
                          extra_commands = {"start": startpars,
                                            "resume": resumepars})]
@@ -81,6 +80,7 @@ def get_fake_hsi_app(RUN_NUMBER=333,
     #
     # mgraph.add_endpoint("time_sync", None, Direction.IN)
     mgraph.add_endpoint("hsievents", None, Direction.OUT)
+    mgraph.add_endpoint(None, None, Direction.IN, ["Timesync"])
     fake_hsi_app = App(modulegraph=mgraph, host=HOST, name="FakeHSIApp")
     
     if DEBUG:

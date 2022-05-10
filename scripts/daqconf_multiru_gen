@@ -9,8 +9,8 @@ import glob
 import rich.traceback
 from rich.console import Console
 from os.path import exists, join
-from appfwk.system import System
-from appfwk.conf_utils import AppConnection
+from daqconf.core.system import System
+from daqconf.core.conf_utils import AppConnection
 from daqconf.core.metadata import write_metadata_file
 
 # Add -h as default help option
@@ -25,19 +25,18 @@ moo.io.default_load_path = get_moo_model_path()
 
 # Load configuration types
 import moo.otypes
-moo.otypes.load_types('networkmanager/nwmgr.jsonnet')
-import dunedaq.networkmanager.nwmgr as nwmgr
 
 
 import click
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.option('-g', '--global-partition-name', default="global", help="Name of the global partition to use, for ERS and OPMON and timing commands")
-@click.option('--host-global', default='np04-srv-012.cern.ch', help='Host to run the (global) timing hardware interface app on')
-@click.option('--port-global', default=12345, help='Port to host running the (global) timing hardware interface app on')
+@click.option('--timing-partition-name', default="timing", help="Name of the global partition to use, for ERS and OPMON and timing commands")
+@click.option('--host-timing', default='np04-srv-012.cern.ch', help='Host to run the (global) timing hardware interface app on')
+@click.option('--port-timing', default=12345, help='Port to host running the (global) timing hardware interface app on')
 @click.option('-p', '--partition-name', default="${USER}_test", help="Name of the partition to use, for ERS and OPMON")
 @click.option('-n', '--number-of-data-producers', default=2, help="Number of links to use for each readout application")
 @click.option('-e', '--emulator-mode', is_flag=True, help="If active, timestamps of data frames are overwritten when processed by the readout. This is necessary if the felix card does not set correct timestamps.")
+@click.option('--thread-pinning-file', default=None, type=click.Path(exists=True), help="A thread pinning configuration file that gets executed after conf.")
 @click.option('-s', '--data-rate-slowdown-factor', default=1)
 @click.option('-r', '--run-number', default=333)
 @click.option('--clock-speed-hz', type=int, default=50000000)
@@ -119,7 +118,8 @@ import click
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
 
-def cli(global_partition_name, host_global, port_global, partition_name, number_of_data_producers, emulator_mode, data_rate_slowdown_factor, run_number, clock_speed_hz, trigger_rate_hz, trigger_window_before_ticks, trigger_window_after_ticks,
+def cli(timing_partition_name, host_timing, port_timing, partition_name, number_of_data_producers, emulator_mode, data_rate_slowdown_factor, run_number, clock_speed_hz, trigger_rate_hz, trigger_window_before_ticks, trigger_window_after_ticks,
+        thread_pinning_file,
         token_count, data_file, output_path, disable_trace, use_felix, use_ssp, host_df, host_dfo, host_ru, host_trigger, host_hsi, host_tpw, host_tprtc, region_id, latency_buffer_size,
         hsi_hw_connections_file, hsi_device_name, hsi_readout_period, control_hsi_hw, hsi_endpoint_address, hsi_endpoint_partition, hsi_re_mask, hsi_fe_mask, hsi_inv_mask, hsi_source,
         use_hsi_hw, hsi_device_id, mean_hsi_signal_multiplicity, hsi_signal_emulation_mode, enabled_hsi_signals,
@@ -155,7 +155,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
 
     console.log(f"Generating configs for hosts trigger={host_trigger} DFO={host_dfo} dataflow={host_df} readout={host_ru} hsi={host_hsi} dqm={host_ru}")
 
-    the_system = System(partition_name, first_port=port_global)
+    the_system = System(partition_name, first_port=port_timing)
    
     total_number_of_data_producers = 0
 
@@ -233,9 +233,6 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
 
     dqm_kafka_address = "monkafka.cern.ch:30092" if dqm_impl == 'cern' else pocket_url + ":30092" if dqm_impl == 'pocket' else ''
 
-    if control_hsi_hw or control_timing_partition:
-        the_system.network_endpoints.append(nwmgr.Connection(name=f"{global_partition_name}.timing_cmds",  topics=[], address="tcp://{"+host_global+"}:"+f"{port_global}", fixed=True))
-
     host_id_dict = {}
     ru_configs = []
     ru_channel_counts = {}
@@ -246,16 +243,8 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
     dqm_app_names = [f"dqm{idx}_ru" for idx in range(len(host_ru))]
     
     for hostidx,ru_host in enumerate(ru_app_names):
-        if enable_dqm:
-            the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.fragx_dqm_{hostidx}", topics=[], address=f"tcp://{{host_{ru_host}}}:{the_system.next_unassigned_port()}"))
-            # Create at most {number of df apps} endpoints
 
-        the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.datareq_{hostidx}", topics=[], address=f"tcp://{{host_{ru_host}}}:{the_system.next_unassigned_port()}"))
-
-        # Should end up something like 'network_endpoints[timesync_0]:
-        # "tcp://{host_ru0}:12347"'
-        the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.timesync_{hostidx}", topics=["Timesync"], address=f"tcp://{{host_{ru_host}}}:{the_system.next_unassigned_port()}"))
-        
+           
         cardid = 0
         if host_ru[hostidx] in host_id_dict:
             host_id_dict[host_ru[hostidx]] = host_id_dict[host_ru[hostidx]] + 1
@@ -282,7 +271,9 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
             HSI_INV_MASK=hsi_inv_mask,
             HSI_SOURCE=hsi_source,
             PARTITION=partition_name,
-            GLOBAL_PARTITION=global_partition_name,
+            TIMING_PARTITION=timing_partition_name,
+            TIMING_HOST=host_timing,
+            TIMING_PORT=port_timing,
             HOST=host_hsi,
             DEBUG=debug)
     else:
@@ -299,32 +290,22 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
             HOST=host_hsi,
             DEBUG=debug)
 
-    if control_hsi_hw and use_hsi_hw:
-        the_system.app_connections[f"hsi.timing_cmds"] = AppConnection(nwmgr_connection=f"{global_partition_name}.timing_cmds",
-                                                                            msg_type="dunedaq::timinglibs::timingcmd::TimingHwCmd",
-                                                                            msg_module_name="TimingHwCmdNQ",
-                                                                            topics=[],
-                                                                            receivers=[])
-
         # the_system.apps["hsi"] = util.App(modulegraph=mgraph_hsi, host=host_hsi)
     if debug: console.log("hsi cmd data:", the_system.apps["hsi"])
 
     if control_timing_partition:
         the_system.apps["tprtc"] = get_tprtc_app(
             MASTER_DEVICE_NAME=timing_partition_master_device_name,
-            TIMING_PARTITION=timing_partition_id,
+            TIMING_PARTITION_ID=timing_partition_id,
             TRIGGER_MASK=timing_partition_trigger_mask,
             RATE_CONTROL_ENABLED=timing_partition_rate_control_enabled,
             SPILL_GATE_ENABLED=timing_partition_spill_gate_enabled,
             PARTITION=partition_name,
-            GLOBAL_PARTITION=global_partition_name,
+            TIMING_PARTITION=timing_partition_name,
+            TIMING_HOST=host_timing,
+            TIMING_PORT=port_timing,
             HOST=host_tprtc,
             DEBUG=debug)
-        the_system.app_connections[f"tprtc.timing_cmds"] = AppConnection(nwmgr_connection=f"{global_partition_name}.timing_cmds",
-                                                                            msg_type="dunedaq::timinglibs::timingcmd::TimingHwCmd",
-                                                                            msg_module_name="TimingHwCmdNQ",
-                                                                            topics=[],
-                                                                            receivers=[])
 
     the_system.apps['trigger'] = get_trigger_app(
         SOFTWARE_TPG_ENABLED = enable_software_tpg,
@@ -367,22 +348,6 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
             cardid[hostidx] = 0
             host_id_dict[host_ru[hostidx]] = 0
         hostidx = hostidx + 1
-
-        
-    # Set up the nwmgr endpoints for TPSets. Need to wait till now to do this so that ru_configs is filled
-    if enable_software_tpg:
-        for ruidx,ru_app_name in enumerate(ru_app_names):
-            ru_config = ru_configs[ruidx]
-            apa_idx = ru_config['region_id']
-            for link in range(ru_config["channel_count"]):
-                # PL 2022-02-02: global_link is needed here to have non-overlapping app connections if len(ru)>1 with the same region_id
-                # Adding the ru number here too, in case we have many region_ids
-                global_link = link+ru_config["start_channel"]
-                connection_name = f"{partition_name}.tpsets_apa{apa_idx}_link{global_link}"
-                console.log(f"Creating connection with name {connection_name}")
-                the_system.network_endpoints.append(nwmgr.Connection(name=connection_name,
-                                                                     topics=["TPSets"],
-                                                                     address = f"tcp://{{host_{ru_app_name}}}:{the_system.next_unassigned_port()}"))
 
 
     mgraphs_readout = []
@@ -464,6 +429,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
             MAX_FILE_SIZE = max_file_size,
             MAX_TRIGGER_RECORD_WINDOW = max_trigger_record_window,
             HOST=host,
+            HAS_DQM=enable_dqm,
             DEBUG=debug
         )
         if enable_dqm:
@@ -499,90 +465,8 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
         if app.name=="__app":
             app.name=name
 
-    if enable_software_tpg:
-        for ruidx,ru_app_name in enumerate(ru_app_names):
-            ru_config = ru_configs[ruidx]
-            apa_idx = ru_config['region_id']
-            for link in range(ru_config["channel_count"]):
-                # PL 2022-02-02: global_link is needed here to have non-overlapping app connections if len(ru)>1 with the same region_id
-                # Adding the ru number here too, in case we have many region_ids
-                global_link = link+ru_config["start_channel"]
-                the_system.app_connections.update(
-                    {
-                        f"{ru_app_name}.tpsets_ru{ruidx}_link{global_link}":
-                        AppConnection(nwmgr_connection=f"{partition_name}.tpsets_apa{apa_idx}_link{global_link}",
-                                      msg_type="dunedaq::trigger::TPSet",
-                                      msg_module_name="TPSetNQ",
-                                      topics=["TPSets"],
-                                      receivers=([f"trigger.tpsets_into_buffer_ru{ruidx}_link{link}",
-                                                  f"trigger.tpsets_into_chain_ru{ruidx}_link{link}"] +
-                                                 (["tpwriter.tpsets_into_writer"] if enable_tpset_writing else [])))
-                    })
-
-    for i,df_app_name in enumerate(df_app_names):
-        the_system.app_connections[f"dfo.trigger_decisions{i}"] = AppConnection(nwmgr_connection=f"{partition_name}.trigdec_{i}",
-                                                                                    msg_type="dunedaq::dfmessages::TriggerDecision",
-                                                                                    msg_module_name="TriggerDecisionNQ",
-                                                                                    topics=[],
-                                                                                    receivers=[f"{df_app_name}.trigger_decisions"])
-
-        # Always enabled or it won't work at conf time because the endpoint is not there
-        the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.trmon_dqm2df_{i}", topics=[], address=f"tcp://{{host_{df_app_name}}}:{the_system.next_unassigned_port()}"))
-
-        if enable_dqm:
-            the_system.network_endpoints.append(nwmgr.Connection(name=f"{partition_name}.tr_df2dqm_{i}", topics=[], address=f"tcp://{{host_{ru_app_names[i % len(ru_app_names)]}}}:{the_system.next_unassigned_port()}"))
-    
-    the_system.app_connections["hsi.hsievents"] = AppConnection(nwmgr_connection=f"{partition_name}.hsievents",
-                                                                topics=[],
-                                                                use_nwqa=False,
-                                                                receivers=["trigger.hsievents"])
-
-    the_system.app_connections["trigger.td_to_dfo"] = AppConnection(nwmgr_connection=f"{partition_name}.td_mlt_to_dfo",
-                                                                topics=[],
-                                                                use_nwqa=False,
-                                                                receivers=["dfo.td_to_dfo"])
-
-    the_system.app_connections["dfo.df_busy_signal"] = AppConnection(nwmgr_connection=f"{partition_name}.df_busy_signal",
-                                                                  topics=[],
-                                                                  use_nwqa=False,
-                                                                  receivers=["trigger.df_busy_signal"])
-    if enable_software_tpg:
-        # PAR 2022-04-20. This is a hack: The TASets inside the trigger
-        # app need to fan-out to the TC maker and the TA buffer. We don't
-        # have a FanoutDAQModule (or equivalent), so we instead go through
-        # a serialize/deserialize roundtrip using "external" endpoints in
-        # the trigger app
-        for one_region_id in set(region_id):
-            out_endpoint=f"trigger.tasets_from_maker_region_{one_region_id}"
-            the_system.app_connections[out_endpoint] = AppConnection(nwmgr_connection=f"{partition_name}.tasets_{one_region_id}",
-                                                                                    msg_type="dunedaq::trigger::TASet",
-                                                                                    msg_module_name="TASetNQ",
-                                                                                    topics=["TASets"],
-                                                                                    receivers=[f"trigger.tasets_into_chain_region_{one_region_id}",
-                                                                                               f"trigger.tasets_into_buffer_region_{one_region_id}"])
-
-        # PAR 2022-04-20. This is the same hack as before, but now for TCs
-        the_system.app_connections["trigger.tcs_from_chain"] = AppConnection(nwmgr_connection=f"{partition_name}.triggercandidates_chain",
-                                                                                    msg_type="triggeralgs::TriggerCandidate",
-                                                                                    msg_module_name="TriggerCandidateNQ",
-                                                                                    topics=["TCs"],
-                                                                                    receivers=["trigger.tcs_into_mlt",
-                                                                                               "trigger.tcs_into_buffer"])
-        the_system.app_connections["trigger.tcs_from_timing"] = AppConnection(nwmgr_connection=f"{partition_name}.triggercandidates_timing",
-                                                                              msg_type="triggeralgs::TriggerCandidate",
-                                                                              msg_module_name="TriggerCandidateNQ",
-                                                                              topics=["TCs"],
-                                                                              receivers=["trigger.tcs_into_mlt",
-                                                                                         "trigger.tcs_into_buffer"])
-        
-    # TODO: How to do this more automatically?
-    the_system.network_endpoints.append(nwmgr.Connection(name=f"{the_system.partition_name}.triginh",
-                                                         topics=[],
-                                                         address=f"tcp://{{host_dfo}}:{the_system.next_unassigned_port()}"))
-                                                                            
-    
     #     console.log(f"MDAapp config generated in {json_dir}")
-    from appfwk.conf_utils import add_network, make_app_command_data
+    from daqconf.core.conf_utils import make_app_command_data
     from daqconf.core.fragment_producers import  connect_all_fragment_producers, set_mlt_links, remove_mlt_link
 
     if debug:
@@ -620,20 +504,6 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
         console.log(f"After remove_mlt_links, mlt_links is {mlt_links}")
     # END HACK
         
-    add_network("trigger", the_system, verbose=debug)
-    add_network("dfo", the_system, verbose=debug)
-
-    # # console.log("After adding network, trigger mgraph:", the_system.apps['trigger'].modulegraph)
-    add_network("hsi", the_system, verbose=debug)
-    if enable_tpset_writing:
-        add_network("tpwriter", the_system, verbose=debug)
-    if control_timing_partition:
-        add_network("tprtc", the_system, verbose=debug)
-    for ru_app_name in ru_app_names:
-        add_network(ru_app_name, the_system, verbose=debug)
-
-    for df_app_name in df_app_names:
-        add_network(df_app_name, the_system, verbose=debug)
     if debug:
         the_system.export("system.dot")
 
@@ -643,19 +513,34 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
 
     # Arrange per-app command data into the format used by util.write_json_files()
     app_command_datas = {
-        name : make_app_command_data(the_system, app, verbose=debug)
+        name : make_app_command_data(the_system, app,name, verbose=debug)
         for name,app in the_system.apps.items()
     }
 
     ##################################################################################
 
     # Make boot.json config
-    from appfwk.conf_utils import make_system_command_datas,generate_boot, write_json_files
+    from daqconf.core.conf_utils import make_system_command_datas,generate_boot, write_json_files
     system_command_datas = make_system_command_datas(the_system)
     # Override the default boot.json with the one from minidaqapp
     boot = generate_boot(the_system.apps, partition_name=partition_name, ers_settings=ers_settings, info_svc_uri=info_svc_uri,
-                              disable_trace=disable_trace, use_kafka=use_kafka)
-
+                         disable_trace=disable_trace, use_kafka=use_kafka)
+    
+    if thread_pinning_file:
+        boot['scripts'] = {
+            "thread_pinning": {
+                "cmd": [
+                    "readout-affinity.py --pinfile ${DUNEDAQ_THREAD_PIN_FILE}"
+                ],
+                "env": {
+                    "DUNEDAQ_THREAD_PIN_FILE": thread_pinning_file,
+                    "LD_LIBRARY_PATH": "getenv",
+                    "PATH": "getenv"
+                }
+            }
+        }
+        
+    
     system_command_datas['boot'] = boot
 
     write_json_files(app_command_datas, system_command_datas, json_dir, verbose=debug)

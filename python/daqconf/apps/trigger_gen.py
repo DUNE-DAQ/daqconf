@@ -10,7 +10,6 @@ moo.otypes.load_types('trigger/triggeractivitymaker.jsonnet')
 moo.otypes.load_types('trigger/triggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/triggerzipper.jsonnet')
 moo.otypes.load_types('trigger/moduleleveltrigger.jsonnet')
-moo.otypes.load_types('trigger/fakedataflow.jsonnet')
 moo.otypes.load_types('trigger/timingtriggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/tpsetbuffercreator.jsonnet')
 moo.otypes.load_types('trigger/faketpcreatorheartbeatmaker.jsonnet')
@@ -23,7 +22,6 @@ import dunedaq.trigger.triggeractivitymaker as tam
 import dunedaq.trigger.triggercandidatemaker as tcm
 import dunedaq.trigger.triggerzipper as tzip
 import dunedaq.trigger.moduleleveltrigger as mlt
-import dunedaq.trigger.fakedataflow as fdf
 import dunedaq.trigger.timingtriggercandidatemaker as ttcm
 import dunedaq.trigger.tpsetbuffercreator as buf
 import dunedaq.trigger.faketpcreatorheartbeatmaker as heartbeater
@@ -31,10 +29,9 @@ import dunedaq.trigger.txbufferconfig as bufferconf
 import dunedaq.readoutlibs.readoutconfig as readoutconf
 import dunedaq.trigger.tpchannelfilter as chfilter
 
-
-from appfwk.app import App, ModuleGraph
-from appfwk.daqmodule import DAQModule
-from appfwk.conf_utils import Direction, Connection
+from daqconf.core.app import App, ModuleGraph
+from daqconf.core.daqmodule import DAQModule
+from daqconf.core.conf_utils import Direction, Queue
 
 TA_ELEMENT_ID = 10_000
 TC_REGION_ID = 20_000
@@ -89,27 +86,24 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     modules = []
 
     region_ids1 = set([ru["region_id"] for ru in RU_CONFIG])
-
+    queues = []
+    
     if SOFTWARE_TPG_ENABLED:
         config_tcm = tcm.Conf(candidate_maker=CANDIDATE_PLUGIN,
                                candidate_maker_config=temptypes.CandidateConf(**CANDIDATE_CONFIG))
         
         modules += [DAQModule(name = 'tazipper',
                               plugin = 'TAZipper',
-                              connections = {'output': Connection(f'tcm.input')},
                               conf = tzip.ConfParams(cardinality=len(region_ids1),
                                                      max_latency_ms=10000,
                                                      region_id=TC_REGION_ID,
                                                      element_id=TC_ELEMENT_ID)),
                     DAQModule(name = 'tcm',
                               plugin = 'TriggerCandidateMaker',
-                              connections = {},
-                                  # 'output': Connection(f'mlt.trigger_candidate_source')},
                               conf = config_tcm),
 
                     DAQModule(name = 'tc_buf',
                               plugin = 'TCBuffer',
-                              connections = {},
                               conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 100_000,
                                                                                                        region_id = TC_REGION_ID,
                                                                                                        element_id = TA_ELEMENT_ID),
@@ -123,20 +117,23 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                          retry_count = 1000,
                                                                                                          enable_raw_recording = False)))]
 
+        queues += [Queue("tazipper.output", "tcm.input")]
+        queues += [Queue("tcm.output", "mlt.trigger_candidate_source", "trigger_candidates")]
+
         # Make one heartbeatmaker per link
         for ruidx, ru_config in enumerate(RU_CONFIG):
             for link_idx in range(ru_config["channel_count"]):
                 modules += [DAQModule(name = f'channelfilter_ru{ruidx}_link{link_idx}',
                                           plugin = 'TPChannelFilter',
-                                          connections = {'tpset_sink': Connection(f'heartbeatmaker_ru{ruidx}_link{link_idx}.tpset_source')},
                                           conf = chfilter.Conf(channel_map_name=CHANNEL_MAP_NAME,
                                                                keep_collection=True,
                                                                keep_induction=False))]
+                queues += [Queue(f'channelfilter_ru{ruidx}_link{link_idx}.tpset_sink', f'heartbeatmaker_ru{ruidx}_link{link_idx}.tpset_source')]
 
                 modules += [DAQModule(name = f'heartbeatmaker_ru{ruidx}_link{link_idx}',
                                           plugin = 'FakeTPCreatorHeartbeatMaker',
-                                          connections = {'tpset_sink': Connection(f"zip_{ru_config['region_id']}.input")},
                                           conf = heartbeater.Conf(heartbeat_interval=5_000_000))]
+                queues += [Queue(f'heartbeatmaker_ru{ruidx}_link{link_idx}.tpset_sink', f"zip_{ru_config['region_id']}.input", f"{ru_config['region_id']}_tpset_q")]
                     
         region_ids = set()
         for ru in range(len(RU_CONFIG)):
@@ -153,8 +150,6 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                         cardinality += RU['channel_count']
                 modules += [DAQModule(name = f'zip_{region_id}',
                                       plugin = 'TPZipper',
-                                              connections = {# 'input' are App.network_endpoints, from RU
-                                                  'output': Connection(f'tam_{region_id}.input')},
                                               conf = tzip.ConfParams(cardinality=cardinality,
                                                                      max_latency_ms=1000,
                                                                      region_id=region_id,
@@ -162,8 +157,6 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                     
                             DAQModule(name = f'tam_{region_id}',
                                       plugin = 'TriggerActivityMaker',
-                                      # connections = {'output': Connection('tcm.input')},
-                                      connections = {}, # We output to an external endpoint so we can send to TCMaker *and* TA buffer
                                       conf = tam.Conf(activity_maker=ACTIVITY_PLUGIN,
                                                       geoid_region=region_id,
                                                       geoid_element=0,  # 2022-02-02 PL: Same comment as above
@@ -173,7 +166,6 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
                             DAQModule(name = f'ta_buf_region_{region_id}',
                                       plugin = 'TABuffer',
-                                      connections = {},
                                       # PAR 2022-04-20 Not sure what to set the element id to so it doesn't collide with the region/element used by TP buffers. Make it some big number that shouldn't already be used by the TP buffer
                                       conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 100_000,
                                                                                                                region_id = region_id,
@@ -187,14 +179,12 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                                  stream_buffer_size = 8388608,
                                                                                                                  retry_count = 1000,
                                                                                                                  enable_raw_recording = False)))]
+                queues += [Queue(f'zip_{region_id}.output', f'tam_{region_id}.input')]
 
             for idy in range(RU_CONFIG[ru]["channel_count"]):
                 # 1 buffer per TPG channel
                 modules += [DAQModule(name = f'buf_ru{ru}_link{idy}',
                                       plugin = 'TPBuffer',
-                                      connections = {},#'tpset_source': Connection(f"tpset_q_for_buf{ru}_{idy}"),#already in request_receiver
-                                      #'data_request_source': Connection(f"data_request_q{ru}_{idy}"), #ditto
-                                      # 'fragment_sink': Connection('qton_fragments.fragment_q')},
                                       conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 100_000,
                                                                                                                 region_id = region_id,
                                                                                                                 element_id = idy),
@@ -207,17 +197,19 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                                   stream_buffer_size = 8388608,
                                                                                                                   enable_raw_recording = False)))]
         assert(region_ids == region_ids1)
+        
     modules += [DAQModule(name = 'ttcm',
                           plugin = 'TimingTriggerCandidateMaker',
-                          connections={} if SOFTWARE_TPG_ENABLED else {"output": Connection("mlt.trigger_candidate_source")},
                           conf=ttcm.Conf(s1=ttcm.map_t(signal_type=TTCM_S1,
                                                        time_before=TRIGGER_WINDOW_BEFORE_TICKS,
                                                        time_after=TRIGGER_WINDOW_AFTER_TICKS),
                                          s2=ttcm.map_t(signal_type=TTCM_S2,
                                                        time_before=TRIGGER_WINDOW_BEFORE_TICKS,
                                                        time_after=TRIGGER_WINDOW_AFTER_TICKS),
-                                         hsievent_connection_name = PARTITION+".hsievents",
+                                         hsievent_connection_name = "hsievents",
 					 hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH))]
+    if not SOFTWARE_TPG_ENABLED:
+        queues += [Queue("ttcm.output", "mlt.trigger_candidate_source",  "trigger_candidates")]
     
     # We need to populate the list of links based on the fragment
     # producers available in the system. This is a bit of a
@@ -228,14 +220,12 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     # util.connect_fragment_producers
     modules += [DAQModule(name = 'mlt',
                           plugin = 'ModuleLevelTrigger',
-                          #connections = { #"trigger_decision_sink": Connection("dfo.trigger_decision_queue")
-                          #             },
                           conf=mlt.ConfParams(links=[],  # To be updated later - see comment above
-                                              dfo_connection=f"{PARTITION}.td_mlt_to_dfo",
-                                              dfo_busy_connection=f"{PARTITION}.df_busy_signal",
+                                              dfo_connection=f"td_to_dfo",
+                                              dfo_busy_connection=f"df_busy_signal",
 					      hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH))]
 
-    mgraph = ModuleGraph(modules)
+    mgraph = ModuleGraph(modules, queues = queues)
     mgraph.add_endpoint("hsievents", None, Direction.IN)
     mgraph.add_endpoint("td_to_dfo", None, Direction.OUT)
     mgraph.add_endpoint("df_busy_signal", None, Direction.IN)
@@ -243,11 +233,12 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
         for ruidx, ru_config in enumerate(RU_CONFIG):
             for link_idx in range(ru_config["channel_count"]):
                 # 1 buffer per link
-                buf_name=f'buf_ru{ruidx}_link{link_idx}'
+                link_id=f"ru{ruidx}_link{link_idx}"
+                buf_name=f'buf_{link_id}'
                 global_link = link_idx+ru_config['start_channel'] # for the benefit of correct fragment geoid
 
-                mgraph.add_endpoint(f"tpsets_into_chain_ru{ruidx}_link{link_idx}", f"channelfilter_ru{ruidx}_link{link_idx}.tpset_source", Direction.IN)
-                mgraph.add_endpoint(f"tpsets_into_buffer_ru{ruidx}_link{link_idx}", f"{buf_name}.tpset_source", Direction.IN)
+                mgraph.add_endpoint(f"tpsets_{link_id}", f"channelfilter_{link_id}.tpset_source", Direction.IN, topic=[f"tpsets_{link_id}"])
+                mgraph.add_endpoint(f"tpsets_{link_id}", f"{buf_name}.tpset_source",              Direction.IN, topic=[f"tpsets_{link_id}"])
                 mgraph.add_fragment_producer(region=ru_config['region_id'], element=global_link, system="DataSelection",
                                              requests_in=f"{buf_name}.data_request_source",
                                              fragments_out=f"{buf_name}.fragment_sink")
@@ -256,14 +247,15 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
             mgraph.add_fragment_producer(region=region_id, element=TA_ELEMENT_ID, system="DataSelection",
                                          requests_in=f"{buf_name}.data_request_source",
                                          fragments_out=f"{buf_name}.fragment_sink")
-            mgraph.add_endpoint(f"tasets_from_maker_region_{region_id}",  f"tam_{region_id}.output",  Direction.OUT)
-            mgraph.add_endpoint(f"tasets_into_chain_region_{region_id}",  f"tazipper.input",          Direction.IN)
-            mgraph.add_endpoint(f"tasets_into_buffer_region_{region_id}", f"{buf_name}.taset_source", Direction.IN)
+            # mgraph.add_endpoint(f"tasets_{region_id}",  f"tam_{region_id}.output",  Direction.OUT, topic=[f"tasets_{region_id}"])
+            # mgraph.add_endpoint(f"tasets_{region_id}",  f"tazipper.input",          Direction.IN,  topic=[f"tasets_{region_id}"])
+            # mgraph.add_endpoint(f"tasets_{region_id}",  f"{buf_name}.taset_source", Direction.IN,  topic=[f"tasets_{region_id}"])
 
-        mgraph.add_endpoint(f"tcs_from_chain",  "tcm.output",                   Direction.OUT)
-        mgraph.add_endpoint(f"tcs_from_timing", "ttcm.output",                  Direction.OUT)
-        mgraph.add_endpoint(f"tcs_into_mlt",    "mlt.trigger_candidate_source", Direction.IN)
-        mgraph.add_endpoint(f"tcs_into_buffer", "tc_buf.tc_source",             Direction.IN)
+        mgraph.add_endpoint(f"tcs1", "tcm.output",                   Direction.OUT, topic=["TCs"])
+        mgraph.add_endpoint(f"tcs2", "tc_buf.tc_source",             Direction.IN,  topic=["TCs"])
+        mgraph.add_endpoint(f"tcs3", "ttcm.output",                  Direction.OUT, topic=["TCs"])
+        mgraph.add_endpoint(f"tcs4", "mlt.trigger_candidate_source", Direction.IN,  topic=["TCs"])
+
         mgraph.add_fragment_producer(region=TC_REGION_ID, element=TC_ELEMENT_ID, system="DataSelection",
                                      requests_in="tc_buf.data_request_source",
                                      fragments_out="tc_buf.fragment_sink")

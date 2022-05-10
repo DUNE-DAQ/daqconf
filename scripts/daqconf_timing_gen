@@ -8,8 +8,8 @@ import glob
 import rich.traceback
 from rich.console import Console
 from os.path import exists, join
-from appfwk.system import System
-from appfwk.conf_utils import AppConnection, add_network, make_app_command_data
+from daqconf.core.system import System
+from daqconf.core.conf_utils import AppConnection
 from daqconf.core.metadata import write_metadata_file
 
 # Add -h as default help option
@@ -30,7 +30,7 @@ import dunedaq.networkmanager.nwmgr as nwmgr
 import click
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.option('-p', '--partition-name', default="global", help="Name of the partition to use, for ERS and OPMON")
+@click.option('-p', '--partition-name', default="timing", help="Name of the partition to use, for ERS and OPMON")
 @click.option('--clock-speed-hz', type=int, default=50000000)
 @click.option('--disable-trace', is_flag=True, help="Do not enable TRACE (default TRACE_FILE is /tmp/trace_buffer_\${HOSTNAME}_\${USER})")
 @click.option('--host-thi', default='localhost', help='Host to run the (global) timing hardware interface app on')
@@ -92,38 +92,29 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
         ers_settings["FATAL"] =   "erstrace,lstdout"
 
     # timing commands coming in outside data-taking partitions
-    the_system.network_endpoints.append(nwmgr.Connection(name=partition_name + ".timing_cmds",  topics=[], address=f"tcp://{{host_thi}}:{port_thi}", fixed=True))
+    # the_system.connections.append(nwmgr.Connection(name=partition_name + ".timing_cmds",  topics=[], address=f"tcp://{{host_thi}}:{port_thi}", fixed=True))
     
     # the timing hardware interface application
     the_system.apps["thi"] = get_thi_app(
         CONNECTIONS_FILE=timing_hw_connections_file,
         MASTER_DEVICE_NAME=master_device_name,
         HSI_DEVICE_NAME=hsi_device_name,
+        TIMING_PARTITION=partition_name,
+        TIMING_PORT=port_thi,
         HOST=host_thi,
         DEBUG=debug)
         
-    the_system.app_connections[f"from_outside.timing_cmds"] = AppConnection(nwmgr_connection=partition_name + ".timing_cmds",
-                                                                            msg_type="dunedaq::timinglibs::timingcmd::TimingHwCmd",
-                                                                            msg_module_name="TimingHwCmdNQ",
-                                                                            topics=[],
-                                                                            receivers=["thi.timing_cmds"])
-    add_network("thi", the_system, verbose=debug)
-
-    # the timing master controller application
-    the_system.app_connections[f"tmc.timing_cmds"] = AppConnection(nwmgr_connection=partition_name + ".timing_cmds",
-                                                                            msg_type="dunedaq::timinglibs::timingcmd::TimingHwCmd",
-                                                                            msg_module_name="TimingHwCmdNQ",
-                                                                            topics=[],
-                                                                            receivers=["thi.timing_cmds"])
     if master_device_name:
         the_system.apps["tmc"] = get_tmc_app(
             MASTER_DEVICE_NAME=master_device_name,
             MASTER_SEND_DELAYS_PERIOD=master_send_delays_period,
             MASTER_CLOCK_FILE=master_clock_file,
             MASTER_CLOCK_MODE=master_clock_mode,
+            TIMING_PARTITION=partition_name,
+            TIMING_HOST=host_thi,
+            TIMING_PORT=port_thi,
             HOST=host_tmc,
             DEBUG=debug)
-        add_network("tmc", the_system, verbose=debug)
 
     if debug:
         the_system.export("global_system.dot")
@@ -131,15 +122,15 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
     ####################################################################
     # Application command data generation
     ####################################################################
-
+    from daqconf.core.conf_utils import make_app_command_data
     # Arrange per-app command data into the format used by util.write_json_files()
     app_command_datas = {
-        name : make_app_command_data(the_system, app, verbose=debug)
+        name : make_app_command_data(the_system, app, name, verbose=debug)
         for name,app in the_system.apps.items()
     }
 
     # Make boot.json config
-    from appfwk.conf_utils import make_system_command_datas,generate_boot, write_json_files
+    from daqconf.core.conf_utils import make_system_command_datas,generate_boot, write_json_files
     system_command_datas = make_system_command_datas(the_system, verbose=debug)
     # Override the default boot.json with the one from minidaqapp
     boot = generate_boot(the_system.apps, partition_name=partition_name, ers_settings=ers_settings, info_svc_uri=info_svc_uri,
