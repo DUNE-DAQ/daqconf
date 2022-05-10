@@ -64,6 +64,7 @@ def get_readout_app(RU_CONFIG=[],
                     FRONTEND_TYPE='wib',
                     SYSTEM_TYPE='TPC',
                     SOFTWARE_TPG_ENABLED=False,
+                    FIRMWARE_TPG_ENABLED=False,
                     TPG_CHANNEL_MAP= "ProtoDUNESP1ChannelMap",
                     USE_FAKE_DATA_PRODUCERS=False,
                     PARTITION="UNKNOWN",
@@ -123,6 +124,50 @@ def get_readout_app(RU_CONFIG=[],
                                                                                               # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                               stream_buffer_size = 100 if FRONTEND_TYPE=='pacman' else 8388608,
                                                                                               enable_raw_recording = False)))]
+    if FIRMWARE_TPG_ENABLED:
+        # ? do I need connections?
+        connections = {}
+        for idx in (MAX_LINK, MAX_LINK+2):
+            queue_inst = f"tp_requests_{idx}"
+            connections[f'tp_output_{idx}'] = Connection(f"tp_datahandler_{idx}.data_requests_0",
+                                                             queue_name = queue_inst)
+            modules += [DAQModule(name = f"tp_datahandler_{idx}",
+                                  plugin = "DataLinkHandler", 
+                                  connections = {},
+                                  conf = rconf.Conf(
+                                      readoutmodelconf= rconf.ReadoutModelConf(
+                                          source_queue_timeout_ms= QUEUE_POP_WAIT_MS,
+                                          # fake_trigger_flag=0, # default
+                                          region_id = RU_CONFIG[RUIDX]["region_id"],
+                                          element_id = idx,
+                                          timesync_connection_name = f"{PARTITION}.timesync_{RUIDX}",
+                                          timesync_topic_name = "Timesync",
+                                      ),
+                                      latencybufferconf= rconf.LatencyBufferConf(
+                                          latency_buffer_alignment_size = 4096,
+                                          latency_buffer_size = LATENCY_BUFFER_SIZE,
+                                          region_id = RU_CONFIG[RUIDX]["region_id"],
+                                          element_id = idx,
+                                      ),
+                                      rawdataprocessorconf= rconf.RawDataProcessorConf(
+                                          region_id = RU_CONFIG[RUIDX]["region_id"],
+                                          element_id = idx,
+                                          enable_software_tpg = False,
+                                          channel_map_name = TPG_CHANNEL_MAP,
+                                          emulator_mode = EMULATOR_MODE,
+                                          error_counter_threshold=100,
+                                          error_reset_freq=10000
+                                      ),
+                                      requesthandlerconf= rconf.RequestHandlerConf(
+                                          latency_buffer_size = LATENCY_BUFFER_SIZE,
+                                          pop_limit_pct = 0.8,
+                                          pop_size_pct = 0.1,
+                                          region_id = RU_CONFIG[RUIDX]["region_id"],
+                                          element_id = idx,
+                                          output_file = path.join(RAW_RECORDING_OUTPUT_DIR, f"output_{RUIDX}_{idx}.out"),
+                                          stream_buffer_size = 8388608,
+                                          enable_raw_recording = RAW_RECORDING_ENABLED,
+                                      )))]
         # modules += [DAQModule(name = f"tpset_publisher",
         #                    plugin = "QueueToNetwork",
         #                    # connections = {'input': Connection('tpset_queue', Direction.IN)},
@@ -211,6 +256,11 @@ def get_readout_app(RU_CONFIG=[],
                     
     if not USE_FAKE_DATA_PRODUCERS:
         if FLX_INPUT:
+            link_0 = [i for i in range(min(5, RU_CONFIG[RUIDX]["channel_count"]))]
+            link_1 = [i-5 for i in range(5, max(5, RU_CONFIG[RUIDX]["channel_count"]))]
+            if FIRMWARE_TPG_ENABLED:
+                link_0.append(MAX_LINK)
+                link_1.append(MAX_LINK+1)
             connections = {}
             for idx in range(MIN_LINK, MIN_LINK + min(5, RU_CONFIG[RUIDX]["channel_count"])):
                 connections[f'output_{idx}'] = Connection(f"datahandler_{idx}.raw_input",
@@ -228,7 +278,7 @@ def get_readout_app(RU_CONFIG=[],
                                                  dma_block_size_kb = 4,
                                                  dma_memory_size_gb = 4,
                                                  numa_id = 0,
-                                                 links_enabled = [i for i in range(min(5, RU_CONFIG[RUIDX]["channel_count"]))]))]
+                                                 links_enabled = link_0))]
             
             if RU_CONFIG[RUIDX]["channel_count"] > 5 :
                 connections = {}
@@ -248,7 +298,7 @@ def get_readout_app(RU_CONFIG=[],
                                                      dma_block_size_kb = 4,
                                                      dma_memory_size_gb = 4,
                                                      numa_id = 0,
-                                                     links_enabled = [i-5 for i in range(5, max(5, RU_CONFIG[RUIDX]["channel_count"]))]))]
+                                                     links_enabled = link_1))]
                 
         elif SSP_INPUT:
             modules += [DAQModule(name = "ssp_0",
