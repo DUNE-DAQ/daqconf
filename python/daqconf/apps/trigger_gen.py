@@ -247,14 +247,14 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
             mgraph.add_fragment_producer(region=region_id, element=TA_ELEMENT_ID, system="DataSelection",
                                          requests_in=f"{buf_name}.data_request_source",
                                          fragments_out=f"{buf_name}.fragment_sink")
-            # mgraph.add_endpoint(f"tasets_{region_id}",  f"tam_{region_id}.output",  Direction.OUT, topic=[f"tasets_{region_id}"])
-            # mgraph.add_endpoint(f"tasets_{region_id}",  f"tazipper.input",          Direction.IN,  topic=[f"tasets_{region_id}"])
-            # mgraph.add_endpoint(f"tasets_{region_id}",  f"{buf_name}.taset_source", Direction.IN,  topic=[f"tasets_{region_id}"])
+            mgraph.add_endpoint(f"tasets_{region_id}", f"tam_{region_id}.output",  Direction.OUT, topic=[f"tasets_{region_id}"])
+            mgraph.add_endpoint(f"tasets_{region_id}", f"tazipper.input",          Direction.IN,  topic=[f"tasets_{region_id}"])
+            mgraph.add_endpoint(f"tasets_{region_id}", f"{buf_name}.taset_source", Direction.IN,  topic=[f"tasets_{region_id}"])
 
-        mgraph.add_endpoint(f"tcs1", "tcm.output",                   Direction.OUT, topic=["TCs"])
-        mgraph.add_endpoint(f"tcs2", "tc_buf.tc_source",             Direction.IN,  topic=["TCs"])
-        mgraph.add_endpoint(f"tcs3", "ttcm.output",                  Direction.OUT, topic=["TCs"])
-        mgraph.add_endpoint(f"tcs4", "mlt.trigger_candidate_source", Direction.IN,  topic=["TCs"])
+        mgraph.add_endpoint(f"tcs", "tcm.output",                   Direction.OUT, topic=["TCs"])
+        mgraph.add_endpoint(f"tcs", "tc_buf.tc_source",             Direction.IN,  topic=["TCs"])
+        mgraph.add_endpoint(f"tcs", "ttcm.output",                  Direction.OUT, topic=["TCs"])
+        mgraph.add_endpoint(f"tcs", "mlt.trigger_candidate_source", Direction.IN,  topic=["TCs"])
 
         mgraph.add_fragment_producer(region=TC_REGION_ID, element=TC_ELEMENT_ID, system="DataSelection",
                                      requests_in="tc_buf.data_request_source",
