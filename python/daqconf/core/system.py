@@ -17,9 +17,8 @@ class System:
     The same is true for application start order.
     """
 
-    def __init__(self, partition_name, apps=None, connections=None, app_connections=None, app_start_order=None,
+    def __init__(self, apps=None, connections=None, app_connections=None, app_start_order=None,
                  first_port=12345):
-        self.partition_name = partition_name
         self.apps=apps if apps else dict()
         self.connections = connections if connections else dict()
         self.app_connections = app_connections if app_connections else dict()
@@ -28,7 +27,6 @@ class System:
         self.digraph = None
 
     def __rich_repr__(self):
-        yield "partition_name", self.partition_name
         yield "apps", self.apps
         yield "connections", self.connections
         yield "app_connections", self.app_connections
@@ -73,4 +71,3 @@ class System:
     def next_unassigned_port(self):
         self._next_port += 1
         return self._next_port
-    

@@ -65,7 +65,6 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                     TRIGGER_WINDOW_BEFORE_TICKS: int = 1000,
                     TRIGGER_WINDOW_AFTER_TICKS: int = 1000,
                     HSI_TRIGGER_TYPE_PASSTHROUGH: bool = False,
-		    PARTITION="UNKNOWN",
 
                     CHANNEL_MAP_NAME = "ProtoDUNESP1ChannelMap",
                     HOST="localhost",
