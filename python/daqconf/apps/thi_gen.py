@@ -42,6 +42,7 @@ from daqconf.core.conf_utils import Direction
 def get_thi_app(GATHER_INTERVAL=1e6,
                 GATHER_INTERVAL_DEBUG=10e6,
                 MASTER_DEVICE_NAME="",
+                FANOUT_DEVICE_NAME="",
                 HSI_DEVICE_NAME="",
                 CONNECTIONS_FILE="${TIMING_SHARE}/config/etc/connections.xml",
                 UHAL_LOG_LEVEL="notice",
@@ -51,6 +52,11 @@ def get_thi_app(GATHER_INTERVAL=1e6,
                 DEBUG=False):
     
     modules = {}
+    fanout_devices=[]
+    
+    if FANOUT_DEVICE_NAME:
+        fanout_devices.append(FANOUT_DEVICE_NAME)
+    
     modules = [ 
                 DAQModule( name="thi",
                                 plugin="TimingHardwareManagerPDI",
@@ -58,14 +64,15 @@ def get_thi_app(GATHER_INTERVAL=1e6,
                                                        gather_interval=GATHER_INTERVAL,
                                                        gather_interval_debug=GATHER_INTERVAL_DEBUG,
                                                        monitored_device_name_master=MASTER_DEVICE_NAME,
-                                                       monitored_device_names_fanout=[],
+                                                       monitored_device_names_fanout=fanout_devices,
                                                        monitored_device_name_endpoint="",
                                                        monitored_device_name_hsi=HSI_DEVICE_NAME,
                                                        uhal_log_level=UHAL_LOG_LEVEL)),
                 ]                
         
     mgraph = ModuleGraph(modules)
-    mgraph.add_partition_connection(TIMING_PARTITION, "timing_cmds", "thi.timing_cmds_in", Direction.IN, HOST, TIMING_PORT)
+    mgraph.add_partition_connection(TIMING_PARTITION, "timing_cmds", "thi.timing_cmds", Direction.IN, HOST, TIMING_PORT)
+    mgraph.add_partition_connection(TIMING_PARTITION, "timing_device_info", "thi.timing_device_info", Direction.OUT, HOST, TIMING_PORT+1, set([MASTER_DEVICE_NAME,HSI_DEVICE_NAME]))
 
     thi_app = App(modulegraph=mgraph, host=HOST, name="THIApp")
     

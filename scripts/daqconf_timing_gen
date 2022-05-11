@@ -22,11 +22,6 @@ from dunedaq.env import get_moo_model_path
 import moo.io
 moo.io.default_load_path = get_moo_model_path()
 
-# Load configuration types
-import moo.otypes
-moo.otypes.load_types('networkmanager/nwmgr.jsonnet')
-import dunedaq.networkmanager.nwmgr as nwmgr
-
 import click
 
 @click.command(context_settings=CONTEXT_SETTINGS)
@@ -36,6 +31,7 @@ import click
 @click.option('--host-thi', default='localhost', help='Host to run the (global) timing hardware interface app on')
 @click.option('--port-thi', default=12345, help='Port to host running the (global) timing hardware interface app on')
 @click.option('--host-tmc', default='localhost', help='Host to run the (global) timing master controller app on')
+@click.option('--host-tfc', default='localhost', help='Host to run the (global) timing master controller app on')
 @click.option('--timing-hw-connections-file', default="${TIMING_SHARE}/config/etc/connections.xml", help='Path to timing hardware connections file')
 @click.option('--opmon-impl', type=click.Choice(['json','cern','pocket'], case_sensitive=False),default='json', help="Info collector service implementation to use")
 @click.option('--ers-impl', type=click.Choice(['local','cern','pocket'], case_sensitive=False), default='local', help="ERS destination (Kafka used for cern and pocket)")
@@ -45,10 +41,13 @@ import click
 @click.option('--master-send-delays-period', default=0, help="Master controller continuously send delays period [ms] (to all endpoints). 0 for disable.")
 @click.option('--master-clock-file', default="", help='Path to custom PLL config file for master device')
 @click.option('--master-clock-mode', default=-1, help='Fanout mode for master device.')
+@click.option('--fanout-device-name', default="", help='Device name of timing fanout hw')
+@click.option('--fanout-clock-file', default="", help='Path to custom PLL config file for fanout device')
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
 
-def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_tmc, timing_hw_connections_file, opmon_impl, ers_impl, pocket_url, hsi_device_name, master_device_name, master_send_delays_period, master_clock_file, master_clock_mode, debug, json_dir):
+def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_tmc, host_tfc, timing_hw_connections_file, opmon_impl, ers_impl, pocket_url, hsi_device_name, 
+        master_device_name, master_send_delays_period, master_clock_file, master_clock_mode, fanout_device_name, fanout_clock_file, debug, json_dir):
 
     if exists(json_dir):
         raise RuntimeError(f"Directory {json_dir} already exists")
@@ -58,6 +57,9 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
 
     console.log("Loading timing master controller generator")
     from daqconf.apps.tmc_gen import get_tmc_app
+    
+    console.log("Loading timing fanout controller generator")
+    from daqconf.apps.tfc_gen import get_tfc_app
 
     console.log(f"Generating configs for global thi host {host_thi}")
 
@@ -98,6 +100,7 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
     the_system.apps["thi"] = get_thi_app(
         CONNECTIONS_FILE=timing_hw_connections_file,
         MASTER_DEVICE_NAME=master_device_name,
+        FANOUT_DEVICE_NAME=fanout_device_name,
         HSI_DEVICE_NAME=hsi_device_name,
         TIMING_PARTITION=partition_name,
         TIMING_PORT=port_thi,
@@ -114,6 +117,16 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
             TIMING_HOST=host_thi,
             TIMING_PORT=port_thi,
             HOST=host_tmc,
+            DEBUG=debug)
+
+    if fanout_device_name:
+        the_system.apps["tfc"] = get_tfc_app(
+            FANOUT_DEVICE_NAME=fanout_device_name,
+            FANOUT_CLOCK_FILE=fanout_clock_file,
+            TIMING_PARTITION=partition_name,
+            TIMING_HOST=host_thi,
+            TIMING_PORT=port_thi,
+            HOST=host_tfc,
             DEBUG=debug)
 
     if debug:
