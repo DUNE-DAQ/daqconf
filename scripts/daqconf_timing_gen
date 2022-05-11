@@ -155,7 +155,7 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
 
     console.log(f"Global aapp config generated in {json_dir}")
     
-    write_metadata_file(json_dir, "daqconf_global_gen")
+    write_metadata_file(json_dir, "daqconf_timing_gen")
 
 if __name__ == '__main__':
     try:
