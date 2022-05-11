@@ -127,7 +127,11 @@ def get_readout_app(RU_CONFIG=[],
     if FIRMWARE_TPG_ENABLED:
         # ? do I need connections?
         connections = {}
-        for idx in (MAX_LINK, MAX_LINK+2):
+        if RU_CONFIG[RUIDX]["channel_count"] > 5:
+            num_tp_links = 2
+        else:
+            num_tp_links = 1
+        for idx in (MAX_LINK, MAX_LINK+num_tp_links):
             queue_inst = f"tp_requests_{idx}"
             connections[f'tp_output_{idx}'] = Connection(f"tp_datahandler_{idx}.data_requests_0",
                                                              queue_name = queue_inst)
@@ -267,7 +271,12 @@ def get_readout_app(RU_CONFIG=[],
                                                           queue_name = f'{FRONTEND_TYPE}_link_{idx}',
                                                           queue_kind = "FollySPSCQueue",
                                                           queue_capacity = 100000)
-            
+                if FIRMWARE_TPG_ENABLED:
+                    connections[f'output_{MAX_LINK}'] = Connection(f"tp_datahandler_{MAX_LINK}.raw_input",
+                                                            queue_name = f'raw_tp_link_{MAX_LINK}',
+                                                            queue_kind = "FollySPSCQueue",
+                                                            queue_capacity = 100000)
+
             modules += [DAQModule(name = 'flxcard_0',
                                plugin = 'FelixCardReader',
                                connections = connections,
@@ -287,7 +296,13 @@ def get_readout_app(RU_CONFIG=[],
                                                               queue_name = f'{FRONTEND_TYPE}_link_{idx}',
                                                               queue_kind = "FollySPSCQueue",
                                                               queue_capacity = 100000)
-                    
+
+                if FIRMWARE_TPG_ENABLED:
+                    connections[f'output_{MAX_LINK+1}'] = Connection(f"tp_datahandler_{MAX_LINK+1}.raw_input",
+                                                            queue_name = f'raw_tp_link_{MAX_LINK+1}',
+                                                            queue_kind = "FollySPSCQueue",
+                                                            queue_capacity = 100000)
+
                 modules += [DAQModule(name = "flxcard_1",
                                    plugin = "FelixCardReader",
                                    connections = connections,
@@ -352,6 +367,16 @@ def get_readout_app(RU_CONFIG=[],
     #                    conf = None)]
                         
     mgraph = ModuleGraph(modules)
+
+    if FIRMWARE_TPG_ENABLED:
+        if RU_CONFIG[RUIDX]["channel_count"] > 5:
+            num_tp_links = 2
+        else:
+            num_tp_links = 1
+        for idx in (MAX_LINK, MAX_LINK+num_tp_links):
+            mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = idx, system = SYSTEM_TYPE,
+                                    requests_in   = f"tp_datahandler_{idx}.data_requests_0",
+                                    fragments_out = f"tp_datahandler_{idx}.fragment_queue")
 
     for idx in range(MIN_LINK, MAX_LINK):
         # P. Rodrigues 2022-02-15 We don't make endpoints for the
