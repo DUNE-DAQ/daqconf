@@ -70,7 +70,7 @@ def get_thi_app(GATHER_INTERVAL=1e6,
         
     mgraph = ModuleGraph(modules)
     mgraph.add_partition_connection(TIMING_PARTITION, "timing_cmds", "thi.timing_cmds", Direction.IN, HOST, TIMING_PORT)
-    mgraph.add_partition_connection(TIMING_PARTITION, "timing_device_info", "thi.timing_device_info", Direction.OUT, HOST, TIMING_PORT+1, set([MASTER_DEVICE_NAME,HSI_DEVICE_NAME]))
+    mgraph.add_partition_connection(TIMING_PARTITION, "timing_device_info", "thi.timing_device_info", Direction.OUT, HOST, TIMING_PORT+1, set([MASTER_DEVICE_NAME,HSI_DEVICE_NAME,FANOUT_DEVICE_NAME]))
 
     thi_app = App(modulegraph=mgraph, host=HOST, name="THIApp")
     
