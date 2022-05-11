@@ -54,6 +54,7 @@ def get_dqm_app(RU_CONFIG=[],
                  DF_RATE=10,
                  DF_ALGS='hist mean_rms fourier_sum',
                  DF_TIME_WINDOW=0,
+                 FRONTEND_TYPE='wib',
                  DEBUG=False,
                  ):
 
@@ -143,6 +144,7 @@ def get_dqm_app(RU_CONFIG=[],
                               df_offset=DF_RATE * DQMIDX,
                               df_algs=algs_bitfield,
                               df_num_frames=DF_TIME_WINDOW / 25,
+                              frontend_type=FRONTEND_TYPE,
                           )
                           )
                           ]
