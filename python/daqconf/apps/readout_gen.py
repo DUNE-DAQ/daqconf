@@ -254,16 +254,10 @@ def get_readout_app(RU_CONFIG=[],
     mgraph = ModuleGraph(modules, queues=queues)
 
     for idx in range(MIN_LINK, MAX_LINK):
-        # P. Rodrigues 2022-02-15 We don't make endpoints for the
-        # timesync connection because they are handled by some
-        # special-case magic in NetworkManager, which holds a map
-        # of topics to connections, and looks up all the
-        # connections for a given topic.
-        #
+
         if SOFTWARE_TPG_ENABLED:
             mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{idx}", f"datahandler_{idx}.tpset_out",    Direction.OUT, topic=[f"tpsets_ru{RUIDX}_link{idx}"])
-            # mgraph.add_endpoint(f"timesync_{idx+RU_CONFIG[RUIDX]['channel_count']}", f"tp_datahandler_{idx}.timesync",    Direction.OUT)
-
+            mgraph.add_endpoint(f"timesync_tp_dlh_ru{RUIDX}_{idx}", f"tp_datahandler_{idx}.timesync_output",    Direction.OUT, ["Timesync"])
         
         if USE_FAKE_DATA_PRODUCERS:
             # Add fragment producers for fake data. This call is necessary to create the RequestReceiver instance, but we don't need the generated FragmentSender or its queues...
