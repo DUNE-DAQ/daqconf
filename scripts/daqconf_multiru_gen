@@ -337,6 +337,7 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
 
     the_system.apps['trigger'] = get_trigger_app(
         SOFTWARE_TPG_ENABLED = enable_software_tpg,
+        FIRMWARE_TPG_ENABLED = enable_firmware_tpg,
         RU_CONFIG = ru_configs,
         ACTIVITY_PLUGIN = trigger_activity_plugin,
         ACTIVITY_CONFIG = eval(trigger_activity_config),
@@ -393,6 +394,23 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
                                                                      topics=["TPSets"],
                                                                      address = f"tcp://{{host_{ru_app_name}}}:{the_system.next_unassigned_port()}"))
 
+    if enable_firmware_tpg:
+        for ruidx,ru_app_name in enumerate(ru_app_names):
+            ru_config = ru_configs[ruidx]
+            apa_idx = ru_config['region_id']
+            if ru_config["channel_count"] > 5: 
+                tp_links = 2
+            else:
+                tp_links = 1
+            for link in range(tp_links):
+                # PL 2022-02-02: global_link is needed here to have non-overlapping app connections if len(ru)>1 with the same region_id
+                # Adding the ru number here too, in case we have many region_ids
+                global_link = link+ru_config["start_channel"]
+                connection_name = f"{partition_name}.tpsets_apa{apa_idx}_link{global_link}"
+                console.log(f"Creating connection with name {connection_name}")
+                the_system.network_endpoints.append(nwmgr.Connection(name=connection_name,
+                                                                     topics=["TPSets"],
+                                                                     address = f"tcp://{{host_{ru_app_name}}}:{the_system.next_unassigned_port()}"))
 
     mgraphs_readout = []
     for i,host in enumerate(host_ru):
@@ -514,6 +532,30 @@ def cli(global_partition_name, host_global, port_global, partition_name, number_
             ru_config = ru_configs[ruidx]
             apa_idx = ru_config['region_id']
             for link in range(ru_config["channel_count"]):
+                # PL 2022-02-02: global_link is needed here to have non-overlapping app connections if len(ru)>1 with the same region_id
+                # Adding the ru number here too, in case we have many region_ids
+                global_link = link+ru_config["start_channel"]
+                the_system.app_connections.update(
+                    {
+                        f"{ru_app_name}.tpsets_ru{ruidx}_link{global_link}":
+                        AppConnection(nwmgr_connection=f"{partition_name}.tpsets_apa{apa_idx}_link{global_link}",
+                                      msg_type="dunedaq::trigger::TPSet",
+                                      msg_module_name="TPSetNQ",
+                                      topics=["TPSets"],
+                                      receivers=([f"trigger.tpsets_into_buffer_ru{ruidx}_link{link}",
+                                                  f"trigger.tpsets_into_chain_ru{ruidx}_link{link}"] +
+                                                 (["tpwriter.tpsets_into_writer"] if enable_tpset_writing else [])))
+                    })
+
+    if enable_firmware_tpg:
+        for ruidx,ru_app_name in enumerate(ru_app_names):
+            ru_config = ru_configs[ruidx]
+            apa_idx = ru_config['region_id']
+            if ru_config["channel_count"] > 5: 
+                tp_links = 2
+            else:
+                tp_links = 1
+            for link in range(tp_links):
                 # PL 2022-02-02: global_link is needed here to have non-overlapping app connections if len(ru)>1 with the same region_id
                 # Adding the ru number here too, in case we have many region_ids
                 global_link = link+ru_config["start_channel"]

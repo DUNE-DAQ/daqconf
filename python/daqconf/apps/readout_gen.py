@@ -128,10 +128,10 @@ def get_readout_app(RU_CONFIG=[],
         # ? do I need connections?
         connections = {}
         if RU_CONFIG[RUIDX]["channel_count"] > 5:
-            num_tp_links = 2
+            tp_links = 2
         else:
-            num_tp_links = 1
-        for idx in (MAX_LINK, MAX_LINK+num_tp_links):
+            tp_links = 1
+        for idx in range(tp_links):
             queue_inst = f"tp_requests_{idx}"
             connections[f'tp_output_{idx}'] = Connection(f"tp_datahandler_{idx}.data_requests_0",
                                                              queue_name = queue_inst)
@@ -263,19 +263,20 @@ def get_readout_app(RU_CONFIG=[],
             link_0 = [i for i in range(min(5, RU_CONFIG[RUIDX]["channel_count"]))]
             link_1 = [i-5 for i in range(5, max(5, RU_CONFIG[RUIDX]["channel_count"]))]
             if FIRMWARE_TPG_ENABLED:
-                link_0.append(MAX_LINK)
-                link_1.append(MAX_LINK+1)
+                link_0.append(5)
+                if RU_CONFIG[RUIDX]["channel_count"] > 5:
+                    link_1.append(5)
             connections = {}
             for idx in range(MIN_LINK, MIN_LINK + min(5, RU_CONFIG[RUIDX]["channel_count"])):
                 connections[f'output_{idx}'] = Connection(f"datahandler_{idx}.raw_input",
                                                           queue_name = f'{FRONTEND_TYPE}_link_{idx}',
                                                           queue_kind = "FollySPSCQueue",
                                                           queue_capacity = 100000)
-                if FIRMWARE_TPG_ENABLED:
-                    connections[f'output_{MAX_LINK}'] = Connection(f"tp_datahandler_{MAX_LINK}.raw_input",
-                                                            queue_name = f'raw_tp_link_{MAX_LINK}',
-                                                            queue_kind = "FollySPSCQueue",
-                                                            queue_capacity = 100000)
+            if FIRMWARE_TPG_ENABLED:
+                connections[f'tp_output_{0}'] = Connection(f"tp_datahandler_{0}.raw_input",
+                                                        queue_name = f'raw_tp_link_{5}',
+                                                        queue_kind = "FollySPSCQueue",
+                                                        queue_capacity = 100000)
 
             modules += [DAQModule(name = 'flxcard_0',
                                plugin = 'FelixCardReader',
@@ -296,10 +297,9 @@ def get_readout_app(RU_CONFIG=[],
                                                               queue_name = f'{FRONTEND_TYPE}_link_{idx}',
                                                               queue_kind = "FollySPSCQueue",
                                                               queue_capacity = 100000)
-
                 if FIRMWARE_TPG_ENABLED:
-                    connections[f'output_{MAX_LINK+1}'] = Connection(f"tp_datahandler_{MAX_LINK+1}.raw_input",
-                                                            queue_name = f'raw_tp_link_{MAX_LINK+1}',
+                    connections[f'tp_output_{1}'] = Connection(f"tp_datahandler_{1}.raw_input",
+                                                            queue_name = f'raw_tp_link_{11}',
                                                             queue_kind = "FollySPSCQueue",
                                                             queue_capacity = 100000)
 
@@ -370,11 +370,13 @@ def get_readout_app(RU_CONFIG=[],
 
     if FIRMWARE_TPG_ENABLED:
         if RU_CONFIG[RUIDX]["channel_count"] > 5:
-            num_tp_links = 2
+            tp_links = 2
         else:
-            num_tp_links = 1
-        for idx in (MAX_LINK, MAX_LINK+num_tp_links):
-            mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = idx, system = SYSTEM_TYPE,
+            tp_links = 1
+        for idx in range(tp_links):
+            assert total_link_count < 1000
+            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{idx}", f"tp_datahandler_{idx}.tpset_out", Direction.OUT)
+            mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = idx + 1000, system = SYSTEM_TYPE,
                                     requests_in   = f"tp_datahandler_{idx}.data_requests_0",
                                     fragments_out = f"tp_datahandler_{idx}.fragment_queue")
 
