@@ -155,7 +155,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                        time_after=TRIGGER_WINDOW_AFTER_TICKS),
                                          hsievent_connection_name = "hsievents",
 					 hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH))]
-    queues += [Queue("ttcm.output", "mlt.trigger_candidate_source",  "trigger_candidates")]
+    # queues += [Queue("ttcm.output", "mlt.trigger_candidate_source",  "trigger_candidates")]
     
     # We need to populate the list of links based on the fragment
     # producers available in the system. This is a bit of a
@@ -175,6 +175,10 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     mgraph.add_endpoint("hsievents", None, Direction.IN)
     mgraph.add_endpoint("td_to_dfo", None, Direction.OUT)
     mgraph.add_endpoint("df_busy_signal", None, Direction.IN)
+
+    mgraph.add_endpoint("tcs", "ttcm.output", Direction.OUT, topic=["triggercandidates"])
+    mgraph.add_endpoint("tcs", "mlt.trigger_candidate_source", Direction.IN, topic=["triggercandidates"])
+    
     if SOFTWARE_TPG_ENABLED:
         for ruidx, ru_config in enumerate(RU_CONFIG):
             for link_idx in range(ru_config["channel_count"]):
