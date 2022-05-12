@@ -1,4 +1,3 @@
-
 # Set moo schema search path
 from dunedaq.env import get_moo_model_path
 import moo.io
@@ -37,6 +36,7 @@ import json
 from daqconf.core.conf_utils import Direction, Queue
 from daqconf.core.daqmodule import DAQModule
 from daqconf.core.app import App,ModuleGraph
+
 # Time to wait on pop()
 QUEUE_POP_WAIT_MS = 100
 # local clock speed Hz
@@ -76,6 +76,7 @@ def get_readout_app(RU_CONFIG=[],
     MAX_LINK = MIN_LINK + RU_CONFIG[RUIDX]["channel_count"]
     
     if DEBUG: print(f"ReadoutApp.__init__ with RUIDX={RUIDX}, MIN_LINK={MIN_LINK}, MAX_LINK={MAX_LINK}")
+
     modules = []
     queues = []
 
@@ -159,7 +160,8 @@ def get_readout_app(RU_CONFIG=[],
                                           channel_map_name = TPG_CHANNEL_MAP,
                                           emulator_mode = EMULATOR_MODE,
                                           error_counter_threshold=100,
-                                          error_reset_freq=10000
+                                          error_reset_freq=10000,
+                                          tpset_topic=RU_CONFIG[RUIDX]["tpset_topics"][idx]
                                       ),
                                       requesthandlerconf= rconf.RequestHandlerConf(
                                           latency_buffer_size = LATENCY_BUFFER_SIZE,
@@ -256,7 +258,7 @@ def get_readout_app(RU_CONFIG=[],
     for idx in range(MIN_LINK, MAX_LINK):
 
         if SOFTWARE_TPG_ENABLED:
-            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{idx}", f"datahandler_{idx}.tpset_out",    Direction.OUT, topic=[f"tpsets_ru{RUIDX}_link{idx}"])
+            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{idx}", f"datahandler_{idx}.tpset_out",    Direction.OUT, topic=[RU_CONFIG[RUIDX]["tpset_topics"][idx]])
             mgraph.add_endpoint(f"timesync_tp_dlh_ru{RUIDX}_{idx}", f"tp_datahandler_{idx}.timesync_output",    Direction.OUT, ["Timesync"])
         
         if USE_FAKE_DATA_PRODUCERS:
