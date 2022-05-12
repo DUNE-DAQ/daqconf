@@ -154,8 +154,7 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
 
     console.log(f"Generating configs for hosts trigger={host_trigger} DFO={host_dfo} dataflow={host_df} readout={host_ru} hsi={host_hsi} dqm={host_ru}")
 
-    the_system = System(#partition_name,
-        first_port=port_timing)
+    the_system = System(first_port=port_timing)
    
     total_number_of_data_producers = 0
 
@@ -270,7 +269,6 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
             HSI_FE_MASK=hsi_fe_mask,
             HSI_INV_MASK=hsi_inv_mask,
             HSI_SOURCE=hsi_source,
-            #PARTITION=partition_name,
             TIMING_PARTITION=timing_partition_name,
             TIMING_HOST=host_timing,
             TIMING_PORT=port_timing,
@@ -286,7 +284,6 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
             MEAN_SIGNAL_MULTIPLICITY = mean_hsi_signal_multiplicity,
             SIGNAL_EMULATION_MODE = hsi_signal_emulation_mode,
             ENABLED_SIGNALS =  enabled_hsi_signals,
-            #PARTITION=partition_name,
             HOST=host_hsi,
             DEBUG=debug)
 
@@ -300,7 +297,6 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
             TRIGGER_MASK=timing_partition_trigger_mask,
             RATE_CONTROL_ENABLED=timing_partition_rate_control_enabled,
             SPILL_GATE_ENABLED=timing_partition_spill_gate_enabled,
-            #PARTITION=partition_name,
             TIMING_PARTITION=timing_partition_name,
             TIMING_HOST=host_timing,
             TIMING_PORT=port_timing,
@@ -320,7 +316,6 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
         TRIGGER_WINDOW_BEFORE_TICKS = trigger_window_before_ticks,
         TRIGGER_WINDOW_AFTER_TICKS = trigger_window_after_ticks,
         HSI_TRIGGER_TYPE_PASSTHROUGH = hsi_trigger_type_passthrough,
-        #PARTITION=partition_name,
         CHANNEL_MAP_NAME = tpg_channel_map,
         HOST=host_trigger,
         DEBUG=debug)
@@ -328,11 +323,8 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
     the_system.apps['dfo'] = get_dfo_app(
         DF_COUNT = len(host_df),
         TOKEN_COUNT = trigemu_token_count,
-        #PARTITION=partition_name,
         HOST=host_trigger,
         DEBUG=debug)
-
-    # console.log("trigger cmd data:", cmd_data_trigger)
 
     #-------------------------------------------------------------------
     # Readout apps
@@ -354,25 +346,24 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
     for i,host in enumerate(host_ru):
         ru_name = ru_app_names[i]
         the_system.apps[ru_name] = get_readout_app(
-            #PARTITION=partition_name,
-                                              RU_CONFIG=ru_configs,
-                                              EMULATOR_MODE = emulator_mode,
-                                              DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
-                                              DATA_FILE = data_file,
-                                              FLX_INPUT = use_felix,
-                                              SSP_INPUT = use_ssp,
-                                              CLOCK_SPEED_HZ = clock_speed_hz,
-                                              RUIDX = i,
-                                              RAW_RECORDING_ENABLED = enable_raw_recording,
-                                              RAW_RECORDING_OUTPUT_DIR = raw_recording_output_dir,
-                                              FRONTEND_TYPE = frontend_type,
-                                              SYSTEM_TYPE = system_type,
-                                              SOFTWARE_TPG_ENABLED = enable_software_tpg,
+            RU_CONFIG=ru_configs,
+            EMULATOR_MODE = emulator_mode,
+            DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
+            DATA_FILE = data_file,
+            FLX_INPUT = use_felix,
+            SSP_INPUT = use_ssp,
+            CLOCK_SPEED_HZ = clock_speed_hz,
+            RUIDX = i,
+            RAW_RECORDING_ENABLED = enable_raw_recording,
+            RAW_RECORDING_OUTPUT_DIR = raw_recording_output_dir,
+            FRONTEND_TYPE = frontend_type,
+            SYSTEM_TYPE = system_type,
+            SOFTWARE_TPG_ENABLED = enable_software_tpg,
             TPG_CHANNEL_MAP = tpg_channel_map,
-                                              USE_FAKE_DATA_PRODUCERS = use_fake_data_producers,
-                                              HOST=host,
-                                              LATENCY_BUFFER_SIZE=latency_buffer_size,
-                                              DEBUG=debug)
+            USE_FAKE_DATA_PRODUCERS = use_fake_data_producers,
+            HOST=host,
+            LATENCY_BUFFER_SIZE=latency_buffer_size,
+            DEBUG=debug)
         
         if debug:
             console.log(f"{ru_name} app: {the_system.apps[ru_name]}")
@@ -395,7 +386,6 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
                 DQM_MEANRMS_PARAMS=dqm_meanrms_params,
                 DQM_FOURIER_PARAMS=dqm_fourier_params,
                 DQM_FOURIERSUM_PARAMS=dqm_fouriersum_params,
-                #PARTITION=partition_name,
                 HOST=host,
                 NUM_DF_APPS=len(host_df),
                 DEBUG=debug)
@@ -423,7 +413,6 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
         the_system.apps[app_name] = get_dataflow_app(
             HOSTIDX = i,
             OUTPUT_PATH = output_path,
-            #PARTITION=partition_name,
             OPERATIONAL_ENVIRONMENT = op_env,
             TPC_REGION_NAME_PREFIX = tpc_region_name_prefix,
             MAX_FILE_SIZE = max_file_size,
@@ -450,7 +439,6 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
                 DQM_MEANRMS_PARAMS=[0, 0, 0],
                 DQM_FOURIER_PARAMS=[0, 0, 0],
                 DQM_FOURIERSUM_PARAMS=[0, 0, 0],
-                #PARTITION=partition_name,
                 HOST=host_ru[i%len(host_ru)],
                 MODE='df',
                 DF_RATE=dqm_df_rate,
@@ -524,7 +512,7 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
     from daqconf.core.conf_utils import make_system_command_datas,generate_boot, write_json_files
     system_command_datas = make_system_command_datas(the_system)
     # Override the default boot.json with the one from minidaqapp
-    boot = generate_boot(the_system.apps, #partition_name=partition_name,
+    boot = generate_boot(the_system.apps,
                          ers_settings=ers_settings, info_svc_uri=info_svc_uri,
                          disable_trace=disable_trace, use_kafka=use_kafka)
     
