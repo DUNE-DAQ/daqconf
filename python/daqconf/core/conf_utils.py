@@ -593,7 +593,7 @@ def make_system_command_datas(the_system, verbose=False):
             console.log(cfg)
 
     console.log(f"Generating boot json file")
-    system_command_datas['boot'] = generate_boot(the_system.apps, verbose)
+    system_command_datas['boot'] = generate_boot(the_system.apps, verbose=verbose)
 
     return system_command_datas
 
