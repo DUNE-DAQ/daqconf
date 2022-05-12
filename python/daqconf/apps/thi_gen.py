@@ -50,22 +50,22 @@ def get_thi_app(GATHER_INTERVAL=1e6,
                 HOST="localhost",
                 DEBUG=False):
     
-    modules = {}
     modules = [ 
                 DAQModule( name="thi",
                                 plugin="TimingHardwareManagerPDI",
-                                conf= thi.ConfParams(connections_file=CONNECTIONS_FILE,
-                                                       gather_interval=GATHER_INTERVAL,
-                                                       gather_interval_debug=GATHER_INTERVAL_DEBUG,
-                                                       monitored_device_name_master=MASTER_DEVICE_NAME,
-                                                       monitored_device_names_fanout=[],
-                                                       monitored_device_name_endpoint="",
-                                                       monitored_device_name_hsi=HSI_DEVICE_NAME,
-                                                       uhal_log_level=UHAL_LOG_LEVEL)),
+                                conf= thi.ConfParams(
+                                    connections_file=CONNECTIONS_FILE,
+                                    gather_interval=GATHER_INTERVAL,
+                                    gather_interval_debug=GATHER_INTERVAL_DEBUG,
+                                    monitored_device_name_master=MASTER_DEVICE_NAME,
+                                    monitored_device_names_fanout=[],
+                                    monitored_device_name_endpoint="",
+                                    monitored_device_name_hsi=HSI_DEVICE_NAME,
+                                    uhal_log_level=UHAL_LOG_LEVEL)),
                 ]                
         
     mgraph = ModuleGraph(modules)
-    mgraph.add_partition_connection(TIMING_PARTITION, "timing_cmds", "thi.timing_cmds_in", Direction.IN, HOST, TIMING_PORT)
+    mgraph.add_external_connection("timing_cmds", "thi.timing_cmds_in", Direction.IN, HOST, TIMING_PORT)
 
     thi_app = App(modulegraph=mgraph, host=HOST, name="THIApp")
     

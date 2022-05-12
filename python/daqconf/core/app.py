@@ -1,5 +1,5 @@
 from daqconf.core.daqmodule import DAQModule
-from daqconf.core.conf_utils import Endpoint, Direction, GeoID, FragmentProducer, Queue, PartitionConnection
+from daqconf.core.conf_utils import Endpoint, Direction, GeoID, FragmentProducer, Queue, ExternalConnection
 import networkx as nx
 
 class ModuleGraph:
@@ -38,12 +38,12 @@ class ModuleGraph:
 
         return output_queues
 
-    def __init__(self, modules:[DAQModule]=None, endpoints:[Endpoint]=None, fragment_producers:{FragmentProducer}=None, queues:[Queue]=None, partition_connections:[PartitionConnection]=None):
+    def __init__(self, modules:[DAQModule]=None, endpoints:[Endpoint]=None, fragment_producers:{FragmentProducer}=None, queues:[Queue]=None, external_connections:[ExternalConnection]=None):
         self.modules=modules if modules else []
         self.endpoints=endpoints if endpoints else []
         self.fragment_producers = fragment_producers if  fragment_producers else dict()
         self.queues = self.combine_queues(queues) if queues else []
-        self.partition_connections = partition_connections if partition_connections else []
+        self.external_connections = external_connections if external_connections else []
 
     def __repr__(self):
         return f"modulegraph(modules={self.modules}, endpoints={self.endpoints}, fragment_producers={self.fragment_producers})"
@@ -170,8 +170,8 @@ class ModuleGraph:
         if not self.has_endpoint(external_name, internal_name):
             self.endpoints += [Endpoint(external_name, internal_name, inout, topic)]
 
-    def add_partition_connection(self, partition, external_name, internal_name, inout, host, port, topic=[]):
-        self.partition_connections += [PartitionConnection(partition, external_name, internal_name, inout, host, port, topic)]
+    def add_external_connection(self, external_name, internal_name, inout, host, port, topic=[]):
+        self.external_connections += [ExternalConnection(external_name, internal_name, inout, host, port, topic)]
 
     def connect_modules(self, push_addr, pop_addr, queue_name = "", size_hint = 10, toposort = True, verbose=False):
         queue_start = push_addr.split(".")

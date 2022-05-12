@@ -66,10 +66,9 @@ class Endpoint:
     #     self.external_name = None
     #     self.direction = Direction.IN
 
-class PartitionConnection(Endpoint):
-   def __init__(self, partition_name, external_name, internal_name, direction, host, port, topic=[]):
+class ExternalConnection(Endpoint):
+   def __init__(self, external_name, internal_name, direction, host, port, topic=[]):
         super().__init__(external_name, internal_name, direction, topic)
-        self.partition = partition_name
         self.host = host
         self.port = port
 
@@ -207,14 +206,14 @@ def make_queue_connection(the_system, app, endpoint_name, in_apps, out_apps, siz
             console.log(f"Connection {endpoint_name}, MPMC Queue")
         the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, service_type="kQueue", data_type="", uri=f"queue://FollyMPMC:{size}")]
 
-def make_partition_connection(the_system, partition, endpoint_name, app_name, host, port, topic, verbose):
+def make_external_connection(the_system, endpoint_name, app_name, host, port, topic, verbose):
     if verbose:
-        console.log(f"Connection {endpoint_name}, Cross-Partition")
+        console.log(f"External connection {endpoint_name}")
     address = f"tcp://{host}:{port}"
     if len(topic) == 0:
-        the_system.connections[app_name] += [conn.ConnectionId(uid=partition+"."+endpoint_name, service_type="kNetwork", data_type="", uri=address)]
+        the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetwork", data_type="", uri=address)]
     else:
-        the_system.connections[app_name] += [conn.ConnectionId(uid=partition+"."+endpoint_name, service_type="kPubSub", data_type="", uri=address, topics=topic)]
+        the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kPubSub", data_type="", uri=address, topics=topic)]
 
 def make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbose):
     if verbose:
@@ -254,8 +253,8 @@ def make_system_connections(the_system, verbose=False):
       the_system.connections[app] = []
       for queue in the_system.apps[app].modulegraph.queues:
             make_queue_connection(the_system, app, queue.name, queue.push_modules, queue.pop_modules, queue.size, verbose)
-      for partition_conn in the_system.apps[app].modulegraph.partition_connections:
-            make_partition_connection(the_system, partition_conn.partition, partition_conn.external_name, app, partition_conn.host, partition_conn.port, partition_conn.topic, verbose)
+      for external_conn in the_system.apps[app].modulegraph.external_connections:
+            make_external_connection(the_system, external_conn.external_name, app, external_conn.host, external_conn.port, external_conn.topic, verbose)
       for endpoint in the_system.apps[app].modulegraph.endpoints:
         if len(endpoint.topic) == 0:
             if verbose:
@@ -388,13 +387,13 @@ def make_app_command_data(system, app, appkey, verbose=False):
             console.log(f"module, name= {module}, {name}, endpoint.external_name={endpoint.external_name}, endpoint.direction={endpoint.direction}")
         app_connrefs[module] += [conn.ConnectionRef(name=name, uid=endpoint.external_name, dir= "kInput" if endpoint.direction == Direction.IN else "kOutput")]
 
-    for partition_conn in app.modulegraph.partition_connections:
-        if partition_conn.internal_name is None:
+    for external_conn in app.modulegraph.external_connections:
+        if external_conn.internal_name is None:
             continue
-        module, name = partition_conn.internal_name.split(".")
+        module, name = external_conn.internal_name.split(".")
         if verbose:
-            console.log(f"module, name= {module}, {name}, partition_conn.external_name={partition_conn.external_name}, partition_conn.direction={partition_conn.direction}")
-        app_connrefs[module] += [conn.ConnectionRef(name=name, uid=partition_conn.external_name, dir= "kInput" if partition_conn.direction == Direction.IN else "kOutput")]
+            console.log(f"module, name= {module}, {name}, external_conn.external_name={external_conn.external_name}, external_conn.direction={external_conn.direction}")
+        app_connrefs[module] += [conn.ConnectionRef(name=name, uid=exrternal_conn.external_name, dir= "kInput" if external_conn.direction == Direction.IN else "kOutput")]
 
     for queue in app.modulegraph.queues:
         queue_uid = queue.name

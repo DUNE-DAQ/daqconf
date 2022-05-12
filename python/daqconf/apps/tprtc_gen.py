@@ -67,7 +67,7 @@ def get_tprtc_app(MASTER_DEVICE_NAME="",
 
     mgraph = ModuleGraph(modules)
      
-    mgraph.add_partition_connection(TIMING_PARTITION, "timing_cmds", "tprtc.hardware_commands_out", Direction.OUT, TIMING_HOST, TIMING_PORT)
+    mgraph.add_external_connection("timing_cmds", "tprtc.hardware_commands_out", Direction.OUT, TIMING_HOST, TIMING_PORT)
      
     tprtc_app = App(modulegraph=mgraph, host=HOST, name="TPRTCApp")
      
