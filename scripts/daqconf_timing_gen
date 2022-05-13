@@ -101,6 +101,7 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
     # timing commands coming in outside data-taking partitions
     # the_system.connections.append(nwmgr.Connection(name=partition_name + ".timing_cmds",  topics=[], address=f"tcp://{{host_thi}}:{port_thi}", fixed=True))
     
+
     # the timing hardware interface application
     the_system.apps["thi"] = get_thi_app(
         GATHER_INTERVAL=gather_interval,
@@ -113,7 +114,8 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
         TIMING_PORT=port_thi,
         HOST=host_thi,
         DEBUG=debug)
-        
+    conf_order=['thi']
+
     if master_device_name:
         the_system.apps["tmc"] = get_tmc_app(
             MASTER_DEVICE_NAME=master_device_name,
@@ -125,6 +127,7 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
             TIMING_PORT=port_thi,
             HOST=host_tmc,
             DEBUG=debug)
+        conf_order.append('tmc')
 
     if fanout_device_name:
         the_system.apps["tfc"] = get_tfc_app(
@@ -135,6 +138,7 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
             TIMING_PORT=port_thi,
             HOST=host_tfc,
             DEBUG=debug)
+        conf_order.append('tfc')
 
     if debug:
         the_system.export("global_system.dot")
@@ -157,7 +161,7 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
                               disable_trace=disable_trace, use_kafka=use_kafka)
 
     system_command_datas['boot'] = boot
-    system_command_datas["conf"]["order"] = ["thi", "tmc", "tfc"]
+    system_command_datas["conf"]["order"] = conf_order
 
     write_json_files(app_command_datas, system_command_datas, json_dir, verbose=debug)
 
