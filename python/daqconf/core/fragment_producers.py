@@ -54,7 +54,33 @@ def set_mlt_links(the_system, mlt_app_name="trigger", verbose=False):
     mgraph.reset_module_conf("mlt", mlt.ConfParams(links=mlt_links, 
                                                    dfo_connection=old_mlt_conf.dfo_connection, 
                                                    dfo_busy_connection=old_mlt_conf.dfo_busy_connection,
-                                                   hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough))
+                                                   hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough,
+						   buffer_timeout=old_mlt_conf.buffer_timeout,
+                                                   td_out_of_timeout=old_mlt_conf.td_out_of_timeout,
+                                                   c0=mlt.map_t(candidate_type=0,
+                                                       time_before=old_mlt_conf.c0['time_before'],
+                                                       time_after=old_mlt_conf.c0['time_after']),
+                                                   c1=mlt.map_t(candidate_type=1,
+                                                       time_before=old_mlt_conf.c1['time_before'],
+                                                       time_after=old_mlt_conf.c1['time_after']),                          
+						   c2=mlt.map_t(candidate_type=2,
+                                                       time_before=old_mlt_conf.c2['time_before'],
+                                                       time_after=old_mlt_conf.c2['time_after']),                        
+						   c3=mlt.map_t(candidate_type=3,
+                                                       time_before=old_mlt_conf.c3['time_before'],
+                                                       time_after=old_mlt_conf.c3['time_after']),
+                                                   c4=mlt.map_t(candidate_type=4,
+                                                       time_before=old_mlt_conf.c4['time_before'],
+                                                       time_after=old_mlt_conf.c4['time_after']),
+                                                   c5=mlt.map_t(candidate_type=5,
+                                                       time_before=old_mlt_conf.c5['time_before'],
+                                                       time_after=old_mlt_conf.c5['time_after']),
+                                                   c6=mlt.map_t(candidate_type=6,
+                                                       time_before=old_mlt_conf.c6['time_before'],
+                                                       time_after=old_mlt_conf.c6['time_after']),
+                                                   c7=mlt.map_t(candidate_type=7,
+                                                       time_before=old_mlt_conf.c7['time_before'],
+                                                       time_after=old_mlt_conf.c7['time_after'])))
 
 def remove_mlt_link(the_system, geoid, mlt_app_name="trigger"):
     """
@@ -69,8 +95,34 @@ def remove_mlt_link(the_system, geoid, mlt_app_name="trigger"):
     mgraph.reset_module_conf("mlt", mlt.ConfParams(links=mlt_links, 
                                                    dfo_connection=old_mlt_conf.dfo_connection, 
                                                    dfo_busy_connection=old_mlt_conf.dfo_busy_connection,
-                                                   hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough))
-    
+                                                   hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough,
+                                                   buffer_timeout=old_mlt_conf.buffer_timeout,
+					       	   td_out_of_timeout=old_mlt_conf.td_out_of_timeout,
+                                                   c0=mlt.map_t(candidate_type=0,
+                                                       time_before=old_mlt_conf.c0['time_before'],
+                                                       time_after=old_mlt_conf.c0['time_after']),
+                                                   c1=mlt.map_t(candidate_type=1,
+                                                       time_before=old_mlt_conf.c1['time_before'],
+                                                       time_after=old_mlt_conf.c1['time_after']),
+                                                   c2=mlt.map_t(candidate_type=2,
+                                                       time_before=old_mlt_conf.c2['time_before'],
+                                                       time_after=old_mlt_conf.c2['time_after']),
+                                                   c3=mlt.map_t(candidate_type=3,
+                                                       time_before=old_mlt_conf.c3['time_before'],
+                                                       time_after=old_mlt_conf.c3['time_after']),
+                                                   c4=mlt.map_t(candidate_type=4,
+                                                       time_before=old_mlt_conf.c4['time_before'],
+                                                       time_after=old_mlt_conf.c4['time_after']),
+                                                   c5=mlt.map_t(candidate_type=5,
+                                                       time_before=old_mlt_conf.c5['time_before'],
+                                                       time_after=old_mlt_conf.c5['time_after']),
+                                                   c6=mlt.map_t(candidate_type=6,
+                                                       time_before=old_mlt_conf.c6['time_before'],
+                                                       time_after=old_mlt_conf.c6['time_after']),
+                                                   c7=mlt.map_t(candidate_type=7,
+                                                       time_before=old_mlt_conf.c7['time_before'],
+                                                       time_after=old_mlt_conf.c7['time_after'])))
+
 def connect_fragment_producers(app_name, the_system, verbose=False):
     """Connect the data request and fragment sending queues from all of
        the fragment producers in the app with name `app_name` to the
