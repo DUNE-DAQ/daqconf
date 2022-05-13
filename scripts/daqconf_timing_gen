@@ -32,6 +32,8 @@ import click
 @click.option('--port-thi', default=12345, help='Port to host running the (global) timing hardware interface app on')
 @click.option('--host-tmc', default='localhost', help='Host to run the (global) timing master controller app on')
 @click.option('--host-tfc', default='localhost', help='Host to run the (global) timing master controller app on')
+@click.option('--gather-interval', default=5e5, help='Gather interval for hardware polling [us]')
+@click.option('--gather-interval-debug', default=10e7, help='Gather interval for hardware polling debug/i2c [us]')
 @click.option('--timing-hw-connections-file', default="${TIMING_SHARE}/config/etc/connections.xml", help='Path to timing hardware connections file')
 @click.option('--opmon-impl', type=click.Choice(['json','cern','pocket'], case_sensitive=False),default='json', help="Info collector service implementation to use")
 @click.option('--ers-impl', type=click.Choice(['local','cern','pocket'], case_sensitive=False), default='local', help="ERS destination (Kafka used for cern and pocket)")
@@ -46,8 +48,11 @@ import click
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
 
-def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_tmc, host_tfc, timing_hw_connections_file, opmon_impl, ers_impl, pocket_url, hsi_device_name, 
-        master_device_name, master_send_delays_period, master_clock_file, master_clock_mode, fanout_device_name, fanout_clock_file, debug, json_dir):
+def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_tmc, host_tfc, 
+        gather_interval, gather_interval_debug, timing_hw_connections_file, 
+        opmon_impl, ers_impl, pocket_url, 
+        hsi_device_name, master_device_name, master_send_delays_period, master_clock_file, master_clock_mode, 
+        fanout_device_name, fanout_clock_file, debug, json_dir):
 
     if exists(json_dir):
         raise RuntimeError(f"Directory {json_dir} already exists")
@@ -96,8 +101,11 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
     # timing commands coming in outside data-taking partitions
     # the_system.connections.append(nwmgr.Connection(name=partition_name + ".timing_cmds",  topics=[], address=f"tcp://{{host_thi}}:{port_thi}", fixed=True))
     
+
     # the timing hardware interface application
     the_system.apps["thi"] = get_thi_app(
+        GATHER_INTERVAL=gather_interval,
+        GATHER_INTERVAL_DEBUG=gather_interval_debug,
         CONNECTIONS_FILE=timing_hw_connections_file,
         MASTER_DEVICE_NAME=master_device_name,
         FANOUT_DEVICE_NAME=fanout_device_name,
@@ -106,7 +114,8 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
         TIMING_PORT=port_thi,
         HOST=host_thi,
         DEBUG=debug)
-        
+    conf_order=['thi']
+
     if master_device_name:
         the_system.apps["tmc"] = get_tmc_app(
             MASTER_DEVICE_NAME=master_device_name,
@@ -118,6 +127,7 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
             TIMING_PORT=port_thi,
             HOST=host_tmc,
             DEBUG=debug)
+        conf_order.append('tmc')
 
     if fanout_device_name:
         the_system.apps["tfc"] = get_tfc_app(
@@ -128,6 +138,7 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
             TIMING_PORT=port_thi,
             HOST=host_tfc,
             DEBUG=debug)
+        conf_order.append('tfc')
 
     if debug:
         the_system.export("global_system.dot")
@@ -150,6 +161,7 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
                               disable_trace=disable_trace, use_kafka=use_kafka)
 
     system_command_datas['boot'] = boot
+    system_command_datas["conf"]["order"] = conf_order
 
     write_json_files(app_command_datas, system_command_datas, json_dir, verbose=debug)
 
