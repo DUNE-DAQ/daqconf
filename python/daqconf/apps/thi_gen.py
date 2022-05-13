@@ -37,8 +37,8 @@ from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Direction
 
 #===============================================================================
-def get_thi_app(GATHER_INTERVAL=1e6,
-                GATHER_INTERVAL_DEBUG=10e6,
+def get_thi_app(GATHER_INTERVAL=5e5,
+                GATHER_INTERVAL_DEBUG=10e7,
                 MASTER_DEVICE_NAME="",
                 FANOUT_DEVICE_NAME="",
                 HSI_DEVICE_NAME="",
