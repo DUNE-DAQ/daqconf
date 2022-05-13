@@ -115,25 +115,36 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                          # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                                          stream_buffer_size = 8388608,
                                                                                                          retry_count = 1000,
-                                                                                                         enable_raw_recording = False)))]
+                                                                                                         enable_raw_recording = False))),
+                    DAQModule(name = 'tctee_chain',
+                              plugin = 'TCTee'),
+                    DAQModule(name = 'tctee_ttcm',
+                              plugin = 'TCTee')
+                    ]
 
         queues += [Queue("tazipper.output", "tcm.input")]
-        queues += [Queue("tcm.output", "mlt.trigger_candidate_source", "trigger_candidates")]
 
         # Make one heartbeatmaker per link
         for ruidx, ru_config in enumerate(RU_CONFIG):
             for link_idx in range(ru_config["channel_count"]):
-                modules += [DAQModule(name = f'channelfilter_ru{ruidx}_link{link_idx}',
+                link_id = f'ru{ruidx}_link{link_idx}'
+                modules += [DAQModule(name = f'channelfilter_{link_id}',
                                           plugin = 'TPChannelFilter',
                                           conf = chfilter.Conf(channel_map_name=CHANNEL_MAP_NAME,
                                                                keep_collection=True,
                                                                keep_induction=False))]
-                queues += [Queue(f'channelfilter_ru{ruidx}_link{link_idx}.tpset_sink', f'heartbeatmaker_ru{ruidx}_link{link_idx}.tpset_source')]
+                queues += [Queue(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input')]
 
-                modules += [DAQModule(name = f'heartbeatmaker_ru{ruidx}_link{link_idx}',
+                modules += [DAQModule(name = f'tpsettee_{link_id}',
+                                      plugin = 'TPSetTee')]
+
+                queues += [Queue(f'tpsettee_{link_id}.output1', f'heartbeatmaker_{link_id}.tpset_source'),
+                           Queue(f'tpsettee_{link_id}.output2', f'buf_{link_id}.tpset_source')]
+                
+                modules += [DAQModule(name = f'heartbeatmaker_{link_id}',
                                           plugin = 'FakeTPCreatorHeartbeatMaker',
                                           conf = heartbeater.Conf(heartbeat_interval=5_000_000))]
-                queues += [Queue(f'heartbeatmaker_ru{ruidx}_link{link_idx}.tpset_sink', f"zip_{ru_config['region_id']}.input", f"{ru_config['region_id']}_tpset_q")]
+                queues += [Queue(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{ru_config['region_id']}.input", f"{ru_config['region_id']}_tpset_q")]
                     
         region_ids = set()
         for ru in range(len(RU_CONFIG)):
@@ -164,6 +175,9 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                       buffer_time=625000,  # 10ms in 62.5 MHz ticks
                                                       activity_maker_config=temptypes.ActivityConf(**ACTIVITY_CONFIG))),
 
+                            DAQModule(name = f'tasettee_region_{region_id}',
+                                      plugin = "TASetTee"),
+                            
                             DAQModule(name = f'ta_buf_region_{region_id}',
                                       plugin = 'TABuffer',
                                       # PAR 2022-04-20 Not sure what to set the element id to so it doesn't collide with the region/element used by TP buffers. Make it some big number that shouldn't already be used by the TP buffer
@@ -181,6 +195,10 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                                  enable_raw_recording = False)))]
                 queues += [Queue(f'zip_{region_id}.output', f'tam_{region_id}.input')]
 
+                queues += [Queue(f'tam_{region_id}.output', f'tasettee_region_{region_id}.input'),
+                           Queue(f'tasettee_region_{region_id}.output1', f'tazipper.input'),
+                           Queue(f'tasettee_region_{region_id}.output2', f'ta_buf_region_{region_id}.taset_source')]
+                
             for idy in range(RU_CONFIG[ru]["channel_count"]):
                 # 1 buffer per TPG channel
                 modules += [DAQModule(name = f'buf_ru{ru}_link{idy}',
@@ -226,6 +244,17 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 					      hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH))]
 
     mgraph = ModuleGraph(modules, queues = queues)
+
+    # Use connect_modules to connect up the Tees to the buffers/MLT,
+    # as manually adding Queues doesn't give the desired behaviour
+    mgraph.connect_modules("tcm.output",          "tctee_chain.input",            "chain_input")
+    mgraph.connect_modules("tctee_chain.output1", "mlt.trigger_candidate_source", "tcs_to_mlt")
+    mgraph.connect_modules("tctee_chain.output2", "tc_buf.tc_source",             "tcs_to_buf")
+    
+    mgraph.connect_modules("ttcm.output",         "tctee_ttcm.input",             "ttcm_input")
+    mgraph.connect_modules("tctee_ttcm.output1",  "mlt.trigger_candidate_source", "tcs_to_mlt")
+    mgraph.connect_modules("tctee_ttcm.output2",  "tc_buf.tc_source",             "tcs_to_buf")
+
     mgraph.add_endpoint("hsievents", None, Direction.IN)
     mgraph.add_endpoint("td_to_dfo", None, Direction.OUT)
     mgraph.add_endpoint("df_busy_signal", None, Direction.IN)
@@ -238,7 +267,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                 global_link = link_idx+ru_config['start_channel'] # for the benefit of correct fragment geoid
 
                 mgraph.add_endpoint(f"tpsets_{link_id}", f"channelfilter_{link_id}.tpset_source", Direction.IN, topic=[ru_config["tpset_topics"][link_idx]])
-                mgraph.add_endpoint(f"tpsets_{link_id}", f"{buf_name}.tpset_source",              Direction.IN, topic=["Timesync"])
+
                 mgraph.add_fragment_producer(region=ru_config['region_id'], element=global_link, system="DataSelection",
                                              requests_in=f"{buf_name}.data_request_source",
                                              fragments_out=f"{buf_name}.fragment_sink")
@@ -247,14 +276,14 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
             mgraph.add_fragment_producer(region=region_id, element=TA_ELEMENT_ID, system="DataSelection",
                                          requests_in=f"{buf_name}.data_request_source",
                                          fragments_out=f"{buf_name}.fragment_sink")
-            mgraph.add_endpoint(f"tasets_{region_id}", f"tam_{region_id}.output",  Direction.OUT, topic=[f"tasets_{region_id}"])
-            mgraph.add_endpoint(f"tasets_{region_id}", f"tazipper.input",          Direction.IN,  topic=[f"tasets_{region_id}"])
-            mgraph.add_endpoint(f"tasets_{region_id}", f"{buf_name}.taset_source", Direction.IN,  topic=[f"tasets_{region_id}"])
+            # mgraph.add_endpoint(f"tasets_{region_id}", f"tam_{region_id}.output",  Direction.OUT, topic=[f"tasets_{region_id}"])
+            # mgraph.add_endpoint(f"tasets_{region_id}", f"tazipper.input",          Direction.IN,  topic=[f"tasets_{region_id}"])
+            # mgraph.add_endpoint(f"tasets_{region_id}", f"{buf_name}.taset_source", Direction.IN,  topic=[f"tasets_{region_id}"])
 
-        mgraph.add_endpoint(f"tcs", "tcm.output",                   Direction.OUT, topic=["TCs"])
-        mgraph.add_endpoint(f"tcs", "tc_buf.tc_source",             Direction.IN,  topic=["TCs"])
-        mgraph.add_endpoint(f"tcs", "ttcm.output",                  Direction.OUT, topic=["TCs"])
-        mgraph.add_endpoint(f"tcs", "mlt.trigger_candidate_source", Direction.IN,  topic=["TCs"])
+        # mgraph.add_endpoint(f"tcs", "tcm.output",                   Direction.OUT, topic=["TCs"])
+        # mgraph.add_endpoint(f"tcs", "tc_buf.tc_source",             Direction.IN,  topic=["TCs"])
+        # mgraph.add_endpoint(f"tcs", "ttcm.output",                  Direction.OUT, topic=["TCs"])
+        # mgraph.add_endpoint(f"tcs", "mlt.trigger_candidate_source", Direction.IN,  topic=["TCs"])
 
         mgraph.add_fragment_producer(region=TC_REGION_ID, element=TC_ELEMENT_ID, system="DataSelection",
                                      requests_in="tc_buf.data_request_source",
