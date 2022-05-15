@@ -47,6 +47,7 @@ def get_dqm_app(RU_CONFIG=[],
                  DQM_MEANRMS_PARAMS=[10, 1, 100],
                  DQM_FOURIER_PARAMS=[600, 60, 100],
                  DQM_FOURIERSUM_PARAMS=[10, 1, 8192],
+                 DQM_CHANNELMASK_PARAMS=[10, 1, 1],
                  PARTITION="UNKNOWN",
                  HOST="localhost",
                  NUM_DF_APPS=1,
@@ -57,6 +58,10 @@ def get_dqm_app(RU_CONFIG=[],
                  FRONTEND_TYPE='wib',
                  DEBUG=False,
                  ):
+
+    # Only run channel mask for the WIB2 format
+    if FRONTEND_TYPE != 'wib2':
+        DQM_CHANNELMASK_PARAMS = [0, 0, 0]
 
     cmd_data = {}
 
@@ -133,6 +138,7 @@ def get_dqm_app(RU_CONFIG=[],
                               sdqm_mean_rms=dqmprocessor.StandardDQM(**{'how_often' : DQM_MEANRMS_PARAMS[0], 'unavailable_time' : DQM_MEANRMS_PARAMS[1], 'num_frames' : DQM_MEANRMS_PARAMS[2]}),
                               sdqm_fourier=dqmprocessor.StandardDQM(**{'how_often' : DQM_FOURIER_PARAMS[0], 'unavailable_time' : DQM_FOURIER_PARAMS[1], 'num_frames' : DQM_FOURIER_PARAMS[2]}),
                               sdqm_fourier_sum=dqmprocessor.StandardDQM(**{'how_often' : DQM_FOURIERSUM_PARAMS[0], 'unavailable_time' : DQM_FOURIERSUM_PARAMS[1], 'num_frames' : DQM_FOURIERSUM_PARAMS[2]}),
+                              sdqm_channel_mask=dqmprocessor.StandardDQM(**{'how_often' : DQM_CHANNELMASK_PARAMS[0], 'unavailable_time' : DQM_CHANNELMASK_PARAMS[1], 'num_frames' : DQM_CHANNELMASK_PARAMS[2]}),
                               kafka_address=DQM_KAFKA_ADDRESS,
                               link_idx=list(range(MIN_LINK, MAX_LINK)),
                               clock_frequency=CLOCK_SPEED_HZ,
