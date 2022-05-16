@@ -86,7 +86,6 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     modules = []
 
     region_ids1 = set([ru["region_id"] for ru in RU_CONFIG])
-    queues = []
     
     if SOFTWARE_TPG_ENABLED:
         config_tcm = tcm.Conf(candidate_maker=CANDIDATE_PLUGIN,
@@ -122,29 +121,22 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                               plugin = 'TCTee')
                     ]
 
-        queues += [Queue("tazipper.output", "tcm.input")]
+
 
         # Make one heartbeatmaker per link
         for ruidx, ru_config in enumerate(RU_CONFIG):
             for link_idx in range(ru_config["channel_count"]):
                 link_id = f'ru{ruidx}_link{link_idx}'
                 modules += [DAQModule(name = f'channelfilter_{link_id}',
-                                          plugin = 'TPChannelFilter',
-                                          conf = chfilter.Conf(channel_map_name=CHANNEL_MAP_NAME,
-                                                               keep_collection=True,
-                                                               keep_induction=False))]
-                queues += [Queue(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input')]
-
-                modules += [DAQModule(name = f'tpsettee_{link_id}',
-                                      plugin = 'TPSetTee')]
-
-                queues += [Queue(f'tpsettee_{link_id}.output1', f'heartbeatmaker_{link_id}.tpset_source'),
-                           Queue(f'tpsettee_{link_id}.output2', f'buf_{link_id}.tpset_source')]
-                
-                modules += [DAQModule(name = f'heartbeatmaker_{link_id}',
-                                          plugin = 'FakeTPCreatorHeartbeatMaker',
-                                          conf = heartbeater.Conf(heartbeat_interval=5_000_000))]
-                queues += [Queue(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{ru_config['region_id']}.input", f"{ru_config['region_id']}_tpset_q")]
+                                      plugin = 'TPChannelFilter',
+                                      conf = chfilter.Conf(channel_map_name=CHANNEL_MAP_NAME,
+                                                           keep_collection=True,
+                                                           keep_induction=False)),
+                            DAQModule(name = f'tpsettee_{link_id}',
+                                      plugin = 'TPSetTee'),
+                            DAQModule(name = f'heartbeatmaker_{link_id}',
+                                      plugin = 'FakeTPCreatorHeartbeatMaker',
+                                      conf = heartbeater.Conf(heartbeat_interval=5_000_000))]
                     
         region_ids = set()
         for ru in range(len(RU_CONFIG)):
@@ -193,7 +185,6 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                                  stream_buffer_size = 8388608,
                                                                                                                  retry_count = 1000,
                                                                                                                  enable_raw_recording = False)))]
-                queues += [Queue(f'zip_{region_id}.output', f'tam_{region_id}.input')]
 
             for idy in range(RU_CONFIG[ru]["channel_count"]):
                 # 1 buffer per TPG channel
@@ -222,8 +213,6 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                        time_after=TRIGGER_WINDOW_AFTER_TICKS),
                                          hsievent_connection_name = "hsievents",
 					 hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH))]
-    if not SOFTWARE_TPG_ENABLED:
-        queues += [Queue("ttcm.output", "mlt.trigger_candidate_source",  "trigger_candidates")]
     
     # We need to populate the list of links based on the fragment
     # producers available in the system. This is a bit of a
@@ -239,8 +228,26 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                               dfo_busy_connection=f"df_busy_signal",
 					      hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH))]
 
-    mgraph = ModuleGraph(modules, queues = queues)
+    mgraph = ModuleGraph(modules)
 
+    if SOFTWARE_TPG_ENABLED:
+        mgraph.connect_modules("tazipper.output", "tcm.input")
+    else:
+        mgraph.connect_modules("ttcm.output", "mlt.trigger_candidate_source",  "trigger_candidates")
+
+    for ruidx, ru_config in enumerate(RU_CONFIG):
+        for link_idx in range(ru_config["channel_count"]):
+                link_id = f'ru{ruidx}_link{link_idx}'
+
+                mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input')
+
+                mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'heartbeatmaker_{link_id}.tpset_source')
+                mgraph.connect_modules(f'tpsettee_{link_id}.output2', f'buf_{link_id}.tpset_source')
+                
+                mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{ru_config['region_id']}.input", f"{ru_config['region_id']}_tpset_q")
+
+    for region_id in region_ids1:
+        mgraph.connect_modules(f'zip_{region_id}.output', f'tam_{region_id}.input')
     # Use connect_modules to connect up the Tees to the buffers/MLT,
     # as manually adding Queues doesn't give the desired behaviour
     mgraph.connect_modules("tcm.output",          "tctee_chain.input",            "chain_input")
