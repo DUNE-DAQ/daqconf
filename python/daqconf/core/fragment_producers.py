@@ -6,6 +6,7 @@ moo.io.default_load_path = get_moo_model_path()
 from rich.console import Console
 
 import moo.otypes
+import re
 
 moo.otypes.load_types('trigger/moduleleveltrigger.jsonnet')
 moo.otypes.load_types('dfmodules/fragmentreceiver.jsonnet')
@@ -153,6 +154,25 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         old_trb_conf = df_mgraph.get_module("trb").conf
         new_trb_map = old_trb_conf.map + trb_geoid_to_connection
         df_mgraph.reset_module_conf("trb", trb.ConfParams(general_queue_timeout=old_trb_conf.general_queue_timeout,
+                                                          reply_connection_name = fragment_connection_name,
+                                                          max_time_window = old_trb_conf.max_time_window,
+                                                          #mon_connection_name=old_trb_conf.mon_connection_name,
+                                                          map=trb.mapgeoidconnections(new_trb_map)))
+                          
+    dqm_apps = [ (name,app) for (name,app) in the_system.apps.items() if re.match("dqm\d_ru", name) ]
+
+    for dqm_name, dqm_app in dqm_apps:
+        fragment_connection_name = f"fragments_to_{dqm_name}"
+        app.modulegraph.add_endpoint(fragment_connection_name, None, Direction.OUT)
+        dqm_mgraph = dqm_app.modulegraph
+        dqm_mgraph.add_endpoint(fragment_connection_name, "trb.data_fragment_all", Direction.IN)            
+        dqm_mgraph.add_endpoint(request_connection_name, f"trb.request_output_{app_name}", Direction.OUT)
+
+        # Add the new geoid-to-connections map to the
+        # TriggerRecordBuilder.
+        old_trb_conf = dqm_mgraph.get_module("trb_dqm").conf
+        new_trb_map = old_trb_conf.map + trb_geoid_to_connection
+        dqm_mgraph.reset_module_conf("trb_dqm", trb.ConfParams(general_queue_timeout=old_trb_conf.general_queue_timeout,
                                                           reply_connection_name = fragment_connection_name,
                                                           max_time_window = old_trb_conf.max_time_window,
                                                           #mon_connection_name=old_trb_conf.mon_connection_name,
