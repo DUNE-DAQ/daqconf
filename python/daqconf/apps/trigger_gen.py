@@ -195,10 +195,6 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                                  enable_raw_recording = False)))]
                 queues += [Queue(f'zip_{region_id}.output', f'tam_{region_id}.input')]
 
-                queues += [Queue(f'tam_{region_id}.output', f'tasettee_region_{region_id}.input'),
-                           Queue(f'tasettee_region_{region_id}.output1', f'tazipper.input'),
-                           Queue(f'tasettee_region_{region_id}.output2', f'ta_buf_region_{region_id}.taset_source')]
-                
             for idy in range(RU_CONFIG[ru]["channel_count"]):
                 # 1 buffer per TPG channel
                 modules += [DAQModule(name = f'buf_ru{ru}_link{idy}',
@@ -255,6 +251,12 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     mgraph.connect_modules("tctee_ttcm.output1",  "mlt.trigger_candidate_source", "tcs_to_mlt")
     mgraph.connect_modules("tctee_ttcm.output2",  "tc_buf.tc_source",             "tcs_to_buf")
 
+    for region_id in region_ids1:
+        mgraph.connect_modules(f'tam_{region_id}.output',              f'tasettee_region_{region_id}.input')
+        mgraph.connect_modules(f'tasettee_region_{region_id}.output1', f'tazipper.input', "tas_to_tazipper")
+        mgraph.connect_modules(f'tasettee_region_{region_id}.output2', f'ta_buf_region_{region_id}.taset_source')
+
+    
     mgraph.add_endpoint("hsievents", None, Direction.IN)
     mgraph.add_endpoint("td_to_dfo", None, Direction.OUT)
     mgraph.add_endpoint("df_busy_signal", None, Direction.IN)
