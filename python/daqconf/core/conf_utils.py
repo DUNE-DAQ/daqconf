@@ -211,10 +211,8 @@ def make_external_connection(the_system, endpoint_name, app_name, host, port, to
         console.log(f"External connection {endpoint_name}")
     address = f"tcp://{host}:{port}"
     if len(topic) == 0:
-        print(f"uid={endpoint_name}, uri={address}, app_name={app_name}, inout={inout}, kNetwork")
         the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetReceiver" if inout==Direction.IN else 'kNetSender', data_type="", uri=address)]
     else:
-        print(f"uid={endpoint_name}, uri={address}, app_name={app_name}, inout={inout}, kPubSub")
         the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kPublisher" if inout==Direction.IN else 'kSubscriber', data_type="", uri=address, topics=topic)]
 
 def make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbose):
@@ -226,10 +224,8 @@ def make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbos
 
     port = the_system.next_unassigned_port()
     address = f'tcp://{{host_{in_apps[0]}}}:{port}'
-    print(f"uid={endpoint_name}, uri={address}, app_name={in_apps[0]}, kNetwork")
     the_system.connections[in_apps[0]] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetReceiver", data_type="", uri=address)]
     for app in set(out_apps):
-        print(f"uid={endpoint_name}, uri={address}, app_name={app}, kNetwork")
         the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetSender", data_type="", uri=address)]
 
 def make_system_connections(the_system, verbose=False):
@@ -347,7 +343,8 @@ def make_system_connections(the_system, verbose=False):
             topic_connectionids_sub = cp.deepcopy(topic_connectionids)
             for topic_connectionid_sub in topic_connectionids_sub:
                 topic_connectionid_sub.service_type = 'kSubscriber'
-            temp_list = the_system.connections[subscriber] + topic_connectionids
+
+            temp_list = the_system.connections[subscriber] + topic_connectionids_sub
             the_system.connections[subscriber] = list(set(temp_list))
 
 
