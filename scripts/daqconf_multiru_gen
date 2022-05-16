@@ -154,7 +154,7 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
 
     console.log(f"Generating configs for hosts trigger={host_trigger} DFO={host_dfo} dataflow={host_df} readout={host_ru} hsi={host_hsi} dqm={host_ru}")
 
-    the_system = System(first_port=port_timing)
+    the_system = System(first_port=port_timing+1)
    
     total_number_of_data_producers = 0
 

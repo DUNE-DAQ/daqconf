@@ -25,16 +25,14 @@ moo.otypes.load_types('rcif/cmd.jsonnet')
 moo.otypes.load_types('appfwk/cmd.jsonnet')
 moo.otypes.load_types('appfwk/app.jsonnet')
 
-moo.otypes.load_types('timinglibs/timingmastercontroller.jsonnet')
-moo.otypes.load_types('networkmanager/nwmgr.jsonnet')
+moo.otypes.load_types('timinglibs/timingfanoutcontroller.jsonnet')
 
 # Import new types
 import dunedaq.cmdlib.cmd as basecmd # AddressedCmd, 
 import dunedaq.rcif.cmd as rccmd # AddressedCmd, 
 import dunedaq.appfwk.cmd as cmd # AddressedCmd, 
 import dunedaq.appfwk.app as app # AddressedCmd,
-import dunedaq.timinglibs.timingmastercontroller as tmc
-import dunedaq.networkmanager.nwmgr as nwmgr
+import dunedaq.timinglibs.timingfanoutcontroller as tfc
 
 from appfwk.utils import acmd, mcmd, mrccmd, mspec
 from daqconf.core.app import App, ModuleGraph
@@ -42,10 +40,8 @@ from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Direction
 
 #===============================================================================
-def get_tmc_app(MASTER_DEVICE_NAME="",
-                MASTER_SEND_DELAYS_PERIOD=0,
-                MASTER_CLOCK_FILE="",
-                MASTER_CLOCK_MODE=-1,
+def get_tfc_app(FANOUT_DEVICE_NAME="",
+                FANOUT_CLOCK_FILE="",
                 HOST="localhost",
                 TIMING_PARTITION="UNKNOWN",
                 TIMING_HOST="np04-srv-012.cern.ch",
@@ -55,22 +51,21 @@ def get_tmc_app(MASTER_DEVICE_NAME="",
     modules = {}
 
     ## TODO all the connections...
-    modules = [DAQModule(name = "tmc",
-                        plugin = "TimingMasterController",
-                        conf = tmc.ConfParams(
-                                            device=MASTER_DEVICE_NAME,
-                                            send_endpoint_delays_period=MASTER_SEND_DELAYS_PERIOD,
-                                            clock_config=MASTER_CLOCK_FILE,
-                                            fanout_mode=MASTER_CLOCK_MODE,
+    modules = [DAQModule(name = "tfc",
+                        plugin = "TimingFanoutController",
+                        conf = tfc.ConfParams(
+                                            device=FANOUT_DEVICE_NAME,
+                                            clock_config=FANOUT_CLOCK_FILE,
                                             ))]
 
     mgraph = ModuleGraph(modules)
-    mgraph.add_external_connection("timing_cmds", "tmc.timing_cmds", Direction.OUT, TIMING_HOST, TIMING_PORT)
-    mgraph.add_external_connection("timing_device_info", None, Direction.IN, TIMING_HOST, TIMING_PORT+1, [MASTER_DEVICE_NAME])
     
-    tmc_app = App(modulegraph=mgraph, host=HOST, name="TMCApp")
+    mgraph.add_partition_connection(TIMING_PARTITION, "timing_cmds", "tfc.timing_cmds", Direction.OUT, TIMING_HOST, TIMING_PORT)
+    mgraph.add_partition_connection(TIMING_PARTITION, "timing_device_info", None, Direction.IN, TIMING_HOST, TIMING_PORT+1, [FANOUT_DEVICE_NAME])
+    
+    tfc_app = App(modulegraph=mgraph, host=HOST, name="TFCApp")
     
     if DEBUG:
-        tmc_app.export("tmc_app.dot")
+        tfc_app.export("tfc_app.dot")
 
-    return tmc_app
+    return tfc_app
