@@ -13,7 +13,7 @@ from enum import Enum
 from graphviz import Digraph
 import networkx as nx
 import moo.otypes
-
+import copy as cp
 moo.otypes.load_types('rcif/cmd.jsonnet')
 moo.otypes.load_types('appfwk/cmd.jsonnet')
 moo.otypes.load_types('appfwk/app.jsonnet')
@@ -206,14 +206,16 @@ def make_queue_connection(the_system, app, endpoint_name, in_apps, out_apps, siz
             console.log(f"Connection {endpoint_name}, MPMC Queue")
         the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, service_type="kQueue", data_type="", uri=f"queue://FollyMPMC:{size}")]
 
-def make_external_connection(the_system, endpoint_name, app_name, host, port, topic, verbose):
+def make_external_connection(the_system, endpoint_name, app_name, host, port, topic, inout, verbose):
     if verbose:
         console.log(f"External connection {endpoint_name}")
     address = f"tcp://{host}:{port}"
     if len(topic) == 0:
-        the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetwork", data_type="", uri=address)]
+        print(f"uid={endpoint_name}, uri={address}, app_name={app_name}, inout={inout}, kNetwork")
+        the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetReceiver" if inout==Direction.IN else 'kNetSender', data_type="", uri=address)]
     else:
-        the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kPubSub", data_type="", uri=address, topics=topic)]
+        print(f"uid={endpoint_name}, uri={address}, app_name={app_name}, inout={inout}, kPubSub")
+        the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kPublisher" if inout==Direction.IN else 'kSubscriber', data_type="", uri=address, topics=topic)]
 
 def make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbose):
     if verbose:
@@ -224,9 +226,11 @@ def make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbos
 
     port = the_system.next_unassigned_port()
     address = f'tcp://{{host_{in_apps[0]}}}:{port}'
-    the_system.connections[in_apps[0]] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetwork", data_type="", uri=address)]
+    print(f"uid={endpoint_name}, uri={address}, app_name={in_apps[0]}, kNetwork")
+    the_system.connections[in_apps[0]] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetReceiver", data_type="", uri=address)]
     for app in set(out_apps):
-        the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetwork", data_type="", uri=address)]
+        print(f"uid={endpoint_name}, uri={address}, app_name={app}, kNetwork")
+        the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetSender", data_type="", uri=address)]
 
 def make_system_connections(the_system, verbose=False):
     """Given a system with defined apps and endpoints, create the
@@ -254,7 +258,7 @@ def make_system_connections(the_system, verbose=False):
       for queue in the_system.apps[app].modulegraph.queues:
             make_queue_connection(the_system, app, queue.name, queue.push_modules, queue.pop_modules, queue.size, verbose)
       for external_conn in the_system.apps[app].modulegraph.external_connections:
-            make_external_connection(the_system, external_conn.external_name, app, external_conn.host, external_conn.port, external_conn.topic, verbose)
+            make_external_connection(the_system, external_conn.external_name, app, external_conn.host, external_conn.port, external_conn.topic, external_conn.direction, verbose)
       for endpoint in the_system.apps[app].modulegraph.endpoints:
         if len(endpoint.topic) == 0:
             if verbose:
@@ -329,17 +333,20 @@ def make_system_connections(the_system, verbose=False):
                 if endpoint['endpoint'].external_name not in pubsub_connectionids:
                     port = the_system.next_unassigned_port()
                     address = f'tcp://{{host_{endpoint["app"]}}}:{port}'
-                    pubsub_connectionids[endpoint['endpoint'].external_name] = conn.ConnectionId(uid=endpoint['endpoint'].external_name, service_type="kPubSub", data_type="", uri=address, topics=endpoint['endpoint'].topic)
+                    pubsub_connectionids[endpoint['endpoint'].external_name] = conn.ConnectionId(uid=endpoint['endpoint'].external_name, service_type="kPublisher", data_type="", uri=address, topics=endpoint['endpoint'].topic)
                     the_system.connections[endpoint['app']] += [pubsub_connectionids[endpoint['endpoint'].external_name]]
                 topic_connectionids += [pubsub_connectionids[endpoint['endpoint'].external_name]]
 
         if len(subscribers) == 0:
-            raise ValueError(f"Topiic {topic} has no subscribers!")
+            raise ValueError(f"Topic {topic} has no subscribers!")
         if len(publishers) == 0:
             raise ValueError(f"Topic {topic} has no publishers!")
 
         the_system.app_connections[topic] = AppConnection(bind_apps=publishers, connect_apps=subscribers)
         for subscriber in subscribers:
+            # topic_connectionids_sub = cp.deepcopy(topic_connectionids)
+            # for topic_connectionid_sub in topic_connectionids_sub:
+            #     topic_connectionid_sub.service_type = 'kSubscriber'
             temp_list = the_system.connections[subscriber] + topic_connectionids
             the_system.connections[subscriber] = list(set(temp_list))
 
