@@ -344,9 +344,9 @@ def make_system_connections(the_system, verbose=False):
 
         the_system.app_connections[topic] = AppConnection(bind_apps=publishers, connect_apps=subscribers)
         for subscriber in subscribers:
-            # topic_connectionids_sub = cp.deepcopy(topic_connectionids)
-            # for topic_connectionid_sub in topic_connectionids_sub:
-            #     topic_connectionid_sub.service_type = 'kSubscriber'
+            topic_connectionids_sub = cp.deepcopy(topic_connectionids)
+            for topic_connectionid_sub in topic_connectionids_sub:
+                topic_connectionid_sub.service_type = 'kSubscriber'
             temp_list = the_system.connections[subscriber] + topic_connectionids
             the_system.connections[subscriber] = list(set(temp_list))
 
