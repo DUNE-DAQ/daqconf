@@ -61,53 +61,19 @@ def get_dqm_app(RU_CONFIG=[],
 
     modules = []
 
-    connections = {}
-
     if MODE == 'readout':
 
         MIN_LINK = RU_CONFIG[DQMIDX]["start_channel"]
         MAX_LINK = MIN_LINK + RU_CONFIG[DQMIDX]["channel_count"]
 
-        connections['output'] = Connection(f'trb_dqm.data_fragment_input_queue',
-                                           queue_name='data_fragments_q',
-                                           queue_kind='FollyMPMCQueue',
-                                           queue_capacity=1000)
-
-        modules += [DAQModule(name='fragment_receiver_dqm',
-                              plugin='FragmentReceiver',
-                              connections=connections,
-                              conf=frcv.ConfParams(general_queue_timeout=QUEUE_POP_WAIT_MS,
-                                                   connection_name=f"{PARTITION}.fragx_dqm_{DQMIDX}")
-                             )]
-
-        connections = {}
-
-        connections['trigger_record_output_queue'] = Connection('dqmprocessor.trigger_record_dqm_processor',
-                                                                queue_name='trigger_record_q_dqm',
-                                                                queue_kind="FollySPSCQueue",
-                                                                queue_capacity=100,
-                                                                toposort=False)
-
         modules += [DAQModule(name='trb_dqm',
                             plugin='TriggerRecordBuilder',
-                            connections=connections,
                             conf=trb.ConfParams(# This needs to be done in connect_fragment_producers
                                 general_queue_timeout=QUEUE_POP_WAIT_MS,
-                                reply_connection_name=f"{PARTITION}.fragx_dqm_{DQMIDX}",
-                                mon_connection_name=f"",
-                                map=trb.mapgeoidconnections([
-                                    trb.geoidinst(region=RU_CONFIG[DQMIDX]["region_id"],
-                                                    element=idx,
-                                                    system=SYSTEM_TYPE,
-                                                    connection_name=f"{PARTITION}.data_requests_for_{RU_NAME}") for idx in range(MIN_LINK, MAX_LINK)]),
+                                max_time_window=0,
+                                map=trb.mapgeoidconnections([])
                             ))]
 
-        connections = {}
-
-        connections['trigger_decision_input_queue'] = Connection(f'trb_dqm.trigger_decision_input_queue',
-                                                                 queue_name='trigger_decision_q_dqm',
-                                                                 queue_kind="FollySPSCQueue",
-                                                                 queue_capacity=100)
     # if this is a DQM-DF app
     else:
         MIN_LINK = RU_CONFIG[0]["start_channel"]
@@ -123,7 +89,6 @@ def get_dqm_app(RU_CONFIG=[],
 
     modules += [DAQModule(name='dqmprocessor',
                           plugin='DQMProcessor',
-                          connections=connections,
                           conf=dqmprocessor.Conf(
                               region=RU_CONFIG[DQMIDX if MODE == 'readout' else 0]["region_id"],
                               channel_map=DQM_CMAP, # 'HD' for horizontal drift or 'VD' for vertical drift
@@ -135,9 +100,9 @@ def get_dqm_app(RU_CONFIG=[],
                               kafka_address=DQM_KAFKA_ADDRESS,
                               link_idx=list(range(MIN_LINK, MAX_LINK)),
                               clock_frequency=CLOCK_SPEED_HZ,
-                              timesync_connection_name = f"{PARTITION}.timesync_{DQMIDX}",
-                              df2dqm_connection_name=f"{PARTITION}.tr_df2dqm_{DQMIDX}" if DQMIDX < NUM_DF_APPS else '',
-                              dqm2df_connection_name=f"{PARTITION}.trmon_dqm2df_{DQMIDX}" if DQMIDX < NUM_DF_APPS else '',
+                              timesync_connection_name = f"timesync_{DQMIDX}",
+                              df2dqm_connection_name=f"tr_df2dqm_{DQMIDX}" if DQMIDX < NUM_DF_APPS else '',
+                              dqm2df_connection_name=f"trmon_dqm2df_{DQMIDX}" if DQMIDX < NUM_DF_APPS else '',
                               readout_window_offset=10**7 / DATA_RATE_SLOWDOWN_FACTOR, # 10^7 works fine for WIBs with no slowdown
                               df_seconds=DF_RATE * NUM_DF_APPS if MODE == 'df' else 0,
                               df_offset=DF_RATE * DQMIDX,
@@ -149,6 +114,14 @@ def get_dqm_app(RU_CONFIG=[],
 
     mgraph = ModuleGraph(modules)
 
+    mgraph.add_endpoint(None, None, Direction.IN, ["Timesync"])
+    if MODE == 'readout':
+        mgraph.connect_modules("dqmprocessor.trigger_decision_input_queue", "trb_dqm.trigger_decision_input", 'trigger_decision_q_dqm')
+        mgraph.connect_modules('trb_dqm.trigger_record_output', 'dqmprocessor.trigger_record_dqm_processor', 'trigger_record_q_dqm', toposort=False)  
+    elif DQMIDX < NUM_DF_APPS:
+        mgraph.add_endpoint(f'trmon_dqm2df_{DQMIDX}', None, Direction.OUT)
+        mgraph.add_endpoint(f"tr_df2dqm_{DQMIDX}", None, Direction.IN)
+    
     dqm_app = App(mgraph, host=HOST)
 
     if DEBUG:
