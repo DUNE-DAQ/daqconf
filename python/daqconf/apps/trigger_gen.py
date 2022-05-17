@@ -232,36 +232,36 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
     if SOFTWARE_TPG_ENABLED:
         mgraph.connect_modules("tazipper.output", "tcm.input", size_hint=1000)
+        for ruidx, ru_config in enumerate(RU_CONFIG):
+            for link_idx in range(ru_config["channel_count"]):
+                    link_id = f'ru{ruidx}_link{link_idx}'
+
+                    mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', size_hint=1000)
+
+                    mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'heartbeatmaker_{link_id}.tpset_source', size_hint=1000)
+                    mgraph.connect_modules(f'tpsettee_{link_id}.output2', f'buf_{link_id}.tpset_source', size_hint=1000)
+
+                    mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{ru_config['region_id']}.input", f"{ru_config['region_id']}_tpset_q", size_hint=1000)
+
+        for region_id in region_ids1:
+            mgraph.connect_modules(f'zip_{region_id}.output', f'tam_{region_id}.input', size_hint=1000)
+        # Use connect_modules to connect up the Tees to the buffers/MLT,
+        # as manually adding Queues doesn't give the desired behaviour
+        mgraph.connect_modules("tcm.output",          "tctee_chain.input",            "chain_input", size_hint=1000)
+        mgraph.connect_modules("tctee_chain.output1", "mlt.trigger_candidate_source", "tcs_to_mlt",  size_hint=1000)
+        mgraph.connect_modules("tctee_chain.output2", "tc_buf.tc_source",             "tcs_to_buf",  size_hint=1000)
+
+        mgraph.connect_modules("ttcm.output",         "tctee_ttcm.input",             "ttcm_input", size_hint=1000)
+        mgraph.connect_modules("tctee_ttcm.output1",  "mlt.trigger_candidate_source", "tcs_to_mlt", size_hint=1000)
+        mgraph.connect_modules("tctee_ttcm.output2",  "tc_buf.tc_source",             "tcs_to_buf", size_hint=1000)
+
+        for region_id in region_ids1:
+            mgraph.connect_modules(f'tam_{region_id}.output',              f'tasettee_region_{region_id}.input',      size_hint=1000)
+            mgraph.connect_modules(f'tasettee_region_{region_id}.output1', f'tazipper.input', "tas_to_tazipper",      size_hint=1000)
+            mgraph.connect_modules(f'tasettee_region_{region_id}.output2', f'ta_buf_region_{region_id}.taset_source', size_hint=1000)
     else:
         mgraph.connect_modules("ttcm.output", "mlt.trigger_candidate_source",  "trigger_candidates", size_hint=1000)
 
-    for ruidx, ru_config in enumerate(RU_CONFIG):
-        for link_idx in range(ru_config["channel_count"]):
-                link_id = f'ru{ruidx}_link{link_idx}'
-
-                mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', size_hint=1000)
-
-                mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'heartbeatmaker_{link_id}.tpset_source', size_hint=1000)
-                mgraph.connect_modules(f'tpsettee_{link_id}.output2', f'buf_{link_id}.tpset_source', size_hint=1000)
-                
-                mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{ru_config['region_id']}.input", f"{ru_config['region_id']}_tpset_q", size_hint=1000)
-
-    for region_id in region_ids1:
-        mgraph.connect_modules(f'zip_{region_id}.output', f'tam_{region_id}.input', size_hint=1000)
-    # Use connect_modules to connect up the Tees to the buffers/MLT,
-    # as manually adding Queues doesn't give the desired behaviour
-    mgraph.connect_modules("tcm.output",          "tctee_chain.input",            "chain_input", size_hint=1000)
-    mgraph.connect_modules("tctee_chain.output1", "mlt.trigger_candidate_source", "tcs_to_mlt",  size_hint=1000)
-    mgraph.connect_modules("tctee_chain.output2", "tc_buf.tc_source",             "tcs_to_buf",  size_hint=1000)
-    
-    mgraph.connect_modules("ttcm.output",         "tctee_ttcm.input",             "ttcm_input", size_hint=1000)
-    mgraph.connect_modules("tctee_ttcm.output1",  "mlt.trigger_candidate_source", "tcs_to_mlt", size_hint=1000)
-    mgraph.connect_modules("tctee_ttcm.output2",  "tc_buf.tc_source",             "tcs_to_buf", size_hint=1000)
-
-    for region_id in region_ids1:
-        mgraph.connect_modules(f'tam_{region_id}.output',              f'tasettee_region_{region_id}.input',      size_hint=1000)
-        mgraph.connect_modules(f'tasettee_region_{region_id}.output1', f'tazipper.input', "tas_to_tazipper",      size_hint=1000)
-        mgraph.connect_modules(f'tasettee_region_{region_id}.output2', f'ta_buf_region_{region_id}.taset_source', size_hint=1000)
 
     
     mgraph.add_endpoint("hsievents", None, Direction.IN)
