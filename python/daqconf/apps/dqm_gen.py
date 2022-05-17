@@ -23,9 +23,9 @@ import dunedaq.dqm.dqmprocessor as dqmprocessor
 
 from appfwk.utils import acmd, mcmd, mrccmd, mspec
 
-from appfwk.conf_utils import Direction, Connection
-from appfwk.daqmodule import DAQModule
-from appfwk.app import App,ModuleGraph
+from daqconf.core.conf_utils import Direction
+from daqconf.core.daqmodule import DAQModule
+from daqconf.core.app import App,ModuleGraph
 
 # Time to wait on pop()
 QUEUE_POP_WAIT_MS = 100

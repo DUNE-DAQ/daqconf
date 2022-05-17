@@ -10,7 +10,6 @@ moo.otypes.load_types('trigger/triggeractivitymaker.jsonnet')
 moo.otypes.load_types('trigger/triggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/triggerzipper.jsonnet')
 moo.otypes.load_types('trigger/moduleleveltrigger.jsonnet')
-moo.otypes.load_types('trigger/fakedataflow.jsonnet')
 moo.otypes.load_types('trigger/timingtriggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/tpsetbuffercreator.jsonnet')
 moo.otypes.load_types('trigger/faketpcreatorheartbeatmaker.jsonnet')
@@ -21,15 +20,14 @@ import dunedaq.trigger.triggeractivitymaker as tam
 import dunedaq.trigger.triggercandidatemaker as tcm
 import dunedaq.trigger.triggerzipper as tzip
 import dunedaq.trigger.moduleleveltrigger as mlt
-import dunedaq.trigger.fakedataflow as fdf
 import dunedaq.trigger.timingtriggercandidatemaker as ttcm
 import dunedaq.trigger.tpsetbuffercreator as buf
 import dunedaq.trigger.faketpcreatorheartbeatmaker as heartbeater
 import dunedaq.trigger.tpchannelfilter as chfilter
 
-from appfwk.app import App, ModuleGraph
-from appfwk.daqmodule import DAQModule
-from appfwk.conf_utils import Direction, Connection
+from daqconf.core.app import App, ModuleGraph
+from daqconf.core.daqmodule import DAQModule
+from daqconf.core.conf_utils import Direction, Queue
 
 
 #FIXME maybe one day, triggeralgs will define schemas... for now allow a dictionary of 4byte int, 4byte floats, and strings
@@ -79,6 +77,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     import temptypes
 
     modules = []
+    queues = []
     
     if SOFTWARE_TPG_ENABLED:
         config_tcm =  tcm.Conf(candidate_maker=CANDIDATE_PLUGIN,
@@ -86,9 +85,9 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
         
         modules += [DAQModule(name = 'tcm',
                               plugin = 'TriggerCandidateMaker',
-                              connections = {#'input' : Connection(f'tcm.taset_q'),
-                                  'output': Connection(f'mlt.trigger_candidate_source')},
                               conf = config_tcm)]
+
+        queues += [Queue("tcm.output", "mlt.trigger_candidate_source", "trigger_candidates")]
 
 
         # Make one heartbeatmaker per link
@@ -96,15 +95,15 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
             for link_idx in range(ru_config["channel_count"]):
                 modules += [DAQModule(name = f'channelfilter_ru{ruidx}_link{link_idx}',
                                           plugin = 'TPChannelFilter',
-                                          connections = {'tpset_sink': Connection(f'heartbeatmaker_ru{ruidx}_link{link_idx}.tpset_source')},
                                           conf = chfilter.Conf(channel_map_name=CHANNEL_MAP_NAME,
                                                                keep_collection=True,
                                                                keep_induction=False))]
+                queues += [Queue(f'channelfilter_ru{ruidx}_link{link_idx}.tpset_sink', f'heartbeatmaker_ru{ruidx}_link{link_idx}.tpset_source')]
 
                 modules += [DAQModule(name = f'heartbeatmaker_ru{ruidx}_link{link_idx}',
                                           plugin = 'FakeTPCreatorHeartbeatMaker',
-                                          connections = {'tpset_sink': Connection(f"zip_{ru_config['region_id']}.input")},
                                           conf = heartbeater.Conf(heartbeat_interval=5_000_000))]
+                queues += [Queue(f'heartbeatmaker_ru{ruidx}_link{link_idx}.tpset_sink', f"zip_{ru_config['region_id']}.input", f"{ru_config['region_id']}_tpset_q")]
                     
         region_ids = set()
         for ru in range(len(RU_CONFIG)):
@@ -121,8 +120,6 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                         cardinality += RU['channel_count']
                 modules += [DAQModule(name = f'zip_{region_id}',
                                       plugin = 'TPZipper',
-                                              connections = {# 'input' are App.network_endpoints, from RU
-                                                  'output': Connection(f'tam_{region_id}.input')},
                                               conf = tzip.ConfParams(cardinality=cardinality,
                                                                      max_latency_ms=1000,
                                                                      region_id=region_id,
@@ -132,34 +129,33 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                     
                             DAQModule(name = f'tam_{region_id}',
                                       plugin = 'TriggerActivityMaker',
-                                      connections = {'output': Connection('tcm.input')},
                                       conf = tam.Conf(activity_maker=ACTIVITY_PLUGIN,
                                                       geoid_region=region_id,
                                                       geoid_element=0,  # 2022-02-02 PL: Same comment as above
                                                       window_time=10000,  # should match whatever makes TPSets, in principle
                                                       buffer_time=625000,  # 10ms in 62.5 MHz ticks
                                                       activity_maker_config=temptypes.ActivityConf(**ACTIVITY_CONFIG)))]
+                queues += [Queue(f'zip_{region_id}.output', f'tam_{region_id}.input'), Queue(f'tam_{region_id}.output', 'tcm.input', "tam_q")]
 
             for idy in range(RU_CONFIG[ru]["channel_count"]):
                 # 1 buffer per TPG channel
                 modules += [DAQModule(name = f'buf_ru{ru}_link{idy}',
                                       plugin = 'TPSetBufferCreator',
-                                      connections = {},#'tpset_source': Connection(f"tpset_q_for_buf{ru}_{idy}"),#already in request_receiver
                                       #'data_request_source': Connection(f"data_request_q{ru}_{idy}"), #ditto
                                       # 'fragment_sink': Connection('qton_fragments.fragment_q')},
                                    conf = buf.Conf(tpset_buffer_size=10000, region=RU_CONFIG[ru]["region_id"], element=idy + RU_CONFIG[ru]["start_channel"]))]
 
     modules += [DAQModule(name = 'ttcm',
                           plugin = 'TimingTriggerCandidateMaker',
-                          connections={"output": Connection("mlt.trigger_candidate_source")},
                           conf=ttcm.Conf(s1=ttcm.map_t(signal_type=TTCM_S1,
                                                        time_before=TRIGGER_WINDOW_BEFORE_TICKS,
                                                        time_after=TRIGGER_WINDOW_AFTER_TICKS),
                                          s2=ttcm.map_t(signal_type=TTCM_S2,
                                                        time_before=TRIGGER_WINDOW_BEFORE_TICKS,
                                                        time_after=TRIGGER_WINDOW_AFTER_TICKS),
-                                         hsievent_connection_name = PARTITION+".hsievents",
+                                         hsievent_connection_name = "hsievents",
 					 hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH))]
+    queues += [Queue("ttcm.output", "mlt.trigger_candidate_source",  "trigger_candidates")]
     
     # We need to populate the list of links based on the fragment
     # producers available in the system. This is a bit of a
@@ -170,14 +166,12 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     # util.connect_fragment_producers
     modules += [DAQModule(name = 'mlt',
                           plugin = 'ModuleLevelTrigger',
-                          #connections = { #"trigger_decision_sink": Connection("dfo.trigger_decision_queue")
-                          #             },
                           conf=mlt.ConfParams(links=[],  # To be updated later - see comment above
-                                              dfo_connection=f"{PARTITION}.td_mlt_to_dfo",
-                                              dfo_busy_connection=f"{PARTITION}.df_busy_signal",
+                                              dfo_connection=f"td_to_dfo",
+                                              dfo_busy_connection=f"df_busy_signal",
 					      hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH))]
 
-    mgraph = ModuleGraph(modules)
+    mgraph = ModuleGraph(modules, queues = queues)
     mgraph.add_endpoint("hsievents", None, Direction.IN)
     mgraph.add_endpoint("td_to_dfo", None, Direction.OUT)
     mgraph.add_endpoint("df_busy_signal", None, Direction.IN)
