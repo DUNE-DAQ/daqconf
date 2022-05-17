@@ -116,7 +116,7 @@ def get_dqm_app(RU_CONFIG=[],
 
     mgraph.add_endpoint(None, None, Direction.IN, ["Timesync"])
     if MODE == 'readout':
-        mgraph.connect_modules("dqmprocessor.trigger_decision_input_queue", "trb_dqm.trigger_decision_input",'trigger_decision_q_dqm')
+        mgraph.connect_modules("dqmprocessor.trigger_decision_input_queue", "trb_dqm.trigger_decision_input", 'trigger_decision_q_dqm')
         mgraph.connect_modules('trb_dqm.trigger_record_output', 'dqmprocessor.trigger_record_dqm_processor', 'trigger_record_q_dqm', toposort=False)  
     elif DQMIDX < NUM_DF_APPS:
         mgraph.add_endpoint(f'trmon_dqm2df_{DQMIDX}', None, Direction.OUT)
