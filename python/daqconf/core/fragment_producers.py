@@ -159,7 +159,7 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
                                                           #mon_connection_name=old_trb_conf.mon_connection_name,
                                                           map=trb.mapgeoidconnections(new_trb_map)))
                           
-    dqm_apps = [ (name,app) for (name,app) in the_system.apps.items() if re.match("dqm\d_ru", name) ]
+    dqm_apps = [ (name,app) for (name,app) in the_system.apps.items() if re.match("dqm\d+_ru", name) ]
 
     for dqm_name, dqm_app in dqm_apps:
         fragment_connection_name = f"fragments_to_{dqm_name}"
