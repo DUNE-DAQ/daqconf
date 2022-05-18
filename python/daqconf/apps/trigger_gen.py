@@ -86,6 +86,8 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     modules = []
 
     region_ids1 = set([ru["region_id"] for ru in RU_CONFIG])
+    assert len(region_ids1) == len(RU_CONFIG), "There are duplicate region IDs for RUs. Trigger can't handle this case. Please use --region-id to set distinct region IDs for each RU"
+        
     
     if SOFTWARE_TPG_ENABLED:
         config_tcm = tcm.Conf(candidate_maker=CANDIDATE_PLUGIN,
