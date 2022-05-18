@@ -190,16 +190,17 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                 # 1 buffer per TPG channel
                 modules += [DAQModule(name = f'buf_ru{ru}_link{idy}',
                                       plugin = 'TPBuffer',
-                                      conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 100_000,
+                                      conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 1_000_000,
                                                                                                                 region_id = region_id,
                                                                                                                 element_id = idy),
-                                                             requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = 100_000,
+                                                             requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = 1_000_000,
                                                                                                                   pop_limit_pct = 0.8,
                                                                                                                   pop_size_pct = 0.1,
                                                                                                                   region_id = region_id,
                                                                                                                   element_id = idy,
                                                                                                                   # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                                                   stream_buffer_size = 8388608,
+                                                                                                                  retry_count = 1000,
                                                                                                                   enable_raw_recording = False)))]
         assert(region_ids == region_ids1)
         
