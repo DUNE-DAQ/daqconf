@@ -95,6 +95,7 @@ def get_dataflow_app(HOSTIDX=0,
     mgraph.add_endpoint("triginh", "datawriter.token_output", Direction.OUT)
     if HAS_DQM:
         mgraph.add_endpoint(f"trmon_dqm2df_{HOSTIDX}", "trb.mon_connection", Direction.IN)
+        mgraph.add_endpoint(f"tr_df2dqm_{HOSTIDX}", None, Direction.OUT)
 
     df_app = App(modulegraph=mgraph, host=HOST)
 

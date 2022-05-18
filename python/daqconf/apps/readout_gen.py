@@ -1,4 +1,3 @@
-
 # Set moo schema search path
 from dunedaq.env import get_moo_model_path
 import moo.io
@@ -37,6 +36,7 @@ import json
 from daqconf.core.conf_utils import Direction, Queue
 from daqconf.core.daqmodule import DAQModule
 from daqconf.core.app import App,ModuleGraph
+
 # Time to wait on pop()
 QUEUE_POP_WAIT_MS = 100
 # local clock speed Hz
@@ -75,6 +75,7 @@ def get_readout_app(RU_CONFIG=[],
     MAX_LINK = MIN_LINK + RU_CONFIG[RUIDX]["channel_count"]
     
     if DEBUG: print(f"ReadoutApp.__init__ with RUIDX={RUIDX}, MIN_LINK={MIN_LINK}, MAX_LINK={MAX_LINK}")
+
     modules = []
     queues = []
 
@@ -158,7 +159,8 @@ def get_readout_app(RU_CONFIG=[],
                                           channel_map_name = TPG_CHANNEL_MAP,
                                           emulator_mode = EMULATOR_MODE,
                                           error_counter_threshold=100,
-                                          error_reset_freq=10000
+                                          error_reset_freq=10000,
+                                          tpset_topic=RU_CONFIG[RUIDX]["tpset_topics"][idx]
                                       ),
                                       requesthandlerconf= rconf.RequestHandlerConf(
                                           latency_buffer_size = LATENCY_BUFFER_SIZE,
@@ -253,16 +255,10 @@ def get_readout_app(RU_CONFIG=[],
     mgraph = ModuleGraph(modules, queues=queues)
 
     for idx in range(MIN_LINK, MAX_LINK):
-        # P. Rodrigues 2022-02-15 We don't make endpoints for the
-        # timesync connection because they are handled by some
-        # special-case magic in NetworkManager, which holds a map
-        # of topics to connections, and looks up all the
-        # connections for a given topic.
-        #
-        if SOFTWARE_TPG_ENABLED:
-            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{idx}", f"datahandler_{idx}.tpset_out",    Direction.OUT)
-            # mgraph.add_endpoint(f"timesync_{idx+RU_CONFIG[RUIDX]['channel_count']}", f"tp_datahandler_{idx}.timesync",    Direction.OUT)
 
+        if SOFTWARE_TPG_ENABLED:
+            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{idx}", f"datahandler_{idx}.tpset_out",    Direction.OUT, topic=[RU_CONFIG[RUIDX]["tpset_topics"][idx]])
+            mgraph.add_endpoint(f"timesync_tp_dlh_ru{RUIDX}_{idx}", f"tp_datahandler_{idx}.timesync_output",    Direction.OUT, ["Timesync"])
         
         if USE_FAKE_DATA_PRODUCERS:
             # Add fragment producers for fake data. This call is necessary to create the RequestReceiver instance, but we don't need the generated FragmentSender or its queues...
@@ -275,7 +271,7 @@ def get_readout_app(RU_CONFIG=[],
             mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = idx, system = SYSTEM_TYPE,
                                          requests_in   = f"datahandler_{idx}.request_input",
                                          fragments_out = f"datahandler_{idx}.fragment_queue")
-            mgraph.add_endpoint(f"timesync_{idx}", f"datahandler_{idx}.timesync_output",    Direction.OUT, ["Timesync"])
+            mgraph.add_endpoint(f"timesync_ru{RUIDX}_{idx}", f"datahandler_{idx}.timesync_output",    Direction.OUT, ["Timesync"])
 
             # Add fragment producers for TPC TPs. Make sure the element index doesn't overlap with the ones for raw data
             #

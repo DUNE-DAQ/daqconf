@@ -250,7 +250,12 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
             cardid = host_id_dict[host_ru[hostidx]]
         else:
             host_id_dict[host_ru[hostidx]] = 0
-        ru_configs.append( {"host": host_ru[hostidx], "card_id": cardid, "region_id": region_id[regionidx], "start_channel": ru_channel_counts[region_id[regionidx]], "channel_count": number_of_data_producers} )
+        ru_configs.append( {"host": host_ru[hostidx],
+                            "card_id": cardid,
+                            "region_id": region_id[regionidx],
+                            "start_channel": ru_channel_counts[region_id[regionidx]],
+                            "channel_count": number_of_data_producers,
+                            "tpset_topics": [ f"tpsets_ru{region_id[regionidx]}_link{i}" for i in range(number_of_data_producers) ] } )
         ru_channel_counts[region_id[regionidx]] += number_of_data_producers
         if len(region_id) != 1: regionidx = regionidx + 1
 
@@ -325,21 +330,6 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
         TOKEN_COUNT = trigemu_token_count,
         HOST=host_trigger,
         DEBUG=debug)
-
-    #-------------------------------------------------------------------
-    # Readout apps
-    
-    cardid = {}
-    host_id_dict = {}
-
-    for hostidx in range(len(host_ru)):
-        if host_ru[hostidx] in host_id_dict:
-            host_id_dict[host_ru[hostidx]] = host_id_dict[host_ru[hostidx]] + 1
-            cardid[hostidx] = host_id_dict[host_ru[hostidx]]
-        else:
-            cardid[hostidx] = 0
-            host_id_dict[host_ru[hostidx]] = 0
-        hostidx = hostidx + 1
 
 
     mgraphs_readout = []
@@ -453,7 +443,6 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
         if app.name=="__app":
             app.name=name
 
-    
     #     console.log(f"MDAapp config generated in {json_dir}")
     from daqconf.core.conf_utils import make_app_command_data
     from daqconf.core.fragment_producers import  connect_all_fragment_producers, set_mlt_links, remove_mlt_link
