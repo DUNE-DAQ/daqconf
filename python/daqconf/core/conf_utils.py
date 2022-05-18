@@ -210,6 +210,11 @@ def make_external_connection(the_system, endpoint_name, app_name, host, port, to
     if verbose:
         console.log(f"External connection {endpoint_name}")
     address = f"tcp://{host}:{port}"
+
+    for connection in the_system.connections[app_name]:
+        if connection.uid == endpoint_name:
+            console.log(f"Duplicate external connection {endpoint_name} detected! Not adding to configuration!")
+            return
     if len(topic) == 0:
         the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetReceiver" if inout==Direction.IN else 'kNetSender', data_type="", uri=address)]
     else:
@@ -397,7 +402,7 @@ def make_app_command_data(system, app, appkey, verbose=False):
         module, name = external_conn.internal_name.split(".")
         if verbose:
             console.log(f"module, name= {module}, {name}, external_conn.external_name={external_conn.external_name}, external_conn.direction={external_conn.direction}")
-        app_connrefs[module] += [conn.ConnectionRef(name=name, uid=exrternal_conn.external_name, dir= "kInput" if external_conn.direction == Direction.IN else "kOutput")]
+        app_connrefs[module] += [conn.ConnectionRef(name=name, uid=external_conn.external_name, dir= "kInput" if external_conn.direction == Direction.IN else "kOutput")]
 
     for queue in app.modulegraph.queues:
         queue_uid = queue.name
