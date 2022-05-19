@@ -112,6 +112,7 @@ import click
 @click.option('--tpc-region-name-prefix', default='APA', help="Prefix to be used for the 'Region' Group name inside the HDF5 file")
 @click.option('--max-file-size', default=4*1024*1024*1024, help="The size threshold when raw data files are closed (in bytes)")
 @click.option('--max-trigger-record-window', default=0, help="The maximum size for the window of data that will included in a single TriggerRecord (in ticks). Readout windows that are longer than this size will result in TriggerRecords being split into a sequence of TRs. A zero value for this parameter means no splitting.")
+@click.option('--image', default=None, type=str, help="Which image to use")
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
 
@@ -124,7 +125,7 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
         control_timing_partition, timing_partition_master_device_name, timing_partition_id, timing_partition_trigger_mask, timing_partition_rate_control_enabled, timing_partition_spill_gate_enabled,
         enable_raw_recording, raw_recording_output_dir, frontend_type, opmon_impl, enable_dqm, ers_impl, dqm_impl, pocket_url, enable_software_tpg, tpg_channel_map, enable_tpset_writing, use_fake_data_producers, dqm_cmap,
         dqm_rawdisplay_params, dqm_meanrms_params, dqm_fourier_params, dqm_fouriersum_params, dqm_df_rate,
-        dqm_df_algs, op_env, tpc_region_name_prefix, max_file_size, max_trigger_record_window, debug, json_dir):
+        dqm_df_algs, op_env, tpc_region_name_prefix, max_file_size, max_trigger_record_window, image, debug, json_dir):
 
     if exists(json_dir):
         raise RuntimeError(f"Directory {json_dir} already exists")
@@ -501,7 +502,8 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
     # Override the default boot.json with the one from minidaqapp
     boot = generate_boot(the_system.apps,
                          ers_settings=ers_settings, info_svc_uri=info_svc_uri,
-                         disable_trace=disable_trace, use_kafka=use_kafka)
+                         disable_trace=disable_trace, use_kafka=use_kafka,
+                         image=image)
     
     if thread_pinning_file:
         boot['scripts'] = {

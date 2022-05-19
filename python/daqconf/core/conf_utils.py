@@ -485,7 +485,8 @@ def make_unique_name(base, module_list):
     return f"{base}_{suffix}"
 
 def generate_boot(apps: list, ers_settings=None, info_svc_uri="file://info_${APP_ID}_${APP_PORT}.json",
-                  disable_trace=False, use_kafka=False, verbose=False, extra_env_vars=dict()) -> dict:
+                  disable_trace=False, use_kafka=False, verbose=False, extra_env_vars=dict(),
+                  image="") -> dict:
     """Generate the dictionary that will become the boot.json file"""
 
     if ers_settings is None:
@@ -497,22 +498,23 @@ def generate_boot(apps: list, ers_settings=None, info_svc_uri="file://info_${APP
         }
 
     daq_app_specs = {
-        "daq_application_ups" : {
-            "comment": "Application profile based on a full dbt runtime environment",
-            "env": {
-                "DBT_AREA_ROOT": "getenv",
-                "TRACE_FILE": "getenv:/tmp/trace_buffer_${HOSTNAME}_${USER}",
-            },
-            "cmd": ["CMD_FAC=rest://localhost:${APP_PORT}",
-                    "INFO_SVC=" + info_svc_uri,
-                    "cd ${DBT_AREA_ROOT}",
-                    "source dbt-env.sh",
-                    "dbt-workarea-env",
-                    "cd ${APP_WD}",
-                    "daq_application --name ${APP_NAME} -c ${CMD_FAC} -i ${INFO_SVC}"]
-        },
+        # "daq_application_ups" : {
+        #     "comment": "Application profile based on a full dbt runtime environment",
+        #     "env": {
+        #         "DBT_AREA_ROOT": "getenv",
+        #         "TRACE_FILE": "getenv:/tmp/trace_buffer_${HOSTNAME}_${USER}",
+        #     },
+        #     "cmd": ["CMD_FAC=rest://localhost:${APP_PORT}",
+        #             "INFO_SVC=" + info_svc_uri,
+        #             "cd ${DBT_AREA_ROOT}",
+        #             "source dbt-env.sh",
+        #             "dbt-workarea-env",
+        #             "cd ${APP_WD}",
+        #             "daq_application --name ${APP_NAME} -c ${CMD_FAC} -i ${INFO_SVC}"]
+        # },
         "daq_application" : {
-            "comment": "Application profile using  PATH variables (lower start time)",
+            "comment": "Application profile using PATH variables (lower start time)",
+            "image": image,
             "env":{
                 "CET_PLUGIN_PATH": "getenv",
                 "DETCHANNELMAPS_SHARE": "getenv",
