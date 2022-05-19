@@ -251,6 +251,8 @@ def make_system_connections(the_system, verbose=False):
 
     """
 
+    external_uids = set()
+    uids = []
     endpoint_map = defaultdict(list)
     topic_map = defaultdict(list)
 
@@ -260,7 +262,9 @@ def make_system_connections(the_system, verbose=False):
             make_queue_connection(the_system, app, queue.name, queue.push_modules, queue.pop_modules, queue.size, verbose)
       for external_conn in the_system.apps[app].modulegraph.external_connections:
             make_external_connection(the_system, external_conn.external_name, app, external_conn.host, external_conn.port, external_conn.topic, external_conn.direction, verbose)
+            external_uids.add(external_conn.external_name)
       for endpoint in the_system.apps[app].modulegraph.endpoints:
+        uids.append(endpoint.external_name)
         if len(endpoint.topic) == 0:
             if verbose:
                 console.log(f"Adding endpoint {endpoint.external_name}, app {app}, direction {endpoint.direction}")
@@ -270,6 +274,16 @@ def make_system_connections(the_system, verbose=False):
                 console.log(f"Getting topics for endpoint {endpoint.external_name}, app {app}, direction {endpoint.direction}")
             for topic in endpoint.topic:
                 topic_map[topic] += [{"app": app, "endpoint": endpoint}]
+
+    for external_uid in external_uids:
+        if external_uid in topic_map.keys():
+            raise ValueError(f"Name {external_uid} is both a topic and an external connection name")
+        if external_uid in uids:
+            raise ValueError(f"Name {external_uid} is both an endpoint name and an external connection name")
+
+    for topic in topic_map.keys():
+        if topic in uids:
+            raise ValueError(f"Name {topic} is both an endpoint external name and a topic name")
 
     for endpoint_name,endpoints in endpoint_map.items():
         if verbose:
