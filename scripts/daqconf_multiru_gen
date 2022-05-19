@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-
-
 import json
 import os
 import math
@@ -262,7 +260,7 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
                             "region_id": region_id[regionidx],
                             "start_channel": ru_channel_counts[region_id[regionidx]],
                             "channel_count": number_of_data_producers,
-                            "tpset_topics": [ f"tpsets_ru{region_id[regionidx]}_link{i}" for i in range(number_of_data_producers) ] } )
+                            "tpset_topics": [ f"topic_tpsets_ru{region_id[regionidx]}_link{i}" for i in range(number_of_data_producers) ] } )
         ru_channel_counts[region_id[regionidx]] += number_of_data_producers
         if len(region_id) != 1: regionidx = regionidx + 1
 
