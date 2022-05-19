@@ -45,12 +45,13 @@ def make_moo_record(conf_dict,name,path='temptypes'):
         elif type(pvalue) == str:
             typename = 'temptypes.temp_string'
         else:
-            raise Exception(f'Invalid config argument type: {type(value)}')
+            raise Exception(f'Invalid config argument type: {type(pvalue)}')
         fields.append(dict(name=pname,item=typename))
     moo.otypes.make_type(schema='record', fields=fields, name=name, path=path)
 
 #===============================================================================
 def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
+                    FIRMWARE_TPG_ENABLED: bool = False,
                     RU_CONFIG: list = [],
 
                     ACTIVITY_PLUGIN: str = 'TriggerActivityMakerPrescalePlugin',
@@ -79,7 +80,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     modules = []
     queues = []
     
-    if SOFTWARE_TPG_ENABLED:
+    if SOFTWARE_TPG_ENABLED or FIRMWARE_TPG_ENABLED:
         config_tcm =  tcm.Conf(candidate_maker=CANDIDATE_PLUGIN,
                                candidate_maker_config=temptypes.CandidateConf(**CANDIDATE_CONFIG))
         
@@ -92,7 +93,15 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
         # Make one heartbeatmaker per link
         for ruidx, ru_config in enumerate(RU_CONFIG):
-            for link_idx in range(ru_config["channel_count"]):
+            if FIRMWARE_TPG_ENABLED:
+                if ru_config["channel_count"] > 5:
+                    tp_links = 2
+                else:
+                    tp_links = 1
+            else:
+                tp_links = ru_config["channel_count"]
+
+            for link_idx in range(tp_links):
                 modules += [DAQModule(name = f'channelfilter_ru{ruidx}_link{link_idx}',
                                           plugin = 'TPChannelFilter',
                                           conf = chfilter.Conf(channel_map_name=CHANNEL_MAP_NAME,
@@ -175,9 +184,18 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     mgraph.add_endpoint("hsievents", None, Direction.IN)
     mgraph.add_endpoint("td_to_dfo", None, Direction.OUT)
     mgraph.add_endpoint("df_busy_signal", None, Direction.IN)
-    if SOFTWARE_TPG_ENABLED:
+    if SOFTWARE_TPG_ENABLED or FIRMWARE_TPG_ENABLED:
+
+        if FIRMWARE_TPG_ENABLED:
+            if ru_config["channel_count"] > 5:
+                tp_links = 2
+            else:
+                tp_links = 1
+        else:
+            tp_links = ru_config["channel_count"]
+
         for ruidx, ru_config in enumerate(RU_CONFIG):
-            for link_idx in range(ru_config["channel_count"]):
+            for link_idx in range(tp_links):
                 # 1 buffer per link
                 buf_name=f'buf_ru{ruidx}_link{link_idx}'
                 global_link = link_idx+ru_config['start_channel'] # for the benefit of correct fragment geoid
