@@ -123,8 +123,6 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                               plugin = 'TCTee')
                     ]
 
-
-
         # Make one heartbeatmaker per link
         for ruidx, ru_config in enumerate(RU_CONFIG):
             if FIRMWARE_TPG_ENABLED:
@@ -150,6 +148,14 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                     
         region_ids = set()
         for ru in range(len(RU_CONFIG)):
+            if FIRMWARE_TPG_ENABLED:
+                if RU_CONFIG[ru]["channel_count"] > 5:
+                    tp_links = 2
+                else:
+                    tp_links = 1
+            else:
+                tp_links = RU_CONFIG[ru]["channel_count"]
+
             ## 1 zipper/TAM per region id
             region_id = RU_CONFIG[ru]["region_id"]
             skip=False
@@ -196,7 +202,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                                  retry_count = 1000,
                                                                                                                  enable_raw_recording = False)))]
 
-            for idy in range(RU_CONFIG[ru]["channel_count"]):
+            for idy in range(tp_links):
                 # 1 buffer per TPG channel
                 modules += [DAQModule(name = f'buf_ru{ru}_link{idy}',
                                       plugin = 'TPBuffer',
@@ -241,10 +247,19 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
     mgraph = ModuleGraph(modules)
 
-    if SOFTWARE_TPG_ENABLED:
+    if FIRMWARE_TPG_ENABLED or SOFTWARE_TPG_ENABLED:
         mgraph.connect_modules("tazipper.output", "tcm.input", size_hint=1000)
+    
+    if SOFTWARE_TPG_ENABLED or FIRMWARE_TPG_ENABLED:
         for ruidx, ru_config in enumerate(RU_CONFIG):
-            for link_idx in range(ru_config["channel_count"]):
+            if FIRMWARE_TPG_ENABLED:
+                if ru_config["channel_count"] > 5:
+                    tp_links = 2
+                else:
+                    tp_links = 1
+            else:
+                tp_links = ru_config["channel_count"]
+            for link_idx in range(tp_links):
                     link_id = f'ru{ruidx}_link{link_idx}'
 
                     mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', size_hint=1000)
@@ -254,6 +269,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
                     mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{ru_config['region_id']}.input", f"{ru_config['region_id']}_tpset_q", size_hint=1000)
 
+    if FIRMWARE_TPG_ENABLED or SOFTWARE_TPG_ENABLED:
         for region_id in region_ids1:
             mgraph.connect_modules(f'zip_{region_id}.output', f'tam_{region_id}.input', size_hint=1000)
         # Use connect_modules to connect up the Tees to the buffers/MLT,
@@ -279,7 +295,6 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     mgraph.add_endpoint("td_to_dfo", None, Direction.OUT)
     mgraph.add_endpoint("df_busy_signal", None, Direction.IN)
     if SOFTWARE_TPG_ENABLED or FIRMWARE_TPG_ENABLED:
-
         if FIRMWARE_TPG_ENABLED:
             if ru_config["channel_count"] > 5:
                 tp_links = 2
