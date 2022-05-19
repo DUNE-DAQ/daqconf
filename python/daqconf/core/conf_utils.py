@@ -349,7 +349,7 @@ def make_system_connections(the_system, verbose=False):
                     port = the_system.next_unassigned_port()
                     address = f'tcp://{{host_{endpoint["app"]}}}:{port}'
                     pubsub_connectionids[endpoint['endpoint'].external_name] = conn.ConnectionId(uid=endpoint['endpoint'].external_name, service_type="kPublisher", data_type="", uri=address, topics=endpoint['endpoint'].topic)
-                    the_system.connections[endpoint['app']] += [pubsub_connectionids[endpoint['endpoint'].external_name]]
+                the_system.connections[endpoint['app']] += [pubsub_connectionids[endpoint['endpoint'].external_name]]
                 topic_connectionids += [pubsub_connectionids[endpoint['endpoint'].external_name]]
 
         if len(subscribers) == 0:
