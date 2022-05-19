@@ -65,9 +65,8 @@ def get_tmc_app(MASTER_DEVICE_NAME="",
                                             ))]
 
     mgraph = ModuleGraph(modules)
-    
-    mgraph.add_partition_connection(TIMING_PARTITION, "timing_cmds", "tmc.timing_cmds", Direction.OUT, TIMING_HOST, TIMING_PORT)
-    mgraph.add_partition_connection(TIMING_PARTITION, "timing_device_info", None, Direction.IN, TIMING_HOST, TIMING_PORT+1, [MASTER_DEVICE_NAME])
+    mgraph.add_external_connection("timing_cmds", "tmc.timing_cmds", Direction.OUT, TIMING_HOST, TIMING_PORT)
+    mgraph.add_external_connection("timing_device_info", None, Direction.IN, TIMING_HOST, TIMING_PORT+1, [MASTER_DEVICE_NAME])
     
     tmc_app = App(modulegraph=mgraph, host=HOST, name="TMCApp")
     

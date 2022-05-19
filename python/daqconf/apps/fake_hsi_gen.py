@@ -48,7 +48,6 @@ def get_fake_hsi_app(RUN_NUMBER=333,
                      MEAN_SIGNAL_MULTIPLICITY: int=0,
                      SIGNAL_EMULATION_MODE: int=0,
                      ENABLED_SIGNALS: int=0b00000001,
-                     PARTITION="UNKNOWN",
                      HOST="localhost",
                      DEBUG=False):
         

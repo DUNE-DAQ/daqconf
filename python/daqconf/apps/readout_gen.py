@@ -58,7 +58,6 @@ def get_readout_app(RU_CONFIG=[],
                     SOFTWARE_TPG_ENABLED=False,
                     TPG_CHANNEL_MAP= "ProtoDUNESP1ChannelMap",
                     USE_FAKE_DATA_PRODUCERS=False,
-                    PARTITION="UNKNOWN",
                     LATENCY_BUFFER_SIZE=499968,
                     HOST="localhost",
                     DEBUG=False):
@@ -272,7 +271,7 @@ def get_readout_app(RU_CONFIG=[],
             mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = idx, system = SYSTEM_TYPE,
                                          requests_in   = f"datahandler_{idx}.request_input",
                                          fragments_out = f"datahandler_{idx}.fragment_queue")
-            mgraph.add_endpoint(f"timesync_ru{RUIDX}_{idx}", f"datahandler_{idx}.timesync_output",    Direction.OUT, ["Timesync"])
+            mgraph.add_endpoint(f"timesync_{idx}", f"datahandler_{idx}.timesync_output",    Direction.OUT, ["Timesync"])
 
             # Add fragment producers for TPC TPs. Make sure the element index doesn't overlap with the ones for raw data
             #
