@@ -37,7 +37,6 @@ def make_moo_record(conf_dict,name,path='temptypes'):
 
 #===============================================================================
 def get_dfo_app(TOKEN_COUNT: int = 10,
-                PARTITION="UNKNOWN",
                 DF_COUNT: int = 1,
                 HOST="localhost",
                 DEBUG=False):

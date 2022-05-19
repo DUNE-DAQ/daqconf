@@ -58,7 +58,6 @@ def get_readout_app(RU_CONFIG=[],
                     SOFTWARE_TPG_ENABLED=False,
                     TPG_CHANNEL_MAP= "ProtoDUNESP1ChannelMap",
                     USE_FAKE_DATA_PRODUCERS=False,
-                    PARTITION="UNKNOWN",
                     LATENCY_BUFFER_SIZE=499968,
                     HOST="localhost",
                     DEBUG=False):

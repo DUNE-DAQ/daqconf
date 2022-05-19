@@ -41,7 +41,6 @@ QUEUE_POP_WAIT_MS = 100
 
 def get_dataflow_app(HOSTIDX=0,
                      OUTPUT_PATH=".",
-                     PARTITION="UNKNOWN",
                      OPERATIONAL_ENVIRONMENT="swtest",
                      TPC_REGION_NAME_PREFIX="APA",
                      MAX_FILE_SIZE=4*1024*1024*1024,
