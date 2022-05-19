@@ -191,6 +191,10 @@ def get_readout_app(RU_CONFIG=[],
             if FRONTEND_TYPE == 'wib':
                 queues += [Queue(f"datahandler_{link_num}.errored_frames", 'errored_frame_consumer.input_queue', "errored_frames_q")]
 
+            if SOFTWARE_TPG_ENABLED: 
+                tpset_topic = RU_CONFIG[RUIDX]["tpset_topics"][idx]
+            else:
+                tpset_topic = "None"
             modules += [DAQModule(name = f"datahandler_{link_num}",
                                   plugin = "DataLinkHandler", 
                                   conf = rconf.Conf(
@@ -216,7 +220,7 @@ def get_readout_app(RU_CONFIG=[],
                                           emulator_mode = EMULATOR_MODE,
                                           error_counter_threshold=100,
                                           error_reset_freq=10000,
-                                          tpset_topic=RU_CONFIG[RUIDX]["tpset_topics"][idx]
+                                          tpset_topic=tpset_topic
                                       ),
                                       requesthandlerconf= rconf.RequestHandlerConf(
                                           latency_buffer_size = LATENCY_BUFFER_SIZE,
@@ -373,9 +377,9 @@ def get_readout_app(RU_CONFIG=[],
             # real firmware TPs become available
             if SOFTWARE_TPG_ENABLED:
                 assert total_link_count < 1000
-                mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = idx + 1000, system = SYSTEM_TYPE,
-                                             requests_in   = f"tp_datahandler_{idx}.request_input",
-                                             fragments_out = f"tp_datahandler_{idx}.fragment_queue")
+                mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = link_num + 1000, system = SYSTEM_TYPE,
+                                             requests_in   = f"tp_datahandler_{link_num}.request_input",
+                                             fragments_out = f"tp_datahandler_{link_num}.fragment_queue")
 
     readout_app = App(mgraph, host=HOST)
     if DEBUG:
