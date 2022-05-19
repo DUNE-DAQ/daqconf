@@ -246,9 +246,16 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
     ru_app_names=[f"ruflx{idx}" if use_felix else f"ruemu{idx}" for idx in range(len(host_ru))]
     dqm_app_names = [f"dqm{idx}_ru" for idx in range(len(host_ru))]
     
-    for hostidx,ru_host in enumerate(ru_app_names):
+    if enable_firmware_tpg:
+        if number_of_data_producers > 5:
+            n_tp = 2
+        else:
+            n_tp = 1
+        topic_tpsets = [ f"topic_tpsets_ru{region_id[regionidx]}_link{i}" for i in range(n_tp) ]
+    else:
+        topic_tpsets = [ f"topic_tpsets_ru{region_id[regionidx]}_link{i}" for i in range(number_of_data_producers) ]
 
-           
+    for hostidx,ru_host in enumerate(ru_app_names):
         cardid = 0
         if host_ru[hostidx] in host_id_dict:
             host_id_dict[host_ru[hostidx]] = host_id_dict[host_ru[hostidx]] + 1
@@ -260,7 +267,7 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
                             "region_id": region_id[regionidx],
                             "start_channel": ru_channel_counts[region_id[regionidx]],
                             "channel_count": number_of_data_producers,
-                            "tpset_topics": [ f"topic_tpsets_ru{region_id[regionidx]}_link{i}" for i in range(number_of_data_producers) ] } )
+                            "tpset_topics":  topic_tpsets} )
         ru_channel_counts[region_id[regionidx]] += number_of_data_producers
         if len(region_id) != 1: regionidx = regionidx + 1
 
