@@ -382,6 +382,7 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
     if enable_tpset_writing:
         tpw_name=f'tpwriter'
         the_system.apps[tpw_name] = get_tpwriter_app(
+            RU_CONFIG = ru_configs,
             OUTPUT_PATH = output_path,
             OPERATIONAL_ENVIRONMENT = op_env,
             TPC_REGION_NAME_PREFIX = tpc_region_name_prefix,

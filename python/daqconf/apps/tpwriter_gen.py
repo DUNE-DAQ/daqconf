@@ -25,7 +25,8 @@ from daqconf.core.conf_utils import Direction
 # Time to wait on pop()
 QUEUE_POP_WAIT_MS = 100
 
-def get_tpwriter_app(OUTPUT_PATH=".",
+def get_tpwriter_app(RU_CONFIG,
+                     OUTPUT_PATH=".",
                      OPERATIONAL_ENVIRONMENT="swtest",
                      TPC_REGION_NAME_PREFIX="APA",
                      MAX_FILE_SIZE=4*1024*1024*1024,
@@ -67,7 +68,16 @@ def get_tpwriter_app(OUTPUT_PATH=".",
 
     mgraph=ModuleGraph(modules)
 
-    mgraph.add_endpoint("tpsets_into_writer", "tpswriter.tpset_source", Direction.IN)
+    # Connect up the TPSets from readout to the tpswriter. There's one
+    # stream per FELIX link, and the pub/sub topic for each link is
+    # stored in the RU_CONFIG that was passed as an argument to
+    # get_tpwriter_app
+    for ruidx, ru_config in enumerate(RU_CONFIG):
+        for link_idx in range(ru_config["channel_count"]):
+            link_id=f"ru{ruidx}_link{link_idx}"
+            mgraph.add_endpoint(f"tpsets_{link_id}", f"tpswriter.tpset_source", Direction.IN, topic=[ru_config["tpset_topics"][link_idx]])
+
+    # mgraph.add_endpoint("tpsets_into_writer", "tpswriter.tpset_source", Direction.IN)
 
     tpw_app = App(modulegraph=mgraph, host=HOST)
 
