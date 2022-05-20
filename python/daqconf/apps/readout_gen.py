@@ -143,7 +143,6 @@ def get_readout_app(RU_CONFIG=[],
                                           # fake_trigger_flag=0, # default
                                           region_id = RU_CONFIG[RUIDX]["region_id"],
                                           element_id = idx,
-                                          timesync_connection_name = f"timesync_{RUIDX}",
                                           timesync_topic_name = "Timesync",
                                       ),
                                       latencybufferconf= rconf.LatencyBufferConf(
