@@ -87,7 +87,25 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
     region_ids1 = set([ru["region_id"] for ru in RU_CONFIG])
     assert len(region_ids1) == len(RU_CONFIG), "There are duplicate region IDs for RUs. Trigger can't handle this case. Please use --region-id to set distinct region IDs for each RU"
-        
+
+    # We always have a TC buffer even when there are no TPs, because we want to put the timing TC in the output file
+    modules += [DAQModule(name = 'tc_buf',
+                         plugin = 'TCBuffer',
+                         conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 100_000,
+                                                                                                  region_id = TC_REGION_ID,
+                                                                                                  element_id = TA_ELEMENT_ID),
+                                                requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = 100_000,
+                                                                                                    pop_limit_pct = 0.8,
+                                                                                                    pop_size_pct = 0.1,
+                                                                                                    region_id = TC_REGION_ID,
+                                                                                                    element_id = TC_ELEMENT_ID,
+                                                                                                    # output_file = f"output_{idx + MIN_LINK}.out",
+                                                                                                    stream_buffer_size = 8388608,
+                                                                                                    retry_count = 1000,
+                                                                                                    enable_raw_recording = False))),
+               DAQModule(name = 'tctee_ttcm',
+                         plugin = 'TCTee')]
+
     
     if SOFTWARE_TPG_ENABLED or FIRMWARE_TPG_ENABLED:
         config_tcm =  tcm.Conf(candidate_maker=CANDIDATE_PLUGIN,
@@ -103,24 +121,8 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                               plugin = 'TriggerCandidateMaker',
                               conf = config_tcm),
 
-                    DAQModule(name = 'tc_buf',
-                              plugin = 'TCBuffer',
-                              conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 100_000,
-                                                                                                       region_id = TC_REGION_ID,
-                                                                                                       element_id = TA_ELEMENT_ID),
-                                                     requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = 100_000,
-                                                                                                         pop_limit_pct = 0.8,
-                                                                                                         pop_size_pct = 0.1,
-                                                                                                         region_id = TC_REGION_ID,
-                                                                                                         element_id = TC_ELEMENT_ID,
-                                                                                                         # output_file = f"output_{idx + MIN_LINK}.out",
-                                                                                                         stream_buffer_size = 8388608,
-                                                                                                         retry_count = 1000,
-                                                                                                         enable_raw_recording = False))),
                     DAQModule(name = 'tctee_chain',
                               plugin = 'TCTee'),
-                    DAQModule(name = 'tctee_ttcm',
-                              plugin = 'TCTee')
                     ]
 
         # Make one heartbeatmaker per link
@@ -247,6 +249,10 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
     mgraph = ModuleGraph(modules)
 
+    mgraph.connect_modules("ttcm.output",         "tctee_ttcm.input",             "ttcm_input", size_hint=1000)
+    mgraph.connect_modules("tctee_ttcm.output1",  "mlt.trigger_candidate_source", "tcs_to_mlt", size_hint=1000)
+    mgraph.connect_modules("tctee_ttcm.output2",  "tc_buf.tc_source",             "tcs_to_buf", size_hint=1000)
+
     if SOFTWARE_TPG_ENABLED or FIRMWARE_TPG_ENABLED:
         mgraph.connect_modules("tazipper.output", "tcm.input", size_hint=1000)
         for ruidx, ru_config in enumerate(RU_CONFIG):
@@ -275,32 +281,30 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
         mgraph.connect_modules("tctee_chain.output1", "mlt.trigger_candidate_source", "tcs_to_mlt",  size_hint=1000)
         mgraph.connect_modules("tctee_chain.output2", "tc_buf.tc_source",             "tcs_to_buf",  size_hint=1000)
 
-        mgraph.connect_modules("ttcm.output",         "tctee_ttcm.input",             "ttcm_input", size_hint=1000)
-        mgraph.connect_modules("tctee_ttcm.output1",  "mlt.trigger_candidate_source", "tcs_to_mlt", size_hint=1000)
-        mgraph.connect_modules("tctee_ttcm.output2",  "tc_buf.tc_source",             "tcs_to_buf", size_hint=1000)
 
         for region_id in region_ids1:
             mgraph.connect_modules(f'tam_{region_id}.output',              f'tasettee_region_{region_id}.input',      size_hint=1000)
             mgraph.connect_modules(f'tasettee_region_{region_id}.output1', f'tazipper.input', "tas_to_tazipper",      size_hint=1000)
             mgraph.connect_modules(f'tasettee_region_{region_id}.output2', f'ta_buf_region_{region_id}.taset_source', size_hint=1000)
-    else:
-        mgraph.connect_modules("ttcm.output", "mlt.trigger_candidate_source",  "trigger_candidates", size_hint=1000)
-
-
     
     mgraph.add_endpoint("hsievents", None, Direction.IN)
     mgraph.add_endpoint("td_to_dfo", None, Direction.OUT)
     mgraph.add_endpoint("df_busy_signal", None, Direction.IN)
-    if SOFTWARE_TPG_ENABLED or FIRMWARE_TPG_ENABLED:
-        if FIRMWARE_TPG_ENABLED:
-            if ru_config["channel_count"] > 5:
-                tp_links = 2
-            else:
-                tp_links = 1
-        else:
-            tp_links = ru_config["channel_count"]
 
+    mgraph.add_fragment_producer(region=TC_REGION_ID, element=TC_ELEMENT_ID, system="DataSelection",
+                                 requests_in="tc_buf.data_request_source",
+                                 fragments_out="tc_buf.fragment_sink")
+
+    if SOFTWARE_TPG_ENABLED or FIRMWARE_TPG_ENABLED:
         for ruidx, ru_config in enumerate(RU_CONFIG):
+            if FIRMWARE_TPG_ENABLED:
+                if ru_config["channel_count"] > 5:
+                    tp_links = 2
+                else:
+                    tp_links = 1
+            else:
+                tp_links = ru_config["channel_count"]
+
             for link_idx in range(tp_links):
                 # 1 buffer per link
                 link_id=f"ru{ruidx}_link{link_idx}"
@@ -317,9 +321,6 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
             mgraph.add_fragment_producer(region=region_id, element=TA_ELEMENT_ID, system="DataSelection",
                                          requests_in=f"{buf_name}.data_request_source",
                                          fragments_out=f"{buf_name}.fragment_sink")
-        mgraph.add_fragment_producer(region=TC_REGION_ID, element=TC_ELEMENT_ID, system="DataSelection",
-                                     requests_in="tc_buf.data_request_source",
-                                     fragments_out="tc_buf.fragment_sink")
 
 
     trigger_app = App(modulegraph=mgraph, host=HOST, name='TriggerApp')

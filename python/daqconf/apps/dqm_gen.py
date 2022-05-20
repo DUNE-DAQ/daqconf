@@ -43,10 +43,10 @@ def get_dqm_app(RU_CONFIG=[],
                  SYSTEM_TYPE='TPC',
                  DQM_KAFKA_ADDRESS='',
                  DQM_CMAP='HD',
-                 DQM_RAWDISPLAY_PARAMS=[60, 10, 50],
-                 DQM_MEANRMS_PARAMS=[10, 1, 100],
-                 DQM_FOURIER_PARAMS=[600, 60, 100],
-                 DQM_FOURIERSUM_PARAMS=[10, 1, 8192],
+                 DQM_RAWDISPLAY_PARAMS=[60, 50],
+                 DQM_MEANRMS_PARAMS=[10, 100],
+                 DQM_FOURIER_PARAMS=[600, 100],
+                 DQM_FOURIERSUM_PARAMS=[10, 8192],
                  HOST="localhost",
                  NUM_DF_APPS=1,
                  MODE="readout",
@@ -92,14 +92,14 @@ def get_dqm_app(RU_CONFIG=[],
                               region=RU_CONFIG[DQMIDX if MODE == 'readout' else 0]["region_id"],
                               channel_map=DQM_CMAP, # 'HD' for horizontal drift or 'VD' for vertical drift
                               mode=MODE,
-                              sdqm_hist=dqmprocessor.StandardDQM(**{'how_often' : DQM_RAWDISPLAY_PARAMS[0], 'unavailable_time' : DQM_RAWDISPLAY_PARAMS[1], 'num_frames' : DQM_RAWDISPLAY_PARAMS[2]}),
-                              sdqm_mean_rms=dqmprocessor.StandardDQM(**{'how_often' : DQM_MEANRMS_PARAMS[0], 'unavailable_time' : DQM_MEANRMS_PARAMS[1], 'num_frames' : DQM_MEANRMS_PARAMS[2]}),
-                              sdqm_fourier=dqmprocessor.StandardDQM(**{'how_often' : DQM_FOURIER_PARAMS[0], 'unavailable_time' : DQM_FOURIER_PARAMS[1], 'num_frames' : DQM_FOURIER_PARAMS[2]}),
-                              sdqm_fourier_sum=dqmprocessor.StandardDQM(**{'how_often' : DQM_FOURIERSUM_PARAMS[0], 'unavailable_time' : DQM_FOURIERSUM_PARAMS[1], 'num_frames' : DQM_FOURIERSUM_PARAMS[2]}),
+                              hist=dqmprocessor.StandardDQM(**{'how_often' : DQM_RAWDISPLAY_PARAMS[0], 'num_frames' : DQM_RAWDISPLAY_PARAMS[1]}),
+                              mean_rms=dqmprocessor.StandardDQM(**{'how_often' : DQM_MEANRMS_PARAMS[0], 'num_frames' : DQM_MEANRMS_PARAMS[1]}),
+                              fourier=dqmprocessor.StandardDQM(**{'how_often' : DQM_FOURIER_PARAMS[0], 'num_frames' : DQM_FOURIER_PARAMS[1]}),
+                              fourier_sum=dqmprocessor.StandardDQM(**{'how_often' : DQM_FOURIERSUM_PARAMS[0], 'num_frames' : DQM_FOURIERSUM_PARAMS[1]}),
                               kafka_address=DQM_KAFKA_ADDRESS,
                               link_idx=list(range(MIN_LINK, MAX_LINK)),
                               clock_frequency=CLOCK_SPEED_HZ,
-                              timesync_connection_name = f"timesync_{DQMIDX}",
+                              timesync_topic_name = f"Timesync",
                               df2dqm_connection_name=f"tr_df2dqm_{DQMIDX}" if DQMIDX < NUM_DF_APPS else '',
                               dqm2df_connection_name=f"trmon_dqm2df_{DQMIDX}" if DQMIDX < NUM_DF_APPS else '',
                               readout_window_offset=10**7 / DATA_RATE_SLOWDOWN_FACTOR, # 10^7 works fine for WIBs with no slowdown
@@ -113,7 +113,7 @@ def get_dqm_app(RU_CONFIG=[],
 
     mgraph = ModuleGraph(modules)
 
-    mgraph.add_endpoint(None, None, Direction.IN, ["Timesync"])
+    mgraph.add_endpoint("timesync_{DQMIDX}", None, Direction.IN, ["Timesync"])
     if MODE == 'readout':
         mgraph.connect_modules("dqmprocessor.trigger_decision_input_queue", "trb_dqm.trigger_decision_input", 'trigger_decision_q_dqm')
         mgraph.connect_modules('trb_dqm.trigger_record_output', 'dqmprocessor.trigger_record_dqm_processor', 'trigger_record_q_dqm', toposort=False)  
