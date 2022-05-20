@@ -99,7 +99,7 @@ def get_dqm_app(RU_CONFIG=[],
                               kafka_address=DQM_KAFKA_ADDRESS,
                               link_idx=list(range(MIN_LINK, MAX_LINK)),
                               clock_frequency=CLOCK_SPEED_HZ,
-                              timesync_connection_name = f"timesync_{DQMIDX}",
+                              timesync_topic_name = f"Timesync",
                               df2dqm_connection_name=f"tr_df2dqm_{DQMIDX}" if DQMIDX < NUM_DF_APPS else '',
                               dqm2df_connection_name=f"trmon_dqm2df_{DQMIDX}" if DQMIDX < NUM_DF_APPS else '',
                               readout_window_offset=10**7 / DATA_RATE_SLOWDOWN_FACTOR, # 10^7 works fine for WIBs with no slowdown
@@ -113,7 +113,7 @@ def get_dqm_app(RU_CONFIG=[],
 
     mgraph = ModuleGraph(modules)
 
-    mgraph.add_endpoint(None, None, Direction.IN, ["Timesync"])
+    mgraph.add_endpoint("timesync_{DQMIDX}", None, Direction.IN, ["Timesync"])
     if MODE == 'readout':
         mgraph.connect_modules("dqmprocessor.trigger_decision_input_queue", "trb_dqm.trigger_decision_input", 'trigger_decision_q_dqm')
         mgraph.connect_modules('trb_dqm.trigger_record_output', 'dqmprocessor.trigger_record_dqm_processor', 'trigger_record_q_dqm', toposort=False)  
