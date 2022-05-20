@@ -247,10 +247,8 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
     mgraph = ModuleGraph(modules)
 
-    if FIRMWARE_TPG_ENABLED or SOFTWARE_TPG_ENABLED:
-        mgraph.connect_modules("tazipper.output", "tcm.input", size_hint=1000)
-    
     if SOFTWARE_TPG_ENABLED or FIRMWARE_TPG_ENABLED:
+        mgraph.connect_modules("tazipper.output", "tcm.input", size_hint=1000)
         for ruidx, ru_config in enumerate(RU_CONFIG):
             if FIRMWARE_TPG_ENABLED:
                 if ru_config["channel_count"] > 5:
@@ -269,7 +267,6 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
                     mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{ru_config['region_id']}.input", f"{ru_config['region_id']}_tpset_q", size_hint=1000)
 
-    if FIRMWARE_TPG_ENABLED or SOFTWARE_TPG_ENABLED:
         for region_id in region_ids1:
             mgraph.connect_modules(f'zip_{region_id}.output', f'tam_{region_id}.input', size_hint=1000)
         # Use connect_modules to connect up the Tees to the buffers/MLT,
