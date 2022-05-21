@@ -12,7 +12,7 @@ class DAQModule:
         self.extra_commands=extra_commands if extra_commands else dict()
 
     def __repr__(self):
-        return f"{self.name} module(plugin={self.plugin}, conf={self.conf}, connections={self.connections})"
+        return f"{self.name} module(plugin={self.plugin}, conf={self.conf})"
 
     def __rich_repr__(self):
         yield "plugin", self.plugin
