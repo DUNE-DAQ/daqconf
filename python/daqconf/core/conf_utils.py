@@ -218,7 +218,7 @@ def make_external_connection(the_system, endpoint_name, app_name, host, port, to
     if len(topic) == 0:
         the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetReceiver" if inout==Direction.IN else 'kNetSender', data_type="", uri=address)]
     else:
-        the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kPublisher" if inout==Direction.IN else 'kSubscriber', data_type="", uri=address, topics=topic)]
+        the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kSubscriber" if inout==Direction.IN else 'kPublisher', data_type="", uri=address, topics=topic)]
 
 def make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbose):
     if verbose:
