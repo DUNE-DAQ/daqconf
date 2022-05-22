@@ -26,6 +26,7 @@ from daqconf.core.conf_utils import Direction
 QUEUE_POP_WAIT_MS = 100
 
 def get_tpwriter_app(RU_CONFIG,
+                     FIRMWARE_TPG_ENABLED: bool = False,
                      OUTPUT_PATH=".",
                      OPERATIONAL_ENVIRONMENT="swtest",
                      TPC_REGION_NAME_PREFIX="APA",
@@ -73,7 +74,14 @@ def get_tpwriter_app(RU_CONFIG,
     # stored in the RU_CONFIG that was passed as an argument to
     # get_tpwriter_app
     for ruidx, ru_config in enumerate(RU_CONFIG):
-        for link_idx in range(ru_config["channel_count"]):
+        if FIRMWARE_TPG_ENABLED:
+            if ru_config["channel_count"] > 5:
+                tp_links = 2
+            else:
+                tp_links = 1
+        else:
+            tp_links = ru_config["channel_count"]
+        for link_idx in range(tp_links):
             link_id=f"ru{ruidx}_link{link_idx}"
             mgraph.add_endpoint(f"tpsets_{link_id}", f"tpswriter.tpset_source", Direction.IN, topic=[ru_config["tpset_topics"][link_idx]])
 
