@@ -134,6 +134,8 @@ def make_module_deps(app, system_connections, verbose=False):
                     break
 
             for other_endpoint in app.modulegraph.endpoints:
+                if other_endpoint.internal_name is None:
+                    continue
                 if other_endpoint.external_name == endpoint.external_name and other_endpoint.internal_name != endpoint.internal_name and other_endpoint.direction != Direction.IN:
                     other_mod, other_q = other_endpoint.internal_name.split(".")
                     if verbose: console.log(f"Adding generated dependency edge {other_mod} -> {mod_name}")
@@ -345,6 +347,7 @@ def make_system_connections(the_system, verbose=False):
         for subscriber in subscribers:
             topic_connectionids_sub = cp.deepcopy(topic_connectionids)
             for topic_connectionid_sub in topic_connectionids_sub:
+                topic_connectionid_sub.uid += "_sub"
                 topic_connectionid_sub.service_type = 'kSubscriber'
 
             temp_list = the_system.connections[subscriber] + topic_connectionids_sub
