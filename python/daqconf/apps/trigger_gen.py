@@ -284,7 +284,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                 buf_name=f'buf_{link_id}'
                 global_link = link_idx+ru_config['start_channel'] # for the benefit of correct fragment geoid
 
-                mgraph.add_endpoint(f"tpsets_{link_id}", f"channelfilter_{link_id}.tpset_source", Direction.IN, topic=[ru_config["tpset_topics"][link_idx]])
+                mgraph.add_endpoint(f"tpsets_{link_id}_sub", f"channelfilter_{link_id}.tpset_source", Direction.IN, topic=[ru_config["tpset_topics"][link_idx]])
 
                 mgraph.add_fragment_producer(region=ru_config['region_id'], element=global_link, system="DataSelection",
                                              requests_in=f"{buf_name}.data_request_source",
