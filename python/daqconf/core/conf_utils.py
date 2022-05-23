@@ -486,7 +486,7 @@ def make_unique_name(base, module_list):
 
 def generate_boot(apps: list, ers_settings=None, info_svc_uri="file://info_${APP_ID}_${APP_PORT}.json",
                   disable_trace=False, use_kafka=False, verbose=False, extra_env_vars=dict(),
-                  image="") -> dict:
+                  image="", external_connections=[], mount_dirs={}) -> dict:
     """Generate the dictionary that will become the boot.json file"""
 
     if ers_settings is None:
@@ -522,13 +522,20 @@ def generate_boot(apps: list, ers_settings=None, info_svc_uri="file://info_${APP
                 "TIMING_SHARE": "getenv",
                 "LD_LIBRARY_PATH": "getenv",
                 "PATH": "getenv",
-                # "READOUT_SHARE": "getenv",
-                "TRACE_FILE": "getenv:/tmp/trace_buffer_${HOSTNAME}_${USER}",
+                "TRACE_FILE": "getenv:/tmp/trace_buffer_$(HOSTNAME)_$(USER)",
+                "CMD_FAC": "rest://localhost:$(APP_PORT)",
+                "INFO_SVC": info_svc_uri,
             },
-            "cmd": ["CMD_FAC=rest://localhost:${APP_PORT}",
-                    "INFO_SVC=" + info_svc_uri,
-                    "cd ${APP_WD}",
-                    "daq_application --name ${APP_NAME} -c ${CMD_FAC} -i ${INFO_SVC}"]
+            "cmd":"daq_application",
+            "args": [
+                "--name",
+                "$(APP_NAME)",
+                "-c",
+                "$(CMD_FAC)",
+                "-i",
+                "$(INFO_SVC)"
+            ],
+            "work_dir": "$(APP_WD)",
         }
     }
 
@@ -561,15 +568,17 @@ def generate_boot(apps: list, ers_settings=None, info_svc_uri="file://info_${APP
         "response_listener": {
             "port": 56789
         },
+        "external_connections": external_connections,
+        "mount_dirs": mount_dirs,
         "exec": daq_app_specs
     }
 
     boot["exec"]["daq_application"]["env"].update(extra_env_vars)
-    boot["exec"]["daq_application_ups"]["env"].update(extra_env_vars)
+    # boot["exec"]["daq_application_ups"]["env"].update(extra_env_vars)
 
     if disable_trace:
         del boot["exec"]["daq_application"]["env"]["TRACE_FILE"]
-        del boot["exec"]["daq_application_ups"]["env"]["TRACE_FILE"]
+        # del boot["exec"]["daq_application_ups"]["env"]["TRACE_FILE"]
 
     if use_kafka:
         boot["env"]["DUNEDAQ_ERS_STREAM_LIBS"] = "erskafka"
