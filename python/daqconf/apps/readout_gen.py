@@ -265,13 +265,13 @@ def get_readout_app(RU_CONFIG=[],
             mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = idx, system = SYSTEM_TYPE,
                                          requests_in   = f"fakedataprod_{idx}.data_request_input_queue",
                                          fragments_out = f"fakedataprod_{idx}.fragment_queue")
-            mgraph.add_endpoint(f"timesync_ru{RUIDX}_{idx}", f"fakedataprod_{idx}.timesync_output",    Direction.OUT, ["Timesync"])
+            mgraph.add_endpoint(f"timesync_ru{RUIDX}_{idx}", f"fakedataprod_{idx}.timesync_output",    Direction.OUT, ["Timesync"], toposort=False)
         else:
             # Add fragment producers for raw data
             mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = idx, system = SYSTEM_TYPE,
                                          requests_in   = f"datahandler_{idx}.request_input",
                                          fragments_out = f"datahandler_{idx}.fragment_queue")
-            mgraph.add_endpoint(f"timesync_ru{RUIDX}_{idx}", f"datahandler_{idx}.timesync_output",    Direction.OUT, ["Timesync"])
+            mgraph.add_endpoint(f"timesync_ru{RUIDX}_{idx}", f"datahandler_{idx}.timesync_output",    Direction.OUT, ["Timesync"], toposort=False)
 
             # Add fragment producers for TPC TPs. Make sure the element index doesn't overlap with the ones for raw data
             #

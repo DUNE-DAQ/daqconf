@@ -8,7 +8,6 @@ import rich.traceback
 from rich.console import Console
 from os.path import exists, join
 from daqconf.core.system import System
-from daqconf.core.conf_utils import AppConnection
 from daqconf.core.metadata import write_metadata_file
 
 # Add -h as default help option
@@ -498,7 +497,7 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
 
     # Make boot.json config
     from daqconf.core.conf_utils import make_system_command_datas,generate_boot, write_json_files
-    system_command_datas = make_system_command_datas(the_system)
+    system_command_datas = make_system_command_datas(the_system, verbose=debug)
     # Override the default boot.json with the one from minidaqapp
     boot = generate_boot(the_system.apps,
                          ers_settings=ers_settings, info_svc_uri=info_svc_uri,

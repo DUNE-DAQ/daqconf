@@ -51,15 +51,16 @@ class Endpoint:
     #         self.__init_with_nwmgr(**kwargs)
     #     else:
     #         self.__init_with_external_name(**kwargs)
-    def __init__(self, external_name, internal_name, direction, topic=[], size_hint=1000):
+    def __init__(self, external_name, internal_name, direction, topic=[], size_hint=1000, toposort=True):
         self.external_name = external_name
         self.internal_name = internal_name
         self.direction = direction
         self.topic = topic
         self.size_hint = size_hint
+        self.toposort = toposort
 
     def __repr__(self):
-        return f"{self.external_name}/{self.internal_name}"
+        return f"{'' if self.toposort else '!'}{self.external_name}/{self.internal_name}"
     # def __init_with_nwmgr(self, connection, internal_name):
     #     self.nwmgr_connection = connection
     #     self.internal_name = internal_name
@@ -99,9 +100,6 @@ Publisher = namedtuple(
     "Publisher", ['msg_type', 'msg_module_name', 'subscribers'])
 
 Sender = namedtuple("Sender", ['msg_type', 'msg_module_name', 'receiver'])
-
-# AppConnection = namedtuple("AppConnection", ['nwmgr_connection', 'receivers', 'topics', 'msg_type', 'msg_module_name', 'use_nwqa'], defaults=[None, None, True])
-AppConnection = namedtuple("AppConnection", ['bind_apps', 'connect_apps'], defaults=[[],[]])
 
 ########################################################################
 #
@@ -165,22 +163,10 @@ def make_app_deps(the_system, verbose=False):
     Returns a networkx DiGraph object where nodes are app names
     """
 
-    deps = nx.DiGraph()
-
-    for app in the_system.apps.keys():
-        deps.add_node(app)
-
-    if verbose: console.log("make_apps_deps()")
-    for from_endpoint, conn in the_system.app_connections.items():
-        from_app = from_endpoint.split(".")[0]
-        if hasattr(conn, "subscribers"):
-            for to_app in [ds.split(".")[0] for ds in conn.subscribers]:
-                if verbose: console.log(f"subscribers: {from_app}, {to_app}")
-                deps.add_edge(from_app, to_app)
-        elif hasattr(conn, "receiver"):
-            to_app = conn.receiver.split(".")[0]
-            if verbose: console.log(f"receiver: {from_app}, {to_app}")
-            deps.add_edge(from_app, to_app)
+    deps = the_system.make_digraph(for_toposort=True)
+    if verbose:
+        console.log("Writing app deps to make_app_deps.dot")
+        nx.drawing.nx_pydot.write_dot(deps, "make_app_deps.dot")
 
     return deps
 
@@ -225,7 +211,6 @@ def make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbos
         console.log(f"Connection {endpoint_name}, Network")
     if len(in_apps) > 1:
         raise ValueError(f"Connection with name {endpoint_name} has multiple receivers, which is unsupported for a network connection!")
-    the_system.app_connections[endpoint_name] = AppConnection(bind_apps=in_apps, connect_apps=out_apps)
 
     port = the_system.next_unassigned_port()
     address = f'tcp://{{host_{in_apps[0]}}}:{port}'
@@ -357,7 +342,6 @@ def make_system_connections(the_system, verbose=False):
         if len(publishers) == 0:
             raise ValueError(f"Topic {topic} has no publishers!")
 
-        the_system.app_connections[topic] = AppConnection(bind_apps=publishers, connect_apps=subscribers)
         for subscriber in subscribers:
             topic_connectionids_sub = cp.deepcopy(topic_connectionids)
             for topic_connectionid_sub in topic_connectionids_sub:
@@ -595,7 +579,8 @@ def make_system_command_datas(the_system, verbose=False):
 
     if the_system.app_start_order is None:
         app_deps = make_app_deps(the_system, verbose)
-        the_system.app_start_order = list(nx.algorithms.dag.topological_sort(app_deps))
+        # Start should go from downstream to upstream, so we need to reverse the sort (graph is directed from upstream to downstream)
+        the_system.app_start_order = list(nx.algorithms.dag.topological_sort(app_deps))[::-1]
 
     system_command_datas=dict()
 
