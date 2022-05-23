@@ -5,9 +5,7 @@ class System:
     """
     A full DAQ system consisting of multiple applications and the
     connections between them. The `apps` member is a dictionary from
-    application name to app object, and the app_connections member is
-    a dictionary from upstream endpoint to publisher or sender object
-    representing the downstream endpoint(s). Endpoints are specified
+    application name to app object. Endpoints are specified
     as strings like app_name.endpoint_name.
 
     An explicit mapping from upstream endpoint name to zeromq
@@ -17,11 +15,10 @@ class System:
     The same is true for application start order.
     """
 
-    def __init__(self, apps=None, connections=None, app_connections=None, app_start_order=None,
+    def __init__(self, apps=None, connections=None, app_start_order=None,
                  first_port=12345):
         self.apps=apps if apps else dict()
         self.connections = connections if connections else dict()
-        self.app_connections = app_connections if app_connections else dict()
         self.app_start_order = app_start_order
         self._next_port = first_port
         self.digraph = None
@@ -45,7 +42,7 @@ class System:
                 all_producers.append(producer)
         return all_producers
 
-    def make_digraph(self):
+    def make_digraph(self, for_toposort=False):
         deps = nx.DiGraph()
 
         for app_name in self.apps.keys():
@@ -58,7 +55,12 @@ class System:
                         for to_ep in to_app.modulegraph.endpoints:
                             if to_ep.direction == Direction.IN:
                                 if from_ep.external_name == to_ep.external_name:
-                                    deps.add_edge(from_app_n, to_app_n, label=to_ep.external_name)
+                                    color="red"
+                                    if from_ep.toposort and to_ep.toposort:
+                                        color="blue"
+                                    elif for_toposort:
+                                        continue
+                                    deps.add_edge(from_app_n, to_app_n, label=to_ep.external_name, color=color)
 
 
         return deps
