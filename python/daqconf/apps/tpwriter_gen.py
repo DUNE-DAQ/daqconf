@@ -83,7 +83,7 @@ def get_tpwriter_app(RU_CONFIG,
             tp_links = ru_config["channel_count"]
         for link_idx in range(tp_links):
             link_id=f"ru{ruidx}_link{link_idx}"
-            mgraph.add_endpoint(f"tpsets_{link_id}", f"tpswriter.tpset_source", Direction.IN, topic=[ru_config["tpset_topics"][link_idx]])
+            mgraph.add_endpoint(f"tpsets_{link_id}_sub", f"tpswriter.tpset_source", Direction.IN, topic=[ru_config["tpset_topics"][link_idx]])
 
     # mgraph.add_endpoint("tpsets_into_writer", "tpswriter.tpset_source", Direction.IN)
 
