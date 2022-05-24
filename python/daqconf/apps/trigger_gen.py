@@ -59,6 +59,8 @@ def make_moo_record(conf_dict,name,path='temptypes'):
 #===============================================================================
 def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                     FIRMWARE_TPG_ENABLED: bool = False,
+                    CLOCK_SPEED_HZ: int = 50_000_000,
+                    DATA_RATE_SLOWDOWN_FACTOR: float = 1,
                     RU_CONFIG: list = [],
 
                     ACTIVITY_PLUGIN: str = 'TriggerActivityMakerPrescalePlugin',
@@ -83,6 +85,9 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     make_moo_record(CANDIDATE_CONFIG, 'CandidateConf', 'temptypes')
     import temptypes
 
+    # How many clock ticks are there in a _wall clock_ second?
+    ticks_per_wall_clock_s = CLOCK_SPEED_HZ / DATA_RATE_SLOWDOWN_FACTOR
+    
     modules = []
 
     region_ids1 = set([ru["region_id"] for ru in RU_CONFIG])
@@ -146,7 +151,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                       plugin = 'TPSetTee'),
                             DAQModule(name = f'heartbeatmaker_{link_id}',
                                       plugin = 'FakeTPCreatorHeartbeatMaker',
-                                      conf = heartbeater.Conf(heartbeat_interval=5_000_000))]
+                                      conf = heartbeater.Conf(heartbeat_interval=ticks_per_wall_clock_s//100))]
                     
         region_ids = set()
         for ru in range(len(RU_CONFIG)):
@@ -182,7 +187,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                       geoid_region=region_id,
                                                       geoid_element=0,  # 2022-02-02 PL: Same comment as above
                                                       window_time=10000,  # should match whatever makes TPSets, in principle
-                                                      buffer_time=625000,  # 10ms in 62.5 MHz ticks
+                                                      buffer_time=10*ticks_per_wall_clock_s//1000, # 10 wall-clock ms
                                                       activity_maker_config=temptypes.ActivityConf(**ACTIVITY_CONFIG))),
 
                             DAQModule(name = f'tasettee_region_{region_id}',

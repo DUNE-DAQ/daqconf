@@ -166,9 +166,9 @@ class ModuleGraph:
                 return True
         return False
 
-    def add_endpoint(self, external_name, internal_name, inout, topic=[]):
+    def add_endpoint(self, external_name, internal_name, inout, topic=[], toposort=True):
         if not self.has_endpoint(external_name, internal_name):
-            self.endpoints += [Endpoint(external_name, internal_name, inout, topic)]
+            self.endpoints += [Endpoint(external_name, internal_name, inout, topic=topic, toposort=toposort)]
 
     def add_external_connection(self, external_name, internal_name, inout, host, port, topic=[]):
         self.external_connections += [ExternalConnection(external_name, internal_name, inout, host, port, topic)]

@@ -9,7 +9,6 @@ import rich.traceback
 from rich.console import Console
 from os.path import exists, join
 from daqconf.core.system import System
-from daqconf.core.conf_utils import AppConnection
 from daqconf.core.metadata import write_metadata_file
 
 # Add -h as default help option
@@ -25,7 +24,6 @@ moo.io.default_load_path = get_moo_model_path()
 import click
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.option('-p', '--partition-name', default="timing", help="Name of the partition to use, for ERS and OPMON")
 @click.option('--clock-speed-hz', type=int, default=50000000)
 @click.option('--disable-trace', is_flag=True, help="Do not enable TRACE (default TRACE_FILE is /tmp/trace_buffer_\${HOSTNAME}_\${USER})")
 @click.option('--host-thi', default='localhost', help='Host to run the (global) timing hardware interface app on')
@@ -48,7 +46,7 @@ import click
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
 
-def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_tmc, host_tfc, 
+def cli(clock_speed_hz, disable_trace, host_thi, port_thi, host_tmc, host_tfc, 
         gather_interval, gather_interval_debug, timing_hw_connections_file, 
         opmon_impl, ers_impl, pocket_url, 
         hsi_device_name, master_device_name, master_send_delays_period, master_clock_file, master_clock_mode, 
@@ -68,7 +66,7 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
 
     console.log(f"Generating configs for global thi host {host_thi}")
 
-    the_system = System(partition_name, first_port=port_thi)
+    the_system = System(first_port=port_thi)
    
     if opmon_impl == 'cern':
         info_svc_uri = "influx://opmondb.cern.ch:31002/write?db=influxdb"
@@ -98,10 +96,6 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
         ers_settings["ERROR"] =   "erstrace,throttle,lstdout"
         ers_settings["FATAL"] =   "erstrace,lstdout"
 
-    # timing commands coming in outside data-taking partitions
-    # the_system.connections.append(nwmgr.Connection(name=partition_name + ".timing_cmds",  topics=[], address=f"tcp://{{host_thi}}:{port_thi}", fixed=True))
-    
-
     # the timing hardware interface application
     the_system.apps["thi"] = get_thi_app(
         GATHER_INTERVAL=gather_interval,
@@ -110,7 +104,6 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
         MASTER_DEVICE_NAME=master_device_name,
         FANOUT_DEVICE_NAME=fanout_device_name,
         HSI_DEVICE_NAME=hsi_device_name,
-        TIMING_PARTITION=partition_name,
         TIMING_PORT=port_thi,
         HOST=host_thi,
         DEBUG=debug)
@@ -122,7 +115,6 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
             MASTER_SEND_DELAYS_PERIOD=master_send_delays_period,
             MASTER_CLOCK_FILE=master_clock_file,
             MASTER_CLOCK_MODE=master_clock_mode,
-            TIMING_PARTITION=partition_name,
             TIMING_HOST=host_thi,
             TIMING_PORT=port_thi,
             HOST=host_tmc,
@@ -133,7 +125,6 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
         the_system.apps["tfc"] = get_tfc_app(
             FANOUT_DEVICE_NAME=fanout_device_name,
             FANOUT_CLOCK_FILE=fanout_clock_file,
-            TIMING_PARTITION=partition_name,
             TIMING_HOST=host_thi,
             TIMING_PORT=port_thi,
             HOST=host_tfc,
@@ -157,7 +148,7 @@ def cli(partition_name, clock_speed_hz, disable_trace, host_thi, port_thi, host_
     from daqconf.core.conf_utils import make_system_command_datas,generate_boot, write_json_files
     system_command_datas = make_system_command_datas(the_system, verbose=debug)
     # Override the default boot.json with the one from minidaqapp
-    boot = generate_boot(the_system.apps, partition_name=partition_name, ers_settings=ers_settings, info_svc_uri=info_svc_uri,
+    boot = generate_boot(the_system.apps, ers_settings=ers_settings, info_svc_uri=info_svc_uri,
                               disable_trace=disable_trace, use_kafka=use_kafka)
 
     system_command_datas['boot'] = boot

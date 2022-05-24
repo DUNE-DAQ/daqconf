@@ -22,23 +22,13 @@ moo.io.default_load_path = get_moo_model_path()
 # Load configuration types
 import moo.otypes
 moo.otypes.load_types('rcif/cmd.jsonnet')
-moo.otypes.load_types('appfwk/cmd.jsonnet')
-moo.otypes.load_types('appfwk/app.jsonnet')
-
 moo.otypes.load_types('timinglibs/hsireadout.jsonnet')
 moo.otypes.load_types('timinglibs/hsicontroller.jsonnet')
-moo.otypes.load_types('networkmanager/nwmgr.jsonnet')
 
-# Import new types
-import dunedaq.cmdlib.cmd as basecmd # AddressedCmd, 
 import dunedaq.rcif.cmd as rccmd # AddressedCmd, 
-import dunedaq.appfwk.cmd as cmd # AddressedCmd, 
-import dunedaq.appfwk.app as app # AddressedCmd,
 import dunedaq.timinglibs.hsireadout as hsi
 import dunedaq.timinglibs.hsicontroller as hsic
-import dunedaq.networkmanager.nwmgr as nwmgr
 
-from appfwk.utils import acmd, mcmd, mrccmd, mspec
 from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Direction
