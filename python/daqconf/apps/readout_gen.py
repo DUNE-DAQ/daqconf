@@ -119,6 +119,7 @@ def get_readout_app(RU_CONFIG=[],
         for idx in range(tp_links):
             if FIRMWARE_TPG_ENABLED:
                 queues += [Queue(f"tp_datahandler_{idx}.errored_frames", 'errored_frame_consumer.input_queue', "errored_frames_q")]
+                queues += [Queue(f"tp_datahandler_{idx}.tp_out",f"tp_datahandler_{idx}.raw_input",f"raw_tp_link_{((idx+1)*5)+idx}",100000 )]
             modules += [DAQModule(name = f"tp_datahandler_{idx}",
                                   plugin = "DataLinkHandler", 
                                   conf = rconf.Conf(
