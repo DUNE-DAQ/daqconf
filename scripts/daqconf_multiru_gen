@@ -111,7 +111,7 @@ import click
 @click.option('--tpc-region-name-prefix', default='APA', help="Prefix to be used for the 'Region' Group name inside the HDF5 file")
 @click.option('--max-file-size', default=4*1024*1024*1024, help="The size threshold when raw data files are closed (in bytes)")
 @click.option('--max-trigger-record-window', default=0, help="The maximum size for the window of data that will included in a single TriggerRecord (in ticks). Readout windows that are longer than this size will result in TriggerRecords being split into a sequence of TRs. A zero value for this parameter means no splitting.")
-@click.option('--image', default=None, type=str, help="Which image to use")
+@click.option('--image', default=None, type=str, help="Which docker image to use")
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
 
@@ -502,11 +502,11 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
     from daqconf.core.conf_utils import make_system_command_datas,generate_boot, write_json_files
     system_command_datas = make_system_command_datas(the_system, verbose=debug)
 
-    # Override the default boot.json with the one from minidaqapp
     external_connections = []
     for app in the_system.apps:
         external_connections += [ext.external_name for ext in the_system.apps[app].modulegraph.external_connections]
 
+    # Override the default boot.json with the one from minidaqapp
     boot = generate_boot(the_system.apps,
                          ers_settings=ers_settings, info_svc_uri=info_svc_uri,
                          disable_trace=disable_trace, use_kafka=use_kafka,
