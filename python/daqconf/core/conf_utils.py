@@ -514,8 +514,7 @@ def generate_boot(apps: list, ers_settings=None, info_svc_uri="file://info_{APP_
                 "{CMD_FAC}",
                 "-i",
                 "{INFO_SVC}"
-            ],
-            "work_dir": "{APP_WD}",
+            ]
         }
     }
 
