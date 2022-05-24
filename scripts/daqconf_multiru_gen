@@ -97,6 +97,7 @@ import click
 @click.option('--dqm-impl', type=click.Choice(['local','cern','pocket'], case_sensitive=False), default='local', help="DQM destination (Kafka used for cern and pocket)")
 @click.option('--pocket-url', default='127.0.0.1', help="URL for connecting to Pocket services")
 @click.option('--enable-software-tpg', is_flag=True, default=False, help="Enable software TPG")
+@click.option('--enable-firmware-tpg', is_flag=True, default=False, help="Enable firmware TPG")
 @click.option('--tpg-channel-map', type=click.Choice(["VDColdboxChannelMap", "ProtoDUNESP1ChannelMap"]), default="ProtoDUNESP1ChannelMap", help="Channel map for software TPG")
 @click.option('--enable-tpset-writing', is_flag=True, default=False, help="Enable the writing of TPs to disk (only works with --enable-software-tpg")
 @click.option('--use-fake-data-producers', is_flag=True, default=False, help="Use fake data producers that respond with empty fragments immediately instead of (fake) cards and DLHs")
@@ -121,7 +122,7 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
         use_hsi_hw, hsi_device_id, mean_hsi_signal_multiplicity, hsi_signal_emulation_mode, enabled_hsi_signals,
         ttcm_s1, ttcm_s2, trigger_activity_plugin, trigger_activity_config, trigger_candidate_plugin, trigger_candidate_config, hsi_trigger_type_passthrough,
         control_timing_partition, timing_partition_master_device_name, timing_partition_id, timing_partition_trigger_mask, timing_partition_rate_control_enabled, timing_partition_spill_gate_enabled,
-        enable_raw_recording, raw_recording_output_dir, frontend_type, opmon_impl, enable_dqm, ers_impl, dqm_impl, pocket_url, enable_software_tpg, tpg_channel_map, enable_tpset_writing, use_fake_data_producers, dqm_cmap,
+        enable_raw_recording, raw_recording_output_dir, frontend_type, opmon_impl, enable_dqm, ers_impl, dqm_impl, pocket_url, enable_software_tpg, enable_firmware_tpg, tpg_channel_map, enable_tpset_writing, use_fake_data_producers, dqm_cmap,
         dqm_rawdisplay_params, dqm_meanrms_params, dqm_fourier_params, dqm_fouriersum_params, dqm_df_rate,
         dqm_df_algs, op_env, tpc_region_name_prefix, max_file_size, max_trigger_record_window, debug, json_dir):
 
@@ -171,8 +172,14 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
     if use_fake_data_producers and enable_dqm:
         raise Exception("DQM can't be used with fake data producers")
 
-    if enable_tpset_writing and not enable_software_tpg:
-        raise Exception("TP writing can only be used when software TPG is enabled")
+    if enable_tpset_writing and not (enable_software_tpg or enable_firmware_tpg):
+        raise Exception("TP writing can only be used when either software or firmware TPG is enabled")
+
+    if enable_firmware_tpg and not use_felix:
+        raise Exception("firmware TPG can only be used if real felix card is also used.")
+
+    if enable_firmware_tpg and use_fake_data_producers:
+        raise Exception("Fake data producers don't support firmware tpg")
 
     if token_count > 0:
         trigemu_token_count = token_count
@@ -238,9 +245,16 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
     ru_app_names=[f"ruflx{idx}" if use_felix else f"ruemu{idx}" for idx in range(len(host_ru))]
     dqm_app_names = [f"dqm{idx}_ru" for idx in range(len(host_ru))]
     
-    for hostidx,ru_host in enumerate(ru_app_names):
+    if enable_firmware_tpg:
+        if number_of_data_producers > 5:
+            n_tp = 2
+        else:
+            n_tp = 1
+        topic_tpsets = [ f"topic_tpsets_ru{region_id[regionidx]}_link{i}" for i in range(n_tp) ]
+    else:
+        topic_tpsets = [ f"topic_tpsets_ru{region_id[regionidx]}_link{i}" for i in range(number_of_data_producers) ]
 
-           
+    for hostidx,ru_host in enumerate(ru_app_names):
         cardid = 0
         if host_ru[hostidx] in host_id_dict:
             host_id_dict[host_ru[hostidx]] = host_id_dict[host_ru[hostidx]] + 1
@@ -252,7 +266,7 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
                             "region_id": region_id[regionidx],
                             "start_channel": ru_channel_counts[region_id[regionidx]],
                             "channel_count": number_of_data_producers,
-                            "tpset_topics": [ f"topic_tpsets_ru{region_id[regionidx]}_link{i}" for i in range(number_of_data_producers) ] } )
+                            "tpset_topics":  topic_tpsets} )
         ru_channel_counts[region_id[regionidx]] += number_of_data_producers
         if len(region_id) != 1: regionidx = regionidx + 1
 
@@ -307,6 +321,7 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
 
     the_system.apps['trigger'] = get_trigger_app(
         SOFTWARE_TPG_ENABLED = enable_software_tpg,
+        FIRMWARE_TPG_ENABLED = enable_firmware_tpg,
         DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
         CLOCK_SPEED_HZ = clock_speed_hz,
         RU_CONFIG = ru_configs,
@@ -348,6 +363,7 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
             FRONTEND_TYPE = frontend_type,
             SYSTEM_TYPE = system_type,
             SOFTWARE_TPG_ENABLED = enable_software_tpg,
+            FIRMWARE_TPG_ENABLED = enable_firmware_tpg,
             TPG_CHANNEL_MAP = tpg_channel_map,
             USE_FAKE_DATA_PRODUCERS = use_fake_data_producers,
             HOST=host,
@@ -384,6 +400,7 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
         tpw_name=f'tpwriter'
         the_system.apps[tpw_name] = get_tpwriter_app(
             RU_CONFIG = ru_configs,
+            FIRMWARE_TPG_ENABLED = enable_firmware_tpg,
             OUTPUT_PATH = output_path,
             OPERATIONAL_ENVIRONMENT = op_env,
             TPC_REGION_NAME_PREFIX = tpc_region_name_prefix,
