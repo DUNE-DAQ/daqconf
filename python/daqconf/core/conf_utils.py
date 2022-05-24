@@ -206,7 +206,7 @@ def make_external_connection(the_system, endpoint_name, app_name, host, port, to
     if len(topic) == 0:
         the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetReceiver" if inout==Direction.IN else 'kNetSender', data_type="", uri=address)]
     else:
-        the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kPublisher" if inout==Direction.IN else 'kSubscriber', data_type="", uri=address, topics=topic)]
+        the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kSubscriber" if inout==Direction.IN else 'kPublisher', data_type="", uri=address, topics=topic)]
 
 def make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbose):
     if verbose:
@@ -324,7 +324,8 @@ def make_system_connections(the_system, verbose=False):
 
         publishers = []
         subscribers = [] # Only really care about the topics from here
-        topic_connectionids = []
+        publisher_uids = {}
+        topic_connectionuids = []
 
         for endpoint in endpoints:
             direction = endpoint['endpoint'].direction
@@ -336,8 +337,9 @@ def make_system_connections(the_system, verbose=False):
                     port = the_system.next_unassigned_port()
                     address = f'tcp://{{host_{endpoint["app"]}}}:{port}'
                     pubsub_connectionids[endpoint['endpoint'].external_name] = conn.ConnectionId(uid=endpoint['endpoint'].external_name, service_type="kPublisher", data_type="", uri=address, topics=endpoint['endpoint'].topic)
-                the_system.connections[endpoint['app']] += [pubsub_connectionids[endpoint['endpoint'].external_name]]
-                topic_connectionids += [pubsub_connectionids[endpoint['endpoint'].external_name]]
+                topic_connectionuids += [endpoint['endpoint'].external_name]
+                if endpoint['app'] not in publisher_uids.keys(): publisher_uids[endpoint["app"]] = []
+                publisher_uids[endpoint["app"]] += [endpoint['endpoint'].external_name]
 
         if len(subscribers) == 0:
             raise ValueError(f"Topic {topic} has no subscribers!")
@@ -345,13 +347,18 @@ def make_system_connections(the_system, verbose=False):
             raise ValueError(f"Topic {topic} has no publishers!")
 
         for subscriber in subscribers:
-            topic_connectionids_sub = cp.deepcopy(topic_connectionids)
-            for topic_connectionid_sub in topic_connectionids_sub:
-                topic_connectionid_sub.uid += "_sub"
-                topic_connectionid_sub.service_type = 'kSubscriber'
-
-            temp_list = the_system.connections[subscriber] + topic_connectionids_sub
-            the_system.connections[subscriber] = list(set(temp_list))
+            subscriber_connections = [c.uid for c in the_system.connections[subscriber]]
+            for connid in topic_connectionuids:
+                if connid + "_sub" not in subscriber_connections:
+                    conn_copy = cp.deepcopy(pubsub_connectionids[connid])
+                    conn_copy.service_type = "kSubscriber"
+                    conn_copy.uid += "_sub"
+                    the_system.connections[subscriber] += [conn_copy]
+        for publisher in publishers:
+            publisher_connections = [c.uid for c in the_system.connections[publisher]]
+            for connid in publisher_uids[publisher]:
+                if connid not in publisher_connections:
+                    the_system.connections[publisher] += [pubsub_connectionids[connid]]
 
 
 
