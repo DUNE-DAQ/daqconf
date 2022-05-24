@@ -153,7 +153,7 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
     console.log(f"Generating configs for hosts trigger={host_trigger} DFO={host_dfo} dataflow={host_df} readout={host_ru} hsi={host_hsi} dqm={host_ru}")
 
     the_system = System(first_port=port_timing+1)
-   
+
     total_number_of_data_producers = 0
 
     if use_ssp:
@@ -204,7 +204,7 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
     elif opmon_impl == 'pocket':
         info_svc_uri = "influx://" + pocket_url + ":31002/write?db=influxdb"
     else:
-        info_svc_uri = "file://info_${APP_NAME}_${APP_PORT}.json"
+        info_svc_uri = "file://info_{APP_NAME}_{APP_PORT}.json"
 
 
     ers_settings=dict()
@@ -238,10 +238,10 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
 
     ru_app_names=[f"ruflx{idx}" if use_felix else f"ruemu{idx}" for idx in range(len(host_ru))]
     dqm_app_names = [f"dqm{idx}_ru" for idx in range(len(host_ru))]
-    
+
     for hostidx,ru_host in enumerate(ru_app_names):
 
-           
+
         cardid = 0
         if host_ru[hostidx] in host_id_dict:
             host_id_dict[host_ru[hostidx]] = host_id_dict[host_ru[hostidx]] + 1
@@ -354,7 +354,7 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
             HOST=host,
             LATENCY_BUFFER_SIZE=latency_buffer_size,
             DEBUG=debug)
-        
+
         if debug:
             console.log(f"{ru_name} app: {the_system.apps[ru_name]}")
 
@@ -391,7 +391,7 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
             MAX_FILE_SIZE = max_file_size,
             DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
             CLOCK_SPEED_HZ = clock_speed_hz,
-            HOST=host_tpw, 
+            HOST=host_tpw,
             DEBUG=debug)
         if debug: console.log(f"{tpw_name} app: {the_system.apps[tpw_name]}")
 
@@ -451,7 +451,7 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
     if debug:
         the_system.export("system_no_frag_prod_connection.dot")
     connect_all_fragment_producers(the_system, verbose=debug)
-    
+
     # console.log("After connecting fragment producers, trigger mgraph:", the_system.apps['trigger'].modulegraph)
     # console.log("After connecting fragment producers, the_system.app_connections:", the_system.app_connections)
 
@@ -482,7 +482,7 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
     if debug:
         console.log(f"After remove_mlt_links, mlt_links is {mlt_links}")
     # END HACK
-        
+
     if debug:
         the_system.export("system.dot")
 
@@ -501,12 +501,18 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
     # Make boot.json config
     from daqconf.core.conf_utils import make_system_command_datas,generate_boot, write_json_files
     system_command_datas = make_system_command_datas(the_system, verbose=debug)
+
     # Override the default boot.json with the one from minidaqapp
+    external_connections = []
+    for app in the_system.apps:
+        external_connections += [ext.external_name for ext in the_system.apps[app].modulegraph.external_connections]
+
     boot = generate_boot(the_system.apps,
                          ers_settings=ers_settings, info_svc_uri=info_svc_uri,
                          disable_trace=disable_trace, use_kafka=use_kafka,
+                         external_connections=external_connections,
                          image=image)
-    
+
     if thread_pinning_file:
         boot['scripts'] = {
             "thread_pinning": {
@@ -520,15 +526,15 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
                 }
             }
         }
-        
-    
+
+
     system_command_datas['boot'] = boot
 
     write_json_files(app_command_datas, system_command_datas, json_dir, verbose=debug)
 
     console.log(f"MDAapp config generated in {json_dir}")
 
-    
+
     write_metadata_file(json_dir, "daqconf_multiru_gen")
 
 if __name__ == '__main__':

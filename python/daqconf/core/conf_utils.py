@@ -478,9 +478,9 @@ def make_unique_name(base, module_list):
 
     return f"{base}_{suffix}"
 
-def generate_boot(apps: list, ers_settings=None, info_svc_uri="file://info_${APP_ID}_${APP_PORT}.json",
+def generate_boot(apps: list, ers_settings=None, info_svc_uri="file://info_{APP_NAME}_{APP_PORT}.json",
                   disable_trace=False, use_kafka=False, verbose=False, extra_env_vars=dict(),
-                  image="", external_connections=[], mount_dirs={}) -> dict:
+                  image="", external_connections=[]) -> dict:
     """Generate the dictionary that will become the boot.json file"""
 
     if ers_settings is None:
@@ -492,20 +492,6 @@ def generate_boot(apps: list, ers_settings=None, info_svc_uri="file://info_${APP
         }
 
     daq_app_specs = {
-        # "daq_application_ups" : {
-        #     "comment": "Application profile based on a full dbt runtime environment",
-        #     "env": {
-        #         "DBT_AREA_ROOT": "getenv",
-        #         "TRACE_FILE": "getenv:/tmp/trace_buffer_${HOSTNAME}_${USER}",
-        #     },
-        #     "cmd": ["CMD_FAC=rest://localhost:${APP_PORT}",
-        #             "INFO_SVC=" + info_svc_uri,
-        #             "cd ${DBT_AREA_ROOT}",
-        #             "source dbt-env.sh",
-        #             "dbt-workarea-env",
-        #             "cd ${APP_WD}",
-        #             "daq_application --name ${APP_NAME} -c ${CMD_FAC} -i ${INFO_SVC}"]
-        # },
         "daq_application" : {
             "comment": "Application profile using PATH variables (lower start time)",
             "image": image,
@@ -516,20 +502,20 @@ def generate_boot(apps: list, ers_settings=None, info_svc_uri="file://info_${APP
                 "TIMING_SHARE": "getenv",
                 "LD_LIBRARY_PATH": "getenv",
                 "PATH": "getenv",
-                "TRACE_FILE": "getenv:/tmp/trace_buffer_$(HOSTNAME)_$(USER)",
-                "CMD_FAC": "rest://localhost:$(APP_PORT)",
+                "TRACE_FILE": "getenv:/tmp/trace_buffer_{APP_HOST}_{DUNEDAQ_PARTITION}",
+                "CMD_FAC": "rest://localhost:{APP_PORT}",
                 "INFO_SVC": info_svc_uri,
             },
             "cmd":"daq_application",
             "args": [
                 "--name",
-                "$(APP_NAME)",
+                "{APP_NAME}",
                 "-c",
-                "$(CMD_FAC)",
+                "{CMD_FAC}",
                 "-i",
-                "$(INFO_SVC)"
+                "{INFO_SVC}"
             ],
-            "work_dir": "$(APP_WD)",
+            "work_dir": "{APP_WD}",
         }
     }
 
@@ -563,7 +549,6 @@ def generate_boot(apps: list, ers_settings=None, info_svc_uri="file://info_${APP
             "port": 56789
         },
         "external_connections": external_connections,
-        "mount_dirs": mount_dirs,
         "exec": daq_app_specs
     }
 
