@@ -53,8 +53,7 @@ def get_tprtc_app(MASTER_DEVICE_NAME="",
                                              ))]
 
     mgraph = ModuleGraph(modules)
-     
-    mgraph.add_external_connection("timing_cmds", "tprtc.hardware_commands_out", Direction.OUT, TIMING_HOST, TIMING_PORT)
+
     mgraph.add_external_connection("timing_cmds", "tprtc.timing_cmds", Direction.OUT, TIMING_HOST, TIMING_PORT)
     mgraph.add_external_connection("timing_device_info", None, Direction.IN, TIMING_HOST, TIMING_PORT+1, [MASTER_DEVICE_NAME])
 
