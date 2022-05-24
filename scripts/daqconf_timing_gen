@@ -9,7 +9,6 @@ import rich.traceback
 from rich.console import Console
 from os.path import exists, join
 from daqconf.core.system import System
-from daqconf.core.conf_utils import AppConnection
 from daqconf.core.metadata import write_metadata_file
 
 # Add -h as default help option
