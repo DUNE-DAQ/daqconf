@@ -51,15 +51,16 @@ class Endpoint:
     #         self.__init_with_nwmgr(**kwargs)
     #     else:
     #         self.__init_with_external_name(**kwargs)
-    def __init__(self, external_name, internal_name, direction, topic=[], size_hint=1000):
+    def __init__(self, external_name, internal_name, direction, topic=[], size_hint=1000, toposort=True):
         self.external_name = external_name
         self.internal_name = internal_name
         self.direction = direction
         self.topic = topic
         self.size_hint = size_hint
+        self.toposort = toposort
 
     def __repr__(self):
-        return f"{self.external_name}/{self.internal_name}"
+        return f"{'' if self.toposort else '!'}{self.external_name}/{self.internal_name}"
     # def __init_with_nwmgr(self, connection, internal_name):
     #     self.nwmgr_connection = connection
     #     self.internal_name = internal_name
@@ -100,9 +101,6 @@ Publisher = namedtuple(
 
 Sender = namedtuple("Sender", ['msg_type', 'msg_module_name', 'receiver'])
 
-# AppConnection = namedtuple("AppConnection", ['nwmgr_connection', 'receivers', 'topics', 'msg_type', 'msg_module_name', 'use_nwqa'], defaults=[None, None, True])
-AppConnection = namedtuple("AppConnection", ['bind_apps', 'connect_apps'], defaults=[[],[]])
-
 ########################################################################
 #
 # Functions
@@ -136,6 +134,8 @@ def make_module_deps(app, system_connections, verbose=False):
                     break
 
             for other_endpoint in app.modulegraph.endpoints:
+                if other_endpoint.internal_name is None:
+                    continue
                 if other_endpoint.external_name == endpoint.external_name and other_endpoint.internal_name != endpoint.internal_name and other_endpoint.direction != Direction.IN:
                     other_mod, other_q = other_endpoint.internal_name.split(".")
                     if verbose: console.log(f"Adding generated dependency edge {other_mod} -> {mod_name}")
@@ -165,22 +165,10 @@ def make_app_deps(the_system, verbose=False):
     Returns a networkx DiGraph object where nodes are app names
     """
 
-    deps = nx.DiGraph()
-
-    for app in the_system.apps.keys():
-        deps.add_node(app)
-
-    if verbose: console.log("make_apps_deps()")
-    for from_endpoint, conn in the_system.app_connections.items():
-        from_app = from_endpoint.split(".")[0]
-        if hasattr(conn, "subscribers"):
-            for to_app in [ds.split(".")[0] for ds in conn.subscribers]:
-                if verbose: console.log(f"subscribers: {from_app}, {to_app}")
-                deps.add_edge(from_app, to_app)
-        elif hasattr(conn, "receiver"):
-            to_app = conn.receiver.split(".")[0]
-            if verbose: console.log(f"receiver: {from_app}, {to_app}")
-            deps.add_edge(from_app, to_app)
+    deps = the_system.make_digraph(for_toposort=True)
+    if verbose:
+        console.log("Writing app deps to make_app_deps.dot")
+        nx.drawing.nx_pydot.write_dot(deps, "make_app_deps.dot")
 
     return deps
 
@@ -218,14 +206,13 @@ def make_external_connection(the_system, endpoint_name, app_name, host, port, to
     if len(topic) == 0:
         the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetReceiver" if inout==Direction.IN else 'kNetSender', data_type="", uri=address)]
     else:
-        the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kPublisher" if inout==Direction.IN else 'kSubscriber', data_type="", uri=address, topics=topic)]
+        the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kSubscriber" if inout==Direction.IN else 'kPublisher', data_type="", uri=address, topics=topic)]
 
 def make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbose):
     if verbose:
         console.log(f"Connection {endpoint_name}, Network")
     if len(in_apps) > 1:
         raise ValueError(f"Connection with name {endpoint_name} has multiple receivers, which is unsupported for a network connection!")
-    the_system.app_connections[endpoint_name] = AppConnection(bind_apps=in_apps, connect_apps=out_apps)
 
     port = the_system.next_unassigned_port()
     address = f'tcp://{{host_{in_apps[0]}}}:{port}'
@@ -337,7 +324,8 @@ def make_system_connections(the_system, verbose=False):
 
         publishers = []
         subscribers = [] # Only really care about the topics from here
-        topic_connectionids = []
+        publisher_uids = {}
+        topic_connectionuids = []
 
         for endpoint in endpoints:
             direction = endpoint['endpoint'].direction
@@ -349,22 +337,28 @@ def make_system_connections(the_system, verbose=False):
                     port = the_system.next_unassigned_port()
                     address = f'tcp://{{host_{endpoint["app"]}}}:{port}'
                     pubsub_connectionids[endpoint['endpoint'].external_name] = conn.ConnectionId(uid=endpoint['endpoint'].external_name, service_type="kPublisher", data_type="", uri=address, topics=endpoint['endpoint'].topic)
-                    the_system.connections[endpoint['app']] += [pubsub_connectionids[endpoint['endpoint'].external_name]]
-                topic_connectionids += [pubsub_connectionids[endpoint['endpoint'].external_name]]
+                topic_connectionuids += [endpoint['endpoint'].external_name]
+                if endpoint['app'] not in publisher_uids.keys(): publisher_uids[endpoint["app"]] = []
+                publisher_uids[endpoint["app"]] += [endpoint['endpoint'].external_name]
 
         if len(subscribers) == 0:
             raise ValueError(f"Topic {topic} has no subscribers!")
         if len(publishers) == 0:
             raise ValueError(f"Topic {topic} has no publishers!")
 
-        the_system.app_connections[topic] = AppConnection(bind_apps=publishers, connect_apps=subscribers)
         for subscriber in subscribers:
-            topic_connectionids_sub = cp.deepcopy(topic_connectionids)
-            for topic_connectionid_sub in topic_connectionids_sub:
-                topic_connectionid_sub.service_type = 'kSubscriber'
-
-            temp_list = the_system.connections[subscriber] + topic_connectionids_sub
-            the_system.connections[subscriber] = list(set(temp_list))
+            subscriber_connections = [c.uid for c in the_system.connections[subscriber]]
+            for connid in topic_connectionuids:
+                if connid + "_sub" not in subscriber_connections:
+                    conn_copy = cp.deepcopy(pubsub_connectionids[connid])
+                    conn_copy.service_type = "kSubscriber"
+                    conn_copy.uid += "_sub"
+                    the_system.connections[subscriber] += [conn_copy]
+        for publisher in publishers:
+            publisher_connections = [c.uid for c in the_system.connections[publisher]]
+            for connid in publisher_uids[publisher]:
+                if connid not in publisher_connections:
+                    the_system.connections[publisher] += [pubsub_connectionids[connid]]
 
 
 
@@ -606,7 +600,8 @@ def make_system_command_datas(the_system, verbose=False):
 
     if the_system.app_start_order is None:
         app_deps = make_app_deps(the_system, verbose)
-        the_system.app_start_order = list(nx.algorithms.dag.topological_sort(app_deps))
+        # Start should go from downstream to upstream, so we need to reverse the sort (graph is directed from upstream to downstream)
+        the_system.app_start_order = list(nx.algorithms.dag.topological_sort(app_deps))[::-1]
 
     system_command_datas=dict()
 
