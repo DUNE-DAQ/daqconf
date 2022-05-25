@@ -132,7 +132,7 @@ def get_dqm_app(RU_CONFIG=[],
                           connections=connections,
                           conf=dqmprocessor.Conf(
                               region=RU_CONFIG[DQMIDX if MODE == 'readout' else 0]["region_id"],
-                              channel_map=DQM_CMAP, # 'HD' for horizontal drift or 'VD' for vertical drift
+                              channel_map=DQM_CMAP, # 'HD' for horizontal drift (PD1), PD2HD or 'VD' for vertical drift
                               mode=MODE,
                               sdqm_hist=dqmprocessor.StandardDQM(**{'how_often' : DQM_RAWDISPLAY_PARAMS[0], 'unavailable_time' : DQM_RAWDISPLAY_PARAMS[1], 'num_frames' : DQM_RAWDISPLAY_PARAMS[2]}),
                               sdqm_mean_rms=dqmprocessor.StandardDQM(**{'how_often' : DQM_MEANRMS_PARAMS[0], 'unavailable_time' : DQM_MEANRMS_PARAMS[1], 'num_frames' : DQM_MEANRMS_PARAMS[2]}),
