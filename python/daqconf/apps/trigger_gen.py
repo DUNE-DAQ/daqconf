@@ -144,7 +144,9 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                       plugin = 'TPSetTee'),
                             DAQModule(name = f'heartbeatmaker_{link_id}',
                                       plugin = 'FakeTPCreatorHeartbeatMaker',
-                                      conf = heartbeater.Conf(heartbeat_interval=ticks_per_wall_clock_s//100))]
+                                      conf = heartbeater.Conf(heartbeat_interval=ticks_per_wall_clock_s//100,
+                                                              clock_frequency_hz = ticks_per_wall_clock_s,
+                                                              heartbeat_send_offset_ms = 10))]
                     
         region_ids = set()
         for ru in range(len(RU_CONFIG)):
