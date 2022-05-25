@@ -98,11 +98,11 @@ def get_dqm_app(RU_CONFIG=[],
                               region=RU_CONFIG[DQMIDX if MODE == 'readout' else 0]["region_id"],
                               channel_map=DQM_CMAP, # 'HD' for horizontal drift (PD1), PD2HD or 'VD' for vertical drift
                               mode=MODE,
-                              sdqm_hist=dqmprocessor.StandardDQM(**{'how_often' : DQM_RAWDISPLAY_PARAMS[0], 'unavailable_time' : DQM_RAWDISPLAY_PARAMS[1], 'num_frames' : DQM_RAWDISPLAY_PARAMS[2]}),
-                              sdqm_mean_rms=dqmprocessor.StandardDQM(**{'how_often' : DQM_MEANRMS_PARAMS[0], 'unavailable_time' : DQM_MEANRMS_PARAMS[1], 'num_frames' : DQM_MEANRMS_PARAMS[2]}),
-                              sdqm_fourier=dqmprocessor.StandardDQM(**{'how_often' : DQM_FOURIER_PARAMS[0], 'unavailable_time' : DQM_FOURIER_PARAMS[1], 'num_frames' : DQM_FOURIER_PARAMS[2]}),
-                              sdqm_fourier_sum=dqmprocessor.StandardDQM(**{'how_often' : DQM_FOURIERSUM_PARAMS[0], 'unavailable_time' : DQM_FOURIERSUM_PARAMS[1], 'num_frames' : DQM_FOURIERSUM_PARAMS[2]}),
-                              sdqm_channel_mask=dqmprocessor.StandardDQM(**{'how_often' : DQM_CHANNELMASK_PARAMS[0], 'unavailable_time' : DQM_CHANNELMASK_PARAMS[1], 'num_frames' : DQM_CHANNELMASK_PARAMS[2]}),
+                              hist=dqmprocessor.StandardDQM(**{'how_often' : DQM_RAWDISPLAY_PARAMS[0], 'num_frames' : DQM_RAWDISPLAY_PARAMS[1]}),
+                              mean_rms=dqmprocessor.StandardDQM(**{'how_often' : DQM_MEANRMS_PARAMS[0], 'num_frames' : DQM_MEANRMS_PARAMS[1]}),
+                              fourier=dqmprocessor.StandardDQM(**{'how_often' : DQM_FOURIER_PARAMS[0], 'num_frames' : DQM_FOURIER_PARAMS[1]}),
+                              fourier_sum=dqmprocessor.StandardDQM(**{'how_often' : DQM_FOURIERSUM_PARAMS[0], 'num_frames' : DQM_FOURIERSUM_PARAMS[1]}),
+                              channel_mask=dqmprocessor.StandardDQM(**{'how_often' : DQM_CHANNELMASK_PARAMS[0], 'num_frames' : DQM_CHANNELMASK_PARAMS[1]}),
                               kafka_address=DQM_KAFKA_ADDRESS,
                               link_idx=list(range(MIN_LINK, MAX_LINK)),
                               clock_frequency=CLOCK_SPEED_HZ,
@@ -126,7 +126,7 @@ def get_dqm_app(RU_CONFIG=[],
         mgraph.connect_modules("dqmprocessor.trigger_decision_input_queue", "trb_dqm.trigger_decision_input", 'trigger_decision_q_dqm')
         mgraph.connect_modules('trb_dqm.trigger_record_output', 'dqmprocessor.trigger_record_dqm_processor', 'trigger_record_q_dqm', toposort=False)  
     elif DQMIDX < NUM_DF_APPS:
-        mgraph.add_endpoint(f'trmon_dqm2df_{DQMIDX}', None, Direction.OUT)
+        mgraph.add_endpoint(f'trmon_dqm2df_{DQMIDX}', None, Direction.OUT, toposort=False)
         mgraph.add_endpoint(f"tr_df2dqm_{DQMIDX}", None, Direction.IN)
     
     dqm_app = App(mgraph, host=HOST)

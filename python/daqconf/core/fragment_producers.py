@@ -147,7 +147,7 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         app.modulegraph.add_endpoint(fragment_connection_name, None, Direction.OUT)
         df_mgraph = df_app.modulegraph
         df_mgraph.add_endpoint(fragment_connection_name, "trb.data_fragment_all", Direction.IN)            
-        df_mgraph.add_endpoint(request_connection_name, f"trb.request_output_{app_name}", Direction.OUT)
+        df_mgraph.add_endpoint(request_connection_name, f"trb.request_output_{app_name}", Direction.OUT, toposort=False)
 
         # Add the new geoid-to-connections map to the
         # TriggerRecordBuilder.
@@ -165,7 +165,7 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         app.modulegraph.add_endpoint(fragment_connection_name, None, Direction.OUT)
         dqm_mgraph = dqm_app.modulegraph
         dqm_mgraph.add_endpoint(fragment_connection_name, "trb_dqm.data_fragment_all", Direction.IN)            
-        dqm_mgraph.add_endpoint(request_connection_name, f"trb_dqm.request_output_{app_name}", Direction.OUT)
+        dqm_mgraph.add_endpoint(request_connection_name, f"trb_dqm.request_output_{app_name}", Direction.OUT, toposort=False)
 
         # Add the new geoid-to-connections map to the
         # TriggerRecordBuilder.

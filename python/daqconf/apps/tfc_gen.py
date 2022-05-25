@@ -21,20 +21,9 @@ moo.io.default_load_path = get_moo_model_path()
 
 # Load configuration types
 import moo.otypes
-moo.otypes.load_types('rcif/cmd.jsonnet')
-moo.otypes.load_types('appfwk/cmd.jsonnet')
-moo.otypes.load_types('appfwk/app.jsonnet')
-
 moo.otypes.load_types('timinglibs/timingfanoutcontroller.jsonnet')
-
-# Import new types
-import dunedaq.cmdlib.cmd as basecmd # AddressedCmd, 
-import dunedaq.rcif.cmd as rccmd # AddressedCmd, 
-import dunedaq.appfwk.cmd as cmd # AddressedCmd, 
-import dunedaq.appfwk.app as app # AddressedCmd,
 import dunedaq.timinglibs.timingfanoutcontroller as tfc
 
-from appfwk.utils import acmd, mcmd, mrccmd, mspec
 from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Direction
@@ -43,7 +32,6 @@ from daqconf.core.conf_utils import Direction
 def get_tfc_app(FANOUT_DEVICE_NAME="",
                 FANOUT_CLOCK_FILE="",
                 HOST="localhost",
-                TIMING_PARTITION="UNKNOWN",
                 TIMING_HOST="np04-srv-012.cern.ch",
                 TIMING_PORT=12345,
                 DEBUG=False):
@@ -60,8 +48,8 @@ def get_tfc_app(FANOUT_DEVICE_NAME="",
 
     mgraph = ModuleGraph(modules)
     
-    mgraph.add_partition_connection(TIMING_PARTITION, "timing_cmds", "tfc.timing_cmds", Direction.OUT, TIMING_HOST, TIMING_PORT)
-    mgraph.add_partition_connection(TIMING_PARTITION, "timing_device_info", None, Direction.IN, TIMING_HOST, TIMING_PORT+1, [FANOUT_DEVICE_NAME])
+    mgraph.add_external_connection("timing_cmds", "tfc.timing_cmds", Direction.OUT, TIMING_HOST, TIMING_PORT)
+    mgraph.add_external_connection("timing_device_info", None, Direction.IN, TIMING_HOST, TIMING_PORT+1, [FANOUT_DEVICE_NAME])
     
     tfc_app = App(modulegraph=mgraph, host=HOST, name="TFCApp")
     

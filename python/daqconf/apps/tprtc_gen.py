@@ -21,22 +21,9 @@ moo.io.default_load_path = get_moo_model_path()
 
 # Load configuration types
 import moo.otypes
-moo.otypes.load_types('rcif/cmd.jsonnet')
-moo.otypes.load_types('appfwk/cmd.jsonnet')
-moo.otypes.load_types('appfwk/app.jsonnet')
-
 moo.otypes.load_types('timinglibs/timingpartitioncontroller.jsonnet')
-moo.otypes.load_types('networkmanager/nwmgr.jsonnet')
-
-# Import new types
-import dunedaq.cmdlib.cmd as basecmd # AddressedCmd, 
-import dunedaq.rcif.cmd as rccmd # AddressedCmd, 
-import dunedaq.appfwk.cmd as cmd # AddressedCmd, 
-import dunedaq.appfwk.app as app # AddressedCmd,
 import dunedaq.timinglibs.timingpartitioncontroller as tprtc
-import dunedaq.networkmanager.nwmgr as nwmgr
 
-from appfwk.utils import acmd, mcmd, mrccmd, mspec
 from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Direction
@@ -66,8 +53,7 @@ def get_tprtc_app(MASTER_DEVICE_NAME="",
                                              ))]
 
     mgraph = ModuleGraph(modules)
-     
-    mgraph.add_external_connection("timing_cmds", "tprtc.hardware_commands_out", Direction.OUT, TIMING_HOST, TIMING_PORT)
+
     mgraph.add_external_connection("timing_cmds", "tprtc.timing_cmds", Direction.OUT, TIMING_HOST, TIMING_PORT)
     mgraph.add_external_connection("timing_device_info", None, Direction.IN, TIMING_HOST, TIMING_PORT+1, [MASTER_DEVICE_NAME])
 

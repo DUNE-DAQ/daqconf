@@ -166,20 +166,21 @@ class ModuleGraph:
                 return True
         return False
 
-    def add_endpoint(self, external_name, internal_name, inout, topic=[]):
+    def add_endpoint(self, external_name, internal_name, inout, topic=[], toposort=True):
         if not self.has_endpoint(external_name, internal_name):
-            self.endpoints += [Endpoint(external_name, internal_name, inout, topic)]
+            self.endpoints += [Endpoint(external_name, internal_name, inout, topic=topic, toposort=toposort)]
 
     def add_external_connection(self, external_name, internal_name, inout, host, port, topic=[]):
         self.external_connections += [ExternalConnection(external_name, internal_name, inout, host, port, topic)]
 
-    def connect_modules(self, push_addr, pop_addr, queue_name = "", size_hint = 10, toposort = True, verbose=False):
+    def connect_modules(self, push_addr, pop_addr, queue_name = "", size_hint = 10, toposort = True):
         queue_start = push_addr.split(".")
         queue_end = pop_addr.split(".")
-        if len(queue_start) < 2 or len(queue_end) < 2 or queue_start[0] not in self.module_names() or queue_end[0] not in self.module_names():
-            if verbose:
-                console.log(f"push_addr: {push_addr}, pop_addr: {pop_addr}")
-            raise RuntimeError(f"connect_modules called with invalid parameters. push_addr and pop_addr must be of form <module>.<internal name>, and the module must already be in the module graph!")
+        if len(queue_start) < 2 or queue_start[0] not in self.module_names():
+            raise RuntimeError(f"connect_modules called with invalid parameters. push_addr ({push_addr}) must be of form <module>.<internal name>, and the module must already be in the module graph!")
+
+        if len(queue_end) < 2 or queue_end[0] not in self.module_names():
+            raise RuntimeError(f"connect_modules called with invalid parameters. pop_addr ({pop_addr}) must be of form <module>.<internal name>, and the module must already be in the module graph!")
 
         if queue_name == "":
             self.queues.append(Queue(push_addr, pop_addr, push_addr + "_to_" + pop_addr, size_hint, toposort))
