@@ -6,6 +6,7 @@ import sys
 import glob
 import rich.traceback
 from rich.console import Console
+from collections import defaultdict
 from os.path import exists, join
 from daqconf.core.system import System
 from daqconf.core.metadata import write_metadata_file
@@ -128,6 +129,11 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
 
     if exists(json_dir):
         raise RuntimeError(f"Directory {json_dir} already exists")
+
+    ### Pierre Lasorak 2022-05-25
+    data_file = os.path.abspath(data_file)
+    output_path = os.path.abspath(output_path)
+    ### Hopefully nothing bad happens with these
 
     console.log("Loading dataflow config generator")
     from daqconf.apps.dataflow_gen import get_dataflow_app
@@ -506,12 +512,25 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
     for app in the_system.apps:
         external_connections += [ext.external_name for ext in the_system.apps[app].modulegraph.external_connections]
 
+    mount_dirs = defaultdict(list)
+    if not use_felix and not use_ssp:
+        for i in range(len(host_ru)):
+            mount_dir = os.path.dirname(data_file)
+            mount_dirs[ru_app_names[i]].append(mount_dir)
+
+    for i in range(len(host_df)):
+        name=df_app_names[i]
+        mount_dirs[name].append(output_path)
+
+    if enable_tpset_writing:
+        mount_dirs['tpwriter'].append(output_path)
+
     # Override the default boot.json with the one from minidaqapp
     boot = generate_boot(the_system.apps,
                          ers_settings=ers_settings, info_svc_uri=info_svc_uri,
                          disable_trace=disable_trace, use_kafka=use_kafka,
                          external_connections=external_connections,
-                         image=image)
+                         image=image, mount_dirs=mount_dirs)
 
     if thread_pinning_file:
         boot['scripts'] = {
