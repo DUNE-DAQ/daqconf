@@ -229,7 +229,6 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
         
     modules += [DAQModule(name = 'ttcm',
                           plugin = 'TimingTriggerCandidateMaker',
-                          connections={"output": Connection("mlt.trigger_candidate_source")},
                           conf=ttcm.Conf(s0=ttcm.map_t(signal_type=0,
                                                        time_before=TRIGGER_WINDOW_BEFORE_TICKS,
                                                        time_after=TRIGGER_WINDOW_AFTER_TICKS),
