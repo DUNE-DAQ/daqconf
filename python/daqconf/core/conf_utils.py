@@ -2,7 +2,7 @@
 from dunedaq.env import get_moo_model_path
 import moo.io
 moo.io.default_load_path = get_moo_model_path()
-
+import urllib
 from os.path import exists, join
 from rich.console import Console
 from copy import deepcopy
@@ -361,7 +361,21 @@ def make_system_connections(the_system, verbose=False):
                     the_system.connections[publisher] += [pubsub_connectionids[connid]]
 
 
+def simplify_connections(app, connections):
+    new_connections = []
+    for connection in connections:
+        new_connection = cp.deepcopy(connection)
+        service_type = connection.service_type
+        if not service_type in ['kNetReceiver', 'kPublisher']:
+            new_connections+=[new_connection]
+            continue
 
+        result = urllib.parse.urlparse(new_connection.uri)
+        new_uri = f"{result.scheme}://0.0.0.0:{result.port}"
+        new_connection.uri=new_uri
+        print(new_connection.uri)
+        new_connections += [new_connection]
+    return new_connections
 
 def make_app_command_data(system, app, appkey, verbose=False):
     """Given an App instance, create the 'command data' suitable for
@@ -426,8 +440,8 @@ def make_app_command_data(system, app, appkey, verbose=False):
     mod_specs = [ mspec(mod.name, mod.plugin, app_connrefs[mod.name]) for mod in app.modulegraph.modules ]
 
     # Fill in the "standard" command entries in the command_data structure
-
-    command_data['init'] = appfwk.Init(modules=mod_specs, connections=system.connections[appkey])
+    command_data['init'] = appfwk.Init(modules=mod_specs,
+                                       connections=simplify_connections(appkey, system.connections[appkey]))
 
     # TODO: Conf ordering
     command_data['conf'] = acmd([
