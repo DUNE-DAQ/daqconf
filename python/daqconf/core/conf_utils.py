@@ -373,7 +373,6 @@ def simplify_connections(app, connections):
         result = urllib.parse.urlparse(new_connection.uri)
         new_uri = f"{result.scheme}://0.0.0.0:{result.port}"
         new_connection.uri=new_uri
-        print(new_connection.uri)
         new_connections += [new_connection]
     return new_connections
 
@@ -494,7 +493,7 @@ def make_unique_name(base, module_list):
 
 def generate_boot(apps: list, ers_settings=None, info_svc_uri="file://info_{APP_NAME}_{APP_PORT}.json",
                   disable_trace=False, use_kafka=False, verbose=False, extra_env_vars=dict(),
-                  image="", external_connections=[], mount_dirs={}) -> dict:
+                  image="", external_connections=[]) -> dict:
     """Generate the dictionary that will become the boot.json file"""
 
     if ers_settings is None:
@@ -561,7 +560,6 @@ def generate_boot(apps: list, ers_settings=None, info_svc_uri="file://info_{APP_
         "response_listener": {
             "port": 56789
         },
-        "mount_dirs": mount_dirs,
         "external_connections": external_connections,
         "exec": daq_app_specs
     }
