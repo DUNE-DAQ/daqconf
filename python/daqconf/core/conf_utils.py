@@ -107,6 +107,10 @@ Sender = namedtuple("Sender", ['msg_type', 'msg_module_name', 'receiver'])
 #
 ########################################################################
 
+def replace_localhost_ip(uri):
+    parsed = urllib.parse.urlparse(uri)
+    return f'{parsed.scheme}://0.0.0.0:{parsed.port}'
+
 def make_module_deps(app, system_connections, verbose=False):
     """
     Given a list of `module` objects, produce a dictionary giving
@@ -205,8 +209,7 @@ def make_external_connection(the_system, endpoint_name, app_name, host, port, to
             return
     if len(topic) == 0:
         if inout==Direction.IN:
-            address = urllib.parse.urlparse(address)
-            new_address = f'{address.scheme}://0.0.0.0:{address.port}'
+            new_address = replace_localhost_ip(address)
             the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetReceiver", data_type="", uri=new_address)]
         else:
             the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type='kNetSender', data_type="", uri=address)]
@@ -214,8 +217,7 @@ def make_external_connection(the_system, endpoint_name, app_name, host, port, to
         if inout==Direction.IN:
             the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kSubscriber", data_type="", uri=address, topics=topic)]
         else:
-            address = urllib.parse.urlparse(address)
-            new_address = f'{address.scheme}://0.0.0.0:{address.port}'
+            new_address = replace_localhost_ip(address)
             the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type='kPublisher', data_type="", uri=new_address, topics=topic)]
 
 def make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbose):
@@ -376,8 +378,7 @@ def make_system_connections(the_system, verbose=False):
             for connid in publisher_uids[publisher]:
                 if connid not in publisher_connections:
                     conn_copy = cp.deepcopy(pubsub_connectionids[connid])
-                    uri = urllib.parse.urlparse(conn_copy.uri)
-                    conn_copy.uri = f'{uri.scheme}://0.0.0.0:{uri.port}'
+                    conn_copy.uri = replace_localhost_ip(conn_copy.uri)
                     the_system.connections[publisher] += [conn_copy]
 
 def make_app_command_data(system, app, appkey, verbose=False):
