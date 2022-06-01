@@ -380,23 +380,6 @@ def make_system_connections(the_system, verbose=False):
                     conn_copy.uri = f'{uri.scheme}://0.0.0.0:{uri.port}'
                     the_system.connections[publisher] += [conn_copy]
 
-
-
-def simplify_connections(app, connections):
-    new_connections = []
-    for connection in connections:
-        new_connection = cp.deepcopy(connection)
-        service_type = connection.service_type
-        if not service_type in ['kNetReceiver', 'kPublisher']:
-            new_connections+=[new_connection]
-            continue
-
-        result = urllib.parse.urlparse(new_connection.uri)
-        new_uri = f"{result.scheme}://0.0.0.0:{result.port}"
-        new_connection.uri=new_uri
-        new_connections += [new_connection]
-    return new_connections
-
 def make_app_command_data(system, app, appkey, verbose=False):
     """Given an App instance, create the 'command data' suitable for
     feeding to nanorc. The needed queues are inferred from from
