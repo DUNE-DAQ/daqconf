@@ -43,7 +43,7 @@ import click
 @click.option('--master-clock-mode', default=-1, help='Fanout mode for master device.')
 @click.option('--fanout-device-name', default="", help='Device name of timing fanout hw')
 @click.option('--fanout-clock-file', default="", help='Path to custom PLL config file for fanout device')
-@click.option('--image', default=None, type=str, help="Which docker image to use")
+@click.option('--image', default="", type=str, help="Which docker image to use")
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
 
