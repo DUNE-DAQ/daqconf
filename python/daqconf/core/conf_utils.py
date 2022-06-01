@@ -204,9 +204,19 @@ def make_external_connection(the_system, endpoint_name, app_name, host, port, to
             console.log(f"Duplicate external connection {endpoint_name} detected! Not adding to configuration!")
             return
     if len(topic) == 0:
-        the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetReceiver" if inout==Direction.IN else 'kNetSender', data_type="", uri=address)]
+        if inout==Direction.IN:
+            address = urllib.parse.urlparse(address)
+            new_address = f'{address.scheme}://0.0.0.0:{address.port}'
+            the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetReceiver", data_type="", uri=new_address)]
+        else:
+            the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type='kNetSender', data_type="", uri=address)]
     else:
-        the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kSubscriber" if inout==Direction.IN else 'kPublisher', data_type="", uri=address, topics=topic)]
+        if inout==Direction.IN:
+            the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kSubscriber", data_type="", uri=address, topics=topic)]
+        else:
+            address = urllib.parse.urlparse(address)
+            new_address = f'{address.scheme}://0.0.0.0:{address.port}'
+            the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type='kPublisher', data_type="", uri=new_address, topics=topic)]
 
 def make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbose):
     if verbose:
@@ -215,10 +225,11 @@ def make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbos
         raise ValueError(f"Connection with name {endpoint_name} has multiple receivers, which is unsupported for a network connection!")
 
     port = the_system.next_unassigned_port()
-    address = f'tcp://{{host_{in_apps[0]}}}:{port}'
-    the_system.connections[in_apps[0]] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetReceiver", data_type="", uri=address)]
+    address_receiver = f'tcp://0.0.0.0:{port}'
+    address_sender = f'tcp://{{host_{in_apps[0]}}}:{port}'
+    the_system.connections[in_apps[0]] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetReceiver", data_type="", uri=address_receiver)]
     for app in set(out_apps):
-        the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetSender", data_type="", uri=address)]
+        the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetSender", data_type="", uri=address_sender)]
 
 def make_system_connections(the_system, verbose=False):
     """Given a system with defined apps and endpoints, create the
@@ -336,7 +347,13 @@ def make_system_connections(the_system, verbose=False):
                 if endpoint['endpoint'].external_name not in pubsub_connectionids:
                     port = the_system.next_unassigned_port()
                     address = f'tcp://{{host_{endpoint["app"]}}}:{port}'
-                    pubsub_connectionids[endpoint['endpoint'].external_name] = conn.ConnectionId(uid=endpoint['endpoint'].external_name, service_type="kPublisher", data_type="", uri=address, topics=endpoint['endpoint'].topic)
+                    pubsub_connectionids[endpoint['endpoint'].external_name] = conn.ConnectionId(
+                        uid=endpoint['endpoint'].external_name,
+                        service_type="kPublisher",
+                        data_type="",
+                        uri=address,
+                        topics=endpoint['endpoint'].topic
+                    )
                 topic_connectionuids += [endpoint['endpoint'].external_name]
                 if endpoint['app'] not in publisher_uids.keys(): publisher_uids[endpoint["app"]] = []
                 publisher_uids[endpoint["app"]] += [endpoint['endpoint'].external_name]
@@ -358,7 +375,12 @@ def make_system_connections(the_system, verbose=False):
             publisher_connections = [c.uid for c in the_system.connections[publisher]]
             for connid in publisher_uids[publisher]:
                 if connid not in publisher_connections:
-                    the_system.connections[publisher] += [pubsub_connectionids[connid]]
+                    conn_copy = cp.deepcopy(pubsub_connectionids[connid])
+                    conn_copy.uid += "_sub"
+                    uri = urllib.parse.urlparse(conn_copy.uri)
+                    conn_copy.uri = f'{uri.scheme}://0.0.0.0:{uri.port}'
+                    the_system.connections[publisher] += [conn_copy]
+
 
 
 def simplify_connections(app, connections):
@@ -440,7 +462,7 @@ def make_app_command_data(system, app, appkey, verbose=False):
 
     # Fill in the "standard" command entries in the command_data structure
     command_data['init'] = appfwk.Init(modules=mod_specs,
-                                       connections=simplify_connections(appkey, system.connections[appkey]))
+                                       connections=system.connections[appkey])
 
     # TODO: Conf ordering
     command_data['conf'] = acmd([
