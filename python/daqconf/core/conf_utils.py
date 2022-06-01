@@ -373,13 +373,14 @@ def make_system_connections(the_system, verbose=False):
                     the_system.connections[subscriber] += [conn_copy]
         for publisher in publishers:
             publisher_connections = [c.uid for c in the_system.connections[publisher]]
+            new_publisher_connections = []
             for connid in publisher_uids[publisher]:
                 if connid not in publisher_connections:
                     conn_copy = cp.deepcopy(pubsub_connectionids[connid])
-                    conn_copy.uid += "_sub"
                     uri = urllib.parse.urlparse(conn_copy.uri)
                     conn_copy.uri = f'{uri.scheme}://0.0.0.0:{uri.port}'
-                    the_system.connections[publisher] += [conn_copy]
+                    new_publisher_connections += [conn_copy]
+            the_system.connections[publisher] = new_publisher_connections
 
 
 
