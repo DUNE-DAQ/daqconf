@@ -126,8 +126,8 @@ def get_dqm_app(RU_CONFIG=[],
         mgraph.connect_modules("dqmprocessor.trigger_decision_input_queue", "trb_dqm.trigger_decision_input", 'trigger_decision_q_dqm')
         mgraph.connect_modules('trb_dqm.trigger_record_output', 'dqmprocessor.trigger_record_dqm_processor', 'trigger_record_q_dqm', toposort=False)  
     elif DQMIDX < NUM_DF_APPS:
-        mgraph.add_endpoint(f'trmon_dqm2df_{DQMIDX}', None, Direction.OUT, toposort=False)
-        mgraph.add_endpoint(f"tr_df2dqm_{DQMIDX}", None, Direction.IN)
+        mgraph.add_endpoint(f'trmon_dqm2df_{DQMIDX}', None, Direction.OUT)
+        mgraph.add_endpoint(f"tr_df2dqm_{DQMIDX}", None, Direction.IN, toposort=True)
     
     dqm_app = App(mgraph, host=HOST)
 

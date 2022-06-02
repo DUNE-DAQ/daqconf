@@ -522,7 +522,15 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
 
     # Make boot.json config
     from daqconf.core.conf_utils import make_system_command_datas,generate_boot, write_json_files
-    system_command_datas = make_system_command_datas(the_system, verbose=debug)
+
+    # HACK: Make sure RUs start after trigger
+    forced_deps = []
+    
+    for i,host in enumerate(host_ru):
+        ru_name = ru_app_names[i]
+        forced_deps.append(['trigger', ru_name])
+
+    system_command_datas = make_system_command_datas(the_system, forced_deps, verbose=debug)
     # Override the default boot.json with the one from minidaqapp
     boot = generate_boot(the_system.apps,
                          ers_settings=ers_settings, info_svc_uri=info_svc_uri,
