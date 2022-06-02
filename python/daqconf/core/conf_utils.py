@@ -478,7 +478,7 @@ def make_unique_name(base, module_list):
 
     return f"{base}_{suffix}"
 
-def generate_boot(apps: list, ers_settings=None, info_svc_uri="file://info_${APP_ID}_${APP_PORT}.json",
+def generate_boot(apps: list, base_command_port: int=3333, ers_settings=None, info_svc_uri="file://info_${APP_ID}_${APP_PORT}.json",
                   disable_trace=False, use_kafka=False, verbose=False, extra_env_vars=dict()) -> dict:
     """Generate the dictionary that will become the boot.json file"""
 
@@ -524,10 +524,9 @@ def generate_boot(apps: list, ers_settings=None, info_svc_uri="file://info_${APP
         }
     }
 
-    first_port = 3333
     ports = {}
     for i, name in enumerate(apps.keys()):
-        ports[name] = first_port + i
+        ports[name] = base_command_port + i
 
     boot = {
         "env": {
