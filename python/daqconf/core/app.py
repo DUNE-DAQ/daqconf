@@ -166,7 +166,7 @@ class ModuleGraph:
                 return True
         return False
 
-    def add_endpoint(self, external_name, internal_name, inout, topic=[], toposort=True):
+    def add_endpoint(self, external_name, internal_name, inout, topic=[], toposort=False):
         if not self.has_endpoint(external_name, internal_name):
             self.endpoints += [Endpoint(external_name, internal_name, inout, topic=topic, toposort=toposort)]
 

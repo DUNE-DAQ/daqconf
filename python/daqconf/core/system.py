@@ -56,7 +56,7 @@ class System:
                             if to_ep.direction == Direction.IN:
                                 if from_ep.external_name == to_ep.external_name:
                                     color="red"
-                                    if from_ep.toposort and to_ep.toposort:
+                                    if from_ep.toposort or to_ep.toposort:
                                         color="blue"
                                     elif for_toposort:
                                         continue
