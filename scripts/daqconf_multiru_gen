@@ -30,6 +30,7 @@ import click
 @click.option('--timing-partition-name', default="timing", help="Name of the global partition to use, for ERS and OPMON and timing commands")
 @click.option('--host-timing', default='np04-srv-012.cern.ch', help='Host to run the (global) timing hardware interface app on')
 @click.option('--port-timing', default=12345, help='Port to host running the (global) timing hardware interface app on')
+@click.option('--base-command-port', type=int, default=3333, help="Base port of application command endpoints")
 @click.option('-n', '--number-of-data-producers', default=2, help="Number of links to use for each readout application")
 @click.option('-e', '--emulator-mode', is_flag=True, help="If active, timestamps of data frames are overwritten when processed by the readout. This is necessary if the felix card does not set correct timestamps.")
 @click.option('--thread-pinning-file', default=None, type=click.Path(exists=True), help="A thread pinning configuration file that gets executed after conf.")
@@ -117,7 +118,7 @@ import click
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
 
-def cli(timing_partition_name, host_timing, port_timing, number_of_data_producers, emulator_mode, data_rate_slowdown_factor, run_number, clock_speed_hz, trigger_rate_hz, trigger_window_before_ticks, trigger_window_after_ticks,
+def cli(timing_partition_name, host_timing, port_timing, base_command_port, number_of_data_producers, emulator_mode, data_rate_slowdown_factor, run_number, clock_speed_hz, trigger_rate_hz, trigger_window_before_ticks, trigger_window_after_ticks,
         thread_pinning_file,
         token_count, data_file, output_path, disable_trace, use_felix, use_ssp, host_df, host_dfo, host_ru, host_trigger, host_hsi, host_tpw, host_tprtc, host_dqm, region_id, latency_buffer_size,
         hsi_hw_connections_file, hsi_device_name, hsi_readout_period, control_hsi_hw, hsi_endpoint_address, hsi_endpoint_partition, hsi_re_mask, hsi_fe_mask, hsi_inv_mask, hsi_source,
@@ -524,7 +525,7 @@ def cli(timing_partition_name, host_timing, port_timing, number_of_data_producer
     from daqconf.core.conf_utils import make_system_command_datas,generate_boot, write_json_files
     system_command_datas = make_system_command_datas(the_system, verbose=debug)
     # Override the default boot.json with the one from minidaqapp
-    boot = generate_boot(the_system.apps,
+    boot = generate_boot(the_system.apps, base_command_port=base_command_port,
                          ers_settings=ers_settings, info_svc_uri=info_svc_uri,
                          disable_trace=disable_trace, use_kafka=use_kafka)
     
