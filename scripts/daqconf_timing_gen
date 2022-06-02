@@ -24,6 +24,7 @@ moo.io.default_load_path = get_moo_model_path()
 import click
 
 @click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('--base-command-port', type=int, default=3333, help="Base port of application command endpoints")
 @click.option('--clock-speed-hz', type=int, default=50000000)
 @click.option('--disable-trace', is_flag=True, help="Do not enable TRACE (default TRACE_FILE is /tmp/trace_buffer_\${HOSTNAME}_\${USER})")
 @click.option('--host-thi', default='localhost', help='Host to run the (global) timing hardware interface app on')
@@ -46,7 +47,7 @@ import click
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
 
-def cli(clock_speed_hz, disable_trace, host_thi, port_thi, host_tmc, host_tfc, 
+def cli(base_command_port, clock_speed_hz, disable_trace, host_thi, port_thi, host_tmc, host_tfc, 
         gather_interval, gather_interval_debug, timing_hw_connections_file, 
         opmon_impl, ers_impl, pocket_url, 
         hsi_device_name, master_device_name, master_send_delays_period, master_clock_file, master_clock_mode, 
@@ -148,7 +149,7 @@ def cli(clock_speed_hz, disable_trace, host_thi, port_thi, host_tmc, host_tfc,
     from daqconf.core.conf_utils import make_system_command_datas,generate_boot, write_json_files
     system_command_datas = make_system_command_datas(the_system, verbose=debug)
     # Override the default boot.json with the one from minidaqapp
-    boot = generate_boot(the_system.apps, ers_settings=ers_settings, info_svc_uri=info_svc_uri,
+    boot = generate_boot(the_system.apps, base_command_port=base_command_port, ers_settings=ers_settings, info_svc_uri=info_svc_uri,
                               disable_trace=disable_trace, use_kafka=use_kafka)
 
     system_command_datas['boot'] = boot
