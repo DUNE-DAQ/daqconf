@@ -91,7 +91,7 @@ def get_readout_app(RU_CONFIG=[],
                 link_num = idx + 1
             else:
                 link_num = idx
-            modules += [DAQModule(name = f"tp_datahandler_{link_num}",
+            modules += [DAQModule(name = f"sw_tp_datahandler_{link_num}",
                                plugin = "DataLinkHandler",
                                conf = rconf.Conf(readoutmodelconf = rconf.ReadoutModelConf(source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
                                                                                          region_id = RU_CONFIG[RUIDX]["region_id"],
@@ -119,6 +119,7 @@ def get_readout_app(RU_CONFIG=[],
         for idx in range(tp_links):
             if FIRMWARE_TPG_ENABLED:
                 queues += [Queue(f"tp_datahandler_{idx}.errored_frames", 'errored_frame_consumer.input_queue', "errored_frames_q")]
+                queues += [Queue(f"tp_datahandler_{idx}.tp_out",f"tp_out_datahandler_{idx}.raw_input",f"sw_tp_link_{idx}",100000 )]                
             modules += [DAQModule(name = f"tp_datahandler_{idx}",
                                   plugin = "DataLinkHandler", 
                                   conf = rconf.Conf(
@@ -126,7 +127,7 @@ def get_readout_app(RU_CONFIG=[],
                                           source_queue_timeout_ms= QUEUE_POP_WAIT_MS,
                                           # fake_trigger_flag=0, # default
                                           region_id = RU_CONFIG[RUIDX]["region_id"],
-                                          element_id = idx,
+                                          element_id = ((idx+1)*5)+idx,
                                           timesync_connection_name = f"timesync_{RUIDX}",
                                           timesync_topic_name = "Timesync",
                                       ),
@@ -134,11 +135,11 @@ def get_readout_app(RU_CONFIG=[],
                                           latency_buffer_alignment_size = 4096,
                                           latency_buffer_size = LATENCY_BUFFER_SIZE,
                                           region_id = RU_CONFIG[RUIDX]["region_id"],
-                                          element_id = idx,
+                                          element_id = ((idx+1)*5)+idx,
                                       ),
                                       rawdataprocessorconf= rconf.RawDataProcessorConf(
                                           region_id = RU_CONFIG[RUIDX]["region_id"],
-                                          element_id = idx,
+                                          element_id = ((idx+1)*5)+idx,
                                           enable_software_tpg = False,
                                           enable_firmware_tpg = True,
                                           channel_map_name = TPG_CHANNEL_MAP,
@@ -152,11 +153,31 @@ def get_readout_app(RU_CONFIG=[],
                                           pop_limit_pct = 0.8,
                                           pop_size_pct = 0.1,
                                           region_id = RU_CONFIG[RUIDX]["region_id"],
-                                          element_id = idx,
+                                          element_id = ((idx+1)*5)+idx,
                                           output_file = path.join(RAW_RECORDING_OUTPUT_DIR, f"output_tp_{RUIDX}_{idx}.out"),
                                           stream_buffer_size = 8388608,
                                           enable_raw_recording = RAW_RECORDING_ENABLED,
                                       )))]
+            modules += [DAQModule(name = f"tp_out_datahandler_{idx}",
+                               plugin = "DataLinkHandler",
+                               conf = rconf.Conf(readoutmodelconf = rconf.ReadoutModelConf(source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
+                                                                                         region_id = RU_CONFIG[RUIDX]["region_id"],
+                                                                                         element_id = total_link_count+idx),
+                                                 latencybufferconf = rconf.LatencyBufferConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
+                                                                                            region_id = RU_CONFIG[RUIDX]["region_id"],
+                                                                                            element_id = total_link_count + idx),
+                                                 rawdataprocessorconf = rconf.RawDataProcessorConf(region_id = RU_CONFIG[RUIDX]["region_id"],
+                                                                                                   element_id = total_link_count + idx,
+                                                                                                   enable_software_tpg = False,
+                                                                                                   channel_map_name=TPG_CHANNEL_MAP),
+                                                 requesthandlerconf= rconf.RequestHandlerConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
+                                                                                              pop_limit_pct = 0.8,
+                                                                                              pop_size_pct = 0.1,
+                                                                                              region_id = RU_CONFIG[RUIDX]["region_id"],
+                                                                                              element_id =total_link_count + idx,
+                                                                                              # output_file = f"output_{idx + MIN_LINK}.out",
+                                                                                              stream_buffer_size = 100 if FRONTEND_TYPE=='pacman' else 8388608,
+                                                                                              enable_raw_recording = False)))]
 
 
     if FRONTEND_TYPE == 'wib' and not USE_FAKE_DATA_PRODUCERS:
@@ -186,7 +207,7 @@ def get_readout_app(RU_CONFIG=[],
                                   ))]
         else:
             if SOFTWARE_TPG_ENABLED:
-                queues += [Queue(f"datahandler_{link_num}.tp_out",f"tp_datahandler_{link_num}.raw_input",f"sw_tp_link_{link_num}",100000 )]                
+                queues += [Queue(f"datahandler_{link_num}.tp_out",f"sw_tp_datahandler_{link_num}.raw_input",f"sw_tp_link_{link_num}",100000 )]                
                 
             if FRONTEND_TYPE == 'wib':
                 queues += [Queue(f"datahandler_{link_num}.errored_frames", 'errored_frame_consumer.input_queue', "errored_frames_q")]
@@ -330,12 +351,17 @@ def get_readout_app(RU_CONFIG=[],
         else:
             tp_links = 1
         for idx in range(tp_links):
-            assert total_link_count < 1000
             mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{idx}", f"tp_datahandler_{idx}.tpset_out",    Direction.OUT, topic=[RU_CONFIG[RUIDX]["tpset_topics"][idx]])
-            mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = idx + 1000, system = SYSTEM_TYPE,
+            mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = ((idx+1)*5)+idx, system = SYSTEM_TYPE,
                                     requests_in   = f"tp_datahandler_{idx}.request_input",
                                     fragments_out = f"tp_datahandler_{idx}.fragment_queue")
             mgraph.add_endpoint(f"timesync_{idx}", f"tp_datahandler_{idx}.timesync_output",    Direction.OUT, ["Timesync"])
+
+            mgraph.add_endpoint(f"timesync_tp_out_dlh_ru{RUIDX}_{idx}", f"tp_out_datahandler_{link_num}.timesync_output",    Direction.OUT, ["Timesync"])
+            assert total_link_count < 1000
+            mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = link_num + 1000, system = SYSTEM_TYPE,
+                                            requests_in   = f"tp_out_datahandler_{link_num}.request_input",
+                                            fragments_out = f"tp_out_datahandler_{link_num}.fragment_queue")
 
     for idx in range(MIN_LINK, MAX_LINK):
         if idx > 4:
@@ -344,7 +370,7 @@ def get_readout_app(RU_CONFIG=[],
             link_num = idx
         if SOFTWARE_TPG_ENABLED:
             mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{idx}", f"datahandler_{link_num}.tpset_out",    Direction.OUT, topic=[RU_CONFIG[RUIDX]["tpset_topics"][idx]])
-            mgraph.add_endpoint(f"timesync_tp_dlh_ru{RUIDX}_{idx}", f"tp_datahandler_{link_num}.timesync_output",    Direction.OUT, ["Timesync"])
+            mgraph.add_endpoint(f"timesync_sw_tp_dlh_ru{RUIDX}_{idx}", f"sw_tp_datahandler_{link_num}.timesync_output",    Direction.OUT, ["Timesync"])
         
         if USE_FAKE_DATA_PRODUCERS:
             # Add fragment producers for fake data. This call is necessary to create the RequestReceiver instance, but we don't need the generated FragmentSender or its queues...
@@ -378,8 +404,8 @@ def get_readout_app(RU_CONFIG=[],
             if SOFTWARE_TPG_ENABLED:
                 assert total_link_count < 1000
                 mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = link_num + 1000, system = SYSTEM_TYPE,
-                                             requests_in   = f"tp_datahandler_{link_num}.request_input",
-                                             fragments_out = f"tp_datahandler_{link_num}.fragment_queue")
+                                             requests_in   = f"sw_tp_datahandler_{link_num}.request_input",
+                                             fragments_out = f"sw_tp_datahandler_{link_num}.fragment_queue")
 
     readout_app = App(mgraph, host=HOST)
     if DEBUG:
