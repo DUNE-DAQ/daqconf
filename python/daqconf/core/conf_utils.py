@@ -2,7 +2,7 @@
 from dunedaq.env import get_moo_model_path
 import moo.io
 moo.io.default_load_path = get_moo_model_path()
-
+import urllib
 from os.path import exists, join
 from rich.console import Console
 from copy import deepcopy
@@ -107,6 +107,10 @@ Sender = namedtuple("Sender", ['msg_type', 'msg_module_name', 'receiver'])
 #
 ########################################################################
 
+def replace_localhost_ip(uri):
+    parsed = urllib.parse.urlparse(uri)
+    return f'{parsed.scheme}://0.0.0.0:{parsed.port}'
+
 def make_module_deps(app, system_connections, verbose=False):
     """
     Given a list of `module` objects, produce a dictionary giving
@@ -208,9 +212,17 @@ def make_external_connection(the_system, endpoint_name, app_name, host, port, to
             console.log(f"Duplicate external connection {endpoint_name} detected! Not adding to configuration!")
             return
     if len(topic) == 0:
-        the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetReceiver" if inout==Direction.IN else 'kNetSender', data_type="", uri=address)]
+        if inout==Direction.IN:
+            new_address = replace_localhost_ip(address)
+            the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetReceiver", data_type="", uri=new_address)]
+        else:
+            the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type='kNetSender', data_type="", uri=address)]
     else:
-        the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kSubscriber" if inout==Direction.IN else 'kPublisher', data_type="", uri=address, topics=topic)]
+        if inout==Direction.IN:
+            the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type="kSubscriber", data_type="", uri=address, topics=topic)]
+        else:
+            new_address = replace_localhost_ip(address)
+            the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type='kPublisher', data_type="", uri=new_address, topics=topic)]
 
 def make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbose):
     if verbose:
@@ -219,10 +231,11 @@ def make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbos
         raise ValueError(f"Connection with name {endpoint_name} has multiple receivers, which is unsupported for a network connection!")
 
     port = the_system.next_unassigned_port()
-    address = f'tcp://{{host_{in_apps[0]}}}:{port}'
-    the_system.connections[in_apps[0]] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetReceiver", data_type="", uri=address)]
+    address_receiver = f'tcp://0.0.0.0:{port}'
+    address_sender = f'tcp://{{host_{in_apps[0]}}}:{port}'
+    the_system.connections[in_apps[0]] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetReceiver", data_type="", uri=address_receiver)]
     for app in set(out_apps):
-        the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetSender", data_type="", uri=address)]
+        the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetSender", data_type="", uri=address_sender)]
 
 def make_system_connections(the_system, verbose=False):
     """Given a system with defined apps and endpoints, create the
@@ -340,7 +353,13 @@ def make_system_connections(the_system, verbose=False):
                 if endpoint['endpoint'].external_name not in pubsub_connectionids:
                     port = the_system.next_unassigned_port()
                     address = f'tcp://{{host_{endpoint["app"]}}}:{port}'
-                    pubsub_connectionids[endpoint['endpoint'].external_name] = conn.ConnectionId(uid=endpoint['endpoint'].external_name, service_type="kPublisher", data_type="", uri=address, topics=endpoint['endpoint'].topic)
+                    pubsub_connectionids[endpoint['endpoint'].external_name] = conn.ConnectionId(
+                        uid=endpoint['endpoint'].external_name,
+                        service_type="kPublisher",
+                        data_type="",
+                        uri=address,
+                        topics=endpoint['endpoint'].topic
+                    )
                 topic_connectionuids += [endpoint['endpoint'].external_name]
                 if endpoint['app'] not in publisher_uids.keys(): publisher_uids[endpoint["app"]] = []
                 publisher_uids[endpoint["app"]] += [endpoint['endpoint'].external_name]
@@ -362,10 +381,9 @@ def make_system_connections(the_system, verbose=False):
             publisher_connections = [c.uid for c in the_system.connections[publisher]]
             for connid in publisher_uids[publisher]:
                 if connid not in publisher_connections:
-                    the_system.connections[publisher] += [pubsub_connectionids[connid]]
-
-
-
+                    conn_copy = cp.deepcopy(pubsub_connectionids[connid])
+                    conn_copy.uri = replace_localhost_ip(conn_copy.uri)
+                    the_system.connections[publisher] += [conn_copy]
 
 def make_app_command_data(system, app, appkey, verbose=False):
     """Given an App instance, create the 'command data' suitable for
@@ -430,8 +448,8 @@ def make_app_command_data(system, app, appkey, verbose=False):
     mod_specs = [ mspec(mod.name, mod.plugin, app_connrefs[mod.name]) for mod in app.modulegraph.modules ]
 
     # Fill in the "standard" command entries in the command_data structure
-
-    command_data['init'] = appfwk.Init(modules=mod_specs, connections=system.connections[appkey])
+    command_data['init'] = appfwk.Init(modules=mod_specs,
+                                       connections=system.connections[appkey])
 
     # TODO: Conf ordering
     command_data['conf'] = acmd([
@@ -482,8 +500,10 @@ def make_unique_name(base, module_list):
 
     return f"{base}_{suffix}"
 
-def generate_boot(apps: list, base_command_port: int=3333, ers_settings=None, info_svc_uri="file://info_${APP_ID}_${APP_PORT}.json",
-                  disable_trace=False, use_kafka=False, verbose=False, extra_env_vars=dict()) -> dict:
+def generate_boot(apps: list, base_command_port: int=3333, ers_settings=None, info_svc_uri="file://info_{APP_NAME}_{APP_PORT}.json",
+                  disable_trace=False, use_kafka=False, verbose=False, extra_env_vars=dict(),
+                  use_k8s=False,
+                  image="", external_connections=[]) -> dict:
     """Generate the dictionary that will become the boot.json file"""
 
     if ers_settings is None:
@@ -494,23 +514,10 @@ def generate_boot(apps: list, base_command_port: int=3333, ers_settings=None, in
             "FATAL":   "erstrace,lstdout",
         }
 
+    daq_app_exec_name = "daq_application" if not use_k8s else "daq_application_k8s"
     daq_app_specs = {
-        "daq_application_ups" : {
-            "comment": "Application profile based on a full dbt runtime environment",
-            "env": {
-                "DBT_AREA_ROOT": "getenv",
-                "TRACE_FILE": "getenv:/tmp/trace_buffer_${HOSTNAME}_${USER}",
-            },
-            "cmd": ["CMD_FAC=rest://localhost:${APP_PORT}",
-                    "INFO_SVC=" + info_svc_uri,
-                    "cd ${DBT_AREA_ROOT}",
-                    "source dbt-env.sh",
-                    "dbt-workarea-env",
-                    "cd ${APP_WD}",
-                    "daq_application --name ${APP_NAME} -c ${CMD_FAC} -i ${INFO_SVC}"]
-        },
-        "daq_application" : {
-            "comment": "Application profile using  PATH variables (lower start time)",
+        daq_app_exec_name : {
+            "comment": "Application profile using PATH variables (lower start time)",
             "env":{
                 "CET_PLUGIN_PATH": "getenv",
                 "DETCHANNELMAPS_SHARE": "getenv",
@@ -518,19 +525,29 @@ def generate_boot(apps: list, base_command_port: int=3333, ers_settings=None, in
                 "TIMING_SHARE": "getenv",
                 "LD_LIBRARY_PATH": "getenv",
                 "PATH": "getenv",
-                # "READOUT_SHARE": "getenv",
-                "TRACE_FILE": "getenv:/tmp/trace_buffer_${HOSTNAME}_${USER}",
+                "TRACE_FILE": "getenv:/tmp/trace_buffer_{APP_HOST}_{DUNEDAQ_PARTITION}",
+                "CMD_FAC": "rest://localhost:{APP_PORT}",
+                "INFO_SVC": info_svc_uri,
             },
-            "cmd": ["CMD_FAC=rest://localhost:${APP_PORT}",
-                    "INFO_SVC=" + info_svc_uri,
-                    "cd ${APP_WD}",
-                    "daq_application --name ${APP_NAME} -c ${CMD_FAC} -i ${INFO_SVC}"]
+            "cmd":"daq_application",
+            "args": [
+                "--name",
+                "{APP_NAME}",
+                "-c",
+                "{CMD_FAC}",
+                "-i",
+                "{INFO_SVC}"
+            ]
         }
     }
 
+    if use_k8s:
+        daq_app_specs[daq_app_exec_name]['image'] = image
+
+
     ports = {}
     for i, name in enumerate(apps.keys()):
-        ports[name] = base_command_port + i
+        ports[name] = base_command_port if use_k8s else base_command_port + i
 
     boot = {
         "env": {
@@ -543,7 +560,7 @@ def generate_boot(apps: list, base_command_port: int=3333, ers_settings=None, in
         },
         "apps": {
             name: {
-                "exec": "daq_application",
+                "exec": daq_app_exec_name,
                 "host": f"host_{name}",
                 "port": ports[name]
             }
@@ -556,15 +573,14 @@ def generate_boot(apps: list, base_command_port: int=3333, ers_settings=None, in
         "response_listener": {
             "port": 56789
         },
+        "external_connections": external_connections,
         "exec": daq_app_specs
     }
 
-    boot["exec"]["daq_application"]["env"].update(extra_env_vars)
-    boot["exec"]["daq_application_ups"]["env"].update(extra_env_vars)
+    boot["exec"][daq_app_exec_name]["env"].update(extra_env_vars)
 
     if disable_trace:
-        del boot["exec"]["daq_application"]["env"]["TRACE_FILE"]
-        del boot["exec"]["daq_application_ups"]["env"]["TRACE_FILE"]
+        del boot["exec"][daq_app_exec_name]["env"]["TRACE_FILE"]
 
     if use_kafka:
         boot["env"]["DUNEDAQ_ERS_STREAM_LIBS"] = "erskafka"

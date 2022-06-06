@@ -6,6 +6,7 @@ import sys
 import glob
 import rich.traceback
 from rich.console import Console
+from collections import defaultdict
 from os.path import exists, join
 from daqconf.core.system import System
 from daqconf.core.metadata import write_metadata_file
@@ -115,6 +116,8 @@ import click
 @click.option('--tpc-region-name-prefix', default='APA', help="Prefix to be used for the 'Region' Group name inside the HDF5 file")
 @click.option('--max-file-size', default=4*1024*1024*1024, help="The size threshold when raw data files are closed (in bytes)")
 @click.option('--max-trigger-record-window', default=0, help="The maximum size for the window of data that will included in a single TriggerRecord (in ticks). Readout windows that are longer than this size will result in TriggerRecords being split into a sequence of TRs. A zero value for this parameter means no splitting.")
+@click.option('--image', default="", type=str, help="Which docker image to use")
+@click.option('--use-k8s', is_flag=True, default=False, help="Whether to use k8s")
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
 
@@ -127,10 +130,11 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         control_timing_partition, timing_partition_master_device_name, timing_partition_id, timing_partition_trigger_mask, timing_partition_rate_control_enabled, timing_partition_spill_gate_enabled,
         enable_raw_recording, raw_recording_output_dir, frontend_type, opmon_impl, enable_dqm, ers_impl, dqm_impl, pocket_url, enable_software_tpg, enable_firmware_tpg, tpg_channel_map, enable_tpset_writing, use_fake_data_producers, dqm_cmap,
         dqm_rawdisplay_params, dqm_meanrms_params, dqm_fourier_params, dqm_fouriersum_params, dqm_channelmask_params, dqm_df_rate,
-        dqm_df_algs, op_env, tpc_region_name_prefix, max_file_size, max_trigger_record_window, debug, json_dir):
+        dqm_df_algs, op_env, tpc_region_name_prefix, max_file_size, max_trigger_record_window, image, use_k8s, debug, json_dir):
 
     if exists(json_dir):
         raise RuntimeError(f"Directory {json_dir} already exists")
+
 
     console.log("Loading dataflow config generator")
     from daqconf.apps.dataflow_gen import get_dataflow_app
@@ -156,7 +160,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     console.log(f"Generating configs for hosts trigger={host_trigger} DFO={host_dfo} dataflow={host_df} readout={host_ru} hsi={host_hsi} dqm={host_dqm}")
 
     the_system = System(first_port=port_timing+1)
-   
+
     total_number_of_data_producers = 0
 
     if use_ssp:
@@ -213,8 +217,10 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     elif opmon_impl == 'pocket':
         info_svc_uri = "influx://" + pocket_url + ":31002/write?db=influxdb"
     else:
-        info_svc_uri = "file://info_${APP_NAME}_${APP_PORT}.json"
+        info_svc_uri = "file://info_{APP_NAME}_{APP_PORT}.json"
 
+    if use_k8s and not image:
+        raise Exception("You need to provide an --image if running with k8s")
 
     ers_settings=dict()
 
@@ -247,7 +253,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
 
     ru_app_names=[f"ruflx{idx}" if use_felix else f"ruemu{idx}" for idx in range(len(host_ru))]
     dqm_app_names = [f"dqm{idx}_ru" for idx in range(len(host_ru))]
-    
+
     if enable_firmware_tpg:
         if number_of_data_producers > 5:
             n_tp = 2
@@ -372,7 +378,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             HOST=host,
             LATENCY_BUFFER_SIZE=latency_buffer_size,
             DEBUG=debug)
-        
+
         if debug:
             console.log(f"{ru_name} app: {the_system.apps[ru_name]}")
 
@@ -412,7 +418,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             MAX_FILE_SIZE = max_file_size,
             DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
             CLOCK_SPEED_HZ = clock_speed_hz,
-            HOST=host_tpw, 
+            HOST=host_tpw,
             DEBUG=debug)
         if debug: console.log(f"{tpw_name} app: {the_system.apps[tpw_name]}")
 
@@ -474,7 +480,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     if debug:
         the_system.export("system_no_frag_prod_connection.dot")
     connect_all_fragment_producers(the_system, verbose=debug)
-    
+
     # console.log("After connecting fragment producers, trigger mgraph:", the_system.apps['trigger'].modulegraph)
     # console.log("After connecting fragment producers, the_system.app_connections:", the_system.app_connections)
 
@@ -505,7 +511,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     if debug:
         console.log(f"After remove_mlt_links, mlt_links is {mlt_links}")
     # END HACK
-        
+
     if debug:
         the_system.export("system.dot")
 
@@ -523,6 +529,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
 
     # Make boot.json config
     from daqconf.core.conf_utils import make_system_command_datas,generate_boot, write_json_files
+    system_command_datas = make_system_command_datas(the_system, verbose=debug)
 
     # HACK: Make sure RUs start after trigger
     forced_deps = []
@@ -532,11 +539,19 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         forced_deps.append(['trigger', ru_name])
 
     system_command_datas = make_system_command_datas(the_system, forced_deps, verbose=debug)
+
+    external_connections = []
+    for app in the_system.apps:
+        external_connections += [ext.external_name for ext in the_system.apps[app].modulegraph.external_connections]
+
     # Override the default boot.json with the one from minidaqapp
     boot = generate_boot(the_system.apps, base_command_port=base_command_port,
                          ers_settings=ers_settings, info_svc_uri=info_svc_uri,
-                         disable_trace=disable_trace, use_kafka=use_kafka)
-    
+                         disable_trace=disable_trace, use_kafka=use_kafka,
+                         external_connections=external_connections,
+                         use_k8s=use_k8s,
+                         image=image)
+
     if thread_pinning_file:
         boot['scripts'] = {
             "thread_pinning": {
@@ -550,15 +565,15 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
                 }
             }
         }
-        
-    
+
+
     system_command_datas['boot'] = boot
 
     write_json_files(app_command_datas, system_command_datas, json_dir, verbose=debug)
 
     console.log(f"MDAapp config generated in {json_dir}")
 
-    
+
     write_metadata_file(json_dir, "daqconf_multiru_gen")
 
 if __name__ == '__main__':
