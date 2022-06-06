@@ -51,7 +51,7 @@ class Endpoint:
     #         self.__init_with_nwmgr(**kwargs)
     #     else:
     #         self.__init_with_external_name(**kwargs)
-    def __init__(self, external_name, internal_name, direction, topic=[], size_hint=1000, toposort=True):
+    def __init__(self, external_name, internal_name, direction, topic=[], size_hint=1000, toposort=False):
         self.external_name = external_name
         self.internal_name = internal_name
         self.direction = direction
@@ -161,7 +161,7 @@ def make_module_deps(app, system_connections, verbose=False):
     return deps
 
 
-def make_app_deps(the_system, verbose=False):
+def make_app_deps(the_system, forced_deps=[], verbose=False):
     """
     Produce a dictionary giving
     the dependencies between a set of applications, given their connections.
@@ -170,6 +170,10 @@ def make_app_deps(the_system, verbose=False):
     """
 
     deps = the_system.make_digraph(for_toposort=True)
+
+    for from_app,to_app in forced_deps:
+        deps.add_edge(from_app, to_app, label="FORCED DEPENDENCY", color="green")
+
     if verbose:
         console.log("Writing app deps to make_app_deps.dot")
         nx.drawing.nx_pydot.write_dot(deps, "make_app_deps.dot")
@@ -496,7 +500,7 @@ def make_unique_name(base, module_list):
 
     return f"{base}_{suffix}"
 
-def generate_boot(apps: list, ers_settings=None, info_svc_uri="file://info_{APP_NAME}_{APP_PORT}.json",
+def generate_boot(apps: list, base_command_port: int=3333, ers_settings=None, info_svc_uri="file://info_{APP_NAME}_{APP_PORT}.json",
                   disable_trace=False, use_kafka=False, verbose=False, extra_env_vars=dict(),
                   image="", external_connections=[]) -> dict:
     """Generate the dictionary that will become the boot.json file"""
@@ -536,10 +540,9 @@ def generate_boot(apps: list, ers_settings=None, info_svc_uri="file://info_{APP_
         }
     }
 
-    first_port = 3333
     ports = {}
     for i, name in enumerate(apps.keys()):
-        ports[name] = first_port + i
+        ports[name] = base_command_port + i
 
     boot = {
         "env": {
@@ -597,13 +600,12 @@ def make_app_json(app_name, app_command_data, data_dir, verbose=False):
         with open(f'{join(data_dir, app_name)}_{c}.json', 'w') as f:
             json.dump(app_command_data[c].pod(), f, indent=4, sort_keys=True)
 
-def make_system_command_datas(the_system, verbose=False):
+def make_system_command_datas(the_system, forced_deps=[], verbose=False):
     """Generate the dictionary of commands and their data for the entire system"""
 
     if the_system.app_start_order is None:
-        app_deps = make_app_deps(the_system, verbose)
-        # Start should go from downstream to upstream, so we need to reverse the sort (graph is directed from upstream to downstream)
-        the_system.app_start_order = list(nx.algorithms.dag.topological_sort(app_deps))[::-1]
+        app_deps = make_app_deps(the_system, forced_deps, verbose)
+        the_system.app_start_order = list(nx.algorithms.dag.topological_sort(app_deps))
 
     system_command_datas=dict()
 

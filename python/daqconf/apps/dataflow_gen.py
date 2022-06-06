@@ -95,7 +95,7 @@ def get_dataflow_app(HOSTIDX=0,
 
     mgraph.connect_modules("trb.trigger_record_output", "datawriter.trigger_record_input", "trigger_records")
     mgraph.add_endpoint(f"trigger_decision_{HOSTIDX}", "trb.trigger_decision_input", Direction.IN)
-    mgraph.add_endpoint("triginh", "datawriter.token_output", Direction.OUT)
+    mgraph.add_endpoint("triginh", "datawriter.token_output", Direction.OUT, toposort=True)
     if HAS_DQM:
         mgraph.add_endpoint(f"trmon_dqm2df_{HOSTIDX}", "trb.mon_connection", Direction.IN)
         mgraph.add_endpoint(f"tr_df2dqm_{HOSTIDX}", None, Direction.OUT)
