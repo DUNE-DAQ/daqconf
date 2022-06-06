@@ -117,6 +117,7 @@ import click
 @click.option('--max-file-size', default=4*1024*1024*1024, help="The size threshold when raw data files are closed (in bytes)")
 @click.option('--max-trigger-record-window', default=0, help="The maximum size for the window of data that will included in a single TriggerRecord (in ticks). Readout windows that are longer than this size will result in TriggerRecords being split into a sequence of TRs. A zero value for this parameter means no splitting.")
 @click.option('--image', default="", type=str, help="Which docker image to use")
+@click.option('--use-k8s', is_flag=True, default=False, help="Whether to use k8s")
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
 
@@ -129,7 +130,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         control_timing_partition, timing_partition_master_device_name, timing_partition_id, timing_partition_trigger_mask, timing_partition_rate_control_enabled, timing_partition_spill_gate_enabled,
         enable_raw_recording, raw_recording_output_dir, frontend_type, opmon_impl, enable_dqm, ers_impl, dqm_impl, pocket_url, enable_software_tpg, enable_firmware_tpg, tpg_channel_map, enable_tpset_writing, use_fake_data_producers, dqm_cmap,
         dqm_rawdisplay_params, dqm_meanrms_params, dqm_fourier_params, dqm_fouriersum_params, dqm_channelmask_params, dqm_df_rate,
-        dqm_df_algs, op_env, tpc_region_name_prefix, max_file_size, max_trigger_record_window, image, debug, json_dir):
+        dqm_df_algs, op_env, tpc_region_name_prefix, max_file_size, max_trigger_record_window, image, use_k8s, debug, json_dir):
 
     if exists(json_dir):
         raise RuntimeError(f"Directory {json_dir} already exists")
@@ -218,6 +219,8 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     else:
         info_svc_uri = "file://info_{APP_NAME}_{APP_PORT}.json"
 
+    if use_k8s and not image:
+        raise Exception("You need to provide an --image if running with k8s")
 
     ers_settings=dict()
 
@@ -546,6 +549,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
                          ers_settings=ers_settings, info_svc_uri=info_svc_uri,
                          disable_trace=disable_trace, use_kafka=use_kafka,
                          external_connections=external_connections,
+                         use_k8s=use_k8s,
                          image=image)
 
     if thread_pinning_file:
