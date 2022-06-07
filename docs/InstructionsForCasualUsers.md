@@ -25,7 +25,7 @@ When you return to this work area (for example, after logging out and back in), 
 1. `cd <work_dir>`
 2. `source ./dbt-env.sh`
 4. `dbt-workarea-env`
-7. `nanorc daq_fake boot i${USER}-test nit conf start 102 wait 60 stop scrap terminate`
+7. `nanorc daq_fake boot ${USER}-test init conf start 102 wait 60 stop scrap terminate`
 
 
 More detailed explanations on how to create different configurations can be found in [Instructions for different configurations for first-time users](ConfigurationsForCasualUsers.md)
