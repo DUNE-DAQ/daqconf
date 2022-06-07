@@ -168,12 +168,12 @@ def get_readout_app(RU_CONFIG=[],
     
     for idx in range(MIN_LINK,MAX_LINK):
         if USE_FAKE_DATA_PRODUCERS:
-            modules += [DAQModule(name = f"fakedataprod_{link_num}",
+            modules += [DAQModule(name = f"fakedataprod_{idx}",
                                   plugin='FakeDataProd',
                                   conf = fdp.ConfParams(
                                   system_type = SYSTEM_TYPE,
                                   apa_number = RU_CONFIG[RUIDX]["region_id"],
-                                  link_number = link_num,
+                                  link_number = idx,
                                   time_tick_diff = 25,
                                   frame_size = 464,
                                   response_delay = 0,
