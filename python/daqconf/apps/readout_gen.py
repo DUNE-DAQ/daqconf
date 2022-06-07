@@ -167,10 +167,6 @@ def get_readout_app(RU_CONFIG=[],
     # is the closest way to the blocks that are being used here
     
     for idx in range(MIN_LINK,MAX_LINK):
-        if idx > 4:
-            link_num = idx + 1
-        else:
-            link_num = idx
         if USE_FAKE_DATA_PRODUCERS:
             modules += [DAQModule(name = f"fakedataprod_{link_num}",
                                   plugin='FakeDataProd',
@@ -185,6 +181,10 @@ def get_readout_app(RU_CONFIG=[],
                                   timesync_topic_name = "Timesync",
                                   ))]
         else:
+            if idx > 4:
+                link_num = idx + 1
+            else:
+                link_num = idx
             if SOFTWARE_TPG_ENABLED:
                 queues += [Queue(f"datahandler_{link_num}.tp_out",f"tp_datahandler_{link_num}.raw_input",f"sw_tp_link_{link_num}",100000 )]                
                 
