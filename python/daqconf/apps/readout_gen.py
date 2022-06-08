@@ -87,27 +87,27 @@ def get_readout_app(RU_CONFIG=[],
 
     if SOFTWARE_TPG_ENABLED:
         for idx in range(MIN_LINK, MAX_LINK):
-            if idx > 4:
-                link_num = idx + 1
-            else:
-                link_num = idx
-            modules += [DAQModule(name = f"tp_datahandler_{link_num}",
+            # if idx > 4:
+            #     link_num = idx + 1
+            # else:
+            #     link_num = idx
+            modules += [DAQModule(name = f"tp_datahandler_{idx}",
                                plugin = "DataLinkHandler",
                                conf = rconf.Conf(readoutmodelconf = rconf.ReadoutModelConf(source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
                                                                                          region_id = RU_CONFIG[RUIDX]["region_id"],
                                                                                          element_id = total_link_count+idx),
                                                  latencybufferconf = rconf.LatencyBufferConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
                                                                                             region_id = RU_CONFIG[RUIDX]["region_id"],
-                                                                                            element_id = total_link_count + link_num),
+                                                                                            element_id = total_link_count + idx),
                                                  rawdataprocessorconf = rconf.RawDataProcessorConf(region_id = RU_CONFIG[RUIDX]["region_id"],
-                                                                                                   element_id = total_link_count + link_num,
+                                                                                                   element_id = total_link_count + idx,
                                                                                                    enable_software_tpg = False,
                                                                                                    channel_map_name=TPG_CHANNEL_MAP),
                                                  requesthandlerconf= rconf.RequestHandlerConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
                                                                                               pop_limit_pct = 0.8,
                                                                                               pop_size_pct = 0.1,
                                                                                               region_id = RU_CONFIG[RUIDX]["region_id"],
-                                                                                              element_id =total_link_count + link_num,
+                                                                                              element_id =total_link_count + idx,
                                                                                               # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                               stream_buffer_size = 100 if FRONTEND_TYPE=='pacman' else 8388608,
                                                                                               enable_raw_recording = False)))]
@@ -181,7 +181,7 @@ def get_readout_app(RU_CONFIG=[],
                                   timesync_topic_name = "Timesync",
                                   ))]
         else:
-            if idx > 4:
+            if FIRMWARE_TPG_ENABLED and idx > 4:
                 link_num = idx + 1
             else:
                 link_num = idx
@@ -259,7 +259,13 @@ def get_readout_app(RU_CONFIG=[],
                                                  links_enabled = link_0))]
             
             if RU_CONFIG[RUIDX]["channel_count"] > 5 :
-                for idx in range(MIN_LINK+6, MAX_LINK+1):
+                if FIRMWARE_TPG_ENABLED:
+                    min_offset = 6
+                    max_offset = 1
+                else:
+                    min_offset = 5
+                    max_offset = 0
+                for idx in range(MIN_LINK+min_offset, MAX_LINK+max_offset):
                     queues += [Queue(f'flxcard_1.output_{idx}',f"datahandler_{idx}.raw_input",f'{FRONTEND_TYPE}_link_{idx}', 100000 )]
                 if FIRMWARE_TPG_ENABLED:
                     queues += [Queue(f'flxcard_1.output_11',f"tp_datahandler_1.raw_input",f'raw_tp_link_11', 100000 )]
@@ -338,7 +344,7 @@ def get_readout_app(RU_CONFIG=[],
             mgraph.add_endpoint(f"timesync_{idx}", f"tp_datahandler_{idx}.timesync_output",    Direction.OUT, ["Timesync"])
 
     for idx in range(MIN_LINK, MAX_LINK):
-        if idx > 4:
+        if FIRMWARE_TPG_ENABLED and idx > 4:
             link_num = idx + 1
         else:
             link_num = idx
