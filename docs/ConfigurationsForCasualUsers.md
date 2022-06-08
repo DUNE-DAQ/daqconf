@@ -6,7 +6,7 @@ First, a reminder to set up your working software environment and downloaded the
 1. `cd <work_dir>`
 2. `source ./dbt-env.sh`
 4. `dbt-workarea-env`
-5. `curl -o frames.bin -O https://cernbox.cern.ch/index.php/s/7qNnuxD8igDOVJT/download`
+5. `curl -o frames.bin -O https://cernbox.cern.ch/index.php/s/0XzhExSIMQJUsp0/download`
 
 Next we generate some sample system configurations and use _[nanorc](https://dune-daq-sw.readthedocs.io/en/latest/packages/nanorc/)_ to run a demo system with them.
 
@@ -44,19 +44,19 @@ Here is an example command specifying 4 data producers (per RU) :
 
 6) Use options `--host-df TEXT` , `--host-ru TEXT` , `--host-trigger TEXT` , `--host-hsi TEXT`  to specify different hosts for the different applications (processes):
 `host Data-Flow (host-df)` this is a repeatable option adding an additional DF process each time
-`host Readout Unit (host-ru)` this is a repeatable option adding an additional RU process each time
+`host Readout Unit (host-ru)` this is a repeatable option adding an additional RU process each time, each `host-ru` option needs to be accompanied by a `--region-id <N>` option, and each of the <N> values must be unique
 `host Trigger app  (host-trigger)`
 `host HSI app (--host-hsi)`
 
 for example using the following fake IP addresses for the different hosts :  127.0.0.1 , 127.0.0.2 , 127.0.0.3 , 127.0.0.4
 
-`daqconf_multiru_gen -d $PWD/frames.bin -o . --host-df 127.0.0.1 --host-ru 127.0.0.2 --host-trigger 127.0.0.3 --host-hsi 127.0.0.4  daq_fake06`
+`daqconf_multiru_gen -d $PWD/frames.bin -o . --host-df 127.0.0.1 --host-ru 127.0.0.2 --host-ru 127.0.0.2 --host-trigger 127.0.0.3 --host-hsi 127.0.0.4   --region-id 0 --region-id 1 daq_fake06`
 
-the default for all the host options will be `localhost`
+the default for any unspecified host options will be `localhost`
 
 7) Running _nanorc_ can be done in interactively or in batch mode, for the later you can specify a sequence of commands to drive MiniDAQ app, for example run :
 
- `nanorc daq_fake03 boot init conf start 103 wait 60 stop scrap terminate`
+ `nanorc daq_fake03 boot <partition_name> init conf start 103 wait 60 stop scrap terminate`
 
 Where the `start <run_number>` command specifies the run_number value to be used.
 Any meaningful combination of commands is allowed.  Note that the `start` command includes an automatically-generated `resume` command to start the flow of triggers, and the `stop` command includes an automatically-generated `pause` command to stop the flow of triggers.
