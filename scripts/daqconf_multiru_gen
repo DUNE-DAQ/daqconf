@@ -428,6 +428,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
 
         app_name = f'dataflow{i}'
         df_app_names.append(app_name)
+        max_expected_tr_sequences = 1 if max_trigger_record_window < 1 else ((trigger_window_before_ticks + trigger_window_after_ticks) / max_trigger_record_window)
         the_system.apps[app_name] = get_dataflow_app(
             HOSTIDX = i,
             OUTPUT_PATH = output_path,
@@ -435,6 +436,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             TPC_REGION_NAME_PREFIX = tpc_region_name_prefix,
             MAX_FILE_SIZE = max_file_size,
             MAX_TRIGGER_RECORD_WINDOW = max_trigger_record_window,
+            MAX_EXPECTED_TR_SEQUENCES = max_expected_tr_sequences,
             HOST=host,
             HAS_DQM=enable_dqm,
             DEBUG=debug
