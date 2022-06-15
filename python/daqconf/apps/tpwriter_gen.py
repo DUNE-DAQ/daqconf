@@ -12,11 +12,13 @@ moo.otypes.load_types('appfwk/app.jsonnet')
 
 moo.otypes.load_types('dfmodules/tpstreamwriter.jsonnet')
 moo.otypes.load_types('dfmodules/hdf5datastore.jsonnet')
+moo.otypes.load_types('trigger/tpchannelfilter.jsonnet')
 
 # Import new types
 import dunedaq.dfmodules.tpstreamwriter as tpsw
 import dunedaq.hdf5libs.hdf5filelayout as h5fl
 import dunedaq.dfmodules.hdf5datastore as hdf5ds
+import dunedaq.trigger.tpchannelfilter as chfilter
 
 from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
@@ -27,6 +29,7 @@ QUEUE_POP_WAIT_MS = 100
 
 def get_tpwriter_app(RU_CONFIG,
                      FIRMWARE_TPG_ENABLED: bool = False,
+                     CHANNEL_MAP_NAME: str = "ProtoDUNESP1ChannelMap",
                      OUTPUT_PATH=".",
                      OPERATIONAL_ENVIRONMENT="swtest",
                      TPC_REGION_NAME_PREFIX="APA",
@@ -41,6 +44,24 @@ def get_tpwriter_app(RU_CONFIG,
     ONE_SECOND_INTERVAL_TICKS = CLOCK_SPEED_HZ / DATA_RATE_SLOWDOWN_FACTOR
 
     modules = []
+
+    for ruidx, ru_config in enumerate(RU_CONFIG):
+        if FIRMWARE_TPG_ENABLED:
+            if ru_config["channel_count"] > 5:
+                tp_links = 2
+            else:
+                tp_links = 1
+        else:
+            tp_links = ru_config["channel_count"]
+
+        for link_idx in range(tp_links):
+            link_id = f'ru{ruidx}_link{link_idx}'
+            modules += [DAQModule(name = f'channelfilter_{link_id}',
+                                  plugin = 'TPChannelFilter',
+                                  conf = chfilter.Conf(channel_map_name=CHANNEL_MAP_NAME,
+                                                       keep_collection=True,
+                                                       keep_induction=True))]
+
 
     modules += [DAQModule(name = 'tpswriter',
                           plugin = "TPStreamWriter",
@@ -83,7 +104,8 @@ def get_tpwriter_app(RU_CONFIG,
             tp_links = ru_config["channel_count"]
         for link_idx in range(tp_links):
             link_id=f"ru{ruidx}_link{link_idx}"
-            mgraph.add_endpoint(f"tpsets_{link_id}_sub", f"tpswriter.tpset_source", Direction.IN, topic=[ru_config["tpset_topics"][link_idx]])
+            mgraph.add_endpoint(f"tpsets_{link_id}_sub", f"channelfilter_{link_id}.tpset_source", Direction.IN, topic=[ru_config["tpset_topics"][link_idx]])
+            mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpswriter.tpset_source', "tps_to_tpswriter", size_hint=1000)
 
     # mgraph.add_endpoint("tpsets_into_writer", "tpswriter.tpset_source", Direction.IN)
 
