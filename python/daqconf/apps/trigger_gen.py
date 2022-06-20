@@ -115,7 +115,10 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     if SOFTWARE_TPG_ENABLED or FIRMWARE_TPG_ENABLED:
         config_tcm =  tcm.Conf(candidate_maker=CANDIDATE_PLUGIN,
                                candidate_maker_config=temptypes.CandidateConf(**CANDIDATE_CONFIG))
-        
+
+        # (PAR 2022-06-09) The max_latency_ms here should be kept
+        # larger than the corresponding value in the upstream
+        # TPZippers. See comment below for more details
         modules += [DAQModule(name = 'tazipper',
                               plugin = 'TAZipper',
                               conf = tzip.ConfParams(cardinality=len(region_ids1),
@@ -174,10 +177,42 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                 for RU in RU_CONFIG:
                     if RU['region_id'] == region_id:
                         cardinality += RU['channel_count']
+                # (PAR 2022-06-09) The max_latency_ms here should be
+                # kept smaller than the corresponding value in the
+                # downstream TAZipper. The reason is to avoid tardy
+                # sets at run stop, which are caused as follows:
+                #
+                # 1. The TPZipper receives its last input TPSets from
+                # multiple links. In general, the last time received
+                # from each link will be different (because the
+                # upstream readout senders don't all stop
+                # simultaneously). So there will be sets on one link
+                # that don't have time-matched sets on the other
+                # links. TPZipper sends these unmatched sets out after
+                # TPZipper's max_latency_ms milliseconds have passed,
+                # so these sets are delayed by
+                # "tpzipper.max_latency_ms"
+                #
+                # 2. Meanwhile, the TAZipper has also stopped
+                # receiving data from all but one of the readout units
+                # (which are stopped sequentially), and so is in a
+                # similar situation. Once tazipper.max_latency_ms has
+                # passed, it sends out the sets from the remaining
+                # live input, and "catches up" with the current time
+                #
+                # So, if tpzipper.max_latency_ms >
+                # tazipper.max_latency_ms, the TA inputs made from the
+                # delayed TPSets will certainly arrive at the TAZipper
+                # after it has caught up to the current time, and be
+                # tardy. If the tpzipper.max_latency_ms ==
+                # tazipper.max_latency_ms, then depending on scheduler
+                # delays etc, the delayed TPSets's TAs _may_ arrive at
+                # the TAZipper tardily. With tpzipper.max_latency_ms <
+                # tazipper.max_latency_ms, everything should be fine.
                 modules += [DAQModule(name = f'zip_{region_id}',
                                       plugin = 'TPZipper',
                                               conf = tzip.ConfParams(cardinality=cardinality,
-                                                                     max_latency_ms=1000,
+                                                                     max_latency_ms=100,
                                                                      region_id=region_id,
                                                                      element_id=TA_ELEMENT_ID)),
                                     
