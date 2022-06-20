@@ -56,7 +56,7 @@ import click
 @click.option('--host-tprtc', default='localhost', help='Host to run the timing partition controller app on')
 @click.option('--host-dqm', multiple=True, default=['localhost'], help='Host to run the DQM aps on')
 @click.option('--region-id', multiple=True, default=[0], help="Define the Region IDs for the RUs. If only specified once, will apply to all RUs.")
-@click.option('--latency-buffer-size', default=499968, help="Size of the latency buffers (in number of elements)")
+@click.option('--latency-buffer-size', default=None, help="Size of the latency buffers (in number of elements)")
 # hsi readout options
 @click.option('--hsi-hw-connections-file', default="${TIMING_SHARE}/config/etc/connections.xml", help='Real timing hardware only: path to hardware connections file')
 @click.option('--hsi-device-name', default="", help='Real HSI hardware only: device name of HSI hw')
@@ -211,6 +211,11 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         system_type = 'NDLArTPC'
     else:
         system_type = 'PDS'
+
+    if latency_buffer_size is None:
+        latency_buffer_size = 499968
+        if frontend_type == 'tde':
+            latency_buffer_size = 100
 
     if opmon_impl == 'cern':
         info_svc_uri = "influx://opmondb.cern.ch:31002/write?db=influxdb"
