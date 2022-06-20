@@ -10,6 +10,7 @@ from collections import defaultdict
 from os.path import exists, join
 from daqconf.core.system import System
 from daqconf.core.metadata import write_metadata_file
+from urllib.parse import urlparse
 
 # Add -h as default help option
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -47,6 +48,7 @@ import click
 @click.option('--disable-trace', is_flag=True, help="Do not enable TRACE (default TRACE_FILE is /tmp/trace_buffer_\${HOSTNAME}_\${USER})")
 @click.option('-f', '--use-felix', is_flag=True, help="Use real felix cards instead of fake ones")
 @click.option('--use-ssp', is_flag=True, help="Use real SSPs instead of fake sources")
+
 @click.option('--host-df', multiple=True, default=['localhost'], help="This option is repeatable, with each repetition adding another dataflow app.")
 @click.option('--host-dfo', default='localhost', help="Sets the host for the DFO app")
 @click.option('--host-ru', multiple=True, default=['localhost'], help="This option is repeatable, with each repetition adding an additional ru process.")
@@ -55,6 +57,7 @@ import click
 @click.option('--host-tpw', default='localhost', help='Host to run the TPWriter app on')
 @click.option('--host-tprtc', default='localhost', help='Host to run the timing partition controller app on')
 @click.option('--host-dqm', multiple=True, default=['localhost'], help='Host to run the DQM aps on')
+
 @click.option('--region-id', multiple=True, default=[0], help="Define the Region IDs for the RUs. If only specified once, will apply to all RUs.")
 @click.option('--latency-buffer-size', default=499968, help="Size of the latency buffers (in number of elements)")
 # hsi readout options
@@ -251,8 +254,27 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     for region in region_id: ru_channel_counts[region] = 0
     regionidx = 0
 
-    ru_app_names=[f"ruflx{idx}" if use_felix else f"ruemu{idx}" for idx in range(len(host_ru))]
-    dqm_app_names = [f"dqm{idx}_ru" for idx in range(len(host_ru))]
+    output_path = urlparse(output_path)
+    raw_data_pvcs = {}
+    if debug:
+        console.log(f"Output data written to \"{output_path.path}\"")
+    if use_k8s:
+        if output_path.scheme:
+            # everything goes to the same place
+            raw_data_pvcs = {
+                "storage_class_name": output_path.scheme,
+                "claim_name": output_path.scheme,
+                "mount": output_path.path,
+                "read_only": False,
+            }
+            if debug:
+                console.log(f"Corresponding PVC: \"{output_path.scheme}\"")
+        else:
+            console.log(f"[red]No PVC! Data will be lost when terminating, and make sure \"{output_path.path}\" exists in the pod![/red]")
+
+
+    ru_app_names = [f"ruflx{idx}" if use_felix else f"ruemu{idx}" for idx in range(len(host_ru))]
+    dqm_app_names = [f"dqm{idx}-ru" for idx in range(len(host_ru))]
 
     if enable_firmware_tpg:
         if number_of_data_producers > 5:
@@ -299,6 +321,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             TIMING_PORT=port_timing,
             HOST=host_hsi,
             DEBUG=debug)
+        next(iter(the_system.apps['hsi'].node_selection))["strict"] = True
     else:
         the_system.apps["hsi"] = get_fake_hsi_app(
             RUN_NUMBER = run_number,
@@ -327,6 +350,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             TIMING_PORT=port_timing,
             HOST=host_tprtc,
             DEBUG=debug)
+        next(iter(the_system.apps['tprtc'].node_selection))["strict"] = True
 
     the_system.apps['trigger'] = get_trigger_app(
         SOFTWARE_TPG_ENABLED = enable_software_tpg,
@@ -378,6 +402,14 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             HOST=host,
             LATENCY_BUFFER_SIZE=latency_buffer_size,
             DEBUG=debug)
+        if use_k8s:
+            if the_system.apps[ru_name].host != "localhost":
+                next(iter(the_system.apps[ru_name].node_selection))["strict"] = True
+            if use_felix:
+                the_system.apps[ru_name].resources = {
+                    "felix.cern/flx": "2", # requesting 2 FLXs
+                    "memory": "32Gi" # yes bro
+                }
 
         if debug:
             console.log(f"{ru_name} app: {the_system.apps[ru_name]}")
@@ -405,6 +437,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
                 NUM_DF_APPS=len(host_df),
                 FRONTEND_TYPE=frontend_type,
                 DEBUG=debug)
+
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
 
     if enable_tpset_writing:
@@ -412,7 +445,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         the_system.apps[tpw_name] = get_tpwriter_app(
             RU_CONFIG = ru_configs,
             FIRMWARE_TPG_ENABLED = enable_firmware_tpg,
-            OUTPUT_PATH = output_path,
+            OUTPUT_PATH = output_path.path,
             OPERATIONAL_ENVIRONMENT = op_env,
             TPC_REGION_NAME_PREFIX = tpc_region_name_prefix,
             MAX_FILE_SIZE = max_file_size,
@@ -420,17 +453,22 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             CLOCK_SPEED_HZ = clock_speed_hz,
             HOST=host_tpw,
             DEBUG=debug)
+
+        if raw_data_pvcs:
+            the_system.apps[tpw_name].pvcs += [raw_data_pvcs]
+
         if debug: console.log(f"{tpw_name} app: {the_system.apps[tpw_name]}")
 
     df_app_names = []
-    dqm_df_app_names = [f"dqm{idx}_df" for idx in range(len(host_df))]
-    for i,host in enumerate(host_df):
+    dqm_df_app_names = [f"dqm{idx}-df" for idx in range(len(host_df))]
 
+    for i,host in enumerate(host_df):
         app_name = f'dataflow{i}'
+
         df_app_names.append(app_name)
         the_system.apps[app_name] = get_dataflow_app(
             HOSTIDX = i,
-            OUTPUT_PATH = output_path,
+            OUTPUT_PATH = output_path.path,
             OPERATIONAL_ENVIRONMENT = op_env,
             TPC_REGION_NAME_PREFIX = tpc_region_name_prefix,
             MAX_FILE_SIZE = max_file_size,
@@ -439,6 +477,10 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             HAS_DQM=enable_dqm,
             DEBUG=debug
         )
+        if raw_data_pvcs:
+            the_system.apps[app_name].pvcs += [raw_data_pvcs]
+
+
         if enable_dqm:
             dqm_name = dqm_df_app_names[i]
             the_system.apps[dqm_name] = get_dqm_app(
@@ -466,12 +508,35 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
                 NUM_DF_APPS=len(host_df),
                 FRONTEND_TYPE=frontend_type,
                 DEBUG=debug)
+            the_system.apps[dqm_name].pod_affinity += [{
+                 # run preferably on thesame host as dataflow
+                "app": [app_name],
+                "strict": False
+            }]
+
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
 
+
+    all_apps_except_ru = []
+    all_apps_except_ru_and_df = []
 
     for name,app in the_system.apps.items():
         if app.name=="__app":
             app.name=name
+
+        if app.name not in ru_app_names:
+            all_apps_except_ru += [app]
+        if app.name not in ru_app_names+df_app_names:
+            all_apps_except_ru_and_df += [name]
+
+    if use_k8s:
+        from daqconf.core.conf_utils import set_strict_anti_affinity
+        set_strict_anti_affinity(all_apps_except_ru, ru_app_names)
+
+        # HACK
+        boot_order = ru_app_names + df_app_names + [app for app in all_apps_except_ru_and_df]
+        if debug:
+            console.log(f'Boot order: {boot_order}')
 
     #     console.log(f"MDAapp config generated in {json_dir}")
     from daqconf.core.conf_utils import make_app_command_data
@@ -528,7 +593,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     ##################################################################################
 
     # Make boot.json config
-    from daqconf.core.conf_utils import make_system_command_datas,generate_boot, write_json_files
+    from daqconf.core.conf_utils import make_system_command_datas,generate_boot_common, write_json_files
 
     # HACK: Make sure RUs start after trigger
     forced_deps = []
@@ -544,12 +609,37 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         external_connections += [ext.external_name for ext in the_system.apps[app].modulegraph.external_connections]
 
     # Override the default boot.json with the one from minidaqapp
-    boot = generate_boot(the_system.apps, base_command_port=base_command_port,
-                         ers_settings=ers_settings, info_svc_uri=info_svc_uri,
-                         disable_trace=disable_trace, use_kafka=use_kafka,
-                         external_connections=external_connections,
-                         use_k8s=use_k8s,
-                         image=image)
+    boot = generate_boot_common(
+        ers_settings = ers_settings,
+        info_svc_uri = info_svc_uri,
+        disable_trace = disable_trace,
+        use_kafka = use_kafka,
+        external_connections = external_connections,
+        daq_app_exec_name = "daq_application_ssh" if not use_k8s else "daq_application_k8s",
+        verbose = debug,
+    )
+
+    if use_k8s:
+        from daqconf.core.conf_utils import update_with_k8s_boot_data
+        console.log("Generating k8s boot.json")
+        update_with_k8s_boot_data(
+            boot_data = boot,
+            apps = the_system.apps,
+            base_command_port = base_command_port,
+            boot_order = boot_order,
+            image = image,
+            verbose = debug,
+        )
+    else:
+        from daqconf.core.conf_utils import update_with_ssh_boot_data
+        console.log("Generating ssh boot.json")
+        update_with_ssh_boot_data(
+            boot_data = boot,
+            apps = the_system.apps,
+            base_command_port = base_command_port,
+            verbose = debug,
+        )
+
 
     if thread_pinning_file:
         boot['scripts'] = {
