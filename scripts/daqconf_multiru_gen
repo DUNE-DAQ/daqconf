@@ -215,7 +215,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     if latency_buffer_size is None:
         latency_buffer_size = 499968
         if frontend_type == 'tde':
-            latency_buffer_size = 100
+            latency_buffer_size = 1000
 
     if opmon_impl == 'cern':
         info_svc_uri = "influx://opmondb.cern.ch:31002/write?db=influxdb"
