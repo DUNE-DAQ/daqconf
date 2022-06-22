@@ -15,7 +15,6 @@ moo.otypes.load_types('dfmodules/datawriter.jsonnet')
 moo.otypes.load_types('dfmodules/hdf5datastore.jsonnet')
 moo.otypes.load_types('dfmodules/fragmentreceiver.jsonnet')
 moo.otypes.load_types('dfmodules/triggerdecisionreceiver.jsonnet')
-moo.otypes.load_types('networkmanager/nwmgr.jsonnet')
 
 
 # Import new types
@@ -29,7 +28,6 @@ import dunedaq.hdf5libs.hdf5filelayout as h5fl
 import dunedaq.dfmodules.hdf5datastore as hdf5ds
 import dunedaq.dfmodules.fragmentreceiver as frcv
 import dunedaq.dfmodules.triggerdecisionreceiver as tdrcv
-import dunedaq.networkmanager.nwmgr as nwmgr
 
 from appfwk.utils import acmd, mcmd, mrccmd, mspec
 from daqconf.core.app import App, ModuleGraph

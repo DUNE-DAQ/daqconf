@@ -12,16 +12,6 @@ moo.otypes.load_types('trigger/moduleleveltrigger.jsonnet')
 moo.otypes.load_types('dfmodules/fragmentreceiver.jsonnet')
 moo.otypes.load_types('dfmodules/requestreceiver.jsonnet')
 moo.otypes.load_types('dfmodules/triggerrecordbuilder.jsonnet')
-#
-# (P. Rodrigues 2022-03-01) You would think that we need the
-# load_types() line below, but when it's included, the conversion of
-# app's "init" commands fails with error:
-#
-# AttributeError: Connection missing required field topics
-#
-# It's very unclear to me what's going on
-#
-# moo.otypes.load_types('networkmanager/nwmgr.jsonnet')
 
 import dunedaq.trigger.moduleleveltrigger as mlt
 import dunedaq.dfmodules.fragmentreceiver as frcv
