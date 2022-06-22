@@ -195,6 +195,8 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
 
     if (len(region_id) != len(host_ru)) and (len(region_id) != 0):
         raise Exception("--region-id should be specified once for each --host-ru, or not at all!")
+
+    # TODO, Eric Flumerfelt <eflumerf@github.com> 22-June-2022: Fix if/when multiple frontend types are supported. (Use https://click.palletsprojects.com/en/8.1.x/options/#multi-value-options for RU host/frontend/region config?)
     if len(region_id) == 0:
         region_id_temp = []
         for reg in range(len(host_ru)):
