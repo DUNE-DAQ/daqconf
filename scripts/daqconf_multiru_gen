@@ -271,6 +271,9 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
                 console.log(f"Corresponding PVC: \"{output_path.scheme}\"")
         else:
             console.log(f"[red]No PVC! Data will be lost when terminating, and make sure \"{output_path.path}\" exists in the pod![/red]")
+    else:
+        if output_path.scheme:
+            raise RuntimeError('No PVC can be set if you are not running with k8s')
 
 
     ru_app_names = [f"ruflx{idx}" if use_felix else f"ruemu{idx}" for idx in range(len(host_ru))]
