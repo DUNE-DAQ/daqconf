@@ -41,6 +41,7 @@ TC_ELEMENT_ID = 0
 moo.otypes.make_type(schema='number', dtype='i4', name='temp_integer', path='temptypes')
 moo.otypes.make_type(schema='number', dtype='f4', name='temp_float', path='temptypes')
 moo.otypes.make_type(schema='string', name='temp_string', path='temptypes')
+moo.otypes.make_type(schema='boolean', name='temp_boolean', path='temptypes')
 def make_moo_record(conf_dict,name,path='temptypes'):
     fields = []
     for pname,pvalue in conf_dict.items():
@@ -51,6 +52,8 @@ def make_moo_record(conf_dict,name,path='temptypes'):
             typename = 'temptypes.temp_float'
         elif type(pvalue) == str:
             typename = 'temptypes.temp_string'
+        elif type(pvalue) == bool:
+            typename = 'temptypes.temp_boolean'
         else:
             raise Exception(f'Invalid config argument type: {type(pvalue)}')
         fields.append(dict(name=pname,item=typename))
