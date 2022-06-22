@@ -55,7 +55,7 @@ import click
 @click.option('--host-tpw', default='localhost', help='Host to run the TPWriter app on')
 @click.option('--host-tprtc', default='localhost', help='Host to run the timing partition controller app on')
 @click.option('--host-dqm', multiple=True, default=['localhost'], help='Host to run the DQM aps on')
-@click.option('--region-id', multiple=True, default=[0], help="Define the Region IDs for the RUs. If only specified once, will apply to all RUs.")
+@click.option('--region-id', multiple=True, default=[], help="Define the Region IDs for the RUs. If not specified, each RU will be assigned a Region ID based on declared order.")
 @click.option('--latency-buffer-size', default=499968, help="Size of the latency buffers (in number of elements)")
 # hsi readout options
 @click.option('--hsi-hw-connections-file', default="${TIMING_SHARE}/config/etc/connections.xml", help='Real timing hardware only: path to hardware connections file')
@@ -193,8 +193,13 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     else:
         trigemu_token_count = 0
 
-    if (len(region_id) != len(host_ru)) and (len(region_id) != 1):
-        raise Exception("--region-id should be specified either once only or once for each --host-ru!")
+    if (len(region_id) != len(host_ru)) and (len(region_id) != 0):
+        raise Exception("--region-id should be specified once for each --host-ru, or not at all!")
+    if len(region_id) == 0:
+        region_id_temp = []
+        for reg in range(len(host_ru)):
+            region_id_temp.append(reg)
+        region_id = tuple(region_id_temp)
 
     if use_hsi_hw and not hsi_device_name:
         raise Exception("If --use-hsi-hw flag is set to true, --hsi-device-name must be specified!")
@@ -249,19 +254,9 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     ru_configs = []
     ru_channel_counts = {}
     for region in region_id: ru_channel_counts[region] = 0
-    regionidx = 0
 
     ru_app_names=[f"ruflx{idx}" if use_felix else f"ruemu{idx}" for idx in range(len(host_ru))]
     dqm_app_names = [f"dqm{idx}_ru" for idx in range(len(host_ru))]
-
-    if enable_firmware_tpg:
-        if number_of_data_producers > 5:
-            n_tp = 2
-        else:
-            n_tp = 1
-        topic_tpsets = [ f"topic_tpsets_ru{region_id[regionidx]}_link{i}" for i in range(n_tp) ]
-    else:
-        topic_tpsets = [ f"topic_tpsets_ru{region_id[regionidx]}_link{i}" for i in range(number_of_data_producers) ]
 
     for hostidx,ru_host in enumerate(ru_app_names):
         cardid = 0
@@ -272,12 +267,10 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             host_id_dict[host_ru[hostidx]] = 0
         ru_configs.append( {"host": host_ru[hostidx],
                             "card_id": cardid,
-                            "region_id": region_id[regionidx],
-                            "start_channel": ru_channel_counts[region_id[regionidx]],
-                            "channel_count": number_of_data_producers,
-                            "tpset_topics":  topic_tpsets} )
-        ru_channel_counts[region_id[regionidx]] += number_of_data_producers
-        if len(region_id) != 1: regionidx = regionidx + 1
+                            "region_id": region_id[hostidx],
+                            "start_channel": ru_channel_counts[region_id[hostidx]],
+                            "channel_count": number_of_data_producers })
+        ru_channel_counts[region_id[hostidx]] += number_of_data_producers
 
     if use_hsi_hw:
         the_system.apps["hsi"] = get_hsi_app(
