@@ -10,7 +10,8 @@ from collections import defaultdict
 from os.path import exists, join
 from daqconf.core.system import System
 from daqconf.core.metadata import write_metadata_file
-from urllib.parse import urlparse
+import random
+import string
 
 # Add -h as default help option
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -254,26 +255,24 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     for region in region_id: ru_channel_counts[region] = 0
     regionidx = 0
 
-    output_path = urlparse(output_path)
     raw_data_pvcs = {}
     if debug:
-        console.log(f"Output data written to \"{output_path.path}\"")
+        console.log(f"Output data written to \"{output_path}\"")
     if use_k8s:
-        if output_path.scheme:
+        if output_path:
             # everything goes to the same place
+            new_output_path = "/"+output_path+"-"+''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
             raw_data_pvcs = {
-                "storage_class_name": output_path.scheme,
-                "claim_name": output_path.scheme,
-                "mount": output_path.path,
+                "storage_class_name": output_path,
+                "claim_name": output_path,
+                "mount": new_output_path,
                 "read_only": False,
             }
+            output_path = new_output_path
             if debug:
-                console.log(f"Corresponding PVC: \"{output_path.scheme}\"")
+                console.log(f"Corresponding PVC: \"{output_path}\"")
         else:
-            console.log(f"[red]No PVC! Data will be lost when terminating, and make sure \"{output_path.path}\" exists in the pod![/red]")
-    else:
-        if output_path.scheme:
-            raise RuntimeError('No PVC can be set if you are not running with k8s')
+            console.log(f"[red]No PVC! Data will be lost when terminating, and make sure \"{output_path}\" exists in the pod![/red]")
 
 
     ru_app_names = [f"ruflx{idx}" if use_felix else f"ruemu{idx}" for idx in range(len(host_ru))]
@@ -448,7 +447,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         the_system.apps[tpw_name] = get_tpwriter_app(
             RU_CONFIG = ru_configs,
             FIRMWARE_TPG_ENABLED = enable_firmware_tpg,
-            OUTPUT_PATH = output_path.path,
+            OUTPUT_PATH = output_path,
             OPERATIONAL_ENVIRONMENT = op_env,
             TPC_REGION_NAME_PREFIX = tpc_region_name_prefix,
             MAX_FILE_SIZE = max_file_size,
@@ -472,7 +471,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         max_expected_tr_sequences = 1 if max_trigger_record_window < 1 else ((trigger_window_before_ticks + trigger_window_after_ticks) / max_trigger_record_window)
         the_system.apps[app_name] = get_dataflow_app(
             HOSTIDX = i,
-            OUTPUT_PATH = output_path.path,
+            OUTPUT_PATH = output_path,
             OPERATIONAL_ENVIRONMENT = op_env,
             TPC_REGION_NAME_PREFIX = tpc_region_name_prefix,
             MAX_FILE_SIZE = max_file_size,
