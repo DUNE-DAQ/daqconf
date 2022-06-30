@@ -180,15 +180,15 @@ def make_app_deps(the_system, forced_deps=[], verbose=False):
 
     return deps
 
-def add_one_command_data(command_data, command, default_params, app, module_order):
+def add_one_command_data(command_data, command, default_params, app):
     """Add the command data for one command in one app to the command_data object. The modules to be sent the command are listed in `module_order`. If the module has an entry in its extra_commands dictionary for this command, then that entry is used as the parameters to pass to the command, otherwise the `default_params` object is passed"""
-    mod_and_params=[]
-    for module in module_order:
-        extra_commands = app.modulegraph.get_module(module).extra_commands
-        if command in extra_commands:
-            mod_and_params.append((module, extra_commands[command]))
-        else:
-            mod_and_params.append((module, default_params))
+    mod_and_params=[("", default_params)]
+    # for module in module_order:
+    #     extra_commands = app.modulegraph.get_module(module).extra_commands
+    #     if command in extra_commands:
+    #         mod_and_params.append((module, extra_commands[command]))
+    #     else:
+    #         mod_and_params.append((module, default_params))
 
     command_data[command] = acmd(mod_and_params)
 
@@ -410,12 +410,12 @@ def make_app_command_data(system, app, appkey, verbose=False):
     if verbose:
         console.log(f"inter-module dependencies are: {module_deps}")
 
-    stop_order = list(nx.algorithms.dag.topological_sort(module_deps))
-    start_order = stop_order[::-1]
+    # stop_order = list(nx.algorithms.dag.topological_sort(module_deps))
+    # start_order = stop_order[::-1]
 
-    if verbose:
-        console.log(f"Inferred module start order is {start_order}")
-        console.log(f"Inferred module stop order is {stop_order}")
+    # if verbose:
+        # console.log(f"Inferred module start order is {start_order}")
+        # console.log(f"Inferred module stop order is {stop_order}")
 
     app_connrefs = defaultdict(list)
     for endpoint in app.modulegraph.endpoints:
@@ -459,11 +459,14 @@ def make_app_command_data(system, app, appkey, verbose=False):
     startpars = rccmd.StartParams(run=1, disable_data_storage=False)
     resumepars = rccmd.ResumeParams()
 
-    add_one_command_data(command_data, "start",   startpars,  app, start_order)
-    add_one_command_data(command_data, "stop",    None,       app, stop_order)
-    add_one_command_data(command_data, "scrap",   None,       app, stop_order)
-    add_one_command_data(command_data, "resume",  resumepars, app, start_order)
-    add_one_command_data(command_data, "pause",   None,       app, stop_order)
+    add_one_command_data(command_data, "start",        startpars,  app)
+    add_one_command_data(command_data, "stop",         None,       app)
+    add_one_command_data(command_data, "prestop1",     None,       app)
+    add_one_command_data(command_data, "prestop2",     None,       app)
+    add_one_command_data(command_data, "stop_trigger", None,       app)
+    add_one_command_data(command_data, "scrap",        None,       app)
+    add_one_command_data(command_data, "resume",       resumepars, app)
+    add_one_command_data(command_data, "pause",        None,       app)
 
     # TODO: handle modules' `extra_commands`, including "record"
 
@@ -592,7 +595,7 @@ def generate_boot(apps: list, base_command_port: int=3333, ers_settings=None, in
     return boot
 
 
-cmd_set = ["init", "conf", "start", "stop", "pause", "resume", "scrap"]
+cmd_set = ["init", "conf", "start", "stop", "stop_trigger", "prestop1", "prestop2", "pause", "resume", "scrap"]
 
 
 def make_app_json(app_name, app_command_data, data_dir, verbose=False):
@@ -606,9 +609,9 @@ def make_app_json(app_name, app_command_data, data_dir, verbose=False):
 def make_system_command_datas(the_system, forced_deps=[], verbose=False):
     """Generate the dictionary of commands and their data for the entire system"""
 
-    if the_system.app_start_order is None:
-        app_deps = make_app_deps(the_system, forced_deps, verbose)
-        the_system.app_start_order = list(nx.algorithms.dag.topological_sort(app_deps))
+    # if the_system.app_start_order is None:
+    #     app_deps = make_app_deps(the_system, forced_deps, verbose)
+    # the_system.app_start_order = list(nx.algorithms.dag.topological_sort(app_deps))
 
     system_command_datas=dict()
 
@@ -617,10 +620,10 @@ def make_system_command_datas(the_system, forced_deps=[], verbose=False):
         cfg = {
             "apps": {app_name: f'data/{app_name}_{c}' for app_name in the_system.apps.keys()}
         }
-        if c == 'start':
-            cfg['order'] = the_system.app_start_order
-        elif c == 'stop':
-            cfg['order'] = the_system.app_start_order[::-1]
+        # if c == 'start':
+        #     cfg['order'] = the_system.app_start_order
+        # elif c == 'stop':
+        #     cfg['order'] = the_system.app_start_order[::-1]
 
         system_command_datas[c]=cfg
 
