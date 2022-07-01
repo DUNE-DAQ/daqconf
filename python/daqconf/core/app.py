@@ -63,7 +63,7 @@ class ModuleGraph:
         for module in self.modules:
             if module.name in modules_set:
                 raise RuntimeError(f"Module {module.name} appears twice in the ModuleGraph")
-            deps.add_node(module.name)
+            deps.add_node(module.name, label=f"<<B>{module.name}</B><BR/>[{module.plugin}]>", shape='box', style='"rounded,filled"', fillcolor='lightskyblue1')
             modules_set.add(module.name)
 
         for queue in self.queues:
@@ -86,10 +86,13 @@ class ModuleGraph:
             to_module = endpoint_internal_data[0]
             if to_module in modules_set:
                 if endpoint.direction == Direction.IN:
-                    deps.add_edge(endpoint.external_name, to_module, label=endpoint_internal_data[1])
+                    deps.add_edge(endpoint.external_name, to_module, label=endpoint_internal_data[1], color='red', style='dashed')
+                    deps.nodes[endpoint.external_name]['color'] = 'red'
+                    deps.nodes[endpoint.external_name]['shape'] = 'box'
                 else:
-                    deps.add_edge(to_module, endpoint.external_name, label=endpoint_internal_data[1])
-                deps.nodes[endpoint.external_name]['color'] = 'red'
+                    deps.add_edge(to_module, endpoint.external_name, label=endpoint_internal_data[1], color='blue', style='dashed')
+                    deps.nodes[endpoint.external_name]['color'] = 'blue'
+                    deps.nodes[endpoint.external_name]['shape'] = 'box'
             else:
                 raise RuntimeError(f"Bad endpoint {endpoint}: internal connection which doesn't connect to any module! Available modules: {modules_set}")
 
@@ -100,8 +103,11 @@ class ModuleGraph:
                 raise RuntimeError(f"Bad fragment producer {producer}: request_in must be specified as module.queue_name")
 
             if producer_request_in[0] in modules_set:
-                deps.add_edge("TriggerRecordBuilder", producer_request_in[0], label='requests')
-                deps.nodes["TriggerRecordBuilder"]['color'] = 'red'
+                deps.add_edge("TriggerRecordBuilder", producer_request_in[0], label='requests', color='gold', style='dashed')
+                deps.nodes["TriggerRecordBuilder"]['color'] = 'gold'
+                deps.nodes["TriggerRecordBuilder"]['style'] = 'filled, dashed'
+                deps.nodes["TriggerRecordBuilder"]['shape'] = 'oval'
+                deps.nodes["TriggerRecordBuilder"]['label'] = 'from TRB'
             else:
                 raise RuntimeError(f"Bad FragmentProducer {producer}: request_in doesn't connect to any module! Available modules: {modules_set}")
 
@@ -110,8 +116,13 @@ class ModuleGraph:
                 raise RuntimeError(f"Bad fragment producer {producer}: fragments_out must be specified as module.queue_name")
 
             if producer_frag_out[0] in modules_set:
-                deps.add_edge(producer_frag_out[0], "FragmentReceiver", label='fragments')
+                deps.add_edge(producer_frag_out[0], "FragmentReceiver", label='fragments', color='orange', style='dashed, filled')
                 deps.nodes["FragmentReceiver"]['color'] = 'orange'
+                deps.nodes["FragmentReceiver"]['style'] = 'filled, dashed'
+                deps.nodes["FragmentReceiver"]['shape'] = 'oval'
+                deps.nodes["FragmentReceiver"]['label'] = 'to FR'
+
+                
             else:
                 raise RuntimeError(f"Bad FragmentProducer {producer}: fragments_out doesn't connect to any module! Available modules: {modules_set}")
 
