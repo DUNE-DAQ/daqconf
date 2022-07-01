@@ -437,6 +437,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             MAX_FILE_SIZE = max_file_size,
             MAX_TRIGGER_RECORD_WINDOW = max_trigger_record_window,
             MAX_EXPECTED_TR_SEQUENCES = max_expected_tr_sequences,
+            TOKEN_COUNT = trigemu_token_count,
             HOST=host,
             HAS_DQM=enable_dqm,
             DEBUG=debug
