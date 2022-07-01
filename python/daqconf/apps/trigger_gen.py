@@ -330,9 +330,9 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
             mgraph.connect_modules(f'tasettee_region_{region_id}.output1', f'tazipper.input', "tas_to_tazipper",      size_hint=1000)
             mgraph.connect_modules(f'tasettee_region_{region_id}.output2', f'ta_buf_region_{region_id}.taset_source', size_hint=1000)
     
-    mgraph.add_endpoint("hsievents", None, Direction.IN, toposort=True)
-    mgraph.add_endpoint("td_to_dfo", None, Direction.OUT)
-    mgraph.add_endpoint("df_busy_signal", None, Direction.IN, toposort=True)
+    mgraph.add_endpoint("hsievents", None, Direction.IN)
+    mgraph.add_endpoint("td_to_dfo", None, Direction.OUT, toposort=True)
+    mgraph.add_endpoint("df_busy_signal", None, Direction.IN)
 
     mgraph.add_fragment_producer(region=TC_REGION_ID, element=TC_ELEMENT_ID, system="DataSelection",
                                  requests_in="tc_buf.data_request_source",
