@@ -44,6 +44,7 @@ def get_dataflow_app(HOSTIDX=0,
                      MAX_FILE_SIZE=4*1024*1024*1024,
                      MAX_TRIGGER_RECORD_WINDOW=0,
                      MAX_EXPECTED_TR_SEQUENCES=1,
+                     TOKEN_COUNT=10,
                      HOST="localhost",
                      HAS_DQM=False,
                      DEBUG=False):
@@ -92,7 +93,7 @@ def get_dataflow_app(HOSTIDX=0,
 
     mgraph=ModuleGraph(modules)
 
-    queue_size_based_on_number_of_sequences = max(10, int(MAX_EXPECTED_TR_SEQUENCES * 1.1))
+    queue_size_based_on_number_of_sequences = max(10, int(MAX_EXPECTED_TR_SEQUENCES * TOKEN_COUNT * 1.1))
     mgraph.connect_modules("trb.trigger_record_output", "datawriter.trigger_record_input", "trigger_records",
                            queue_size_based_on_number_of_sequences)
     mgraph.add_endpoint(f"trigger_decision_{HOSTIDX}", "trb.trigger_decision_input", Direction.IN)
