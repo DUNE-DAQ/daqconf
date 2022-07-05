@@ -106,7 +106,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                     element_id = TC_ELEMENT_ID,
                                                                                                     # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                                     stream_buffer_size = 8388608,
-                                                                                                    retry_count = 1000,
+                                                                                                    request_timeout_ms = 10000,
                                                                                                     enable_raw_recording = False))),
                DAQModule(name = 'tctee_ttcm',
                          plugin = 'TCTee')]
@@ -241,7 +241,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                                  element_id = TA_ELEMENT_ID,
                                                                                                                  # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                                                  stream_buffer_size = 8388608,
-                                                                                                                 retry_count = 1000,
+                                                                                                                 request_timeout_ms = 10000,
                                                                                                                  enable_raw_recording = False)))]
 
             for idy in range(tp_links):
@@ -258,7 +258,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                                   element_id = idy,
                                                                                                                   # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                                                   stream_buffer_size = 8388608,
-                                                                                                                  retry_count = 1000,
+                                                                                                                  request_timeout_ms = 10000,
                                                                                                                   enable_raw_recording = False)))]
         assert(region_ids == region_ids1)
         
