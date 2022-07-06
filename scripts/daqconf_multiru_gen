@@ -213,9 +213,9 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         system_type = 'PDS'
 
     if opmon_impl == 'cern':
-        info_svc_uri = "influx://opmondb.cern.ch:31002/write?db=influxdb"
+        info_svc_uri = "kafka://monkafka.cern.ch:30092/opmon"
     elif opmon_impl == 'pocket':
-        info_svc_uri = "influx://" + pocket_url + ":31002/write?db=influxdb"
+        info_svc_uri = "kafka://" + pocket_url + ":30092/opmon"
     else:
         info_svc_uri = "file://info_{APP_NAME}_{APP_PORT}.json"
 
