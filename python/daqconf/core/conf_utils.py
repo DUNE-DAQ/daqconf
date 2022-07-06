@@ -18,13 +18,11 @@ moo.otypes.load_types('rcif/cmd.jsonnet')
 moo.otypes.load_types('appfwk/cmd.jsonnet')
 moo.otypes.load_types('appfwk/app.jsonnet')
 
-moo.otypes.load_types('networkmanager/nwmgr.jsonnet')
 moo.otypes.load_types('iomanager/connection.jsonnet')
 
 from appfwk.utils import acmd, mcmd, mspec
 import dunedaq.appfwk.app as appfwk  # AddressedCmd,
 import dunedaq.rcif.cmd as rccmd  # AddressedCmd,
-import dunedaq.networkmanager.nwmgr as nwmgr
 import dunedaq.iomanager.connection as conn
 
 from daqconf.core.daqmodule import DAQModule

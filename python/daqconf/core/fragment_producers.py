@@ -12,16 +12,6 @@ moo.otypes.load_types('trigger/moduleleveltrigger.jsonnet')
 moo.otypes.load_types('dfmodules/fragmentreceiver.jsonnet')
 moo.otypes.load_types('dfmodules/requestreceiver.jsonnet')
 moo.otypes.load_types('dfmodules/triggerrecordbuilder.jsonnet')
-#
-# (P. Rodrigues 2022-03-01) You would think that we need the
-# load_types() line below, but when it's included, the conversion of
-# app's "init" commands fails with error:
-#
-# AttributeError: Connection missing required field topics
-#
-# It's very unclear to me what's going on
-#
-# moo.otypes.load_types('networkmanager/nwmgr.jsonnet')
 
 import dunedaq.trigger.moduleleveltrigger as mlt
 import dunedaq.dfmodules.fragmentreceiver as frcv
@@ -146,7 +136,7 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         fragment_connection_name = f"fragments_to_{df_name}"
         app.modulegraph.add_endpoint(fragment_connection_name, None, Direction.OUT)
         df_mgraph = df_app.modulegraph
-        df_mgraph.add_endpoint(fragment_connection_name, "trb.data_fragment_all", Direction.IN)            
+        df_mgraph.add_endpoint(fragment_connection_name, "trb.data_fragment_all", Direction.IN, toposort=True)            
         df_mgraph.add_endpoint(request_connection_name, f"trb.request_output_{app_name}", Direction.OUT)
 
         # Add the new geoid-to-connections map to the
