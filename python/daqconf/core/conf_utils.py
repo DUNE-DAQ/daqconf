@@ -455,16 +455,17 @@ def make_app_command_data(system, app, appkey, verbose=False):
     ])
 
     startpars = rccmd.StartParams(run=1, disable_data_storage=False)
-    resumepars = rccmd.ResumeParams()
+    # resumepars = rccmd.ResumeParams()
 
-    add_one_command_data(command_data, "start",        startpars,  app)
-    add_one_command_data(command_data, "stop",         None,       app)
-    add_one_command_data(command_data, "prestop1",     None,       app)
-    add_one_command_data(command_data, "prestop2",     None,       app)
-    add_one_command_data(command_data, "stop_trigger", None,       app)
-    add_one_command_data(command_data, "scrap",        None,       app)
-    add_one_command_data(command_data, "resume",       resumepars, app)
-    add_one_command_data(command_data, "pause",        None,       app)
+    add_one_command_data(command_data, "start",            startpars,  app)
+    add_one_command_data(command_data, "stop",             None,       app)
+    add_one_command_data(command_data, "prestop1",         None,       app)
+    add_one_command_data(command_data, "prestop2",         None,       app)
+    add_one_command_data(command_data, "disable_triggers", None,       app)
+    add_one_command_data(command_data, "enable_triggers",  None,       app)
+    add_one_command_data(command_data, "scrap",            None,       app)
+    # add_one_command_data(command_data, "resume",           resumepars, app)
+    # add_one_command_data(command_data, "pause",            None,       app)
 
     # TODO: handle modules' `extra_commands`, including "record"
 
@@ -593,7 +594,7 @@ def generate_boot(apps: list, base_command_port: int=3333, ers_settings=None, in
     return boot
 
 
-cmd_set = ["init", "conf", "start", "stop", "start_trigger", "stop_trigger", "prestop1", "prestop2", "pause", "resume", "scrap"]
+cmd_set = ["init", "conf", "start", "stop", "enable_triggers", "disable_triggers", "prestop1", "prestop2", "scrap"]
 
 
 def make_app_json(app_name, app_command_data, data_dir, verbose=False):
