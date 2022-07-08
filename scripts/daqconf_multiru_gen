@@ -260,11 +260,14 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     ru_channel_counts = {}
     for region in region_id: ru_channel_counts[region] = 0
 
-    raw_data_pvcs = {}
     if debug:
         console.log(f"Output data written to \"{output_path}\"")
+
+    raw_data_pvcs = {}
     if use_k8s:
         if output_path != '.':
+            if output_path != 'raw-data-storage':
+                raise RuntimeError("With K8s, --output-path can only be \"raw-data-storage\" or \".\" (nothing/default).")
             # everything goes to the same place
             new_output_path = "/"+output_path+"-"+''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
             raw_data_pvcs = {
@@ -451,6 +454,11 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             DEBUG=debug)
 
         if raw_data_pvcs:
+            node_selection = {
+                "strict": True,
+                "dune.daq/role": ["raw-data-storage"],
+            }
+            the_system.apps[tpw_name].node_selection = [node_selection]
             the_system.apps[tpw_name].pvcs += [raw_data_pvcs]
 
         if debug: console.log(f"{tpw_name} app: {the_system.apps[tpw_name]}")
@@ -477,6 +485,11 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             DEBUG=debug
         )
         if raw_data_pvcs:
+            node_selection = {
+                "strict": True,
+                "dune.daq/role": ["raw-data-storage"],
+            }
+            the_system.apps[app_name].node_selection = [node_selection]
             the_system.apps[app_name].pvcs += [raw_data_pvcs]
 
 
