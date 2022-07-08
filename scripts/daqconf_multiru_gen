@@ -259,7 +259,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     if debug:
         console.log(f"Output data written to \"{output_path}\"")
     if use_k8s:
-        if output_path:
+        if output_path != '.':
             # everything goes to the same place
             new_output_path = "/"+output_path+"-"+''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
             raw_data_pvcs = {
