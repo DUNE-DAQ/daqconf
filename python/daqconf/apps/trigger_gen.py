@@ -119,9 +119,15 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
         # (PAR 2022-06-09) The max_latency_ms here should be kept
         # larger than the corresponding value in the upstream
         # TPZippers. See comment below for more details
+        input_geoids=[]
+        for region_id in region_ids1:
+            geoid=tzip.GeoID(region=region_id,
+                             element=TA_ELEMENT_ID,
+                             system="DataSelection")
+            input_geoids.append(geoid)
         modules += [DAQModule(name = 'tazipper',
                               plugin = 'TAZipper',
-                              conf = tzip.ConfParams(cardinality=len(region_ids1),
+                              conf = tzip.ConfParams(input_geoids=input_geoids,
                                                      max_latency_ms=1000,
                                                      region_id=TC_REGION_ID,
                                                      element_id=TC_ELEMENT_ID)),
@@ -209,9 +215,15 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                 # delays etc, the delayed TPSets's TAs _may_ arrive at
                 # the TAZipper tardily. With tpzipper.max_latency_ms <
                 # tazipper.max_latency_ms, everything should be fine.
+                input_geoids = []
+                for i in range(RU_CONFIG[ru]["channel_count"]):
+                    geoid = tzip.GeoID(region=region_id,
+                                       element=i+RU_CONFIG[ru]["start_channel"],
+                                       system="DataSelection")
+                    input_geoids.append(geoid)
                 modules += [DAQModule(name = f'zip_{region_id}',
                                       plugin = 'TPZipper',
-                                              conf = tzip.ConfParams(cardinality=cardinality,
+                                              conf = tzip.ConfParams(input_geoids=input_geoids,
                                                                      max_latency_ms=100,
                                                                      region_id=region_id,
                                                                      element_id=TA_ELEMENT_ID)),
