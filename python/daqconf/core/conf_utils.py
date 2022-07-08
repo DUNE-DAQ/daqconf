@@ -538,7 +538,9 @@ def generate_boot(apps: list, base_command_port: int=3333, ers_settings=None, in
                 "-c",
                 "{CMD_FAC}",
                 "-i",
-                "{INFO_SVC}"
+                "{INFO_SVC}",
+                "--configurationService",
+                "{CONF_LOC}"
             ]
         }
     }
