@@ -266,11 +266,11 @@ def make_system_connections(the_system, verbose=False):
             make_external_connection(the_system, external_conn.external_name, app, external_conn.host, external_conn.port, external_conn.topic, external_conn.direction, verbose)
             external_uids.add(external_conn.external_name)
       for endpoint in the_system.apps[app].modulegraph.endpoints:
-        uids.append(endpoint.external_name)
         if len(endpoint.topic) == 0:
             if verbose:
                 console.log(f"Adding endpoint {endpoint.external_name}, app {app}, direction {endpoint.direction}")
             endpoint_map[endpoint.external_name] += [{"app": app, "endpoint": endpoint}]
+            uids.append(endpoint.external_name)
         else:
             if verbose:
                 console.log(f"Getting topics for endpoint {endpoint.external_name}, app {app}, direction {endpoint.direction}")
