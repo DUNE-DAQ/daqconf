@@ -504,6 +504,23 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     if debug:
         console.log(f"After set_mlt_links, mlt_links is {mlt_links}")
 
+    # HACK HACK HACK P. Rodrigues 2022-03-04 We decided not to request
+    # TPs from readout for the 2.10 release. It would be nice to
+    # achieve this by just not adding fragment producers for the
+    # relevant links in readout_gen.py, but then the necessary input
+    # and output queues for the DataLinkHandler modules are not
+    # created. So instead we do it this roundabout way: the fragment
+    # producers are all created, they are added to the MLT's list of
+    # links to read out from (in set_mlt_links above), and then
+    # removed here. We rely on a convention that TP links have element
+    # value >= 1000.
+    #
+    # This code should be removed after 2.10, when we will have
+    # decided how to handle raw TP data as fragments
+    for link in mlt_links:
+        if link["system"] == system_type and link["element"] >= 1000:
+            remove_mlt_link(the_system, link)
+
     mlt_links=the_system.apps["trigger"].modulegraph.get_module("mlt").conf.links
     if debug:
         console.log(f"After remove_mlt_links, mlt_links is {mlt_links}")
