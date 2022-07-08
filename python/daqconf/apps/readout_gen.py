@@ -143,7 +143,7 @@ def get_readout_app(RU_CONFIG=[],
                                           emulator_mode = EMULATOR_MODE,
                                           error_counter_threshold=100,
                                           error_reset_freq=10000,
-                                          tpset_topic=RU_CONFIG[RUIDX]["tpset_topics"][idx]
+                                          tpset_topic="TPSets"
                                       ),
                                       requesthandlerconf= rconf.RequestHandlerConf(
                                           latency_buffer_size = LATENCY_BUFFER_SIZE,
@@ -190,7 +190,7 @@ def get_readout_app(RU_CONFIG=[],
                 queues += [Queue(f"datahandler_{link_num}.errored_frames", 'errored_frame_consumer.input_queue', "errored_frames_q")]
 
             if SOFTWARE_TPG_ENABLED: 
-                tpset_topic = RU_CONFIG[RUIDX]["tpset_topics"][idx]
+                tpset_topic = "TPSets"
             else:
                 tpset_topic = "None"
             modules += [DAQModule(name = f"datahandler_{link_num}",
@@ -335,7 +335,7 @@ def get_readout_app(RU_CONFIG=[],
             tp_links = 1
         for idx in range(tp_links):
             assert total_link_count < 1000
-            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{idx}", f"tp_datahandler_{idx}.tpset_out",    Direction.OUT, topic=[RU_CONFIG[RUIDX]["tpset_topics"][idx]])
+            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{idx}", f"tp_datahandler_{idx}.tpset_out",    Direction.OUT, topic=["TPSets"])
             mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = idx + 1000, system = SYSTEM_TYPE,
                                     requests_in   = f"tp_datahandler_{idx}.request_input",
                                     fragments_out = f"tp_datahandler_{idx}.fragment_queue")
@@ -347,7 +347,7 @@ def get_readout_app(RU_CONFIG=[],
         else:
             link_num = idx
         if SOFTWARE_TPG_ENABLED:
-            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{idx}", f"datahandler_{link_num}.tpset_out",    Direction.OUT, topic=[RU_CONFIG[RUIDX]["tpset_topics"][idx]])
+            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{idx}", f"datahandler_{link_num}.tpset_out",    Direction.OUT, topic=["TPSets"])
             mgraph.add_endpoint(f"timesync_tp_dlh_ru{RUIDX}_{idx}", f"tp_datahandler_{link_num}.timesync_output",    Direction.OUT, ["Timesync"])
         
         if USE_FAKE_DATA_PRODUCERS:
