@@ -286,8 +286,12 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     readout_data_request_timeout = data_request_timeout_ms
     trigger_data_request_timeout = data_request_timeout_ms
     trigger_record_building_timeout = max(200, 2 * max(readout_data_request_timeout, trigger_data_request_timeout))
-    if total_number_of_data_producers > 1:
-        trigger_record_building_timeout = int(math.sqrt(total_number_of_data_producers) * trigger_record_building_timeout)
+    if total_number_of_data_producers >= 1:
+        effective_number_of_data_producers = total_number_of_data_producers
+        if enable_software_tpg or enable_firmware_tpg:
+            effective_number_of_data_producers *= 2
+            effective_number_of_data_producers += len(region_id)
+        trigger_record_building_timeout = int(math.sqrt(effective_number_of_data_producers) * trigger_record_building_timeout)
 
     if use_hsi_hw:
         the_system.apps["hsi"] = get_hsi_app(
