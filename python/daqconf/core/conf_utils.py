@@ -596,7 +596,7 @@ def generate_boot(apps: list, base_command_port: int=3333, ers_settings=None, in
     return boot
 
 
-cmd_set = ["init", "conf", "start", "stop", "enable_triggers", "disable_triggers", "prestop1", "prestop2", "scrap"]
+cmd_set = ["init", "conf"]
 
 
 def make_app_json(app_name, app_command_data, data_dir, verbose=False):
