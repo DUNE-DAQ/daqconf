@@ -116,7 +116,7 @@ import click
 @click.option('--tpc-region-name-prefix', default='APA', help="Prefix to be used for the 'Region' Group name inside the HDF5 file")
 @click.option('--max-file-size', default=4*1024*1024*1024, help="The size threshold when raw data files are closed (in bytes)")
 @click.option('--max-trigger-record-window', default=0, help="The maximum size for the window of data that will included in a single TriggerRecord (in ticks). Readout windows that are longer than this size will result in TriggerRecords being split into a sequence of TRs. A zero value for this parameter means no splitting.")
-@click.option('--data-request-timeout-ms', default=100, help="The baseline data request timeout that will be used by modules in the Readout and Trigger subsystems (i.e. any module that produces data fragments). Downstream timeouts, such as the trigger-record-building timeout, are derived from this.")
+@click.option('--data-request-timeout-ms', default=1000, help="The baseline data request timeout that will be used by modules in the Readout and Trigger subsystems (i.e. any module that produces data fragments). Downstream timeouts, such as the trigger-record-building timeout, are derived from this.")
 @click.option('--image', default="", type=str, help="Which docker image to use")
 @click.option('--use-k8s', is_flag=True, default=False, help="Whether to use k8s")
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
@@ -276,21 +276,24 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
                             "channel_count": number_of_data_producers })
         ru_channel_counts[region_id[hostidx]] += number_of_data_producers
 
-    # 08-Jul-2022, KAB: added timeout calculations. The readout and trigger app DataRequest timeouts
+    # 11-Jul-2022, KAB: added timeout calculations. The Readout and Trigger App DataRequest timeouts
     # are set based on the command-line parameter that is specified in this script, and they are
-    # treated separately here in case we want to customize them somehow.
-    # The trigger-record-building timeout is intended to be at least double the largest of those two.
-    # There is also a factor in the TRB timeout that takes into account the number of data producers.
-    # At the moment, that factor uses the square root of the number of data producers, and it only
-    # takes into account the data producers from readout.
+    # treated separately here in case we want to customize them somehow in the future.
+    # The trigger-record-building timeout is intended to be a multiple of the larger of those two,
+    # and it needs to have a non-trivial minimum value.
+    # We also include a factor in the TRB timeout that takes into account the number of data producers.
+    # At the moment, that factor uses the square root of the number of data producers, and it attempts
+    # to take into account the number of data producers in Readout and Trigger.
+    MINIMUM_BASIC_TRB_TIMEOUT = 200  # msec
+    TRB_TIMEOUT_SAFETY_FACTOR = 2
     readout_data_request_timeout = data_request_timeout_ms
     trigger_data_request_timeout = data_request_timeout_ms
-    trigger_record_building_timeout = max(200, 2 * max(readout_data_request_timeout, trigger_data_request_timeout))
+    trigger_record_building_timeout = max(MINIMUM_BASIC_TRB_TIMEOUT, TRB_TIMEOUT_SAFETY_FACTOR * max(readout_data_request_timeout, trigger_data_request_timeout))
     if total_number_of_data_producers >= 1:
-        effective_number_of_data_producers = total_number_of_data_producers
+        effective_number_of_data_producers = total_number_of_data_producers  # number of DataLinkHandlers
         if enable_software_tpg or enable_firmware_tpg:
-            effective_number_of_data_producers *= 2
-            effective_number_of_data_producers += len(region_id)
+            effective_number_of_data_producers *= 2  # add in TPSet producers from Trigger (one per Link)
+            effective_number_of_data_producers += len(region_id)  # add in TA producers from Trigger (one per RU)
         trigger_record_building_timeout = int(math.sqrt(effective_number_of_data_producers) * trigger_record_building_timeout)
 
     if use_hsi_hw:
@@ -359,6 +362,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         TRIGGER_WINDOW_AFTER_TICKS = trigger_window_after_ticks,
         HSI_TRIGGER_TYPE_PASSTHROUGH = hsi_trigger_type_passthrough,
         CHANNEL_MAP_NAME = tpg_channel_map,
+        DATA_REQUEST_TIMEOUT=trigger_data_request_timeout,
         HOST=host_trigger,
         DEBUG=debug)
 
@@ -391,6 +395,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             USE_FAKE_DATA_PRODUCERS = use_fake_data_producers,
             HOST=host,
             LATENCY_BUFFER_SIZE=latency_buffer_size,
+            DATA_REQUEST_TIMEOUT=readout_data_request_timeout,
             DEBUG=debug)
 
         if debug:
