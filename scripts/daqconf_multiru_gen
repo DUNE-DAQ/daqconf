@@ -276,6 +276,8 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
                             "channel_count": number_of_data_producers })
         ru_channel_counts[region_id[hostidx]] += number_of_data_producers
 
+    max_expected_tr_sequences = 1 if max_trigger_record_window < 1 else ((trigger_window_before_ticks + trigger_window_after_ticks) / max_trigger_record_window)
+
     # 11-Jul-2022, KAB: added timeout calculations. The Readout and Trigger App DataRequest timeouts
     # are set based on the command-line parameter that is specified in this script, and they are
     # treated separately here in case we want to customize them somehow in the future.
@@ -295,6 +297,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             effective_number_of_data_producers *= 2  # add in TPSet producers from Trigger (one per Link)
             effective_number_of_data_producers += len(region_id)  # add in TA producers from Trigger (one per RU)
         trigger_record_building_timeout = int(math.sqrt(effective_number_of_data_producers) * trigger_record_building_timeout)
+    trigger_record_building_timeout += 15 * TRB_TIMEOUT_SAFETY_FACTOR * max_expected_tr_sequences
 
     if use_hsi_hw:
         the_system.apps["hsi"] = get_hsi_app(
@@ -447,7 +450,6 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
 
         app_name = f'dataflow{i}'
         df_app_names.append(app_name)
-        max_expected_tr_sequences = 1 if max_trigger_record_window < 1 else ((trigger_window_before_ticks + trigger_window_after_ticks) / max_trigger_record_window)
         the_system.apps[app_name] = get_dataflow_app(
             HOSTIDX = i,
             OUTPUT_PATH = output_path,
