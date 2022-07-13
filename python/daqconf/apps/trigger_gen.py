@@ -33,6 +33,8 @@ from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Direction, Queue
 
+from detdataformats._daq_detdataformats_py import *
+
 TA_ELEMENT_ID = 10_000
 TC_REGION_ID = 20_000
 TC_ELEMENT_ID = 0
@@ -61,7 +63,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                     FIRMWARE_TPG_ENABLED: bool = False,
                     CLOCK_SPEED_HZ: int = 50_000_000,
                     DATA_RATE_SLOWDOWN_FACTOR: float = 1,
-                    RU_CONFIG: list = [],
+                    DRO_CONFIG: list = [],
 
                     ACTIVITY_PLUGIN: str = 'TriggerActivityMakerPrescalePlugin',
                     ACTIVITY_CONFIG: dict = dict(prescale=10000),
@@ -69,7 +71,6 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                     CANDIDATE_PLUGIN: str = 'TriggerCandidateMakerPrescalePlugin',
                     CANDIDATE_CONFIG: int = dict(prescale=10),
 
-                    SYSTEM_TYPE = 'wib',
                     TTCM_S1: int = 1,
                     TTCM_S2: int = 2,
                     TRIGGER_WINDOW_BEFORE_TICKS: int = 1000,
@@ -90,20 +91,20 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     
     modules = []
 
-    region_ids1 = set([ru["region_id"] for ru in RU_CONFIG])
-    assert len(region_ids1) == len(RU_CONFIG), "There are duplicate region IDs for RUs. Trigger can't handle this case. Please use --region-id to set distinct region IDs for each RU"
+    tpset_dros = []
+    for dro_info in DRO_CONFIG:
+        if dro_info.links[0].det_id == DetID.kHDTPC:
+            tpset_dros.append(dro_info)
 
     # We always have a TC buffer even when there are no TPs, because we want to put the timing TC in the output file
     modules += [DAQModule(name = 'tc_buf',
                          plugin = 'TCBuffer',
                          conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 100_000,
-                                                                                                  region_id = TC_REGION_ID,
-                                                                                                  element_id = TA_ELEMENT_ID),
+                                                                                                  source_id = TA_ELEMENT_ID),
                                                 requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = 100_000,
                                                                                                     pop_limit_pct = 0.8,
                                                                                                     pop_size_pct = 0.1,
-                                                                                                    region_id = TC_REGION_ID,
-                                                                                                    element_id = TC_ELEMENT_ID,
+                                                                                                    source_id = TC_ELEMENT_ID,
                                                                                                     # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                                     stream_buffer_size = 8388608,
                                                                                                     request_timeout_ms = 100,
@@ -124,7 +125,6 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                               plugin = 'TAZipper',
                               conf = tzip.ConfParams(cardinality=len(region_ids1),
                                                      max_latency_ms=1000,
-                                                     region_id=TC_REGION_ID,
                                                      element_id=TC_ELEMENT_ID)),
                     DAQModule(name = 'tcm',
                               plugin = 'TriggerCandidateMaker',
@@ -335,7 +335,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     mgraph.add_endpoint("td_to_dfo", None, Direction.OUT, toposort=True)
     mgraph.add_endpoint("df_busy_signal", None, Direction.IN)
 
-    mgraph.add_fragment_producer(region=TC_REGION_ID, element=TC_ELEMENT_ID, system="DataSelection",
+    mgraph.add_fragment_producer(id=TC_ELEMENT_ID, subsystem="DataSelection",
                                  requests_in="tc_buf.data_request_source",
                                  fragments_out="tc_buf.fragment_sink")
 
@@ -357,12 +357,12 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
                 mgraph.add_endpoint(f"tpsets_{link_id}_sub", f"channelfilter_{link_id}.tpset_source", Direction.IN, topic=["TPSets"])
 
-                mgraph.add_fragment_producer(region=ru_config['region_id'], element=global_link, system="DataSelection",
+                mgraph.add_fragment_producer(id=global_link, subsystem="DataSelection",
                                              requests_in=f"{buf_name}.data_request_source",
                                              fragments_out=f"{buf_name}.fragment_sink")
         for region_id in region_ids:
             buf_name = f'ta_buf_region_{region_id}'
-            mgraph.add_fragment_producer(region=region_id, element=TA_ELEMENT_ID, system="DataSelection",
+            mgraph.add_fragment_producer(id=TA_ELEMENT_ID, subsystem="DataSelection",
                                          requests_in=f"{buf_name}.data_request_source",
                                          fragments_out=f"{buf_name}.fragment_sink")
 

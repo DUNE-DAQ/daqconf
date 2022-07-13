@@ -31,8 +31,8 @@ def set_mlt_links(the_system, mlt_app_name="trigger", verbose=False):
     """
     mlt_links = []
     for producer in the_system.get_fragment_producers():
-        geoid = producer.geoid
-        mlt_links.append( mlt.GeoID(system=geoid.system, region=geoid.region, element=geoid.element) )
+        source_id = producer.source_id
+        mlt_links.append( mlt.SourceID(subsystem=source_id.subsystem, element=source_id.id) )
     if verbose:
         console.log(f"Adding {len(mlt_links)} links to mlt.links: {mlt_links}")
     mgraph = the_system.apps[mlt_app_name].modulegraph
@@ -42,16 +42,16 @@ def set_mlt_links(the_system, mlt_app_name="trigger", verbose=False):
                                                    dfo_busy_connection=old_mlt_conf.dfo_busy_connection,
                                                    hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough))
 
-def remove_mlt_link(the_system, geoid, mlt_app_name="trigger"):
+def remove_mlt_link(the_system, source_id, mlt_app_name="trigger"):
     """
-    Remove the given geoid (which should be a dict with keys "system", "region", "element") from the list of links to request data from in the MLT.
+    Remove the given source_id (which should be a dict with keys "system", "region", "element") from the list of links to request data from in the MLT.
     """
     mgraph = the_system.apps[mlt_app_name].modulegraph
     old_mlt_conf = mgraph.get_module("mlt").conf
     mlt_links = old_mlt_conf.links
-    if geoid not in mlt_links:
-        raise ValueError(f"GeoID {geoid} not in MLT links list")
-    mlt_links.remove(geoid)
+    if source_id not in mlt_links:
+        raise ValueError(f"SourceID {source_id} not in MLT links list")
+    mlt_links.remove(source_id)
     mgraph.reset_module_conf("mlt", mlt.ConfParams(links=mlt_links, 
                                                    dfo_connection=old_mlt_conf.dfo_connection, 
                                                    dfo_busy_connection=old_mlt_conf.dfo_busy_connection,
@@ -78,27 +78,25 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
 #                               conf = None)
 
     # For each producer, we:
-    # 1. Add it to the GeoID -> queue name map that is used in RequestReceiver
+    # 1. Add it to the SourceID -> queue name map that is used in RequestReceiver
     # 2. Connect the relevant RequestReceiver output queue to the request input queue of the fragment producer
     # 3. Connect the fragment output queue of the producer module to the FragmentSender
 
     request_connection_name = f"data_requests_for_{app_name}"
 
-    from daqconf.core.conf_utils import geoid_raw_str, Direction
+    from daqconf.core.conf_utils import source_id_raw_str, Direction
     
-    geoid_to_queue_inst = []
-    trb_geoid_to_connection = []
+    source_id_to_queue_inst = []
+    trb_source_id_to_connection = []
 
     for producer in producers.values():
-        geoid = producer.geoid
-        queue_inst = f"data_request_q_for_{geoid_raw_str(producer.geoid)}"
-        geoid_to_queue_inst.append(rrcv.geoidinst(region  = geoid.region,
-                                                  element = geoid.element,
-                                                  system  = geoid.system,
+        source_id = producer.source_id
+        queue_inst = f"data_request_q_for_{producer.source_id}"
+        source_id_to_queue_inst.append(rrcv.sourceidinst(source_id = source_id.id,
+                                                  system  = source_id.subsystem,
                                                   connection_uid = queue_inst))
-        trb_geoid_to_connection.append(trb.geoidinst(region  = geoid.region,
-                                                     element = geoid.element,
-                                                     system  = geoid.system,
+        trb_source_id_to_connection.append(trb.sourceidinst(source_id = source_id.id,
+                                                     system  = source_id.subsystem,
                                                      connection_uid = request_connection_name))
         
         # Connect the fragment output queue to the fragment sender
@@ -107,10 +105,10 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
     # Create request receiver
 
     if verbose:
-        console.log(f"Creating request_receiver for {app_name} with geoid_to_queue_inst: {geoid_to_queue_inst}")
+        console.log(f"Creating request_receiver for {app_name} with source_id_to_queue_inst: {source_id_to_queue_inst}")
     app.modulegraph.add_module("request_receiver",
                                plugin = "RequestReceiver",
-                               conf = rrcv.ConfParams(map = geoid_to_queue_inst ))
+                               conf = rrcv.ConfParams(map = source_id_to_queue_inst ))
 
     
     for producer in producers.values():
@@ -119,8 +117,8 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         # type, but doesn't care what the queue instance name is (as
         # long as it matches what's in the map above), so we just set
         # the endpoint name and queue instance name to the same thing
-        queue_inst = f"data_request_q_for_{geoid_raw_str(producer.geoid)}"
-        app.modulegraph.connect_modules(f"request_receiver.data_request_{geoid_raw_str(producer.geoid)}", producer.requests_in, queue_inst)
+        queue_inst = f"data_request_q_for_{source_id_raw_str(producer.source_id)}"
+        app.modulegraph.connect_modules(f"request_receiver.data_request_{source_id_raw_str(producer.source_id)}", producer.requests_in, queue_inst)
 
                                
     # Connect request receiver to TRB output in DF app
@@ -139,14 +137,14 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         df_mgraph.add_endpoint(fragment_connection_name, "trb.data_fragment_all", Direction.IN, toposort=True)            
         df_mgraph.add_endpoint(request_connection_name, f"trb.request_output_{app_name}", Direction.OUT)
 
-        # Add the new geoid-to-connections map to the
+        # Add the new source_id-to-connections map to the
         # TriggerRecordBuilder.
         old_trb_conf = df_mgraph.get_module("trb").conf
-        new_trb_map = old_trb_conf.map + trb_geoid_to_connection
+        new_trb_map = old_trb_conf.map + trb_source_id_to_connection
         df_mgraph.reset_module_conf("trb", trb.ConfParams(general_queue_timeout=old_trb_conf.general_queue_timeout,
                                                           reply_connection_name = fragment_connection_name,
                                                           max_time_window = old_trb_conf.max_time_window,
-                                                          map=trb.mapgeoidconnections(new_trb_map)))
+                                                          map=trb.mapsourceidconnections(new_trb_map)))
                           
     dqm_apps = [ (name,app) for (name,app) in the_system.apps.items() if re.match("dqm\d+_ru", name) ]
 
@@ -157,14 +155,14 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         dqm_mgraph.add_endpoint(fragment_connection_name, "trb_dqm.data_fragment_all", Direction.IN, toposort=True)            
         dqm_mgraph.add_endpoint(request_connection_name, f"trb_dqm.request_output_{app_name}", Direction.OUT)
 
-        # Add the new geoid-to-connections map to the
+        # Add the new source_id-to-connections map to the
         # TriggerRecordBuilder.
         old_trb_conf = dqm_mgraph.get_module("trb_dqm").conf
-        new_trb_map = old_trb_conf.map + trb_geoid_to_connection
+        new_trb_map = old_trb_conf.map + trb_source_id_to_connection
         dqm_mgraph.reset_module_conf("trb_dqm", trb.ConfParams(general_queue_timeout=old_trb_conf.general_queue_timeout,
                                                           reply_connection_name = fragment_connection_name,
                                                           max_time_window = old_trb_conf.max_time_window,
-                                                          map=trb.mapgeoidconnections(new_trb_map)))
+                                                          map=trb.mapsourceidconnections(new_trb_map)))
 
 def connect_all_fragment_producers(the_system, dataflow_name="dataflow", verbose=False):
     """

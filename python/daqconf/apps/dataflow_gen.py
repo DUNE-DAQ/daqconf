@@ -58,7 +58,7 @@ def get_dataflow_app(HOSTIDX=0,
                           conf = trb.ConfParams(general_queue_timeout=QUEUE_POP_WAIT_MS,
                                                 reply_connection_name = "",
                                                 max_time_window=MAX_TRIGGER_RECORD_WINDOW,
-                                                map=trb.mapgeoidconnections([]))), # We patch this up in connect_fragment_producers
+                                                map=trb.mapsourceidconnections([]))), # We patch this up in connect_fragment_producers
                 DAQModule(name = 'datawriter',
                        plugin = 'DataWriter',
                        conf = dw.ConfParams(decision_connection=f"trigger_decision_{HOSTIDX}",
@@ -79,7 +79,6 @@ def get_dataflow_app(HOSTIDX=0,
                                    path_param_list = h5fl.PathParamList(
                                        [h5fl.PathParams(detector_group_type="TPC",
                                                         detector_group_name="TPC",
-                                                        region_name_prefix=TPC_REGION_NAME_PREFIX,
                                                         element_name_prefix="Link"),
                                         h5fl.PathParams(detector_group_type="PDS",
                                                         detector_group_name="PDS"),
@@ -87,7 +86,6 @@ def get_dataflow_app(HOSTIDX=0,
                                                         detector_group_name="NDLArTPC"),
                                         h5fl.PathParams(detector_group_type="DataSelection",
                                                         detector_group_name="Trigger",
-                                                        digits_for_region_number=5,
                                                         digits_for_element_number=5)
                                     ])))))]
 
