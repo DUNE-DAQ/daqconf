@@ -36,7 +36,7 @@ from daqconf.core.daqmodule import DAQModule
 from daqconf.core.app import App,ModuleGraph
 
 # Time to wait on pop()
-QUEUE_POP_WAIT_MS = 100
+QUEUE_POP_WAIT_MS = 10 # This affects stop time, as each link will wait this long before stop
 # local clock speed Hz
 # CLOCK_SPEED_HZ = 50000000;
 
