@@ -21,18 +21,16 @@ moo.io.default_load_path = get_moo_model_path()
 
 # Load configuration types
 import moo.otypes
-moo.otypes.load_types('timinglibs/timingmastercontroller.jsonnet')
-import dunedaq.timinglibs.timingmastercontroller as tmc
+moo.otypes.load_types('timinglibs/timingfanoutcontroller.jsonnet')
+import dunedaq.timinglibs.timingfanoutcontroller as tfc
 
 from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Direction
 
 #===============================================================================
-def get_tmc_app(MASTER_DEVICE_NAME="",
-                MASTER_SEND_DELAYS_PERIOD=0,
-                MASTER_CLOCK_FILE="",
-                MASTER_CLOCK_MODE=-1,
+def get_tfc_app(FANOUT_DEVICE_NAME="",
+                FANOUT_CLOCK_FILE="",
                 HOST="localhost",
                 TIMING_HOST="np04-srv-012.cern.ch",
                 TIMING_PORT=12345,
@@ -41,22 +39,21 @@ def get_tmc_app(MASTER_DEVICE_NAME="",
     modules = {}
 
     ## TODO all the connections...
-    modules = [DAQModule(name = "tmc",
-                        plugin = "TimingMasterController",
-                        conf = tmc.ConfParams(
-                                            device=MASTER_DEVICE_NAME,
-                                            send_endpoint_delays_period=MASTER_SEND_DELAYS_PERIOD,
-                                            clock_config=MASTER_CLOCK_FILE,
-                                            fanout_mode=MASTER_CLOCK_MODE,
+    modules = [DAQModule(name = "tfc",
+                        plugin = "TimingFanoutController",
+                        conf = tfc.ConfParams(
+                                            device=FANOUT_DEVICE_NAME,
+                                            clock_config=FANOUT_CLOCK_FILE,
                                             ))]
 
     mgraph = ModuleGraph(modules)
-    mgraph.add_external_connection("timing_cmds", "tmc.timing_cmds", Direction.OUT, TIMING_HOST, TIMING_PORT)
-    mgraph.add_external_connection("timing_device_info", None, Direction.IN, TIMING_HOST, TIMING_PORT+1, [MASTER_DEVICE_NAME])
     
-    tmc_app = App(modulegraph=mgraph, host=HOST, name="TMCApp")
+    mgraph.add_external_connection("timing_cmds", "tfc.timing_cmds", Direction.OUT, TIMING_HOST, TIMING_PORT)
+    mgraph.add_external_connection("timing_device_info", None, Direction.IN, TIMING_HOST, TIMING_PORT+1, [FANOUT_DEVICE_NAME])
+    
+    tfc_app = App(modulegraph=mgraph, host=HOST, name="TFCApp")
     
     if DEBUG:
-        tmc_app.export("tmc_app.dot")
+        tfc_app.export("tfc_app.dot")
 
-    return tmc_app
+    return tfc_app
