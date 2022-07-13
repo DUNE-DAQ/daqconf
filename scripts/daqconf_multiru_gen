@@ -32,7 +32,8 @@ import click
 @click.option('--host-timing', default='np04-srv-012.cern.ch', help='Host to run the (global) timing hardware interface app on')
 @click.option('--port-timing', default=12345, help='Port to host running the (global) timing hardware interface app on')
 @click.option('--base-command-port', type=int, default=3333, help="Base port of application command endpoints")
-@click.option('-n', '--number-of-data-producers', default=2, help="Number of links to use for each readout application")
+@click.option('--hardware-map-file', default='./HardwareMap.txt', help="File containing detector hardware map for configuration to run")
+#@click.option('-n', '--number-of-data-producers', default=2, help="Number of links to use for each readout application")
 @click.option('-e', '--emulator-mode', is_flag=True, help="If active, timestamps of data frames are overwritten when processed by the readout. This is necessary if the felix card does not set correct timestamps.")
 @click.option('--thread-pinning-file', default=None, type=click.Path(exists=True), help="A thread pinning configuration file that gets executed after conf.")
 @click.option('-s', '--data-rate-slowdown-factor', default=1)
@@ -46,16 +47,16 @@ import click
 @click.option('-o', '--output-path', type=click.Path(), default='.')
 @click.option('--disable-trace', is_flag=True, help="Do not enable TRACE (default TRACE_FILE is /tmp/trace_buffer_\${HOSTNAME}_\${USER})")
 @click.option('-f', '--use-felix', is_flag=True, help="Use real felix cards instead of fake ones")
-@click.option('--use-ssp', is_flag=True, help="Use real SSPs instead of fake sources")
+#@click.option('--use-ssp', is_flag=True, help="Use real SSPs instead of fake sources")
 @click.option('--host-df', multiple=True, default=['localhost'], help="This option is repeatable, with each repetition adding another dataflow app.")
 @click.option('--host-dfo', default='localhost', help="Sets the host for the DFO app")
-@click.option('--host-ru', multiple=True, default=['localhost'], help="This option is repeatable, with each repetition adding an additional ru process.")
+#@click.option('--host-ru', multiple=True, default=['localhost'], help="This option is repeatable, with each repetition adding an additional ru process.")
 @click.option('--host-trigger', default='localhost', help='Host to run the trigger app on')
 @click.option('--host-hsi', default='localhost', help='Host to run the HSI app on')
 @click.option('--host-tpw', default='localhost', help='Host to run the TPWriter app on')
 @click.option('--host-tprtc', default='localhost', help='Host to run the timing partition controller app on')
 @click.option('--host-dqm', multiple=True, default=['localhost'], help='Host to run the DQM aps on')
-@click.option('--region-id', multiple=True, default=[], help="Define the Region IDs for the RUs. If not specified, each RU will be assigned a Region ID based on declared order.")
+#@click.option('--region-id', multiple=True, default=[], help="Define the Region IDs for the RUs. If not specified, each RU will be assigned a Region ID based on declared order.")
 @click.option('--latency-buffer-size', default=499968, help="Size of the latency buffers (in number of elements)")
 # hsi readout options
 @click.option('--hsi-hw-connections-file', default="${TIMING_SHARE}/config/etc/connections.xml", help='Real timing hardware only: path to hardware connections file')
@@ -93,7 +94,7 @@ import click
 
 @click.option('--enable-raw-recording', is_flag=True, help="Add queues and modules necessary for the record command")
 @click.option('--raw-recording-output-dir', type=click.Path(), default='.', help="Output directory where recorded data is written to. Data for each link is written to a separate file")
-@click.option('--frontend-type', type=click.Choice(['wib', 'wib2', 'pds_queue', 'pds_list', 'pacman', 'ssp', 'tde']), default='wib', help="Frontend type (wib, wib2 or pds) and latency buffer implementation in case of pds (folly queue or skip list)")
+#@click.option('--frontend-type', type=click.Choice(['wib', 'wib2', 'pds_queue', 'pds_list', 'pacman', 'ssp', 'tde']), default='wib', help="Frontend type (wib, wib2 or pds) and latency buffer implementation in case of pds (folly queue or skip list)")
 @click.option('--enable-dqm', is_flag=True, help="Enable Data Quality Monitoring")
 @click.option('--opmon-impl', type=click.Choice(['json','cern','pocket'], case_sensitive=False),default='json', help="Info collector service implementation to use")
 @click.option('--ers-impl', type=click.Choice(['local','cern','pocket'], case_sensitive=False), default='local', help="ERS destination (Kafka used for cern and pocket)")
@@ -113,7 +114,7 @@ import click
 @click.option('--dqm-df-rate', nargs=1, default=10, help='How many seconds between requests to DF for Trigger Records')
 @click.option('--dqm-df-algs', nargs=1, default='hist mean_rms fourier_sum', help='Algorithms to be run on Trigger Records from DF (use quotes)')
 @click.option('--op-env', default='swtest', help="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files")
-@click.option('--tpc-region-name-prefix', default='APA', help="Prefix to be used for the 'Region' Group name inside the HDF5 file")
+#@click.option('--tpc-region-name-prefix', default='APA', help="Prefix to be used for the 'Region' Group name inside the HDF5 file")
 @click.option('--max-file-size', default=4*1024*1024*1024, help="The size threshold when raw data files are closed (in bytes)")
 @click.option('--max-trigger-record-window', default=0, help="The maximum size for the window of data that will included in a single TriggerRecord (in ticks). Readout windows that are longer than this size will result in TriggerRecords being split into a sequence of TRs. A zero value for this parameter means no splitting.")
 @click.option('--image', default="", type=str, help="Which docker image to use")
@@ -121,17 +122,29 @@ import click
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
 
-def cli(timing_partition_name, host_timing, port_timing, base_command_port, number_of_data_producers, emulator_mode, data_rate_slowdown_factor, run_number, clock_speed_hz, trigger_rate_hz, trigger_window_before_ticks, trigger_window_after_ticks,
+#def cli(timing_partition_name, host_timing, port_timing, base_command_port, number_of_data_producers, emulator_mode, data_rate_slowdown_factor, run_number, clock_speed_hz, trigger_rate_hz, trigger_window_before_ticks, trigger_window_after_ticks,
+#        thread_pinning_file,
+#        token_count, data_file, output_path, disable_trace, use_felix, use_ssp, host_df, host_dfo, host_ru, host_trigger, host_hsi, host_tpw, host_tprtc, host_dqm, region_id, latency_buffer_size,
+#        hsi_hw_connections_file, hsi_device_name, hsi_readout_period, control_hsi_hw, hsi_endpoint_address, hsi_endpoint_partition, hsi_re_mask, hsi_fe_mask, hsi_inv_mask, hsi_source,
+#        use_hsi_hw, hsi_device_id, mean_hsi_signal_multiplicity, hsi_signal_emulation_mode, enabled_hsi_signals,
+#        ttcm_s1, ttcm_s2, trigger_activity_plugin, trigger_activity_config, trigger_candidate_plugin, trigger_candidate_config, hsi_trigger_type_passthrough,
+#        control_timing_partition, timing_partition_master_device_name, timing_partition_id, timing_partition_trigger_mask, timing_partition_rate_control_enabled, timing_partition_spill_gate_enabled,
+#        enable_raw_recording, raw_recording_output_dir, frontend_type, opmon_impl, enable_dqm, ers_impl, dqm_impl, pocket_url, enable_software_tpg, enable_firmware_tpg, tpg_channel_map, enable_tpset_writing, use_fake_data_producers, dqm_cmap,
+#        dqm_rawdisplay_params, dqm_meanrms_params, dqm_fourier_params, dqm_fouriersum_params, dqm_channelmask_params, dqm_df_rate,
+#        dqm_df_algs, op_env, tpc_region_name_prefix, max_file_size, max_trigger_record_window, image, use_k8s, debug, json_dir):
+
+def cli(timing_partition_name, host_timing, port_timing, base_command_port, hardware_map_file, emulator_mode, data_rate_slowdown_factor, run_number, clock_speed_hz, trigger_rate_hz, trigger_window_before_ticks, trigger_window_after_ticks,
         thread_pinning_file,
-        token_count, data_file, output_path, disable_trace, use_felix, use_ssp, host_df, host_dfo, host_ru, host_trigger, host_hsi, host_tpw, host_tprtc, host_dqm, region_id, latency_buffer_size,
+        token_count, data_file, output_path, disable_trace, use_felix, host_df, host_dfo,  host_trigger, host_hsi, host_tpw, host_tprtc, host_dqm, latency_buffer_size,
         hsi_hw_connections_file, hsi_device_name, hsi_readout_period, control_hsi_hw, hsi_endpoint_address, hsi_endpoint_partition, hsi_re_mask, hsi_fe_mask, hsi_inv_mask, hsi_source,
         use_hsi_hw, hsi_device_id, mean_hsi_signal_multiplicity, hsi_signal_emulation_mode, enabled_hsi_signals,
         ttcm_s1, ttcm_s2, trigger_activity_plugin, trigger_activity_config, trigger_candidate_plugin, trigger_candidate_config, hsi_trigger_type_passthrough,
         control_timing_partition, timing_partition_master_device_name, timing_partition_id, timing_partition_trigger_mask, timing_partition_rate_control_enabled, timing_partition_spill_gate_enabled,
-        enable_raw_recording, raw_recording_output_dir, frontend_type, opmon_impl, enable_dqm, ers_impl, dqm_impl, pocket_url, enable_software_tpg, enable_firmware_tpg, tpg_channel_map, enable_tpset_writing, use_fake_data_producers, dqm_cmap,
+        enable_raw_recording, raw_recording_output_dir, opmon_impl, enable_dqm, ers_impl, dqm_impl, pocket_url, enable_software_tpg, enable_firmware_tpg, tpg_channel_map, enable_tpset_writing, use_fake_data_producers, dqm_cmap,
         dqm_rawdisplay_params, dqm_meanrms_params, dqm_fourier_params, dqm_fouriersum_params, dqm_channelmask_params, dqm_df_rate,
-        dqm_df_algs, op_env, tpc_region_name_prefix, max_file_size, max_trigger_record_window, image, use_k8s, debug, json_dir):
+        dqm_df_algs, op_env, max_file_size, max_trigger_record_window, image, use_k8s, debug, json_dir):
 
+    
     if exists(json_dir):
         raise RuntimeError(f"Directory {json_dir} already exists")
 
@@ -161,14 +174,18 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
 
     the_system = System(first_port=port_timing+1)
 
-    total_number_of_data_producers = 0
+    # Load the hw map file here to extract ru hosts, cards, slr, links, forntend types, sourceIDs and geoIDs
+    # The ru apps are determined by the combinations of hostname and card_id, the SourceID determines the 
+    # DLH (with physical slr+link information), the detId acts as system_type allows to infer the frontend_type
 
-    if use_ssp:
-        total_number_of_data_producers = number_of_data_producers * len(host_ru)
-        console.log(f"Will setup {number_of_data_producers} SSP channels per host, for a total of {total_number_of_data_producers}")
-    else:
-        total_number_of_data_producers = number_of_data_producers * len(host_ru)
-        console.log(f"Will setup {number_of_data_producers} TPC channels per host, for a total of {total_number_of_data_producers}")
+#    total_number_of_data_producers = 0
+
+#    if use_ssp:
+#        total_number_of_data_producers = number_of_data_producers * len(host_ru)
+#        console.log(f"Will setup {number_of_data_producers} SSP channels per host, for a total of {total_number_of_data_producers}")
+#    else:
+#        total_number_of_data_producers = number_of_data_producers * len(host_ru)
+#        console.log(f"Will setup {number_of_data_producers} TPC channels per host, for a total of {total_number_of_data_producers}")
 
     if enable_software_tpg and frontend_type != 'wib':
         raise Exception("Software TPG is only available for the wib at the moment!")
@@ -193,15 +210,15 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     else:
         trigemu_token_count = 0
 
-    if (len(region_id) != len(host_ru)) and (len(region_id) != 0):
-        raise Exception("--region-id should be specified once for each --host-ru, or not at all!")
+#    if (len(region_id) != len(host_ru)) and (len(region_id) != 0):
+#        raise Exception("--region-id should be specified once for each --host-ru, or not at all!")
 
     # TODO, Eric Flumerfelt <eflumerf@github.com> 22-June-2022: Fix if/when multiple frontend types are supported. (Use https://click.palletsprojects.com/en/8.1.x/options/#multi-value-options for RU host/frontend/region config?)
-    if len(region_id) == 0:
-        region_id_temp = []
-        for reg in range(len(host_ru)):
-            region_id_temp.append(reg)
-        region_id = tuple(region_id_temp)
+#    if len(region_id) == 0:
+#        region_id_temp = []
+#        for reg in range(len(host_ru)):
+#            region_id_temp.append(reg)
+#        region_id = tuple(region_id_temp)
 
     if use_hsi_hw and not hsi_device_name:
         raise Exception("If --use-hsi-hw flag is set to true, --hsi-device-name must be specified!")
@@ -212,12 +229,12 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     if control_hsi_hw and not use_hsi_hw:
         raise Exception("HSI hardware control can only be enabled if HSI hardware is used!")
 
-    if frontend_type == 'wib' or frontend_type == 'wib2':
-        system_type = 'TPC'
-    elif frontend_type == 'pacman':
-        system_type = 'NDLArTPC'
-    else:
-        system_type = 'PDS'
+#    if frontend_type == 'wib' or frontend_type == 'wib2':
+#        system_type = 'TPC'
+#    elif frontend_type == 'pacman':
+#        system_type = 'NDLArTPC'
+#    else:
+#        system_type = 'PDS'
 
     if opmon_impl == 'cern':
         info_svc_uri = "influx://opmondb.cern.ch:31002/write?db=influxdb"
