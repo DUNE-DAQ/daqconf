@@ -288,6 +288,8 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     # to take into account the number of data producers in Readout and Trigger.
     MINIMUM_BASIC_TRB_TIMEOUT = 200  # msec
     TRB_TIMEOUT_SAFETY_FACTOR = 2
+    DFO_TIMEOUT_SAFETY_FACTOR = 3
+    MINIMUM_DFO_TIMEOUT = 10000
     readout_data_request_timeout = data_request_timeout_ms
     trigger_data_request_timeout = data_request_timeout_ms
     trigger_record_building_timeout = max(MINIMUM_BASIC_TRB_TIMEOUT, TRB_TIMEOUT_SAFETY_FACTOR * max(readout_data_request_timeout, trigger_data_request_timeout))
@@ -298,6 +300,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             effective_number_of_data_producers += len(region_id)  # add in TA producers from Trigger (one per RU)
         trigger_record_building_timeout = int(math.sqrt(effective_number_of_data_producers) * trigger_record_building_timeout)
     trigger_record_building_timeout += 15 * TRB_TIMEOUT_SAFETY_FACTOR * max_expected_tr_sequences
+    dfo_stop_timeout = max(DFO_TIMEOUT_SAFETY_FACTOR * trigger_record_building_timeout, MINIMUM_DFO_TIMEOUT)
 
     if use_hsi_hw:
         the_system.apps["hsi"] = get_hsi_app(
@@ -372,6 +375,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     the_system.apps['dfo'] = get_dfo_app(
         DF_COUNT = len(host_df),
         TOKEN_COUNT = trigemu_token_count,
+        STOP_TIMEOUT = dfo_stop_timeout,
         HOST=host_dfo,
         DEBUG=debug)
 
