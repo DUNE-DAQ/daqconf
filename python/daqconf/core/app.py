@@ -20,7 +20,7 @@ class ModuleGraph:
 
     def combine_queues(self, queues : [Queue]):
         output_queues = []
-        
+
         for q in queues:
             match = False
             for oq in output_queues:
@@ -221,8 +221,21 @@ class App:
             self.digraph.name = name
 
         self.modulegraph = modulegraph if modulegraph else ModuleGraph()
-        self.host = host
         self.name = name
+
+        self.host = host # ssh
+
+        # rest here are K8s specifics
+        self.node_selection = [{ # k8s (NB: self.host is ignored for k8s)
+            "strict": False,
+            "kubernetes.io/hostname": [host],
+            # ... can be used to select a node (or a collection of node). All the terms here are ANDed
+            # this means if you add a field here, there has to be a pod which satisfies ALL the requirements at the same time
+        }] if host != 'localhost' else [] # if you add another entry in the node_selection list, the requirement are ORed, so any node that satisfies a requirement is good
+        self.pvcs = []
+        self.resources = {}
+        self.pod_affinity = []
+        self.pod_anti_affinity = []
 
     def reset_graph(self):
         if self.modulegraph:
