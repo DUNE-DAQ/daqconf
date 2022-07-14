@@ -104,11 +104,11 @@ import click
 @click.option('--dqm-impl', type=click.Choice(['local','cern','pocket'], case_sensitive=False), default='local', help="DQM destination (Kafka used for cern and pocket)")
 @click.option('--pocket-url', default='127.0.0.1', help="URL for connecting to Pocket services")
 @click.option('--enable-software-tpg', is_flag=True, default=False, help="Enable software TPG")
-@click.option('--tpg-channel-map', type=click.Choice(["VDColdboxChannelMap", "ProtoDUNESP1ChannelMap"]), default="ProtoDUNESP1ChannelMap", help="Channel map for software TPG")
+@click.option('--tpg-channel-map', type=click.Choice(["VDColdboxChannelMap", "ProtoDUNESP1ChannelMap", "PD2HDChannelMap", "HDColdboxChannelMap"]), default="ProtoDUNESP1ChannelMap", help="Channel map for software TPG")
 @click.option('--enable-tpset-writing', is_flag=True, default=False, help="Enable the writing of TPs to disk (only works with --enable-software-tpg")
 @click.option('--use-fake-data-producers', is_flag=True, default=False, help="Use fake data producers that respond with empty fragments immediately instead of (fake) cards and DLHs")
 
-@click.option('--dqm-cmap', type=click.Choice(['HD', 'VD', 'PD2HD']), default='HD', help="Which channel map to use for DQM")
+@click.option('--dqm-cmap', type=click.Choice(['HD', 'VD', 'PD2HD', 'HDCB']), default='HD', help="Which channel map to use for DQM")
 @click.option('--dqm-rawdisplay-params', nargs=3, default=[60, 10, 50], help="Parameters that control the data sent for the raw display plot")
 @click.option('--dqm-meanrms-params', nargs=3, default=[10, 1, 100], help="Parameters that control the data sent for the mean/rms plot")
 @click.option('--dqm-fourier-params', nargs=3, default=[0, 0, 0], help="Parameters that control the data sent for the fourier transform plot")
