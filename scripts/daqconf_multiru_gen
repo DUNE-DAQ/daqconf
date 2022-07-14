@@ -391,9 +391,13 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, hard
         HOST=host_dfo,
         DEBUG=debug)
 
-
+        
+    ru_app_names=[]
+    dqm_app_names = []
     for dro_idx,dro_config in enumerate(dro_infos):
-        ru_name = f"dro_{dro_config.host}_{dro_config.card}"
+        host=dro_config.host.replace("-","_")
+        ru_name = f"dro_{host}_{dro_config.card}"
+        ru_app_names.append(ru_name)
         the_system.apps[ru_name] = get_readout_app(
             DRO_CONFIG=dro_config,
             EMULATOR_MODE = emulator_mode,
@@ -423,6 +427,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, hard
 
         if enable_dqm:
             dqm_name = "dqm_" + ru_name
+            dqm_app_names.append(dqm_name)
             the_system.apps[dqm_name] = get_dqm_app(
                 DRO_CONFIG = dro_config,
                 RU_NAME=ru_name,
@@ -613,14 +618,14 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, hard
     # HACK: Make sure RUs start after trigger
     forced_deps = []
 
-    for i,host in enumerate(host_ru):
+    for i,host in enumerate(dro_infos):
         ru_name = ru_app_names[i]
         forced_deps.append(['hsi', ru_name])
         if enable_tpset_writing:
             forced_deps.append(['tpwriter', ru_name])
 
     if enable_dqm:
-        for i,host in enumerate(host_ru):
+        for i,host in enumerate(dro_infos):
             dqm_name = dqm_app_names[i]
             forced_deps.append([dqm_name, 'dfo'])
         for i,host in enumerate(host_df):

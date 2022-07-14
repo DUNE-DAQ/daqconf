@@ -75,6 +75,7 @@ def get_dqm_app(RU_CONFIG=[],
                             plugin='TriggerRecordBuilder',
                             conf=trb.ConfParams(# This needs to be done in connect_fragment_producers
                                 general_queue_timeout=QUEUE_POP_WAIT_MS,
+                                source_id = DQMIDX,
                                 max_time_window=0,
                                 map=trb.mapgeoidconnections([])
                             ))]

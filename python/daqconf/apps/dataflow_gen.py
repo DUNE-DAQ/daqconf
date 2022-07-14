@@ -58,6 +58,7 @@ def get_dataflow_app(HOSTIDX=0,
                           conf = trb.ConfParams(general_queue_timeout=QUEUE_POP_WAIT_MS,
                                                 reply_connection_name = "",
                                                 max_time_window=MAX_TRIGGER_RECORD_WINDOW,
+                                                source_id = HOSTIDX,
                                                 map=trb.mapsourceidconnections([]))), # We patch this up in connect_fragment_producers
                 DAQModule(name = 'datawriter',
                        plugin = 'DataWriter',

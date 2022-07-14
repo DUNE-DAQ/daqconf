@@ -72,7 +72,8 @@ def get_readout_app(DRO_CONFIG=None,
     modules = []
     queues = []
 
-    RUIDX = f"{DRO_CONFIG.host}_{DRO_CONFIG.card}"
+    host = DRO_CONFIG.host.replace("-","_")
+    RUIDX = f"{host}_{DRO_CONFIG.card}"
     FRONTEND_TYPE = DetID.subdetector_to_string(DetID.Subdetector(DRO_CONFIG.links[0].det_id))
     print(f'FRONTENT_TYPE={FRONTEND_TYPE}')
 
