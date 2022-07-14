@@ -86,22 +86,6 @@ import click
 @click.option('--mlt-buffer-timeout', default=100, help="Timeout (buffer) to wait for new overlapping TCs before sending TD")
 @click.option('--mlt-td-out-of-timeout', is_flag=True, default=False, help="Option to drop TD if TC comes out of timeout window")
 @click.option('--mlt-td-readout-limit', default=1000, help="Maximum allowed time length [ms] for a readout window of a single TD")
-@click.option('--mlt-c0-before-ticks', default=10000)
-@click.option('--mlt-c0-after-ticks', default=20000)
-@click.option('--mlt-c1-before-ticks', default=100000)
-@click.option('--mlt-c1-after-ticks', default=200000)
-@click.option('--mlt-c2-before-ticks', default=1000000)
-@click.option('--mlt-c2-after-ticks', default=2000000)
-@click.option('--mlt-c3-before-ticks', default=10000)
-@click.option('--mlt-c3-after-ticks', default=20000)
-@click.option('--mlt-c4-before-ticks', default=100000)
-@click.option('--mlt-c4-after-ticks', default=200000)
-@click.option('--mlt-c5-before-ticks', default=1000000)
-@click.option('--mlt-c5-after-ticks', default=2000000)
-@click.option('--mlt-c6-before-ticks', default=10000)
-@click.option('--mlt-c6-after-ticks', default=20000)
-@click.option('--mlt-c7-before-ticks', default=100000)
-@click.option('--mlt-c7-after-ticks', default=200000)
 
 # timing hw partition options
 @click.option('--control-timing-partition', is_flag=True, default=False, help='Flag to control whether we are controlling timing partition in master hardware')
@@ -146,7 +130,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         token_count, data_file, output_path, disable_trace, use_felix, use_ssp, host_df, host_dfo, host_ru, host_trigger, host_hsi, host_tpw, host_tprtc, host_dqm, region_id, latency_buffer_size,
         hsi_hw_connections_file, hsi_device_name, hsi_readout_period, control_hsi_hw, hsi_endpoint_address, hsi_endpoint_partition, hsi_re_mask, hsi_fe_mask, hsi_inv_mask, hsi_source,
         use_hsi_hw, hsi_device_id, mean_hsi_signal_multiplicity, hsi_signal_emulation_mode, enabled_hsi_signals,
-        ttcm_s1, ttcm_s2, trigger_activity_plugin, trigger_activity_config, trigger_candidate_plugin, trigger_candidate_config, hsi_trigger_type_passthrough, mlt_buffer_timeout, mlt_td_out_of_timeout, mlt_td_readout_limit, mlt_c0_before_ticks, mlt_c0_after_ticks, mlt_c1_before_ticks, mlt_c1_after_ticks, mlt_c2_before_ticks, mlt_c2_after_ticks, mlt_c3_before_ticks, mlt_c3_after_ticks, mlt_c4_before_ticks, mlt_c4_after_ticks, mlt_c5_before_ticks, mlt_c5_after_ticks, mlt_c6_before_ticks, mlt_c6_after_ticks, mlt_c7_before_ticks, mlt_c7_after_ticks,
+        ttcm_s1, ttcm_s2, trigger_activity_plugin, trigger_activity_config, trigger_candidate_plugin, trigger_candidate_config, hsi_trigger_type_passthrough, mlt_buffer_timeout, mlt_td_out_of_timeout, mlt_td_readout_limit,
         control_timing_partition, timing_partition_master_device_name, timing_partition_id, timing_partition_trigger_mask, timing_partition_rate_control_enabled, timing_partition_spill_gate_enabled,
         enable_raw_recording, raw_recording_output_dir, frontend_type, opmon_impl, enable_dqm, ers_impl, dqm_impl, pocket_url, enable_software_tpg, enable_firmware_tpg, tpg_channel_map, enable_tpset_writing, use_fake_data_producers, dqm_cmap,
         dqm_rawdisplay_params, dqm_meanrms_params, dqm_fourier_params, dqm_fouriersum_params, dqm_channelmask_params, dqm_df_rate,
@@ -362,22 +346,6 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
 	MLT_BUFFER_TIMEOUT = mlt_buffer_timeout,
         MLT_TD_READOUT_LIMIT = mlt_td_readout_limit,
         MLT_TD_OUT_OF_TIMEOUT = mlt_td_out_of_timeout,
-        MLT_C0_BEFORE_TICKS = mlt_c0_before_ticks,
-	MLT_C0_AFTER_TICKS = mlt_c0_after_ticks,
-        MLT_C1_BEFORE_TICKS = mlt_c1_before_ticks,
-        MLT_C1_AFTER_TICKS = mlt_c1_after_ticks,
-        MLT_C2_BEFORE_TICKS = mlt_c2_before_ticks,
-        MLT_C2_AFTER_TICKS = mlt_c2_after_ticks,
-        MLT_C3_BEFORE_TICKS = mlt_c3_before_ticks,
-        MLT_C3_AFTER_TICKS = mlt_c3_after_ticks,
-        MLT_C4_BEFORE_TICKS = mlt_c4_before_ticks,
-        MLT_C4_AFTER_TICKS = mlt_c4_after_ticks,
-        MLT_C5_BEFORE_TICKS = mlt_c5_before_ticks,
-        MLT_C5_AFTER_TICKS = mlt_c5_after_ticks,
-        MLT_C6_BEFORE_TICKS = mlt_c6_before_ticks,
-        MLT_C6_AFTER_TICKS = mlt_c6_after_ticks,
-        MLT_C7_BEFORE_TICKS = mlt_c7_before_ticks,
-        MLT_C7_AFTER_TICKS = mlt_c7_after_ticks,
         CHANNEL_MAP_NAME = tpg_channel_map,
         HOST=host_trigger,
         DEBUG=debug)
