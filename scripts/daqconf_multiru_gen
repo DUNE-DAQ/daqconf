@@ -10,6 +10,8 @@ from collections import defaultdict
 from os.path import exists, join
 from daqconf.core.system import System
 from daqconf.core.metadata import write_metadata_file
+import random
+import string
 
 # Add -h as default help option
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -47,6 +49,7 @@ import click
 @click.option('--disable-trace', is_flag=True, help="Do not enable TRACE (default TRACE_FILE is /tmp/trace_buffer_\${HOSTNAME}_\${USER})")
 @click.option('-f', '--use-felix', is_flag=True, help="Use real felix cards instead of fake ones")
 @click.option('--use-ssp', is_flag=True, help="Use real SSPs instead of fake sources")
+
 @click.option('--host-df', multiple=True, default=['localhost'], help="This option is repeatable, with each repetition adding another dataflow app.")
 @click.option('--host-dfo', default='localhost', help="Sets the host for the DFO app")
 @click.option('--host-ru', multiple=True, default=['localhost'], help="This option is repeatable, with each repetition adding an additional ru process.")
@@ -120,6 +123,7 @@ import click
 @click.option('--tpc-region-name-prefix', default='APA', help="Prefix to be used for the 'Region' Group name inside the HDF5 file")
 @click.option('--max-file-size', default=4*1024*1024*1024, help="The size threshold when raw data files are closed (in bytes)")
 @click.option('--max-trigger-record-window', default=0, help="The maximum size for the window of data that will included in a single TriggerRecord (in ticks). Readout windows that are longer than this size will result in TriggerRecords being split into a sequence of TRs. A zero value for this parameter means no splitting.")
+@click.option('--data-request-timeout-ms', default=1000, help="The baseline data request timeout that will be used by modules in the Readout and Trigger subsystems (i.e. any module that produces data fragments). Downstream timeouts, such as the trigger-record-building timeout, are derived from this.")
 @click.option('--image', default="", type=str, help="Which docker image to use")
 @click.option('--use-k8s', is_flag=True, default=False, help="Whether to use k8s")
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
@@ -134,7 +138,8 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         control_timing_partition, timing_partition_master_device_name, timing_partition_id, timing_partition_trigger_mask, timing_partition_rate_control_enabled, timing_partition_spill_gate_enabled,
         enable_raw_recording, raw_recording_output_dir, frontend_type, opmon_impl, enable_dqm, ers_impl, dqm_impl, pocket_url, enable_software_tpg, enable_firmware_tpg, tpg_channel_map, enable_tpset_writing, use_fake_data_producers, dqm_cmap,
         dqm_rawdisplay_params, dqm_meanrms_params, dqm_fourier_params, dqm_fouriersum_params, dqm_channelmask_params, dqm_df_rate,
-        dqm_df_algs, op_env, tpc_region_name_prefix, max_file_size, max_trigger_record_window, image, use_k8s, debug, json_dir):
+        dqm_df_algs, op_env, tpc_region_name_prefix, max_file_size, max_trigger_record_window, data_request_timeout_ms,
+        image, use_k8s, debug, json_dir):
 
     if exists(json_dir):
         raise RuntimeError(f"Directory {json_dir} already exists")
@@ -261,8 +266,31 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     ru_channel_counts = {}
     for region in region_id: ru_channel_counts[region] = 0
 
-    ru_app_names=[f"ruflx{idx}" if use_felix else f"ruemu{idx}" for idx in range(len(host_ru))]
-    dqm_app_names = [f"dqm{idx}_ru" for idx in range(len(host_ru))]
+    if debug:
+        console.log(f"Output data written to \"{output_path}\"")
+
+    raw_data_pvcs = {}
+    if use_k8s:
+        if output_path != '.':
+            if output_path != 'raw-data-storage':
+                raise RuntimeError("With K8s, --output-path can only be \"raw-data-storage\" or \".\" (nothing/default).")
+            # everything goes to the same place
+            new_output_path = "/"+output_path+"-"+''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+            raw_data_pvcs = {
+                "storage_class_name": output_path,
+                "claim_name": output_path,
+                "mount": new_output_path,
+                "read_only": False,
+            }
+            output_path = new_output_path
+            if debug:
+                console.log(f"Corresponding PVC: \"{output_path}\"")
+        else:
+            console.log(f"[red]No PVC! Data will be lost when terminating, and make sure \"{output_path}\" exists in the pod![/red]")
+
+
+    ru_app_names = [f"ruflx{idx}" if use_felix else f"ruemu{idx}" for idx in range(len(host_ru))]
+    dqm_app_names = [f"dqm{idx}-ru" for idx in range(len(host_ru))]
 
     for hostidx,ru_host in enumerate(ru_app_names):
         cardid = 0
@@ -277,6 +305,32 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
                             "start_channel": ru_channel_counts[region_id[hostidx]],
                             "channel_count": number_of_data_producers })
         ru_channel_counts[region_id[hostidx]] += number_of_data_producers
+
+    max_expected_tr_sequences = 1 if max_trigger_record_window < 1 else ((trigger_window_before_ticks + trigger_window_after_ticks) / max_trigger_record_window)
+
+    # 11-Jul-2022, KAB: added timeout calculations. The Readout and Trigger App DataRequest timeouts
+    # are set based on the command-line parameter that is specified in this script, and they are
+    # treated separately here in case we want to customize them somehow in the future.
+    # The trigger-record-building timeout is intended to be a multiple of the larger of those two,
+    # and it needs to have a non-trivial minimum value.
+    # We also include a factor in the TRB timeout that takes into account the number of data producers.
+    # At the moment, that factor uses the square root of the number of data producers, and it attempts
+    # to take into account the number of data producers in Readout and Trigger.
+    MINIMUM_BASIC_TRB_TIMEOUT = 200  # msec
+    TRB_TIMEOUT_SAFETY_FACTOR = 2
+    DFO_TIMEOUT_SAFETY_FACTOR = 3
+    MINIMUM_DFO_TIMEOUT = 10000
+    readout_data_request_timeout = data_request_timeout_ms
+    trigger_data_request_timeout = data_request_timeout_ms
+    trigger_record_building_timeout = max(MINIMUM_BASIC_TRB_TIMEOUT, TRB_TIMEOUT_SAFETY_FACTOR * max(readout_data_request_timeout, trigger_data_request_timeout))
+    if total_number_of_data_producers >= 1:
+        effective_number_of_data_producers = total_number_of_data_producers  # number of DataLinkHandlers
+        if enable_software_tpg or enable_firmware_tpg:
+            effective_number_of_data_producers *= 2  # add in TPSet producers from Trigger (one per Link)
+            effective_number_of_data_producers += len(region_id)  # add in TA producers from Trigger (one per RU)
+        trigger_record_building_timeout = int(math.sqrt(effective_number_of_data_producers) * trigger_record_building_timeout)
+    trigger_record_building_timeout += 15 * TRB_TIMEOUT_SAFETY_FACTOR * max_expected_tr_sequences
+    dfo_stop_timeout = max(DFO_TIMEOUT_SAFETY_FACTOR * trigger_record_building_timeout, MINIMUM_DFO_TIMEOUT)
 
     if use_hsi_hw:
         the_system.apps["hsi"] = get_hsi_app(
@@ -298,6 +352,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             TIMING_PORT=port_timing,
             HOST=host_hsi,
             DEBUG=debug)
+        next(iter(the_system.apps['hsi'].node_selection))["strict"] = True
     else:
         the_system.apps["hsi"] = get_fake_hsi_app(
             RUN_NUMBER = run_number,
@@ -326,6 +381,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             TIMING_PORT=port_timing,
             HOST=host_tprtc,
             DEBUG=debug)
+        next(iter(the_system.apps['tprtc'].node_selection))["strict"] = True
 
     the_system.apps['trigger'] = get_trigger_app(
         SOFTWARE_TPG_ENABLED = enable_software_tpg,
@@ -347,12 +403,14 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         MLT_TD_READOUT_LIMIT = mlt_td_readout_limit,
         MLT_TD_OUT_OF_TIMEOUT = mlt_td_out_of_timeout,
         CHANNEL_MAP_NAME = tpg_channel_map,
+        DATA_REQUEST_TIMEOUT=trigger_data_request_timeout,
         HOST=host_trigger,
         DEBUG=debug)
 
     the_system.apps['dfo'] = get_dfo_app(
         DF_COUNT = len(host_df),
         TOKEN_COUNT = trigemu_token_count,
+        STOP_TIMEOUT = dfo_stop_timeout,
         HOST=host_dfo,
         DEBUG=debug)
 
@@ -379,7 +437,16 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             USE_FAKE_DATA_PRODUCERS = use_fake_data_producers,
             HOST=host,
             LATENCY_BUFFER_SIZE=latency_buffer_size,
+            DATA_REQUEST_TIMEOUT=readout_data_request_timeout,
             DEBUG=debug)
+        if use_k8s:
+            if the_system.apps[ru_name].host != "localhost":
+                next(iter(the_system.apps[ru_name].node_selection))["strict"] = True
+            if use_felix:
+                the_system.apps[ru_name].resources = {
+                    "felix.cern/flx": "2", # requesting 2 FLXs
+                    "memory": "32Gi" # yes bro
+                }
 
         if debug:
             console.log(f"{ru_name} app: {the_system.apps[ru_name]}")
@@ -407,6 +474,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
                 NUM_DF_APPS=len(host_df),
                 FRONTEND_TYPE=frontend_type,
                 DEBUG=debug)
+
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
 
     if enable_tpset_writing:
@@ -422,15 +490,24 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             CLOCK_SPEED_HZ = clock_speed_hz,
             HOST=host_tpw,
             DEBUG=debug)
+
+        if raw_data_pvcs:
+            node_selection = {
+                "strict": True,
+                "dune.daq/role": ["raw-data-storage"],
+            }
+            the_system.apps[tpw_name].node_selection = [node_selection]
+            the_system.apps[tpw_name].pvcs += [raw_data_pvcs]
+
         if debug: console.log(f"{tpw_name} app: {the_system.apps[tpw_name]}")
 
     df_app_names = []
-    dqm_df_app_names = [f"dqm{idx}_df" for idx in range(len(host_df))]
-    for i,host in enumerate(host_df):
+    dqm_df_app_names = [f"dqm{idx}-df" for idx in range(len(host_df))]
 
+    for i,host in enumerate(host_df):
         app_name = f'dataflow{i}'
+
         df_app_names.append(app_name)
-        max_expected_tr_sequences = 1 if max_trigger_record_window < 1 else ((trigger_window_before_ticks + trigger_window_after_ticks) / max_trigger_record_window)
         the_system.apps[app_name] = get_dataflow_app(
             HOSTIDX = i,
             OUTPUT_PATH = output_path,
@@ -440,10 +517,20 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             MAX_TRIGGER_RECORD_WINDOW = max_trigger_record_window,
             MAX_EXPECTED_TR_SEQUENCES = max_expected_tr_sequences,
             TOKEN_COUNT = trigemu_token_count,
+            TRB_TIMEOUT = trigger_record_building_timeout,
             HOST=host,
             HAS_DQM=enable_dqm,
             DEBUG=debug
         )
+        if raw_data_pvcs:
+            node_selection = {
+                "strict": True,
+                "dune.daq/role": ["raw-data-storage"],
+            }
+            the_system.apps[app_name].node_selection = [node_selection]
+            the_system.apps[app_name].pvcs += [raw_data_pvcs]
+
+
         if enable_dqm:
             dqm_name = dqm_df_app_names[i]
             the_system.apps[dqm_name] = get_dqm_app(
@@ -471,12 +558,35 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
                 NUM_DF_APPS=len(host_df),
                 FRONTEND_TYPE=frontend_type,
                 DEBUG=debug)
+            the_system.apps[dqm_name].pod_affinity += [{
+                 # run preferably on thesame host as dataflow
+                "app": [app_name],
+                "strict": False
+            }]
+
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
 
+
+    all_apps_except_ru = []
+    all_apps_except_ru_and_df = []
 
     for name,app in the_system.apps.items():
         if app.name=="__app":
             app.name=name
+
+        if app.name not in ru_app_names:
+            all_apps_except_ru += [app]
+        if app.name not in ru_app_names+df_app_names:
+            all_apps_except_ru_and_df += [name]
+
+    if use_k8s:
+        from daqconf.core.conf_utils import set_strict_anti_affinity
+        set_strict_anti_affinity(all_apps_except_ru, ru_app_names)
+
+        # HACK
+        boot_order = ru_app_names + df_app_names + [app for app in all_apps_except_ru_and_df]
+        if debug:
+            console.log(f'Boot order: {boot_order}')
 
     #     console.log(f"MDAapp config generated in {json_dir}")
     from daqconf.core.conf_utils import make_app_command_data
@@ -533,7 +643,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     ##################################################################################
 
     # Make boot.json config
-    from daqconf.core.conf_utils import make_system_command_datas,generate_boot, write_json_files
+    from daqconf.core.conf_utils import make_system_command_datas,generate_boot_common, write_json_files
 
     # HACK: Make sure RUs start after trigger
     forced_deps = []
@@ -560,12 +670,37 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         external_connections += [ext.external_name for ext in the_system.apps[app].modulegraph.external_connections]
 
     # Override the default boot.json with the one from minidaqapp
-    boot = generate_boot(the_system.apps, base_command_port=base_command_port,
-                         ers_settings=ers_settings, info_svc_uri=info_svc_uri,
-                         disable_trace=disable_trace, use_kafka=use_kafka,
-                         external_connections=external_connections,
-                         use_k8s=use_k8s,
-                         image=image)
+    boot = generate_boot_common(
+        ers_settings = ers_settings,
+        info_svc_uri = info_svc_uri,
+        disable_trace = disable_trace,
+        use_kafka = use_kafka,
+        external_connections = external_connections,
+        daq_app_exec_name = "daq_application_ssh" if not use_k8s else "daq_application_k8s",
+        verbose = debug,
+    )
+
+    if use_k8s:
+        from daqconf.core.conf_utils import update_with_k8s_boot_data
+        console.log("Generating k8s boot.json")
+        update_with_k8s_boot_data(
+            boot_data = boot,
+            apps = the_system.apps,
+            base_command_port = base_command_port,
+            boot_order = boot_order,
+            image = image,
+            verbose = debug,
+        )
+    else:
+        from daqconf.core.conf_utils import update_with_ssh_boot_data
+        console.log("Generating ssh boot.json")
+        update_with_ssh_boot_data(
+            boot_data = boot,
+            apps = the_system.apps,
+            base_command_port = base_command_port,
+            verbose = debug,
+        )
+
 
     if thread_pinning_file:
         boot['scripts'] = {

@@ -81,6 +81,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                     MLT_TD_READOUT_LIMIT: int = 1000,
 
                     CHANNEL_MAP_NAME = "ProtoDUNESP1ChannelMap",
+                    DATA_REQUEST_TIMEOUT = 1000,
                     HOST="localhost",
                     DEBUG=False):
     
@@ -110,7 +111,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                     element_id = TC_ELEMENT_ID,
                                                                                                     # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                                     stream_buffer_size = 8388608,
-                                                                                                    request_timeout_ms = 100,
+                                                                                                    request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                                     warn_on_timeout = False,
                                                                                                     enable_raw_recording = False))),
                DAQModule(name = 'tctee_ttcm',
@@ -246,7 +247,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                                  element_id = TA_ELEMENT_ID,
                                                                                                                  # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                                                  stream_buffer_size = 8388608,
-                                                                                                                 request_timeout_ms = 100,
+                                                                                                                 request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                                                  enable_raw_recording = False)))]
 
             for idy in range(tp_links):
@@ -263,7 +264,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                                   element_id = idy,
                                                                                                                   # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                                                   stream_buffer_size = 8388608,
-                                                                                                                  request_timeout_ms = 100,
+                                                                                                                  request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                                                   enable_raw_recording = False)))]
         assert(region_ids == region_ids1)
         
