@@ -230,7 +230,7 @@ def make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbos
 
     port = the_system.next_unassigned_port()
     address_receiver = f'tcp://0.0.0.0:{port}'
-    address_sender = f'tcp://{{host_{in_apps[0]}}}:{port}'
+    address_sender = f'tcp://{{{in_apps[0]}}}:{port}'
     the_system.connections[in_apps[0]] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetReceiver", data_type="", uri=address_receiver)]
     for app in set(out_apps):
         the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetSender", data_type="", uri=address_sender)]
@@ -350,7 +350,7 @@ def make_system_connections(the_system, verbose=False):
                 publishers += [endpoint["app"]]
                 if endpoint['endpoint'].external_name not in pubsub_connectionids:
                     port = the_system.next_unassigned_port()
-                    address = f'tcp://{{host_{endpoint["app"]}}}:{port}'
+                    address = f'tcp://{{{endpoint["app"]}}}:{port}'
                     pubsub_connectionids[endpoint['endpoint'].external_name] = conn.ConnectionId(
                         uid=endpoint['endpoint'].external_name,
                         service_type="kPublisher",
@@ -498,11 +498,18 @@ def make_unique_name(base, module_list):
 
     return f"{base}_{suffix}"
 
-def generate_boot(apps: list, base_command_port: int=3333, ers_settings=None, info_svc_uri="file://info_{APP_NAME}_{APP_PORT}.json",
-                  disable_trace=False, use_kafka=False, verbose=False, extra_env_vars=dict(),
-                  use_k8s=False,
-                  image="", external_connections=[]) -> dict:
-    """Generate the dictionary that will become the boot.json file"""
+def generate_boot_common(
+        ers_settings=None,
+        info_svc_uri="file://info_{APP_NAME}_{APP_PORT}.json",
+        disable_trace=False,
+        use_kafka=False,
+        verbose=False,
+        daq_app_exec_name:str="daq_application",
+        extra_env_vars=dict(),
+        external_connections=[]) -> dict:
+    """
+    Generate the dictionary that will become the boot.json file
+    """
 
     if ers_settings is None:
         ers_settings={
@@ -512,7 +519,6 @@ def generate_boot(apps: list, base_command_port: int=3333, ers_settings=None, in
             "FATAL":   "erstrace,lstdout",
         }
 
-    daq_app_exec_name = "daq_application" if not use_k8s else "daq_application_k8s"
     daq_app_specs = {
         daq_app_exec_name : {
             "comment": "Application profile using PATH variables (lower start time)",
@@ -539,14 +545,6 @@ def generate_boot(apps: list, base_command_port: int=3333, ers_settings=None, in
         }
     }
 
-    if use_k8s:
-        daq_app_specs[daq_app_exec_name]['image'] = image
-
-
-    ports = {}
-    for i, name in enumerate(apps.keys()):
-        ports[name] = base_command_port if use_k8s else base_command_port + i
-
     boot = {
         "env": {
             "DUNEDAQ_ERS_VERBOSITY_LEVEL": "getenv:1",
@@ -556,18 +554,6 @@ def generate_boot(apps: list, base_command_port: int=3333, ers_settings=None, in
             "DUNEDAQ_ERS_FATAL": ers_settings["FATAL"],
             "DUNEDAQ_ERS_DEBUG_LEVEL": "getenv_ifset",
         },
-        "apps": {
-            name: {
-                "exec": daq_app_exec_name,
-                "host": f"host_{name}",
-                "port": ports[name]
-            }
-            for name, app in apps.items()
-        },
-        "hosts": {
-            f"host_{name}": app.host
-            for name, app in apps.items()
-        },
         "response_listener": {
             "port": 56789
         },
@@ -575,19 +561,102 @@ def generate_boot(apps: list, base_command_port: int=3333, ers_settings=None, in
         "exec": daq_app_specs
     }
 
-    boot["exec"][daq_app_exec_name]["env"].update(extra_env_vars)
+    if use_kafka:
+        boot["env"]["DUNEDAQ_ERS_STREAM_LIBS"] = "erskafka"
 
     if disable_trace:
         del boot["exec"][daq_app_exec_name]["env"]["TRACE_FILE"]
 
-    if use_kafka:
-        boot["env"]["DUNEDAQ_ERS_STREAM_LIBS"] = "erskafka"
-
-    if verbose:
-        console.log("Boot data")
-        console.log(boot)
+    boot["exec"][daq_app_exec_name]["env"].update(extra_env_vars)
 
     return boot
+
+def update_with_ssh_boot_data (
+        boot_data:dict,
+        apps: list,
+        base_command_port: int=3333,
+        verbose=False):
+    """
+    Update boot_data to create the final the boot.json file
+    """
+
+    apps_desc = {}
+    hosts = {}
+    current_port = base_command_port
+
+    for name, app in apps.items():
+        apps_desc[name] = {
+            "exec": "daq_application_ssh",
+            "host": name,
+            "port": current_port,
+        }
+        current_port+=1
+        hosts[name] = app.host
+
+
+    boot_data.update({
+        "apps": apps_desc,
+        "hosts": hosts,
+    })
+
+
+def update_with_k8s_boot_data(
+        boot_data: dict,
+        apps: list,
+        image: str,
+        boot_order: list,
+        base_command_port: int=3333,
+        verbose=False):
+    """
+    Generate the dictionary that will become the boot.json file
+    """
+
+    apps_desc = {}
+    for name, app in apps.items():
+        apps_desc[name] = {
+            "exec": 'daq_application_k8s',
+            "node-selection": app.node_selection,
+            "port": base_command_port,
+            "pvcs": app.pvcs,
+            "resources": app.resources,
+            "affinity": app.pod_affinity,
+            "anti-affinity": app.pod_anti_affinity,
+        }
+
+
+    boot_data.update({"apps": apps_desc})
+    boot_data.update({"order": boot_order})
+    boot_data['exec']['daq_application_k8s']['cmd'] = ['/dunedaq/run/app-entrypoint.sh']
+    boot_data["exec"]["daq_application_k8s"]["image"] = image
+
+
+def set_strict_anti_affinity(apps, dont_run_with_me):
+    for app in apps:
+        app.pod_anti_affinity += [{
+            "app": dont_run_with_me,
+            "strict": True
+        }]
+
+def set_strict_affinity(apps, run_with_me):
+    for app in apps:
+        app.pod_affinity += [{
+            "app":run_with_me,
+            "strict": True
+        }]
+
+def set_loose_anti_affinity(apps, dont_run_with_me_if_u_can):
+    for app in apps:
+        app.pod_anti_affinity += [{
+            "app": dont_run_with_me_if_u_can,
+            "strict": False
+        }]
+
+def set_loose_affinity(apps, run_with_me_if_u_can):
+    for app in apps:
+        app.pod_affinity += [{
+            "app": run_with_me_if_u_can,
+            "strict": False
+        }]
 
 
 cmd_set = ["init", "conf", "start", "stop", "pause", "resume", "scrap"]
@@ -626,7 +695,11 @@ def make_system_command_datas(the_system, forced_deps=[], verbose=False):
             console.log(cfg)
 
     console.log(f"Generating boot json file")
-    system_command_datas['boot'] = generate_boot(the_system.apps, verbose=verbose)
+    system_command_datas['boot'] = generate_boot_common(verbose=verbose)
+    update_with_ssh_boot_data(
+        boot_data = system_command_datas['boot'],
+        apps = the_system.apps,
+        verbose = verbose)
 
     return system_command_datas
 

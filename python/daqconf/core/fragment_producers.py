@@ -148,7 +148,7 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
                                                           max_time_window = old_trb_conf.max_time_window,
                                                           map=trb.mapgeoidconnections(new_trb_map)))
                           
-    dqm_apps = [ (name,app) for (name,app) in the_system.apps.items() if re.match("dqm\d+_ru", name) ]
+    dqm_apps = [ (name,app) for (name,app) in the_system.apps.items() if re.match("dqm\d+-ru", name) ]
 
     for dqm_name, dqm_app in dqm_apps:
         fragment_connection_name = f"fragments_to_{dqm_name}"
