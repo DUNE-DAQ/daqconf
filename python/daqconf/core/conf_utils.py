@@ -18,13 +18,11 @@ moo.otypes.load_types('rcif/cmd.jsonnet')
 moo.otypes.load_types('appfwk/cmd.jsonnet')
 moo.otypes.load_types('appfwk/app.jsonnet')
 
-moo.otypes.load_types('networkmanager/nwmgr.jsonnet')
 moo.otypes.load_types('iomanager/connection.jsonnet')
 
 from appfwk.utils import acmd, mcmd, mspec
 import dunedaq.appfwk.app as appfwk  # AddressedCmd,
 import dunedaq.rcif.cmd as rccmd  # AddressedCmd,
-import dunedaq.networkmanager.nwmgr as nwmgr
 import dunedaq.iomanager.connection as conn
 
 from daqconf.core.daqmodule import DAQModule
@@ -180,15 +178,15 @@ def make_app_deps(the_system, forced_deps=[], verbose=False):
 
     return deps
 
-def add_one_command_data(command_data, command, default_params, app, module_order):
+def add_one_command_data(command_data, command, default_params, app):
     """Add the command data for one command in one app to the command_data object. The modules to be sent the command are listed in `module_order`. If the module has an entry in its extra_commands dictionary for this command, then that entry is used as the parameters to pass to the command, otherwise the `default_params` object is passed"""
-    mod_and_params=[]
-    for module in module_order:
-        extra_commands = app.modulegraph.get_module(module).extra_commands
-        if command in extra_commands:
-            mod_and_params.append((module, extra_commands[command]))
-        else:
-            mod_and_params.append((module, default_params))
+    mod_and_params=[("", default_params)]
+    # for module in module_order:
+    #     extra_commands = app.modulegraph.get_module(module).extra_commands
+    #     if command in extra_commands:
+    #         mod_and_params.append((module, extra_commands[command]))
+    #     else:
+    #         mod_and_params.append((module, default_params))
 
     command_data[command] = acmd(mod_and_params)
 
@@ -232,7 +230,7 @@ def make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbos
 
     port = the_system.next_unassigned_port()
     address_receiver = f'tcp://0.0.0.0:{port}'
-    address_sender = f'tcp://{{host_{in_apps[0]}}}:{port}'
+    address_sender = f'tcp://{{{in_apps[0]}}}:{port}'
     the_system.connections[in_apps[0]] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetReceiver", data_type="", uri=address_receiver)]
     for app in set(out_apps):
         the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetSender", data_type="", uri=address_sender)]
@@ -268,11 +266,11 @@ def make_system_connections(the_system, verbose=False):
             make_external_connection(the_system, external_conn.external_name, app, external_conn.host, external_conn.port, external_conn.topic, external_conn.direction, verbose)
             external_uids.add(external_conn.external_name)
       for endpoint in the_system.apps[app].modulegraph.endpoints:
-        uids.append(endpoint.external_name)
         if len(endpoint.topic) == 0:
             if verbose:
                 console.log(f"Adding endpoint {endpoint.external_name}, app {app}, direction {endpoint.direction}")
             endpoint_map[endpoint.external_name] += [{"app": app, "endpoint": endpoint}]
+            uids.append(endpoint.external_name)
         else:
             if verbose:
                 console.log(f"Getting topics for endpoint {endpoint.external_name}, app {app}, direction {endpoint.direction}")
@@ -352,7 +350,7 @@ def make_system_connections(the_system, verbose=False):
                 publishers += [endpoint["app"]]
                 if endpoint['endpoint'].external_name not in pubsub_connectionids:
                     port = the_system.next_unassigned_port()
-                    address = f'tcp://{{host_{endpoint["app"]}}}:{port}'
+                    address = f'tcp://{{{endpoint["app"]}}}:{port}'
                     pubsub_connectionids[endpoint['endpoint'].external_name] = conn.ConnectionId(
                         uid=endpoint['endpoint'].external_name,
                         service_type="kPublisher",
@@ -410,12 +408,12 @@ def make_app_command_data(system, app, appkey, verbose=False):
     if verbose:
         console.log(f"inter-module dependencies are: {module_deps}")
 
-    stop_order = list(nx.algorithms.dag.topological_sort(module_deps))
-    start_order = stop_order[::-1]
+    # stop_order = list(nx.algorithms.dag.topological_sort(module_deps))
+    # start_order = stop_order[::-1]
 
-    if verbose:
-        console.log(f"Inferred module start order is {start_order}")
-        console.log(f"Inferred module stop order is {stop_order}")
+    # if verbose:
+        # console.log(f"Inferred module start order is {start_order}")
+        # console.log(f"Inferred module stop order is {stop_order}")
 
     app_connrefs = defaultdict(list)
     for endpoint in app.modulegraph.endpoints:
@@ -457,13 +455,17 @@ def make_app_command_data(system, app, appkey, verbose=False):
     ])
 
     startpars = rccmd.StartParams(run=1, disable_data_storage=False)
-    resumepars = rccmd.ResumeParams()
+    # resumepars = rccmd.ResumeParams()
 
-    add_one_command_data(command_data, "start",   startpars,  app, start_order)
-    add_one_command_data(command_data, "stop",    None,       app, stop_order)
-    add_one_command_data(command_data, "scrap",   None,       app, stop_order)
-    add_one_command_data(command_data, "resume",  resumepars, app, start_order)
-    add_one_command_data(command_data, "pause",   None,       app, stop_order)
+    add_one_command_data(command_data, "start",            startpars,  app)
+    add_one_command_data(command_data, "stop",             None,       app)
+    add_one_command_data(command_data, "prestop1",         None,       app)
+    add_one_command_data(command_data, "prestop2",         None,       app)
+    add_one_command_data(command_data, "disable_triggers", None,       app)
+    add_one_command_data(command_data, "enable_triggers",  None,       app)
+    add_one_command_data(command_data, "scrap",            None,       app)
+    # add_one_command_data(command_data, "resume",           resumepars, app)
+    # add_one_command_data(command_data, "pause",            None,       app)
 
     # TODO: handle modules' `extra_commands`, including "record"
 
@@ -500,11 +502,18 @@ def make_unique_name(base, module_list):
 
     return f"{base}_{suffix}"
 
-def generate_boot(apps: list, base_command_port: int=3333, ers_settings=None, info_svc_uri="file://info_{APP_NAME}_{APP_PORT}.json",
-                  disable_trace=False, use_kafka=False, verbose=False, extra_env_vars=dict(),
-                  use_k8s=False,
-                  image="", external_connections=[]) -> dict:
-    """Generate the dictionary that will become the boot.json file"""
+def generate_boot_common(
+        ers_settings=None,
+        info_svc_uri="file://info_{APP_NAME}_{APP_PORT}.json",
+        disable_trace=False,
+        use_kafka=False,
+        verbose=False,
+        daq_app_exec_name:str="daq_application",
+        extra_env_vars=dict(),
+        external_connections=[]) -> dict:
+    """
+    Generate the dictionary that will become the boot.json file
+    """
 
     if ers_settings is None:
         ers_settings={
@@ -514,7 +523,6 @@ def generate_boot(apps: list, base_command_port: int=3333, ers_settings=None, in
             "FATAL":   "erstrace,lstdout",
         }
 
-    daq_app_exec_name = "daq_application" if not use_k8s else "daq_application_k8s"
     daq_app_specs = {
         daq_app_exec_name : {
             "comment": "Application profile using PATH variables (lower start time)",
@@ -536,18 +544,12 @@ def generate_boot(apps: list, base_command_port: int=3333, ers_settings=None, in
                 "-c",
                 "{CMD_FAC}",
                 "-i",
-                "{INFO_SVC}"
+                "{INFO_SVC}",
+                "--configurationService",
+                "{CONF_LOC}"
             ]
         }
     }
-
-    if use_k8s:
-        daq_app_specs[daq_app_exec_name]['image'] = image
-
-
-    ports = {}
-    for i, name in enumerate(apps.keys()):
-        ports[name] = base_command_port if use_k8s else base_command_port + i
 
     boot = {
         "env": {
@@ -558,18 +560,6 @@ def generate_boot(apps: list, base_command_port: int=3333, ers_settings=None, in
             "DUNEDAQ_ERS_FATAL": ers_settings["FATAL"],
             "DUNEDAQ_ERS_DEBUG_LEVEL": "getenv_ifset",
         },
-        "apps": {
-            name: {
-                "exec": daq_app_exec_name,
-                "host": f"host_{name}",
-                "port": ports[name]
-            }
-            for name, app in apps.items()
-        },
-        "hosts": {
-            f"host_{name}": app.host
-            for name, app in apps.items()
-        },
         "response_listener": {
             "port": 56789
         },
@@ -577,22 +567,105 @@ def generate_boot(apps: list, base_command_port: int=3333, ers_settings=None, in
         "exec": daq_app_specs
     }
 
-    boot["exec"][daq_app_exec_name]["env"].update(extra_env_vars)
+    if use_kafka:
+        boot["env"]["DUNEDAQ_ERS_STREAM_LIBS"] = "erskafka"
 
     if disable_trace:
         del boot["exec"][daq_app_exec_name]["env"]["TRACE_FILE"]
 
-    if use_kafka:
-        boot["env"]["DUNEDAQ_ERS_STREAM_LIBS"] = "erskafka"
-
-    if verbose:
-        console.log("Boot data")
-        console.log(boot)
+    boot["exec"][daq_app_exec_name]["env"].update(extra_env_vars)
 
     return boot
 
+def update_with_ssh_boot_data (
+        boot_data:dict,
+        apps: list,
+        base_command_port: int=3333,
+        verbose=False):
+    """
+    Update boot_data to create the final the boot.json file
+    """
 
-cmd_set = ["init", "conf", "start", "stop", "pause", "resume", "scrap"]
+    apps_desc = {}
+    hosts = {}
+    current_port = base_command_port
+
+    for name, app in apps.items():
+        apps_desc[name] = {
+            "exec": "daq_application_ssh",
+            "host": name,
+            "port": current_port,
+        }
+        current_port+=1
+        hosts[name] = app.host
+
+
+    boot_data.update({
+        "apps": apps_desc,
+        "hosts": hosts,
+    })
+
+
+def update_with_k8s_boot_data(
+        boot_data: dict,
+        apps: list,
+        image: str,
+        boot_order: list,
+        base_command_port: int=3333,
+        verbose=False):
+    """
+    Generate the dictionary that will become the boot.json file
+    """
+
+    apps_desc = {}
+    for name, app in apps.items():
+        apps_desc[name] = {
+            "exec": 'daq_application_k8s',
+            "node-selection": app.node_selection,
+            "port": base_command_port,
+            "pvcs": app.pvcs,
+            "resources": app.resources,
+            "affinity": app.pod_affinity,
+            "anti-affinity": app.pod_anti_affinity,
+        }
+
+
+    boot_data.update({"apps": apps_desc})
+    boot_data.update({"order": boot_order})
+    boot_data['exec']['daq_application_k8s']['cmd'] = ['/dunedaq/run/app-entrypoint.sh']
+    boot_data["exec"]["daq_application_k8s"]["image"] = image
+
+
+def set_strict_anti_affinity(apps, dont_run_with_me):
+    for app in apps:
+        app.pod_anti_affinity += [{
+            "app": dont_run_with_me,
+            "strict": True
+        }]
+
+def set_strict_affinity(apps, run_with_me):
+    for app in apps:
+        app.pod_affinity += [{
+            "app":run_with_me,
+            "strict": True
+        }]
+
+def set_loose_anti_affinity(apps, dont_run_with_me_if_u_can):
+    for app in apps:
+        app.pod_anti_affinity += [{
+            "app": dont_run_with_me_if_u_can,
+            "strict": False
+        }]
+
+def set_loose_affinity(apps, run_with_me_if_u_can):
+    for app in apps:
+        app.pod_affinity += [{
+            "app": run_with_me_if_u_can,
+            "strict": False
+        }]
+
+
+cmd_set = ["init", "conf"]
 
 
 def make_app_json(app_name, app_command_data, data_dir, verbose=False):
@@ -606,9 +679,9 @@ def make_app_json(app_name, app_command_data, data_dir, verbose=False):
 def make_system_command_datas(the_system, forced_deps=[], verbose=False):
     """Generate the dictionary of commands and their data for the entire system"""
 
-    if the_system.app_start_order is None:
-        app_deps = make_app_deps(the_system, forced_deps, verbose)
-        the_system.app_start_order = list(nx.algorithms.dag.topological_sort(app_deps))
+    # if the_system.app_start_order is None:
+    #     app_deps = make_app_deps(the_system, forced_deps, verbose)
+    # the_system.app_start_order = list(nx.algorithms.dag.topological_sort(app_deps))
 
     system_command_datas=dict()
 
@@ -617,10 +690,10 @@ def make_system_command_datas(the_system, forced_deps=[], verbose=False):
         cfg = {
             "apps": {app_name: f'data/{app_name}_{c}' for app_name in the_system.apps.keys()}
         }
-        if c == 'start':
-            cfg['order'] = the_system.app_start_order
-        elif c == 'stop':
-            cfg['order'] = the_system.app_start_order[::-1]
+        # if c == 'start':
+        #     cfg['order'] = the_system.app_start_order
+        # elif c == 'stop':
+        #     cfg['order'] = the_system.app_start_order[::-1]
 
         system_command_datas[c]=cfg
 
@@ -628,7 +701,11 @@ def make_system_command_datas(the_system, forced_deps=[], verbose=False):
             console.log(cfg)
 
     console.log(f"Generating boot json file")
-    system_command_datas['boot'] = generate_boot(the_system.apps, verbose=verbose)
+    system_command_datas['boot'] = generate_boot_common(verbose=verbose)
+    update_with_ssh_boot_data(
+        boot_data = system_command_datas['boot'],
+        apps = the_system.apps,
+        verbose = verbose)
 
     return system_command_datas
 

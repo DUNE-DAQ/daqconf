@@ -77,6 +77,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                     HSI_TRIGGER_TYPE_PASSTHROUGH: bool = False,
 
                     CHANNEL_MAP_NAME = "ProtoDUNESP1ChannelMap",
+                    DATA_REQUEST_TIMEOUT = 1000,
                     HOST="localhost",
                     DEBUG=False):
     
@@ -106,7 +107,8 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                     element_id = TC_ELEMENT_ID,
                                                                                                     # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                                     stream_buffer_size = 8388608,
-                                                                                                    retry_count = 1000,
+                                                                                                    request_timeout_ms = DATA_REQUEST_TIMEOUT,
+                                                                                                    warn_on_timeout = False,
                                                                                                     enable_raw_recording = False))),
                DAQModule(name = 'tctee_ttcm',
                          plugin = 'TCTee')]
@@ -241,7 +243,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                                  element_id = TA_ELEMENT_ID,
                                                                                                                  # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                                                  stream_buffer_size = 8388608,
-                                                                                                                 retry_count = 1000,
+                                                                                                                 request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                                                  enable_raw_recording = False)))]
 
             for idy in range(tp_links):
@@ -258,7 +260,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                                   element_id = idy,
                                                                                                                   # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                                                   stream_buffer_size = 8388608,
-                                                                                                                  retry_count = 1000,
+                                                                                                                  request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                                                   enable_raw_recording = False)))]
         assert(region_ids == region_ids1)
         
@@ -330,9 +332,9 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
             mgraph.connect_modules(f'tasettee_region_{region_id}.output1', f'tazipper.input', "tas_to_tazipper",      size_hint=1000)
             mgraph.connect_modules(f'tasettee_region_{region_id}.output2', f'ta_buf_region_{region_id}.taset_source', size_hint=1000)
     
-    mgraph.add_endpoint("hsievents", None, Direction.IN, toposort=True)
-    mgraph.add_endpoint("td_to_dfo", None, Direction.OUT)
-    mgraph.add_endpoint("df_busy_signal", None, Direction.IN, toposort=True)
+    mgraph.add_endpoint("hsievents", None, Direction.IN)
+    mgraph.add_endpoint("td_to_dfo", None, Direction.OUT, toposort=True)
+    mgraph.add_endpoint("df_busy_signal", None, Direction.IN)
 
     mgraph.add_fragment_producer(region=TC_REGION_ID, element=TC_ELEMENT_ID, system="DataSelection",
                                  requests_in="tc_buf.data_request_source",
@@ -354,7 +356,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                 buf_name=f'buf_{link_id}'
                 global_link = link_idx+ru_config['start_channel'] # for the benefit of correct fragment geoid
 
-                mgraph.add_endpoint(f"tpsets_{link_id}_sub", f"channelfilter_{link_id}.tpset_source", Direction.IN, topic=[ru_config["tpset_topics"][link_idx]])
+                mgraph.add_endpoint(f"tpsets_{link_id}_sub", f"channelfilter_{link_id}.tpset_source", Direction.IN, topic=["TPSets"])
 
                 mgraph.add_fragment_producer(region=ru_config['region_id'], element=global_link, system="DataSelection",
                                              requests_in=f"{buf_name}.data_request_source",

@@ -69,23 +69,7 @@ def get_tpwriter_app(RU_CONFIG,
 
     mgraph=ModuleGraph(modules)
 
-    # Connect up the TPSets from readout to the tpswriter. There's one
-    # stream per FELIX link, and the pub/sub topic for each link is
-    # stored in the RU_CONFIG that was passed as an argument to
-    # get_tpwriter_app
-    for ruidx, ru_config in enumerate(RU_CONFIG):
-        if FIRMWARE_TPG_ENABLED:
-            if ru_config["channel_count"] > 5:
-                tp_links = 2
-            else:
-                tp_links = 1
-        else:
-            tp_links = ru_config["channel_count"]
-        for link_idx in range(tp_links):
-            link_id=f"ru{ruidx}_link{link_idx}"
-            mgraph.add_endpoint(f"tpsets_{link_id}_sub", f"tpswriter.tpset_source", Direction.IN, topic=[ru_config["tpset_topics"][link_idx]])
-
-    # mgraph.add_endpoint("tpsets_into_writer", "tpswriter.tpset_source", Direction.IN)
+    mgraph.add_endpoint("TPSets", f"tpswriter.tpset_source", Direction.IN, topic=["TPSets"])
 
     tpw_app = App(modulegraph=mgraph, host=HOST)
 
