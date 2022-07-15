@@ -77,8 +77,8 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                     HSI_TRIGGER_TYPE_PASSTHROUGH: bool = False,
 
 		    MLT_BUFFER_TIMEOUT: int = 100,
-                    MLT_TD_OUT_OF_TIMEOUT: bool = False,
-                    MLT_TD_READOUT_LIMIT: int = 1000,
+                    MLT_SEND_TIMED_OUT_TDS: bool = False,
+                    MLT_MAX_TD_LENGTH_MS: int = 1000,
 
                     CHANNEL_MAP_NAME = "ProtoDUNESP1ChannelMap",
                     DATA_REQUEST_TIMEOUT = 1000,
@@ -296,8 +296,8 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                               dfo_busy_connection=f"df_busy_signal",
                                               hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH,
 					      buffer_timeout=MLT_BUFFER_TIMEOUT,
-                                              td_out_of_timeout=MLT_TD_OUT_OF_TIMEOUT,
-                                              td_readout_limit=MLT_TD_READOUT_LIMIT))]
+                                              td_out_of_timeout=MLT_SEND_TIMED_OUT_TDS,
+                                              td_readout_limit=MLT_MAX_TD_LENGTH_MS))]
 
     mgraph = ModuleGraph(modules)
 
