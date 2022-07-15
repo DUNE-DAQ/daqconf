@@ -40,7 +40,10 @@ def set_mlt_links(the_system, mlt_app_name="trigger", verbose=False):
     mgraph.reset_module_conf("mlt", mlt.ConfParams(links=mlt_links, 
                                                    dfo_connection=old_mlt_conf.dfo_connection, 
                                                    dfo_busy_connection=old_mlt_conf.dfo_busy_connection,
-                                                   hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough))
+                                                   hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough,
+						   buffer_timeout=old_mlt_conf.buffer_timeout,
+                                                   td_out_of_timeout=old_mlt_conf.td_out_of_timeout,
+                                                   td_readout_limit=old_mlt_conf.td_readout_limit))
 
 def remove_mlt_link(the_system, geoid, mlt_app_name="trigger"):
     """
@@ -55,8 +58,11 @@ def remove_mlt_link(the_system, geoid, mlt_app_name="trigger"):
     mgraph.reset_module_conf("mlt", mlt.ConfParams(links=mlt_links, 
                                                    dfo_connection=old_mlt_conf.dfo_connection, 
                                                    dfo_busy_connection=old_mlt_conf.dfo_busy_connection,
-                                                   hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough))
-    
+                                                   hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough,
+                                                   buffer_timeout=old_mlt_conf.buffer_timeout,
+					       	   td_out_of_timeout=old_mlt_conf.td_out_of_timeout,
+                                                   td_readout_limit=old_mlt_conf.td_readout_limit))
+
 def connect_fragment_producers(app_name, the_system, verbose=False):
     """Connect the data request and fragment sending queues from all of
        the fragment producers in the app with name `app_name` to the
