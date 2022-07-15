@@ -665,7 +665,7 @@ def set_loose_affinity(apps, run_with_me_if_u_can):
         }]
 
 
-cmd_set = ["init", "conf", "start", "stop", "enable_triggers", "disable_triggers", "prestop1", "prestop2", "scrap"]
+cmd_set = ["init", "conf"]
 
 
 def make_app_json(app_name, app_command_data, data_dir, verbose=False):

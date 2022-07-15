@@ -55,20 +55,18 @@ def get_fake_hsi_app(RUN_NUMBER=333,
     if TRIGGER_RATE_HZ > 0:
         trigger_interval_ticks = math.floor((1 / TRIGGER_RATE_HZ) * CLOCK_SPEED_HZ / DATA_RATE_SLOWDOWN_FACTOR)
 
-    startpars = rccmd.StartParams(run=RUN_NUMBER, trigger_interval_ticks = trigger_interval_ticks)
-    resumepars = rccmd.ResumeParams(trigger_interval_ticks = trigger_interval_ticks)
+    startpars = rccmd.StartParams(run=RUN_NUMBER, trigger_rate = TRIGGER_RATE_HZ)
 
     modules = [DAQModule(name   = 'fhsig',
                          plugin = "FakeHSIEventGenerator",
                          conf   =  fhsig.Conf(clock_frequency=CLOCK_SPEED_HZ/DATA_RATE_SLOWDOWN_FACTOR,
-                                              trigger_interval_ticks=trigger_interval_ticks,
+                                              trigger_rate=TRIGGER_RATE_HZ,
                                               mean_signal_multiplicity=MEAN_SIGNAL_MULTIPLICITY,
                                               signal_emulation_mode=SIGNAL_EMULATION_MODE,
                                               enabled_signals=ENABLED_SIGNALS,
                                               hsievent_connection_name="hsievents",
                                               timesync_topic="Timesync"),
-                         extra_commands = {"start": startpars,
-                                           "resume": resumepars})]
+                         extra_commands = {"start": startpars})]
     
     mgraph = ModuleGraph(modules)
     # P. Rodrigues 2022-02-15 We don't make endpoints for the
