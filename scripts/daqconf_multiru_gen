@@ -58,6 +58,7 @@ import click
 @click.option('--host-tpw', default='localhost', help='Host to run the TPWriter app on')
 @click.option('--host-tprtc', default='localhost', help='Host to run the timing partition controller app on')
 @click.option('--host-dqm', multiple=True, default=['localhost'], help='Host to run the DQM aps on')
+@click.option('--region-id', multiple=True, default=[], help="Define the Region IDs for the RUs. If not specified, each RU will be assigned a Region ID based on declared order.")
 @click.option('--latency-buffer-size', default=499968, help="Size of the latency buffers (in number of elements)")
 # hsi readout options
 @click.option('--hsi-hw-connections-file', default="${TIMING_SHARE}/config/etc/connections.xml", help='Real timing hardware only: path to hardware connections file')
