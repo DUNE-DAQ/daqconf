@@ -223,10 +223,15 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     else:
         system_type = 'PDS'
 
-    if latency_buffer_size is None:
-        latency_buffer_size = 499968
-        if frontend_type == 'tde':
-            latency_buffer_size = 1000
+    # For raw recording to work the size of the LB has to be a multiple of 4096 bytes so that gives
+    # us the following problem:
+    # number_of_elements * element_size = 4096 * M,  where M is an arbitrary integer,
+    # so only a value of number_elements that satisfies the equation above is valid.
+    if frontend_type == 'tde':
+        # number_of_elements = 4096 is always a solution by construction and
+        # the total size happens to be quite close to the one when using WIB
+        # as the frontend type
+        latency_buffer_size = 4096
 
     if opmon_impl == 'cern':
         info_svc_uri = "kafka://monkafka.cern.ch:30092/opmon"
