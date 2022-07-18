@@ -151,7 +151,7 @@ def cli(base_command_port, clock_speed_hz, disable_trace, host_thi, port_thi, ho
     }
 
     # Make boot.json config
-    from daqconf.core.conf_utils import make_system_command_datas,generate_boot, write_json_files
+    from daqconf.core.conf_utils import make_system_command_datas,generate_boot_common, write_json_files
     system_command_datas = make_system_command_datas(the_system, verbose=debug)
 
     external_connections = []
