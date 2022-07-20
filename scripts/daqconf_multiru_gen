@@ -639,7 +639,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
 
     # Arrange per-app command data into the format used by util.write_json_files()
     app_command_datas = {
-        name : make_app_command_data(the_system, app,name, verbose=debug)
+        name : make_app_command_data(the_system, app,name, verbose=debug, use_k8s=use_k8s)
         for name,app in the_system.apps.items()
     }
 
