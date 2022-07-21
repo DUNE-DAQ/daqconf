@@ -508,7 +508,7 @@ def generate_boot_common(
         disable_trace=False,
         use_kafka=False,
         verbose=False,
-        daq_app_exec_name:str="daq_application",
+        daq_app_exec_name:str="daq_application_ssh",
         extra_env_vars=dict(),
         external_connections=[]) -> dict:
     """
