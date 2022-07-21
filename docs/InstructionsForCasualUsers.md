@@ -6,15 +6,15 @@ Here are the steps that should be used when you first create your local software
 
 1. log into a system that has access to `/cvmfs/dunedaq.opensciencegrid.org/`
 2. `source /cvmfs/dunedaq.opensciencegrid.org/setup_dunedaq.sh`
-3. `setup_dbt dunedaq-v3.0.0`
-4. `dbt-create -c dunedaq-v3.0.0 <work_dir>`
+3. `setup_dbt dunedaq-v3.1.0`
+4. `dbt-create -c dunedaq-v3.1.0 <work_dir>`
 6. `cd <work_dir>`
 7. `dbt-workarea-env`
 9. download a raw data file, either by running
    "`curl -o frames.bin -O https://cernbox.cern.ch/index.php/s/0XzhExSIMQJUsp0/download`"
    or clicking on the [CERNBox link](https://cernbox.cern.ch/index.php/s/0XzhExSIMQJUsp0/download)) and put it into `<work_dir>`
 11. `daqconf_multiru_gen -d $PWD/frames.bin -o . -s 10 daq_fake`
-12. `nanorc daq_fake boot ${USER}-test init conf start 101 wait 60 stop scrap terminate`
+12. `nanorc daq_fake ${USER}-test boot conf start_run 101 wait 60 stop_run shutdown`
 13. examine the contents of the HDf5 file with commands like the following:
    * `h5dump-shared -H -A swtest_run000101_0000_*.hdf5`
    * and
@@ -25,7 +25,7 @@ When you return to this work area (for example, after logging out and back in), 
 1. `cd <work_dir>`
 2. `source ./dbt-env.sh`
 4. `dbt-workarea-env`
-7. `nanorc daq_fake boot ${USER}-test init conf start 102 wait 60 stop scrap terminate`
+7. `nanorc daq_fake ${USER}-test boot conf start_run 102 wait 60 stop_run shutdown`
 
 
 More detailed explanations on how to create different configurations can be found in [Instructions for different configurations for first-time users](ConfigurationsForCasualUsers.md)
