@@ -623,7 +623,7 @@ def update_with_k8s_boot_data(
             "exec": 'daq_application_k8s',
             "node-selection": app.node_selection,
             "port": base_command_port,
-            "pvcs": app.pvcs,
+            "mounted_dirs": app.mounted_dirs,
             "resources": app.resources,
             "affinity": app.pod_affinity,
             "anti-affinity": app.pod_anti_affinity,

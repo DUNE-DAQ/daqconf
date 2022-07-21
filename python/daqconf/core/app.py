@@ -232,7 +232,7 @@ class App:
             # ... can be used to select a node (or a collection of node). All the terms here are ANDed
             # this means if you add a field here, there has to be a pod which satisfies ALL the requirements at the same time
         }] if host != 'localhost' else [] # if you add another entry in the node_selection list, the requirement are ORed, so any node that satisfies a requirement is good
-        self.pvcs = []
+        self.mounted_dirs = []
         self.resources = {}
         self.pod_affinity = []
         self.pod_anti_affinity = []
