@@ -175,8 +175,8 @@ def get_readout_app(RU_CONFIG=[],
                                   system_type = SYSTEM_TYPE,
                                   apa_number = RU_CONFIG[RUIDX]["region_id"],
                                   link_number = idx,
-                                  time_tick_diff = 25,
-                                  frame_size = 464,
+                                  time_tick_diff = 25 if CLOCK_SPEED_HZ == 50000000 else 32, # WIB1 only if clock is WIB1 clock, otherwise WIB2
+                                  frame_size = 464 if CLOCK_SPEED_HZ == 50000000 else 472, # WIB1 only if clock is WIB1 clock, otherwise WIB2
                                   response_delay = 0,
                                   fragment_type = "FakeData",
                                   timesync_topic_name = "Timesync",
