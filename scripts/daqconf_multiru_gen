@@ -276,6 +276,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         console.log(f"Output data written to \"{output_path}\"")
 
     raw_data_pvcs = {}
+
     if use_k8s:
         if output_path != '.':
             if output_path != 'raw-data-storage':
@@ -358,7 +359,6 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             TIMING_PORT=port_timing,
             HOST=host_hsi,
             DEBUG=debug)
-        #next(iter(the_system.apps['hsi'].node_selection))["strict"] = True
     else:
         the_system.apps["hsi"] = get_fake_hsi_app(
             RUN_NUMBER = run_number,
@@ -387,7 +387,6 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             TIMING_PORT=port_timing,
             HOST=host_tprtc,
             DEBUG=debug)
-        #next(iter(the_system.apps['tprtc'].node_selection))["strict"] = True
 
     the_system.apps['trigger'] = get_trigger_app(
         SOFTWARE_TPG_ENABLED = enable_software_tpg,
@@ -443,8 +442,6 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             DATA_REQUEST_TIMEOUT=readout_data_request_timeout,
             DEBUG=debug)
         if use_k8s:
-            if the_system.apps[ru_name].host != "localhost":
-                next(iter(the_system.apps[ru_name].node_selection))["strict"] = True
             if use_felix:
                 the_system.apps[ru_name].resources = {
                     "felix.cern/flx": "2", # requesting 2 FLXs
@@ -494,14 +491,6 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             HOST=host_tpw,
             DEBUG=debug)
 
-        if raw_data_pvcs:
-            node_selection = {
-                "strict": True,
-                "dune.daq/role": ["raw-data-storage"],
-            }
-            the_system.apps[tpw_name].node_selection = [node_selection]
-            the_system.apps[tpw_name].pvcs += [raw_data_pvcs]
-
         if debug: console.log(f"{tpw_name} app: {the_system.apps[tpw_name]}")
 
     df_app_names = []
@@ -525,13 +514,6 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             HAS_DQM=enable_dqm,
             DEBUG=debug
         )
-        if raw_data_pvcs:
-            node_selection = {
-                "strict": True,
-                "dune.daq/role": ["raw-data-storage"],
-            }
-            the_system.apps[app_name].node_selection = [node_selection]
-            the_system.apps[app_name].pvcs += [raw_data_pvcs]
 
 
         if enable_dqm:
@@ -561,11 +543,6 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
                 NUM_DF_APPS=len(host_df),
                 FRONTEND_TYPE=frontend_type,
                 DEBUG=debug)
-            the_system.apps[dqm_name].pod_affinity += [{
-                 # run preferably on thesame host as dataflow
-                "app": [app_name],
-                "strict": False
-            }]
 
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
 
@@ -581,10 +558,6 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             all_apps_except_ru += [app]
         if app.name not in ru_app_names+df_app_names:
             all_apps_except_ru_and_df += [name]
-
-    if use_k8s:
-        from daqconf.core.conf_utils import set_strict_anti_affinity
-        set_strict_anti_affinity(all_apps_except_ru, ru_app_names)
 
         # HACK
         boot_order = ru_app_names + df_app_names + [app for app in all_apps_except_ru_and_df]

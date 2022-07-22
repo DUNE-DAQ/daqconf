@@ -227,7 +227,7 @@ class App:
 
         # rest here are K8s specifics
         self.node_selection = [{ # k8s (NB: self.host is ignored for k8s)
-            "strict": False,
+            "strict": True,
             "kubernetes.io/hostname": [host],
             # ... can be used to select a node (or a collection of node). All the terms here are ANDed
             # this means if you add a field here, there has to be a pod which satisfies ALL the requirements at the same time
