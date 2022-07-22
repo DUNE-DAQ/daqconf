@@ -275,26 +275,8 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     if debug:
         console.log(f"Output data written to \"{output_path}\"")
 
-    raw_data_pvcs = {}
-
-    if use_k8s:
-        if output_path != '.':
-            if output_path != 'raw-data-storage':
-                raise RuntimeError("With K8s, --output-path can only be \"raw-data-storage\" or \".\" (nothing/default).")
-            # everything goes to the same place
-            new_output_path = "/"+output_path+"-"+''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
-            raw_data_pvcs = {
-                "storage_class_name": output_path,
-                "claim_name": output_path,
-                "mount": new_output_path,
-                "read_only": False,
-            }
-            output_path = new_output_path
-            if debug:
-                console.log(f"Corresponding PVC: \"{output_path}\"")
-        else:
-            console.log(f"[red]No PVC! Data will be lost when terminating, and make sure \"{output_path}\" exists in the pod![/red]")
-
+    if use_k8s and output_path == '.':
+        output_path = os.getcwd()
 
     ru_app_names = [f"ruflx{idx}" if use_felix else f"ruemu{idx}" for idx in range(len(host_ru))]
     dqm_app_names = [f"dqm{idx}-ru" for idx in range(len(host_ru))]
@@ -490,6 +472,13 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             CLOCK_SPEED_HZ = clock_speed_hz,
             HOST=host_tpw,
             DEBUG=debug)
+        if use_k8s: ## TODO schema
+            the_system.apps[tpw_name].mounted_dirs += [{
+                'name': 'raw-data',
+                'physical_location':output_path,
+                'in_pod_location':output_path,
+                'read_only': False
+            }]
 
         if debug: console.log(f"{tpw_name} app: {the_system.apps[tpw_name]}")
 
@@ -514,6 +503,13 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             HAS_DQM=enable_dqm,
             DEBUG=debug
         )
+        if use_k8s:
+            the_system.apps[app_name].mounted_dirs += [{
+                'name': 'raw-data',
+                'physical_location':output_path,
+                'in_pod_location':output_path,
+                'read_only': False,
+            }]
 
 
         if enable_dqm:
