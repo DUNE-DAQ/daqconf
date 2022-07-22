@@ -222,7 +222,7 @@ def make_external_connection(the_system, endpoint_name, app_name, host, port, to
             new_address = replace_localhost_ip(address)
             the_system.connections[app_name] += [conn.ConnectionId(uid=endpoint_name, service_type='kPublisher', data_type="", uri=new_address, topics=topic)]
 
-def make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbose):
+def make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbose, use_k8s=False):
     if verbose:
         console.log(f"Connection {endpoint_name}, Network")
     if len(in_apps) > 1:
@@ -230,12 +230,12 @@ def make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbos
 
     port = the_system.next_unassigned_port()
     address_receiver = f'tcp://0.0.0.0:{port}'
-    address_sender = f'tcp://{{{in_apps[0]}}}:{port}'
+    address_sender = f'tcp://{{{in_apps[0]}}}:{port}' if not use_k8s else f'tcp://{in_apps[0]}:{port}'
     the_system.connections[in_apps[0]] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetReceiver", data_type="", uri=address_receiver)]
     for app in set(out_apps):
         the_system.connections[app] += [conn.ConnectionId(uid=endpoint_name, service_type="kNetSender", data_type="", uri=address_sender)]
 
-def make_system_connections(the_system, verbose=False):
+def make_system_connections(the_system, verbose=False, use_k8s=False):
     """Given a system with defined apps and endpoints, create the
     set of connections that satisfy the endpoints.
 
@@ -327,10 +327,10 @@ def make_system_connections(the_system, verbose=False):
                         make_queue_connection(the_system,in_app, f"{in_app}.{endpoint_name}", [in_app], [in_app], size, verbose)
 
             if paired_exactly == False:
-                make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbose)
+                make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbose, use_k8s=use_k8s)
 
         else:
-            make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbose)
+            make_network_connection(the_system, endpoint_name, in_apps, out_apps, verbose, use_k8s=use_k8s)
 
     pubsub_connectionids = {}
     for topic, endpoints in topic_map.items():
@@ -350,7 +350,7 @@ def make_system_connections(the_system, verbose=False):
                 publishers += [endpoint["app"]]
                 if endpoint['endpoint'].external_name not in pubsub_connectionids:
                     port = the_system.next_unassigned_port()
-                    address = f'tcp://{{{endpoint["app"]}}}:{port}'
+                    address = f'tcp://{{{endpoint["app"]}}}:{port}' if not use_k8s else f'tcp://{endpoint["app"]}:{port}'
                     pubsub_connectionids[endpoint['endpoint'].external_name] = conn.ConnectionId(
                         uid=endpoint['endpoint'].external_name,
                         service_type="kPublisher",
@@ -383,7 +383,7 @@ def make_system_connections(the_system, verbose=False):
                     conn_copy.uri = replace_localhost_ip(conn_copy.uri)
                     the_system.connections[publisher] += [conn_copy]
 
-def make_app_command_data(system, app, appkey, verbose=False):
+def make_app_command_data(system, app, appkey, verbose=False, use_k8s=False):
     """Given an App instance, create the 'command data' suitable for
     feeding to nanorc. The needed queues are inferred from from
     connections between modules, as are the start and stop order of the
@@ -402,7 +402,7 @@ def make_app_command_data(system, app, appkey, verbose=False):
     command_data = {}
 
     if len(system.connections) == 0:
-        make_system_connections(system, verbose)
+        make_system_connections(system, verbose, use_k8s=use_k8s)
 
     module_deps = make_module_deps(app, system.connections[appkey], verbose)
     if verbose:
