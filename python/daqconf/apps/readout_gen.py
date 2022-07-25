@@ -56,6 +56,7 @@ def get_readout_app(DRO_CONFIG=None,
                     TPG_CHANNEL_MAP= "ProtoDUNESP1ChannelMap",
                     USE_FAKE_DATA_PRODUCERS=False,
                     LATENCY_BUFFER_SIZE=499968,
+                    DATA_REQUEST_TIMEOUT=1000,
                     HOST="localhost",
                     DEBUG=False):
     """Generate the json configuration for the readout process"""
@@ -94,6 +95,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                                                               source_id =total_link_count + idx,
                                                                                               # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                               stream_buffer_size = 100 if FRONTEND_TYPE=='pacman' else 8388608,
+                                                                                              request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                               enable_raw_recording = False)))]
     if FIRMWARE_TPG_ENABLED:
         if RU_CONFIG[RUIDX]["channel_count"] > 5:
@@ -135,6 +137,7 @@ def get_readout_app(DRO_CONFIG=None,
                                           source_id = idx,
                                           output_file = path.join(RAW_RECORDING_OUTPUT_DIR, f"output_tp_{RUIDX}_{idx}.out"),
                                           stream_buffer_size = 8388608,
+                                          request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                           enable_raw_recording = RAW_RECORDING_ENABLED,
                                       )))]
 
@@ -154,8 +157,8 @@ def get_readout_app(DRO_CONFIG=None,
                                   system_type = SYSTEM_TYPE,
                                   apa_number = link.det_crate,
                                   link_number = link.dro_source_id,
-                                  time_tick_diff = 25,
-                                  frame_size = 464,
+                                  time_tick_diff = 25 if CLOCK_SPEED_HZ == 50000000 else 32, # WIB1 only if clock is WIB1 clock, otherwise WIB2
+                                  frame_size = 464 if CLOCK_SPEED_HZ == 50000000 else 472, # WIB1 only if clock is WIB1 clock, otherwise WIB2
                                   response_delay = 0,
                                   fragment_type = "FakeData",
                                   timesync_topic_name = "Timesync",
@@ -202,6 +205,7 @@ def get_readout_app(DRO_CONFIG=None,
                                           source_id = link.dro_source_id,
                                           output_file = path.join(RAW_RECORDING_OUTPUT_DIR, f"output_{RUIDX}_{link.dro_source_id}.out"),
                                           stream_buffer_size = 8388608,
+                                          request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                           enable_raw_recording = RAW_RECORDING_ENABLED,
                                       )))]
 

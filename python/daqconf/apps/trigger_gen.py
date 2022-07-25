@@ -43,6 +43,7 @@ TC_ELEMENT_ID = 0
 moo.otypes.make_type(schema='number', dtype='i4', name='temp_integer', path='temptypes')
 moo.otypes.make_type(schema='number', dtype='f4', name='temp_float', path='temptypes')
 moo.otypes.make_type(schema='string', name='temp_string', path='temptypes')
+moo.otypes.make_type(schema='boolean', name='temp_boolean', path='temptypes')
 def make_moo_record(conf_dict,name,path='temptypes'):
     fields = []
     for pname,pvalue in conf_dict.items():
@@ -53,6 +54,8 @@ def make_moo_record(conf_dict,name,path='temptypes'):
             typename = 'temptypes.temp_float'
         elif type(pvalue) == str:
             typename = 'temptypes.temp_string'
+        elif type(pvalue) == bool:
+            typename = 'temptypes.temp_boolean'
         else:
             raise Exception(f'Invalid config argument type: {type(pvalue)}')
         fields.append(dict(name=pname,item=typename))
@@ -78,6 +81,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                     HSI_TRIGGER_TYPE_PASSTHROUGH: bool = False,
 
                     CHANNEL_MAP_NAME = "ProtoDUNESP1ChannelMap",
+                    DATA_REQUEST_TIMEOUT = 1000,
                     HOST="localhost",
                     DEBUG=False):
     
@@ -107,7 +111,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                     source_id = TC_ELEMENT_ID,
                                                                                                     # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                                     stream_buffer_size = 8388608,
-                                                                                                    request_timeout_ms = 100,
+                                                                                                    request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                                     warn_on_timeout = False,
                                                                                                     enable_raw_recording = False))),
                DAQModule(name = 'tctee_ttcm',
@@ -242,7 +246,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                                  element_id = TA_ELEMENT_ID,
                                                                                                                  # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                                                  stream_buffer_size = 8388608,
-                                                                                                                 request_timeout_ms = 100,
+                                                                                                                 request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                                                  enable_raw_recording = False)))]
 
             for idy in range(tp_links):
@@ -259,7 +263,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                                   element_id = idy,
                                                                                                                   # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                                                   stream_buffer_size = 8388608,
-                                                                                                                  request_timeout_ms = 100,
+                                                                                                                  request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                                                   enable_raw_recording = False)))]
         assert(region_ids == region_ids1)
         

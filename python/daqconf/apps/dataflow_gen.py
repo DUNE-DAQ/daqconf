@@ -45,6 +45,7 @@ def get_dataflow_app(HOSTIDX=0,
                      MAX_TRIGGER_RECORD_WINDOW=0,
                      MAX_EXPECTED_TR_SEQUENCES=1,
                      TOKEN_COUNT=10,
+                     TRB_TIMEOUT=200,
                      HOST="localhost",
                      HAS_DQM=False,
                      DEBUG=False):
@@ -59,7 +60,8 @@ def get_dataflow_app(HOSTIDX=0,
                                                 reply_connection_name = "",
                                                 max_time_window=MAX_TRIGGER_RECORD_WINDOW,
                                                 source_id = HOSTIDX,
-                                                map=trb.mapsourceidconnections([]))), # We patch this up in connect_fragment_producers
+                                                trigger_record_timeout_ms=TRB_TIMEOUT,
+                                                map=trb.mapgeoidconnections([]))), # We patch this up in connect_fragment_producers
                 DAQModule(name = 'datawriter',
                        plugin = 'DataWriter',
                        conf = dw.ConfParams(decision_connection=f"trigger_decision_{HOSTIDX}",

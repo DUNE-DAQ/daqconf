@@ -38,6 +38,7 @@ def make_moo_record(conf_dict,name,path='temptypes'):
 #===============================================================================
 def get_dfo_app(TOKEN_COUNT: int = 10,
                 DF_COUNT: int = 1,
+                STOP_TIMEOUT: int = 10000,
                 HOST="localhost",
                 DEBUG=False):
     
@@ -48,7 +49,8 @@ def get_dfo_app(TOKEN_COUNT: int = 10,
                                                                              busy=TOKEN_COUNT)) for dfidx in range(DF_COUNT)]
     modules += [DAQModule(name = "dfo",
                           plugin = "DataFlowOrchestrator",
-                          conf = dfo.ConfParams(dataflow_applications=df_app_configs))]
+                          conf = dfo.ConfParams(dataflow_applications=df_app_configs,
+                                                stop_timeout=STOP_TIMEOUT))]
     
     mgraph = ModuleGraph(modules)
     mgraph.add_endpoint("td_to_dfo", "dfo.td_connection", Direction.IN)
