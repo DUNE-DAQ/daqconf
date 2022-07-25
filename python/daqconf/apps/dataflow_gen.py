@@ -61,7 +61,7 @@ def get_dataflow_app(HOSTIDX=0,
                                                 max_time_window=MAX_TRIGGER_RECORD_WINDOW,
                                                 source_id = HOSTIDX,
                                                 trigger_record_timeout_ms=TRB_TIMEOUT,
-                                                map=trb.mapgeoidconnections([]))), # We patch this up in connect_fragment_producers
+                                                map=trb.mapsourceidconnections([]))), # We patch this up in connect_fragment_producers
                 DAQModule(name = 'datawriter',
                        plugin = 'DataWriter',
                        conf = dw.ConfParams(decision_connection=f"trigger_decision_{HOSTIDX}",

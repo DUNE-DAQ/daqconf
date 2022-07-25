@@ -146,7 +146,7 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
                                                           reply_connection_name = fragment_connection_name,
                                                           max_time_window = old_trb_conf.max_time_window,
                                                           trigger_record_timeout_ms = old_trb_conf.trigger_record_timeout_ms,
-                                                          map=trb.mapgeoidconnections(new_trb_map)))
+                                                          map=trb.mapsourceidconnections(new_trb_map)))
                           
     dqm_apps = [ (name,app) for (name,app) in the_system.apps.items() if re.match("dqm\d+-ru", name) ]
 
@@ -166,7 +166,7 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
                                                           reply_connection_name = fragment_connection_name,
                                                           max_time_window = old_trb_conf.max_time_window,
                                                           trigger_record_timeout_ms = old_trb_conf.trigger_record_timeout_ms,
-                                                          map=trb.mapgeoidconnections(new_trb_map)))
+                                                          map=trb.mapsourceidconnections(new_trb_map)))
 
 def connect_all_fragment_producers(the_system, dataflow_name="dataflow", verbose=False):
     """
