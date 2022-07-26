@@ -112,7 +112,6 @@ import click
 @click.option('--dqm-meanrms-params', nargs=2, default=[10, 100], help="Parameters that control the data sent for the mean/rms plot")
 @click.option('--dqm-fourier-params', nargs=2, default=[0, 0], help="Parameters that control the data sent for the fourier transform plot")
 @click.option('--dqm-fouriersum-params', nargs=2, default=[600, 1000], help="Parameters that control the data sent for the summed fourier transform plot")
-@click.option('--dqm-channelmask-params', nargs=2, default=[60, 1], help="Parameters that control the data sent for the channel mask stream plot")
 @click.option('--dqm-df-rate', nargs=1, default=10, help='How many seconds between requests to DF for Trigger Records')
 @click.option('--dqm-df-algs', nargs=1, default='hist mean_rms fourier_sum', help='Algorithms to be run on Trigger Records from DF (use quotes)')
 @click.option('--op-env', default='swtest', help="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files")
@@ -133,7 +132,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         ttcm_s1, ttcm_s2, trigger_activity_plugin, trigger_activity_config, trigger_candidate_plugin, trigger_candidate_config, hsi_trigger_type_passthrough,
         control_timing_partition, timing_partition_master_device_name, timing_partition_id, timing_partition_trigger_mask, timing_partition_rate_control_enabled, timing_partition_spill_gate_enabled,
         enable_raw_recording, raw_recording_output_dir, frontend_type, opmon_impl, enable_dqm, ers_impl, dqm_impl, pocket_url, enable_software_tpg, enable_firmware_tpg, tpg_channel_map, enable_tpset_writing, use_fake_data_producers, dqm_cmap,
-        dqm_rawdisplay_params, dqm_meanrms_params, dqm_fourier_params, dqm_fouriersum_params, dqm_channelmask_params, dqm_df_rate,
+        dqm_rawdisplay_params, dqm_meanrms_params, dqm_fourier_params, dqm_fouriersum_params, dqm_df_rate,
         dqm_df_algs, op_env, tpc_region_name_prefix, max_file_size, max_trigger_record_window, data_request_timeout_ms,
         image, use_k8s, debug, json_dir):
 
@@ -451,7 +450,6 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
                 DQM_MEANRMS_PARAMS=dqm_meanrms_params,
                 DQM_FOURIER_PARAMS=dqm_fourier_params,
                 DQM_FOURIERSUM_PARAMS=dqm_fouriersum_params,
-                DQM_CHANNELMASK_PARAMS=dqm_channelmask_params,
                 HOST=host_dqm[i % len(host_dqm)],
                 NUM_DF_APPS=len(host_df),
                 FRONTEND_TYPE=frontend_type,
@@ -530,7 +528,6 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
                 DQM_MEANRMS_PARAMS=[0, 0],
                 DQM_FOURIER_PARAMS=[0, 0],
                 DQM_FOURIERSUM_PARAMS=[0, 0],
-                DQM_CHANNELMASK_PARAMS=[0, 0],
                 HOST=host_ru[i%len(host_ru)],
                 MODE='df',
                 DF_RATE=dqm_df_rate,
