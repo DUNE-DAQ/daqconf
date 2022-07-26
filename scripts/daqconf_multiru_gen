@@ -100,7 +100,7 @@ import click
 
 @click.option('--enable-raw-recording', is_flag=True, help="Add queues and modules necessary for the record command")
 @click.option('--raw-recording-output-dir', type=click.Path(), default='.', help="Output directory where recorded data is written to. Data for each link is written to a separate file")
-@click.option('--frontend-type', type=click.Choice(['wib', 'wib2', 'pds_queue', 'pds_list', 'pacman', 'ssp', 'tde']), default='wib', help="Frontend type (wib, wib2 or pds) and latency buffer implementation in case of pds (folly queue or skip list)")
+@click.option('--frontend-type', type=click.Choice(['wib', 'wib2', 'pds_queue', 'pds_list', 'pacman', 'ssp', 'tde']), default='wib', help="Frontend type (wib, wib2, tde or pds) and latency buffer implementation in case of pds (folly queue or skip list)")
 @click.option('--enable-dqm', is_flag=True, help="Enable Data Quality Monitoring")
 @click.option('--opmon-impl', type=click.Choice(['json','cern','pocket'], case_sensitive=False),default='json', help="Info collector service implementation to use")
 @click.option('--ers-impl', type=click.Choice(['local','cern','pocket'], case_sensitive=False), default='local', help="ERS destination (Kafka used for cern and pocket)")
@@ -108,10 +108,10 @@ import click
 @click.option('--pocket-url', default='127.0.0.1', help="URL for connecting to Pocket services")
 @click.option('--enable-software-tpg', is_flag=True, default=False, help="Enable software TPG")
 @click.option('--enable-firmware-tpg', is_flag=True, default=False, help="Enable firmware TPG")
-@click.option('--tpg-channel-map', type=click.Choice(["VDColdboxChannelMap", "ProtoDUNESP1ChannelMap", "PD2HDChannelMap"]), default="ProtoDUNESP1ChannelMap", help="Channel map for software TPG")
+@click.option('--tpg-channel-map', type=click.Choice(["VDColdboxChannelMap", "ProtoDUNESP1ChannelMap", "PD2HDChannelMap", "HDColdboxChannelMap"]), default="ProtoDUNESP1ChannelMap", help="Channel map for software TPG")
 @click.option('--enable-tpset-writing', is_flag=True, default=False, help="Enable the writing of TPs to disk (only works with --enable-software-tpg")
 @click.option('--use-fake-data-producers', is_flag=True, default=False, help="Use fake data producers that respond with empty fragments immediately instead of (fake) cards and DLHs")
-@click.option('--dqm-cmap', type=click.Choice(['HD', 'VD', 'PD2HD']), default='HD', help="Which channel map to use for DQM")
+@click.option('--dqm-cmap', type=click.Choice(['HD', 'VD', 'PD2HD', 'HDCB']), default='HD', help="Which channel map to use for DQM")
 @click.option('--dqm-rawdisplay-params', nargs=2, default=[60, 50], help="Parameters that control the data sent for the raw display plot")
 @click.option('--dqm-meanrms-params', nargs=2, default=[10, 100], help="Parameters that control the data sent for the mean/rms plot")
 @click.option('--dqm-fourier-params', nargs=2, default=[0, 0], help="Parameters that control the data sent for the fourier transform plot")
@@ -221,17 +221,27 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     if control_hsi_hw and not use_hsi_hw:
         raise Exception("HSI hardware control can only be enabled if HSI hardware is used!")
 
-    if frontend_type == 'wib' or frontend_type == 'wib2':
+    if frontend_type == 'wib' or frontend_type == 'wib2' or frontend_type == 'tde':
         system_type = 'TPC'
     elif frontend_type == 'pacman':
         system_type = 'NDLArTPC'
     else:
         system_type = 'PDS'
 
+    # For raw recording to work the size of the LB has to be a multiple of 4096 bytes so that gives
+    # us the following problem:
+    # number_of_elements * element_size = 4096 * M,  where M is an arbitrary integer,
+    # so only a value of number_elements that satisfies the equation above is valid.
+    if frontend_type == 'tde':
+        # number_of_elements = 4096 is always a solution by construction and
+        # the total size happens to be quite close to the one when using WIB
+        # as the frontend type
+        latency_buffer_size = 4096
+
     if opmon_impl == 'cern':
-        info_svc_uri = "influx://opmondb.cern.ch:31002/write?db=influxdb"
+        info_svc_uri = "kafka://monkafka.cern.ch:30092/opmon"
     elif opmon_impl == 'pocket':
-        info_svc_uri = "influx://" + pocket_url + ":31002/write?db=influxdb"
+        info_svc_uri = "kafka://" + pocket_url + ":30092/opmon"
     else:
         info_svc_uri = "file://info_{APP_NAME}_{APP_PORT}.json"
 
@@ -352,7 +362,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             TIMING_PORT=port_timing,
             HOST=host_hsi,
             DEBUG=debug)
-        next(iter(the_system.apps['hsi'].node_selection))["strict"] = True
+        #next(iter(the_system.apps['hsi'].node_selection))["strict"] = True
     else:
         the_system.apps["hsi"] = get_fake_hsi_app(
             RUN_NUMBER = run_number,
@@ -381,7 +391,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             TIMING_PORT=port_timing,
             HOST=host_tprtc,
             DEBUG=debug)
-        next(iter(the_system.apps['tprtc'].node_selection))["strict"] = True
+        #next(iter(the_system.apps['tprtc'].node_selection))["strict"] = True
 
     the_system.apps['trigger'] = get_trigger_app(
         SOFTWARE_TPG_ENABLED = enable_software_tpg,
