@@ -80,7 +80,12 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                     TRIGGER_WINDOW_AFTER_TICKS: int = 1000,
                     HSI_TRIGGER_TYPE_PASSTHROUGH: bool = False,
 
+		    MLT_BUFFER_TIMEOUT: int = 100,
+                    MLT_SEND_TIMED_OUT_TDS: bool = False,
+                    MLT_MAX_TD_LENGTH_MS: int = 1000,
+
                     USE_CHANNEL_FILTER: bool = True,
+
                     CHANNEL_MAP_NAME = "ProtoDUNESP1ChannelMap",
                     DATA_REQUEST_TIMEOUT = 1000,
                     HOST="localhost",
@@ -93,6 +98,8 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
     # How many clock ticks are there in a _wall clock_ second?
     ticks_per_wall_clock_s = CLOCK_SPEED_HZ / DATA_RATE_SLOWDOWN_FACTOR
+    
+    max_td_length_ticks = MLT_MAX_TD_LENGTH_MS * CLOCK_SPEED_HZ / 1000
     
     modules = []
 
@@ -296,9 +303,12 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     modules += [DAQModule(name = 'mlt',
                           plugin = 'ModuleLevelTrigger',
                           conf=mlt.ConfParams(links=[],  # To be updated later - see comment above
-                                              dfo_connection=f"td_to_dfo",
+					      dfo_connection=f"td_to_dfo",
                                               dfo_busy_connection=f"df_busy_signal",
-					      hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH))]
+                                              hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH,
+					      buffer_timeout=MLT_BUFFER_TIMEOUT,
+                                              td_out_of_timeout=MLT_SEND_TIMED_OUT_TDS,
+                                              td_readout_limit=max_td_length_ticks))]
 
     mgraph = ModuleGraph(modules)
 
