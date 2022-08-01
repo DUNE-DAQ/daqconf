@@ -426,7 +426,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         if use_k8s:
             if use_felix:
                 the_system.apps[ru_name].resources = {
-                    "felix.cern/flx-data": "2", # requesting 2 FLXs
+                    "felix.cern/flx0-data": "1", # requesting FLX0
                     "memory": "32Gi" # yes bro
                 }
 
