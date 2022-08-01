@@ -43,11 +43,10 @@ def get_dqm_app(RU_CONFIG=[],
                  SYSTEM_TYPE='TPC',
                  DQM_KAFKA_ADDRESS='',
                  DQM_CMAP='HD',
-                 DQM_RAWDISPLAY_PARAMS=[60, 10, 50],
-                 DQM_MEANRMS_PARAMS=[10, 1, 100],
-                 DQM_FOURIER_PARAMS=[600, 60, 100],
-                 DQM_FOURIERSUM_PARAMS=[10, 1, 8192],
-                 DQM_CHANNELMASK_PARAMS=[60, 1, 1],
+                 DQM_RAWDISPLAY_PARAMS=[60, 50],
+                 DQM_MEANRMS_PARAMS=[10, 100],
+                 DQM_FOURIER_PARAMS=[600, 100],
+                 DQM_FOURIERSUM_PARAMS=[60, 1000],
                  HOST="localhost",
                  NUM_DF_APPS=1,
                  MODE="readout",
@@ -57,10 +56,6 @@ def get_dqm_app(RU_CONFIG=[],
                  FRONTEND_TYPE='wib',
                  DEBUG=False,
                  ):
-
-    # Only run channel mask for the WIB2 format
-    if FRONTEND_TYPE != 'wib2':
-        DQM_CHANNELMASK_PARAMS = [0, 0, 0]
 
     cmd_data = {}
 
@@ -102,7 +97,6 @@ def get_dqm_app(RU_CONFIG=[],
                               mean_rms=dqmprocessor.StandardDQM(**{'how_often' : DQM_MEANRMS_PARAMS[0], 'num_frames' : DQM_MEANRMS_PARAMS[1]}),
                               fourier=dqmprocessor.StandardDQM(**{'how_often' : DQM_FOURIER_PARAMS[0], 'num_frames' : DQM_FOURIER_PARAMS[1]}),
                               fourier_sum=dqmprocessor.StandardDQM(**{'how_often' : DQM_FOURIERSUM_PARAMS[0], 'num_frames' : DQM_FOURIERSUM_PARAMS[1]}),
-                              channel_mask=dqmprocessor.StandardDQM(**{'how_often' : DQM_CHANNELMASK_PARAMS[0], 'num_frames' : DQM_CHANNELMASK_PARAMS[1]}),
                               kafka_address=DQM_KAFKA_ADDRESS,
                               link_idx=list(range(MIN_LINK, MAX_LINK)),
                               clock_frequency=CLOCK_SPEED_HZ,

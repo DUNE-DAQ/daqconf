@@ -73,6 +73,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                     CANDIDATE_CONFIG: int = dict(prescale=10),
 
                     SYSTEM_TYPE = 'wib',
+                    USE_HSI_INPUT = True,
                     TTCM_S1: int = 1,
                     TTCM_S2: int = 2,
                     TRIGGER_WINDOW_BEFORE_TICKS: int = 1000,
@@ -82,6 +83,8 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 		    MLT_BUFFER_TIMEOUT: int = 100,
                     MLT_SEND_TIMED_OUT_TDS: bool = False,
                     MLT_MAX_TD_LENGTH_MS: int = 1000,
+
+                    USE_CHANNEL_FILTER: bool = True,
 
                     CHANNEL_MAP_NAME = "ProtoDUNESP1ChannelMap",
                     DATA_REQUEST_TIMEOUT = 1000,
@@ -118,8 +121,9 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                     stream_buffer_size = 8388608,
                                                                                                     request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                                     warn_on_timeout = False,
-                                                                                                    enable_raw_recording = False))),
-               DAQModule(name = 'tctee_ttcm',
+                                                                                                    enable_raw_recording = False)))]
+    if USE_HSI_INPUT:
+        modules += [DAQModule(name = 'tctee_ttcm',
                          plugin = 'TCTee')]
 
     
@@ -156,12 +160,13 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
             for link_idx in range(tp_links):
                 link_id = f'ru{ruidx}_link{link_idx}'
-                modules += [DAQModule(name = f'channelfilter_{link_id}',
+                if USE_CHANNEL_FILTER:
+                    modules += [DAQModule(name = f'channelfilter_{link_id}',
                                       plugin = 'TPChannelFilter',
                                       conf = chfilter.Conf(channel_map_name=CHANNEL_MAP_NAME,
                                                            keep_collection=True,
-                                                           keep_induction=False)),
-                            DAQModule(name = f'tpsettee_{link_id}',
+                                                           keep_induction=False))]
+                modules += [DAQModule(name = f'tpsettee_{link_id}',
                                       plugin = 'TPSetTee'),
                             DAQModule(name = f'heartbeatmaker_{link_id}',
                                       plugin = 'FakeTPCreatorHeartbeatMaker',
@@ -272,20 +277,21 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                                                                                                   request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                                                   enable_raw_recording = False)))]
         assert(region_ids == region_ids1)
-        
-    modules += [DAQModule(name = 'ttcm',
-                          plugin = 'TimingTriggerCandidateMaker',
-                          conf=ttcm.Conf(s0=ttcm.map_t(signal_type=0,
-                                                       time_before=TRIGGER_WINDOW_BEFORE_TICKS,
-                                                       time_after=TRIGGER_WINDOW_AFTER_TICKS),
-                                         s1=ttcm.map_t(signal_type=TTCM_S1,
-                                                       time_before=TRIGGER_WINDOW_BEFORE_TICKS,
-                                                       time_after=TRIGGER_WINDOW_AFTER_TICKS),
-                                         s2=ttcm.map_t(signal_type=TTCM_S2,
-                                                       time_before=TRIGGER_WINDOW_BEFORE_TICKS,
-                                                       time_after=TRIGGER_WINDOW_AFTER_TICKS),
-                                         hsievent_connection_name = "hsievents",
-					 hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH))]
+
+    if USE_HSI_INPUT:
+        modules += [DAQModule(name = 'ttcm',
+                              plugin = 'TimingTriggerCandidateMaker',
+                              conf=ttcm.Conf(s0=ttcm.map_t(signal_type=0,
+                                                           time_before=TRIGGER_WINDOW_BEFORE_TICKS,
+                                                           time_after=TRIGGER_WINDOW_AFTER_TICKS),
+                                             s1=ttcm.map_t(signal_type=TTCM_S1,
+                                                           time_before=TRIGGER_WINDOW_BEFORE_TICKS,
+                                                           time_after=TRIGGER_WINDOW_AFTER_TICKS),
+                                             s2=ttcm.map_t(signal_type=TTCM_S2,
+                                                           time_before=TRIGGER_WINDOW_BEFORE_TICKS,
+                                                           time_after=TRIGGER_WINDOW_AFTER_TICKS),
+                                             hsievent_connection_name = "hsievents",
+                                             hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH))]
     
     # We need to populate the list of links based on the fragment
     # producers available in the system. This is a bit of a
@@ -306,9 +312,10 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
     mgraph = ModuleGraph(modules)
 
-    mgraph.connect_modules("ttcm.output",         "tctee_ttcm.input",             "ttcm_input", size_hint=1000)
-    mgraph.connect_modules("tctee_ttcm.output1",  "mlt.trigger_candidate_source", "tcs_to_mlt", size_hint=1000)
-    mgraph.connect_modules("tctee_ttcm.output2",  "tc_buf.tc_source",             "tcs_to_buf", size_hint=1000)
+    if USE_HSI_INPUT:
+        mgraph.connect_modules("ttcm.output",         "tctee_ttcm.input",             "ttcm_input", size_hint=1000)
+        mgraph.connect_modules("tctee_ttcm.output1",  "mlt.trigger_candidate_source", "tcs_to_mlt", size_hint=1000)
+        mgraph.connect_modules("tctee_ttcm.output2",  "tc_buf.tc_source",             "tcs_to_buf", size_hint=1000)
 
     if SOFTWARE_TPG_ENABLED or FIRMWARE_TPG_ENABLED:
         mgraph.connect_modules("tazipper.output", "tcm.input", size_hint=1000)
@@ -323,7 +330,8 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
             for link_idx in range(tp_links):
                     link_id = f'ru{ruidx}_link{link_idx}'
 
-                    mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', size_hint=1000)
+                    if USE_CHANNEL_FILTER:
+                        mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', size_hint=1000)
 
                     mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'heartbeatmaker_{link_id}.tpset_source', size_hint=1000)
                     mgraph.connect_modules(f'tpsettee_{link_id}.output2', f'buf_{link_id}.tpset_source', size_hint=1000)
@@ -343,8 +351,10 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
             mgraph.connect_modules(f'tam_{region_id}.output',              f'tasettee_region_{region_id}.input',      size_hint=1000)
             mgraph.connect_modules(f'tasettee_region_{region_id}.output1', f'tazipper.input', "tas_to_tazipper",      size_hint=1000)
             mgraph.connect_modules(f'tasettee_region_{region_id}.output2', f'ta_buf_region_{region_id}.taset_source', size_hint=1000)
-    
-    mgraph.add_endpoint("hsievents", None, Direction.IN)
+
+    if USE_HSI_INPUT:
+        mgraph.add_endpoint("hsievents", None, Direction.IN)
+        
     mgraph.add_endpoint("td_to_dfo", None, Direction.OUT, toposort=True)
     mgraph.add_endpoint("df_busy_signal", None, Direction.IN)
 
@@ -368,7 +378,11 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                 buf_name=f'buf_{link_id}'
                 global_link = link_idx+ru_config['start_channel'] # for the benefit of correct fragment geoid
 
-                mgraph.add_endpoint(f"tpsets_{link_id}_sub", f"channelfilter_{link_id}.tpset_source", Direction.IN, topic=["TPSets"])
+                if USE_CHANNEL_FILTER:
+                    mgraph.add_endpoint(f"tpsets_{link_id}_sub", f"channelfilter_{link_id}.tpset_source", Direction.IN, topic=["TPSets"])
+                else:
+                    mgraph.add_endpoint(f"tpsets_{link_id}_sub", f'tpsettee_{link_id}.input',             Direction.IN, topic=["TPSets"])
+                    
 
                 mgraph.add_fragment_producer(region=ru_config['region_id'], element=global_link, system="DataSelection",
                                              requests_in=f"{buf_name}.data_request_source",
