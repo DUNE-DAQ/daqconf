@@ -205,7 +205,8 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
     if exists(json_dir):
         raise RuntimeError(f"Directory {json_dir} already exists")
 
-    console.log(f"Configuration for daqconf: {ctx.default_map}")
+    if debug:
+        console.log(f"Configuration for daqconf: {ctx.default_map}")
     globals().update(ctx.default_map)
 
     console.log("Loading dataflow config generator")
@@ -231,16 +232,16 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
 
     host_df = []
     host_dqm = []
-    appconfig_df =[]
-    appconfig_dqm = []
+    appconfig_df ={}
+    appconfig_dqm = {}
     token_count = 0
     for k,v in ctx.default_map.items():
         if "dataflow." in k:
-            appconfig_df += [k]
+            appconfig_df[k] = v
             token_count += v['token_count']
             host_df += [v['host_df']]
         if "dqm." in k:
-            appconfig_dqm += [k]
+            appconfig_dqm[k] = v
             host_dqm += [v['host_dqm']]
 
     console.log(f"Generating configs for hosts trigger={host_trigger} DFO={host_dfo} dataflow={host_df} hsi={host_hsi} dqm={host_dqm}")
@@ -365,13 +366,18 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
 #                            "channel_count": number_of_data_producers })
 #        ru_channel_counts[region_id[hostidx]] += number_of_data_producers
 
-    if debug:
-        console.log(f"Output data written to \"{output_path}\"")
+#    if debug:
+#        console.log(f"Output data written to \"{output_path}\"")
 
-    if use_k8s and output_path == '.':
-        output_path = os.getcwd()
+#    if use_k8s and output_path == '.':
+#        output_path = os.getcwd()
 
-    max_expected_tr_sequences = 1 if max_trigger_record_window < 1 else ((trigger_window_before_ticks + trigger_window_after_ticks) / max_trigger_record_window)
+    max_expected_tr_sequences = 1
+    for df_config in appconfig_df.values():
+        if df_config['max_trigger_record_window'] >= 1:
+            df_max_sequences = ((trigger_window_before_ticks + trigger_window_after_ticks) / df_config['max_trigger_record_window'])
+            if df_max_sequences > max_expected_tr_sequences:
+                max_expected_tr_sequences = df_max_sequences
 
     # 11-Jul-2022, KAB: added timeout calculations. The Readout and Trigger App DataRequest timeouts
     # are set based on the command-line parameter that is specified in this script, and they are
@@ -399,7 +405,6 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
 
     if use_hsi_hw:
         the_system.apps["hsi"] = get_hsi_app(
-            RUN_NUMBER = run_number,
             CLOCK_SPEED_HZ = clock_speed_hz,
             TRIGGER_RATE_HZ = trigger_rate_hz,
             CONTROL_HSI_HARDWARE=control_hsi_hw,
@@ -419,7 +424,6 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
             DEBUG=debug)
     else:
         the_system.apps["hsi"] = get_fake_hsi_app(
-            RUN_NUMBER = run_number,
             CLOCK_SPEED_HZ = clock_speed_hz,
             DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
             TRIGGER_RATE_HZ = trigger_rate_hz,
@@ -517,7 +521,6 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
                 RU_NAME=ru_name,
                 EMULATOR_MODE = emulator_mode,
                 DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
-                RUN_NUMBER = run_number,
                 DATA_FILE = data_file,
                 CLOCK_SPEED_HZ = clock_speed_hz,
                 DQMIDX = dro_idx,
@@ -591,7 +594,6 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
                 RU_NAME= None,
                 EMULATOR_MODE = emulator_mode,
                 DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
-                RUN_NUMBER = run_number,
                 DATA_FILE = data_file,
                 CLOCK_SPEED_HZ = clock_speed_hz,
                 DQMIDX = i,

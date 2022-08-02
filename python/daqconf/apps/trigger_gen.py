@@ -106,7 +106,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
     tpset_dros = []
     for dro_info in DRO_CONFIG:
-        if dro_info.links[0].det_id == DetID.kHDTPC:
+        if dro_info.links[0].det_id == DetID.kHD_TPC:
             tpset_dros.append(dro_info)
 
     # We always have a TC buffer even when there are no TPs, because we want to put the timing TC in the output file
