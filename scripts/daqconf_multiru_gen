@@ -111,6 +111,10 @@ class ConfigSectionSchema(object):
         enable_tpset_writing = Param( type=bool, default=False, help="Enable the writing of TPs to disk (only works with enable_software_tpg")
         tpset_output_path = Param(default='.', type=click.Path(), help="Output directory for TPSet stream files")
         tpg_channel_map = Param( type=click.Choice(["VDColdboxChannelMap", "ProtoDUNESP1ChannelMap", "PD2HDChannelMap", "HDColdboxChannelMap"]), default="ProtoDUNESP1ChannelMap", help="Channel map for software TPG")
+        mlt-buffer-timeout = Param( default=100, help="Timeout (buffer) to wait for new overlapping TCs before sending TD")
+        mlt-send-timed-out-tds = Param( type=bool, default=False, help="Option to drop TD if TC comes out of timeout window")
+        mlt-max-td-length-ms = Param(default=1000, help="Maximum allowed time length [ms] for a readout window of a single TD")
+
 
     @matches_section("dataflow")
     class DataflowConfig(SectionSchema):
@@ -137,7 +141,6 @@ class ConfigSectionSchema(object):
         dqm_meanrms_params = Param( multiple=True, default=[10, 100], help="Parameters that control the data sent for the mean/rms plot")
         dqm_fourier_params = Param( multiple=True, default=[0, 0], help="Parameters that control the data sent for the fourier transform plot")
         dqm_fouriersum_params = Param( multiple=True, default=[600, 1000], help="Parameters that control the data sent for the summed fourier transform plot")
-        dqm_channelmask_params = Param( multiple=True, default=[60, 1], help="Parameters that control the data sent for the channel mask stream plot")
         dqm_df_rate = Param( default=10, help='How many seconds between requests to DF for Trigger Records')
         dqm_df_algs = Param( default='hist mean_rms fourier_sum', help='Algorithms to be run on Trigger Records from DF (use quotes)')
 
@@ -365,25 +368,8 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
     if debug:
         console.log(f"Output data written to \"{output_path}\"")
 
-    raw_data_pvcs = {}
-    if use_k8s:
-        if output_path != '.':
-            if output_path != 'raw-data-storage':
-                raise RuntimeError("With K8s, --output-path can only be \"raw-data-storage\" or \".\" (nothing/default).")
-            # everything goes to the same place
-            new_output_path = "/"+output_path+"-"+''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
-            raw_data_pvcs = {
-                "storage_class_name": output_path,
-                "claim_name": output_path,
-                "mount": new_output_path,
-                "read_only": False,
-            }
-            output_path = new_output_path
-            if debug:
-                console.log(f"Corresponding PVC: \"{output_path}\"")
-        else:
-            console.log(f"[red]No PVC! Data will be lost when terminating, and make sure \"{output_path}\" exists in the pod![/red]")
-
+    if use_k8s and output_path == '.':
+        output_path = os.getcwd()
 
     max_expected_tr_sequences = 1 if max_trigger_record_window < 1 else ((trigger_window_before_ticks + trigger_window_after_ticks) / max_trigger_record_window)
 
@@ -431,7 +417,6 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
             TIMING_PORT=port_timing,
             HOST=host_hsi,
             DEBUG=debug)
-        #next(iter(the_system.apps['hsi'].node_selection))["strict"] = True
     else:
         the_system.apps["hsi"] = get_fake_hsi_app(
             RUN_NUMBER = run_number,
@@ -460,7 +445,6 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
             TIMING_PORT=port_timing,
             HOST=host_tprtc,
             DEBUG=debug)
-        #next(iter(the_system.apps['tprtc'].node_selection))["strict"] = True
 
     the_system.apps['trigger'] = get_trigger_app(
         SOFTWARE_TPG_ENABLED = enable_software_tpg,
@@ -477,6 +461,9 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
         TRIGGER_WINDOW_BEFORE_TICKS = trigger_window_before_ticks,
         TRIGGER_WINDOW_AFTER_TICKS = trigger_window_after_ticks,
         HSI_TRIGGER_TYPE_PASSTHROUGH = hsi_trigger_type_passthrough,
+	MLT_BUFFER_TIMEOUT = mlt_buffer_timeout,
+        MLT_MAX_TD_LENGTH_MS = mlt_max_td_length_ms,
+        MLT_SEND_TIMED_OUT_TDS = mlt_send_timed_out_tds,
         CHANNEL_MAP_NAME = tpg_channel_map,
         DATA_REQUEST_TIMEOUT=trigger_data_request_timeout,
         HOST=host_trigger,
@@ -513,8 +500,6 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
             DATA_REQUEST_TIMEOUT=readout_data_request_timeout,
             DEBUG=debug)
         if use_k8s:
-            if the_system.apps[ru_name].host != "localhost":
-                next(iter(the_system.apps[ru_name].node_selection))["strict"] = True
             if use_felix:
                 the_system.apps[ru_name].resources = {
                     "felix.cern/flx": "2", # requesting 2 FLXs
@@ -542,7 +527,6 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
                 DQM_MEANRMS_PARAMS=dqm_meanrms_params,
                 DQM_FOURIER_PARAMS=dqm_fourier_params,
                 DQM_FOURIERSUM_PARAMS=dqm_fouriersum_params,
-                DQM_CHANNELMASK_PARAMS=dqm_channelmask_params,
                 HOST=host_dqm[dro_idx % len(host_dqm)],
                 NUM_DF_APPS=len(host_df),
                 DEBUG=debug)
@@ -561,14 +545,13 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
             CLOCK_SPEED_HZ = clock_speed_hz,
             HOST=host_tpw,
             DEBUG=debug)
-
-        if raw_data_pvcs:
-            node_selection = {
-                "strict": True,
-                "dune.daq/role": ["raw-data-storage"],
-            }
-            the_system.apps[tpw_name].node_selection = [node_selection]
-            the_system.apps[tpw_name].pvcs += [raw_data_pvcs]
+        if use_k8s: ## TODO schema
+            the_system.apps[tpw_name].mounted_dirs += [{
+                'name': 'raw-data',
+                'physical_location':output_path,
+                'in_pod_location':output_path,
+                'read_only': False
+            }]
 
         if debug: console.log(f"{tpw_name} app: {the_system.apps[tpw_name]}")
 
@@ -592,13 +575,13 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
             HAS_DQM=enable_dqm,
             DEBUG=debug
         )
-        if raw_data_pvcs:
-            node_selection = {
-                "strict": True,
-                "dune.daq/role": ["raw-data-storage"],
-            }
-            the_system.apps[app_name].node_selection = [node_selection]
-            the_system.apps[app_name].pvcs += [raw_data_pvcs]
+        if use_k8s:
+            the_system.apps[app_name].mounted_dirs += [{
+                'name': 'raw-data',
+                'physical_location':output_path,
+                'in_pod_location':output_path,
+                'read_only': False,
+            }]
 
 
         if enable_dqm:
@@ -618,7 +601,6 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
                 DQM_MEANRMS_PARAMS=[0, 0],
                 DQM_FOURIER_PARAMS=[0, 0],
                 DQM_FOURIERSUM_PARAMS=[0, 0],
-                DQM_CHANNELMASK_PARAMS=[0, 0],
                 HOST=host_dqm[i%len(host_dqm)],
                 MODE='df',
                 DF_RATE=dqm_df_rate,
@@ -627,11 +609,6 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
                 NUM_DF_APPS=len(host_df),
                 FRONTEND_TYPE=frontend_type,
                 DEBUG=debug)
-            the_system.apps[dqm_name].pod_affinity += [{
-                 # run preferably on thesame host as dataflow
-                "app": [app_name],
-                "strict": False
-            }]
 
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
 
@@ -647,10 +624,6 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
             all_apps_except_ru += [app]
         if app.name not in ru_app_names+df_app_names:
             all_apps_except_ru_and_df += [name]
-
-    if use_k8s:
-        from daqconf.core.conf_utils import set_strict_anti_affinity
-        set_strict_anti_affinity(all_apps_except_ru, ru_app_names)
 
         # HACK
         boot_order = ru_app_names + df_app_names + [app for app in all_apps_except_ru_and_df]
@@ -705,7 +678,7 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
 
     # Arrange per-app command data into the format used by util.write_json_files()
     app_command_datas = {
-        name : make_app_command_data(the_system, app,name, verbose=debug)
+        name : make_app_command_data(the_system, app,name, verbose=debug, use_k8s=use_k8s)
         for name,app in the_system.apps.items()
     }
 
