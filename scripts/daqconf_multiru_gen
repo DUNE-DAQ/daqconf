@@ -111,9 +111,9 @@ class ConfigSectionSchema(object):
         enable_tpset_writing = Param( type=bool, default=False, help="Enable the writing of TPs to disk (only works with enable_software_tpg")
         tpset_output_path = Param(default='.', type=click.Path(), help="Output directory for TPSet stream files")
         tpg_channel_map = Param( type=click.Choice(["VDColdboxChannelMap", "ProtoDUNESP1ChannelMap", "PD2HDChannelMap", "HDColdboxChannelMap"]), default="ProtoDUNESP1ChannelMap", help="Channel map for software TPG")
-        mlt-buffer-timeout = Param( default=100, help="Timeout (buffer) to wait for new overlapping TCs before sending TD")
-        mlt-send-timed-out-tds = Param( type=bool, default=False, help="Option to drop TD if TC comes out of timeout window")
-        mlt-max-td-length-ms = Param(default=1000, help="Maximum allowed time length [ms] for a readout window of a single TD")
+        mlt_buffer_timeout = Param( default=100, help="Timeout (buffer) to wait for new overlapping TCs before sending TD")
+        mlt_send_timed_out_tds = Param( type=bool, default=False, help="Option to drop TD if TC comes out of timeout window")
+        mlt_max_td_length_ms = Param(default=1000, help="Maximum allowed time length [ms] for a readout window of a single TD")
 
 
     @matches_section("dataflow")

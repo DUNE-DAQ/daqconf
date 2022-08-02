@@ -161,7 +161,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
             for link_idx in range(tp_links):
                 link_id = f'ru{ruidx}_link{link_idx}'
                 if USE_CHANNEL_FILTER:
-                modules += [DAQModule(name = f'channelfilter_{link_id}',
+                    modules += [DAQModule(name = f'channelfilter_{link_id}',
                                       plugin = 'TPChannelFilter',
                                       conf = chfilter.Conf(channel_map_name=CHANNEL_MAP_NAME,
                                                            keep_collection=True,
@@ -279,7 +279,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
         assert(region_ids == region_ids1)
         
     if USE_HSI_INPUT:
-    modules += [DAQModule(name = 'ttcm',
+        modules += [DAQModule(name = 'ttcm',
                           plugin = 'TimingTriggerCandidateMaker',
                           conf=ttcm.Conf(s0=ttcm.map_t(signal_type=0,
                                                        time_before=TRIGGER_WINDOW_BEFORE_TICKS,
@@ -313,9 +313,9 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     mgraph = ModuleGraph(modules)
 
     if USE_HSI_INPUT:
-    mgraph.connect_modules("ttcm.output",         "tctee_ttcm.input",             "ttcm_input", size_hint=1000)
-    mgraph.connect_modules("tctee_ttcm.output1",  "mlt.trigger_candidate_source", "tcs_to_mlt", size_hint=1000)
-    mgraph.connect_modules("tctee_ttcm.output2",  "tc_buf.tc_source",             "tcs_to_buf", size_hint=1000)
+        mgraph.connect_modules("ttcm.output",         "tctee_ttcm.input",             "ttcm_input", size_hint=1000)
+        mgraph.connect_modules("tctee_ttcm.output1",  "mlt.trigger_candidate_source", "tcs_to_mlt", size_hint=1000)
+        mgraph.connect_modules("tctee_ttcm.output2",  "tc_buf.tc_source",             "tcs_to_buf", size_hint=1000)
 
     if SOFTWARE_TPG_ENABLED or FIRMWARE_TPG_ENABLED:
         mgraph.connect_modules("tazipper.output", "tcm.input", size_hint=1000)
@@ -331,7 +331,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                     link_id = f'ru{ruidx}_link{link_idx}'
 
                     if USE_CHANNEL_FILTER:
-                    mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', size_hint=1000)
+                        mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', size_hint=1000)
 
                     mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'heartbeatmaker_{link_id}.tpset_source', size_hint=1000)
                     mgraph.connect_modules(f'tpsettee_{link_id}.output2', f'buf_{link_id}.tpset_source', size_hint=1000)
@@ -353,7 +353,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
             mgraph.connect_modules(f'tasettee_region_{region_id}.output2', f'ta_buf_region_{region_id}.taset_source', size_hint=1000)
     
     if USE_HSI_INPUT:
-    mgraph.add_endpoint("hsievents", None, Direction.IN)
+        mgraph.add_endpoint("hsievents", None, Direction.IN)
         
     mgraph.add_endpoint("td_to_dfo", None, Direction.OUT, toposort=True)
     mgraph.add_endpoint("df_busy_signal", None, Direction.IN)
@@ -379,7 +379,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                 global_link = link_idx+ru_config['start_channel'] # for the benefit of correct fragment geoid
 
                 if USE_CHANNEL_FILTER:
-                mgraph.add_endpoint(f"tpsets_{link_id}_sub", f"channelfilter_{link_id}.tpset_source", Direction.IN, topic=["TPSets"])
+                    mgraph.add_endpoint(f"tpsets_{link_id}_sub", f"channelfilter_{link_id}.tpset_source", Direction.IN, topic=["TPSets"])
                 else:
                     mgraph.add_endpoint(f"tpsets_{link_id}_sub", f'tpsettee_{link_id}.input',             Direction.IN, topic=["TPSets"])
                     
