@@ -11,7 +11,6 @@ moo.otypes.load_types('trigger/triggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/triggerzipper.jsonnet')
 moo.otypes.load_types('trigger/moduleleveltrigger.jsonnet')
 moo.otypes.load_types('trigger/timingtriggercandidatemaker.jsonnet')
-moo.otypes.load_types('trigger/tpsetbuffercreator.jsonnet')
 moo.otypes.load_types('trigger/faketpcreatorheartbeatmaker.jsonnet')
 moo.otypes.load_types('trigger/txbuffer.jsonnet')
 moo.otypes.load_types('readoutlibs/readoutconfig.jsonnet')
@@ -23,7 +22,6 @@ import dunedaq.trigger.triggercandidatemaker as tcm
 import dunedaq.trigger.triggerzipper as tzip
 import dunedaq.trigger.moduleleveltrigger as mlt
 import dunedaq.trigger.timingtriggercandidatemaker as ttcm
-import dunedaq.trigger.tpsetbuffercreator as buf
 import dunedaq.trigger.faketpcreatorheartbeatmaker as heartbeater
 import dunedaq.trigger.txbufferconfig as bufferconf
 import dunedaq.readoutlibs.readoutconfig as readoutconf
