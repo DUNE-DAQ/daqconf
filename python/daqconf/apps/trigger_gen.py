@@ -59,6 +59,21 @@ def make_moo_record(conf_dict,name,path='temptypes'):
         fields.append(dict(name=pname,item=typename))
     moo.otypes.make_type(schema='record', fields=fields, name=name, path=path)
 
+def get_buffer_conf(region_id, element_id, data_request_timeout):
+    return bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 100_000,
+                                                                             region_id = region_id,
+                                                                             element_id = element_id),
+                           requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = 100_000,
+                                                                               pop_limit_pct = 0.8,
+                                                                               pop_size_pct = 0.1,
+                                                                               region_id = region_id,
+                                                                               element_id = element_id,
+                                                                               # output_file = f"output_{idx + MIN_LINK}.out",
+                                                                               stream_buffer_size = 8388608,
+                                                                               request_timeout_ms = data_request_timeout,
+                                                                               warn_on_timeout = False,
+                                                                               enable_raw_recording = False))
+    
 #===============================================================================
 def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                     FIRMWARE_TPG_ENABLED: bool = False,
@@ -108,20 +123,8 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
     # We always have a TC buffer even when there are no TPs, because we want to put the timing TC in the output file
     modules += [DAQModule(name = 'tc_buf',
-                         plugin = 'TCBuffer',
-                         conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 100_000,
-                                                                                                  region_id = TC_REGION_ID,
-                                                                                                  element_id = TA_ELEMENT_ID),
-                                                requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = 100_000,
-                                                                                                    pop_limit_pct = 0.8,
-                                                                                                    pop_size_pct = 0.1,
-                                                                                                    region_id = TC_REGION_ID,
-                                                                                                    element_id = TC_ELEMENT_ID,
-                                                                                                    # output_file = f"output_{idx + MIN_LINK}.out",
-                                                                                                    stream_buffer_size = 8388608,
-                                                                                                    request_timeout_ms = DATA_REQUEST_TIMEOUT,
-                                                                                                    warn_on_timeout = False,
-                                                                                                    enable_raw_recording = False)))]
+                          plugin = 'TCBuffer',
+                          conf = get_buffer_conf(TC_REGION_ID, TC_ELEMENT_ID, DATA_REQUEST_TIMEOUT))]
     if USE_HSI_INPUT:
         modules += [DAQModule(name = 'tctee_ttcm',
                          plugin = 'TCTee')]
@@ -247,36 +250,13 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                             DAQModule(name = f'ta_buf_region_{region_id}',
                                       plugin = 'TABuffer',
                                       # PAR 2022-04-20 Not sure what to set the element id to so it doesn't collide with the region/element used by TP buffers. Make it some big number that shouldn't already be used by the TP buffer
-                                      conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 100_000,
-                                                                                                               region_id = region_id,
-                                                                                                               element_id = TA_ELEMENT_ID),
-                                                             requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = 100_000,
-                                                                                                                 pop_limit_pct = 0.8,
-                                                                                                                 pop_size_pct = 0.1,
-                                                                                                                 region_id = region_id,
-                                                                                                                 element_id = TA_ELEMENT_ID,
-                                                                                                                 # output_file = f"output_{idx + MIN_LINK}.out",
-                                                                                                                 stream_buffer_size = 8388608,
-                                                                                                                 request_timeout_ms = DATA_REQUEST_TIMEOUT,
-                                                                                                                 enable_raw_recording = False)))]
+                                      conf = get_buffer_conf(region_id, TA_ELEMENT_ID, DATA_REQUEST_TIMEOUT))]
 
             for idy in range(tp_links):
                 # 1 buffer per TPG channel
                 modules += [DAQModule(name = f'buf_ru{ru}_link{idy}',
                                       plugin = 'TPBuffer',
-                                      conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 1_000_000,
-                                                                                                                region_id = region_id,
-                                                                                                                element_id = idy),
-                                                             requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = 1_000_000,
-                                                                                                                  pop_limit_pct = 0.8,
-                                                                                                                  pop_size_pct = 0.1,
-                                                                                                                  region_id = region_id,
-                                                                                                                  element_id = idy,
-                                                                                                                  # output_file = f"output_{idx + MIN_LINK}.out",
-                                                                                                                  stream_buffer_size = 8388608,
-                                                                                                                  request_timeout_ms = DATA_REQUEST_TIMEOUT,
-                                                                                                                  enable_raw_recording = False)))]
-        assert(region_ids == region_ids1)
+                                      conf = get_buffer_conf(region_id, idy, DATA_REQUEST_TIMEOUT))]
 
     if USE_HSI_INPUT:
         modules += [DAQModule(name = 'ttcm',
