@@ -103,8 +103,8 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     
     modules = []
 
-    region_ids1 = set([ru["region_id"] for ru in RU_CONFIG])
-    assert len(region_ids1) == len(RU_CONFIG), "There are duplicate region IDs for RUs. Trigger can't handle this case. Please use --region-id to set distinct region IDs for each RU"
+    region_ids_set = set([ru["region_id"] for ru in RU_CONFIG])
+    assert len(region_ids_set) == len(RU_CONFIG), "There are duplicate region IDs for RUs. Trigger can't handle this case. Please use --region-id to set distinct region IDs for each RU"
 
     # We always have a TC buffer even when there are no TPs, because we want to put the timing TC in the output file
     modules += [DAQModule(name = 'tc_buf',
@@ -136,7 +136,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
         # TPZippers. See comment below for more details
         modules += [DAQModule(name = 'tazipper',
                               plugin = 'TAZipper',
-                              conf = tzip.ConfParams(cardinality=len(region_ids1),
+                              conf = tzip.ConfParams(cardinality=len(region_ids_set),
                                                      max_latency_ms=1000,
                                                      region_id=TC_REGION_ID,
                                                      element_id=TC_ELEMENT_ID)),
@@ -338,7 +338,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
                     mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{ru_config['region_id']}.input", f"{ru_config['region_id']}_tpset_q", size_hint=1000)
 
-        for region_id in region_ids1:
+        for region_id in region_ids_set:
             mgraph.connect_modules(f'zip_{region_id}.output', f'tam_{region_id}.input', size_hint=1000)
         # Use connect_modules to connect up the Tees to the buffers/MLT,
         # as manually adding Queues doesn't give the desired behaviour
@@ -347,7 +347,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
         mgraph.connect_modules("tctee_chain.output2", "tc_buf.tc_source",             "tcs_to_buf",  size_hint=1000)
 
 
-        for region_id in region_ids1:
+        for region_id in region_ids_set:
             mgraph.connect_modules(f'tam_{region_id}.output',              f'tasettee_region_{region_id}.input',      size_hint=1000)
             mgraph.connect_modules(f'tasettee_region_{region_id}.output1', f'tazipper.input', "tas_to_tazipper",      size_hint=1000)
             mgraph.connect_modules(f'tasettee_region_{region_id}.output2', f'ta_buf_region_{region_id}.taset_source', size_hint=1000)
