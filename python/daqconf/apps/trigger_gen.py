@@ -208,70 +208,60 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                       plugin = 'FakeTPCreatorHeartbeatMaker',
                                       conf = heartbeater.Conf(heartbeat_interval=ticks_per_wall_clock_s//100))]
                     
-        region_ids = set()
-        for ru in range(len(RU_CONFIG)):
+        for ru_config in RU_CONFIG:
             ## 1 zipper/TAM per region id
-            region_id = RU_CONFIG[ru]["region_id"]
-            skip=False
-            if region_id in region_ids: skip=True
+            region_id = ru_config["region_id"]
+            # (PAR 2022-06-09) The max_latency_ms here should be
+            # kept smaller than the corresponding value in the
+            # downstream TAZipper. The reason is to avoid tardy
+            # sets at run stop, which are caused as follows:
+            #
+            # 1. The TPZipper receives its last input TPSets from
+            # multiple links. In general, the last time received
+            # from each link will be different (because the
+            # upstream readout senders don't all stop
+            # simultaneously). So there will be sets on one link
+            # that don't have time-matched sets on the other
+            # links. TPZipper sends these unmatched sets out after
+            # TPZipper's max_latency_ms milliseconds have passed,
+            # so these sets are delayed by
+            # "tpzipper.max_latency_ms"
+            #
+            # 2. Meanwhile, the TAZipper has also stopped
+            # receiving data from all but one of the readout units
+            # (which are stopped sequentially), and so is in a
+            # similar situation. Once tazipper.max_latency_ms has
+            # passed, it sends out the sets from the remaining
+            # live input, and "catches up" with the current time
+            #
+            # So, if tpzipper.max_latency_ms >
+            # tazipper.max_latency_ms, the TA inputs made from the
+            # delayed TPSets will certainly arrive at the TAZipper
+            # after it has caught up to the current time, and be
+            # tardy. If the tpzipper.max_latency_ms ==
+            # tazipper.max_latency_ms, then depending on scheduler
+            # delays etc, the delayed TPSets's TAs _may_ arrive at
+            # the TAZipper tardily. With tpzipper.max_latency_ms <
+            # tazipper.max_latency_ms, everything should be fine.
+            modules += [DAQModule(name   = f'zip_{region_id}',
+                                  plugin = 'TPZipper',
+                                  conf   = tzip.ConfParams(cardinality=ru_config["tp_link_count"],
+                                                           max_latency_ms=100,
+                                                           region_id=region_id,
+                                                           element_id=TA_ELEMENT_ID)),
 
-            if not skip: # we only add Zipper/TAM is that region_id wasn't seen before (in a very clunky way)
-                region_ids.add(region_id)
-                cardinality = 0
-                for RU in RU_CONFIG:
-                    if RU['region_id'] == region_id:
-                        cardinality += RU['channel_count']
-                # (PAR 2022-06-09) The max_latency_ms here should be
-                # kept smaller than the corresponding value in the
-                # downstream TAZipper. The reason is to avoid tardy
-                # sets at run stop, which are caused as follows:
-                #
-                # 1. The TPZipper receives its last input TPSets from
-                # multiple links. In general, the last time received
-                # from each link will be different (because the
-                # upstream readout senders don't all stop
-                # simultaneously). So there will be sets on one link
-                # that don't have time-matched sets on the other
-                # links. TPZipper sends these unmatched sets out after
-                # TPZipper's max_latency_ms milliseconds have passed,
-                # so these sets are delayed by
-                # "tpzipper.max_latency_ms"
-                #
-                # 2. Meanwhile, the TAZipper has also stopped
-                # receiving data from all but one of the readout units
-                # (which are stopped sequentially), and so is in a
-                # similar situation. Once tazipper.max_latency_ms has
-                # passed, it sends out the sets from the remaining
-                # live input, and "catches up" with the current time
-                #
-                # So, if tpzipper.max_latency_ms >
-                # tazipper.max_latency_ms, the TA inputs made from the
-                # delayed TPSets will certainly arrive at the TAZipper
-                # after it has caught up to the current time, and be
-                # tardy. If the tpzipper.max_latency_ms ==
-                # tazipper.max_latency_ms, then depending on scheduler
-                # delays etc, the delayed TPSets's TAs _may_ arrive at
-                # the TAZipper tardily. With tpzipper.max_latency_ms <
-                # tazipper.max_latency_ms, everything should be fine.
-                modules += [DAQModule(name = f'zip_{region_id}',
-                                      plugin = 'TPZipper',
-                                              conf = tzip.ConfParams(cardinality=cardinality,
-                                                                     max_latency_ms=100,
-                                                                     region_id=region_id,
-                                                                     element_id=TA_ELEMENT_ID)),
-                                    
-                            DAQModule(name = f'tam_{region_id}',
-                                      plugin = 'TriggerActivityMaker',
-                                      conf = tam.Conf(activity_maker=ACTIVITY_PLUGIN,
-                                                      geoid_region=region_id,
-                                                      geoid_element=0,  # 2022-02-02 PL: Same comment as above
-                                                      window_time=10000,  # should match whatever makes TPSets, in principle
-                                                      buffer_time=10*ticks_per_wall_clock_s//1000, # 10 wall-clock ms
-                                                      activity_maker_config=temptypes.ActivityConf(**ACTIVITY_CONFIG))),
+                        DAQModule(name   = f'tam_{region_id}',
+                                  plugin = 'TriggerActivityMaker',
+                                  conf   = tam.Conf(activity_maker=ACTIVITY_PLUGIN,
+                                                    geoid_region=region_id,
+                                                    geoid_element=0,
+                                                    window_time=10000,  # should match whatever makes TPSets, in principle
+                                                    buffer_time=10*ticks_per_wall_clock_s//1000, # 10 wall-clock ms
+                                                    activity_maker_config=temptypes.ActivityConf(**ACTIVITY_CONFIG))),
 
-                            DAQModule(name = f'tasettee_region_{region_id}',
-                                      plugin = "TASetTee"),
-                            ]
+                        DAQModule(name   = f'tasettee_region_{region_id}',
+                                  plugin = "TASetTee"),
+                        ]
 
     if USE_HSI_INPUT:
         modules += [DAQModule(name = 'ttcm',
