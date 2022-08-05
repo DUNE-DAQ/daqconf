@@ -118,6 +118,23 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     
     modules = []
 
+    # This modifies RU_CONFIG, which we probably shouldn't do, but meh
+    
+    for ru in RU_CONFIG:
+        if FIRMWARE_TPG_ENABLED:
+            if ru["channel_count"] > 5:
+                tp_links = 2
+            else:
+                tp_links = 1
+        elif SOFTWARE_TPG_ENABLED:
+            tp_links = ru["channel_count"]
+        else:
+            tp_links = 0
+        ru["tp_link_count"] = tp_links
+
+    # The total number of TP links in the system
+    n_tp_links = sum([ru["tp_link_count"] for ru in RU_CONFIG])
+        
     region_ids_set = set([ru["region_id"] for ru in RU_CONFIG])
     assert len(region_ids_set) == len(RU_CONFIG), "There are duplicate region IDs for RUs. Trigger can't handle this case. Please use --region-id to set distinct region IDs for each RU"
 
@@ -153,15 +170,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
         # Make one heartbeatmaker per link
         for ruidx, ru_config in enumerate(RU_CONFIG):
-            if FIRMWARE_TPG_ENABLED:
-                if ru_config["channel_count"] > 5:
-                    tp_links = 2
-                else:
-                    tp_links = 1
-            else:
-                tp_links = ru_config["channel_count"]
-
-            for link_idx in range(tp_links):
+            for link_idx in range(ru_config["tp_link_count"]):
                 link_id = f'ru{ruidx}_link{link_idx}'
                 if USE_CHANNEL_FILTER:
                     modules += [DAQModule(name = f'channelfilter_{link_id}',
@@ -177,14 +186,6 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                     
         region_ids = set()
         for ru in range(len(RU_CONFIG)):
-            if FIRMWARE_TPG_ENABLED:
-                if RU_CONFIG[ru]["channel_count"] > 5:
-                    tp_links = 2
-                else:
-                    tp_links = 1
-            else:
-                tp_links = RU_CONFIG[ru]["channel_count"]
-
             ## 1 zipper/TAM per region id
             region_id = RU_CONFIG[ru]["region_id"]
             skip=False
@@ -252,7 +253,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                       # PAR 2022-04-20 Not sure what to set the element id to so it doesn't collide with the region/element used by TP buffers. Make it some big number that shouldn't already be used by the TP buffer
                                       conf = get_buffer_conf(region_id, TA_ELEMENT_ID, DATA_REQUEST_TIMEOUT))]
 
-            for idy in range(tp_links):
+            for idy in range(RU_CONFIG[ru]["tp_link_count"]):
                 # 1 buffer per TPG channel
                 modules += [DAQModule(name = f'buf_ru{ru}_link{idy}',
                                       plugin = 'TPBuffer',
@@ -300,14 +301,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     if SOFTWARE_TPG_ENABLED or FIRMWARE_TPG_ENABLED:
         mgraph.connect_modules("tazipper.output", "tcm.input", size_hint=1000)
         for ruidx, ru_config in enumerate(RU_CONFIG):
-            if FIRMWARE_TPG_ENABLED:
-                if ru_config["channel_count"] > 5:
-                    tp_links = 2
-                else:
-                    tp_links = 1
-            else:
-                tp_links = ru_config["channel_count"]
-            for link_idx in range(tp_links):
+            for link_idx in range(ru_config["tp_link_count"]):
                     link_id = f'ru{ruidx}_link{link_idx}'
 
                     if USE_CHANNEL_FILTER:
@@ -344,15 +338,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
     if SOFTWARE_TPG_ENABLED or FIRMWARE_TPG_ENABLED:
         for ruidx, ru_config in enumerate(RU_CONFIG):
-            if FIRMWARE_TPG_ENABLED:
-                if ru_config["channel_count"] > 5:
-                    tp_links = 2
-                else:
-                    tp_links = 1
-            else:
-                tp_links = ru_config["channel_count"]
-
-            for link_idx in range(tp_links):
+            for link_idx in range(ru_config["tp_link_count"]):
                 # 1 buffer per link
                 link_id=f"ru{ruidx}_link{link_idx}"
                 buf_name=f'buf_{link_id}'
