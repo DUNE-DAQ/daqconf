@@ -368,7 +368,6 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                 # 1 buffer per link
                 link_id=f"ru{ruidx}_link{link_idx}"
                 buf_name=f'buf_{link_id}'
-                global_link = link_idx+ru_config['start_channel'] # for the benefit of correct fragment geoid
 
                 if USE_CHANNEL_FILTER:
                     mgraph.add_endpoint(f"tpsets_{link_id}_sub", f"channelfilter_{link_id}.tpset_source", Direction.IN, topic=["TPSets"])
