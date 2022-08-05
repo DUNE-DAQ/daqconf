@@ -147,8 +147,8 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                           plugin = 'TCBuffer',
                           conf = get_buffer_conf(TC_REGION_ID, TC_ELEMENT_ID, DATA_REQUEST_TIMEOUT))]
     if USE_HSI_INPUT:
-        modules += [DAQModule(name = 'tctee_ttcm',
-                         plugin = 'TCTee')]
+        modules += [DAQModule(name   = 'tctee_ttcm',
+                              plugin = 'TCTee')]
 
     
     if SOFTWARE_TPG_ENABLED or FIRMWARE_TPG_ENABLED:
@@ -198,10 +198,10 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                 link_id = f'ru{ruidx}_link{link_idx}'
                 if USE_CHANNEL_FILTER:
                     modules += [DAQModule(name = f'channelfilter_{link_id}',
-                                      plugin = 'TPChannelFilter',
-                                      conf = chfilter.Conf(channel_map_name=CHANNEL_MAP_NAME,
-                                                           keep_collection=True,
-                                                           keep_induction=False))]
+                                          plugin = 'TPChannelFilter',
+                                          conf = chfilter.Conf(channel_map_name=CHANNEL_MAP_NAME,
+                                                               keep_collection=True,
+                                                               keep_induction=False))]
                 modules += [DAQModule(name = f'tpsettee_{link_id}',
                                       plugin = 'TPSetTee'),
                             DAQModule(name = f'heartbeatmaker_{link_id}',
@@ -319,15 +319,15 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
         
         for ruidx, ru_config in enumerate(RU_CONFIG):
             for link_idx in range(ru_config["tp_link_count"]):
-                    link_id = f'ru{ruidx}_link{link_idx}'
+                link_id = f'ru{ruidx}_link{link_idx}'
 
-                    if USE_CHANNEL_FILTER:
-                        mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', size_hint=1000)
+                if USE_CHANNEL_FILTER:
+                    mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', size_hint=1000)
 
-                    mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'heartbeatmaker_{link_id}.tpset_source', size_hint=1000)
-                    mgraph.connect_modules(f'tpsettee_{link_id}.output2', f'tp_buf_zipper.input', 'tps_to_buf', size_hint=1000)
+                mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'heartbeatmaker_{link_id}.tpset_source', size_hint=1000)
+                mgraph.connect_modules(f'tpsettee_{link_id}.output2', f'tp_buf_zipper.input', 'tps_to_buf', size_hint=1000)
 
-                    mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{ru_config['region_id']}.input", f"{ru_config['region_id']}_tpset_q", size_hint=1000)
+                mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{ru_config['region_id']}.input", f"{ru_config['region_id']}_tpset_q", size_hint=1000)
 
         for region_id in region_ids_set:
             mgraph.connect_modules(f'zip_{region_id}.output', f'tam_{region_id}.input', size_hint=1000)
