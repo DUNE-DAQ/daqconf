@@ -33,8 +33,13 @@ from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Direction, Queue
 
-TA_ELEMENT_ID = 10_000
-TC_REGION_ID = 20_000
+TP_REGION_ID = 0
+TP_ELEMENT_ID = 0
+
+TA_REGION_ID = 1
+TA_ELEMENT_ID = 0
+
+TC_REGION_ID = 2
 TC_ELEMENT_ID = 0
 
 #FIXME maybe one day, triggeralgs will define schemas... for now allow a dictionary of 4byte int, 4byte floats, and strings
@@ -59,6 +64,7 @@ def make_moo_record(conf_dict,name,path='temptypes'):
         fields.append(dict(name=pname,item=typename))
     moo.otypes.make_type(schema='record', fields=fields, name=name, path=path)
 
+#===============================================================================
 def get_buffer_conf(region_id, element_id, data_request_timeout):
     return bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 100_000,
                                                                              region_id = region_id,
@@ -148,6 +154,26 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
     
     if SOFTWARE_TPG_ENABLED or FIRMWARE_TPG_ENABLED:
+        # Make the TP and TA buffers and their respective zippers
+        modules += [DAQModule(name   = 'tp_buf_zipper',
+                              plugin = 'TPZipper',
+                              conf   = tzip.ConfParams(cardinality=n_tp_links,
+                                                       max_latency_ms=1000,
+                                                       region_id=TP_REGION_ID,
+                                                       element_id=TP_ELEMENT_ID)),
+                    DAQModule(name   = 'tp_buf',
+                              plugin = 'TPBuffer',
+                              conf   = get_buffer_conf(TP_REGION_ID, TP_ELEMENT_ID, DATA_REQUEST_TIMEOUT)),
+                    DAQModule(name   = 'ta_buf_zipper',
+                              plugin = 'TAZipper',
+                              conf   = tzip.ConfParams(cardinality=len(region_ids_set),
+                                                       max_latency_ms=1000,
+                                                       region_id=TA_REGION_ID,
+                                                       element_id=TA_ELEMENT_ID)),
+                    DAQModule(name   = 'ta_buf',
+                              plugin = 'TABuffer',
+                              conf   = get_buffer_conf(TA_REGION_ID, TA_ELEMENT_ID, DATA_REQUEST_TIMEOUT))]
+        
         config_tcm =  tcm.Conf(candidate_maker=CANDIDATE_PLUGIN,
                                candidate_maker_config=temptypes.CandidateConf(**CANDIDATE_CONFIG))
 
@@ -247,17 +273,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
                             DAQModule(name = f'tasettee_region_{region_id}',
                                       plugin = "TASetTee"),
-                            
-                            DAQModule(name = f'ta_buf_region_{region_id}',
-                                      plugin = 'TABuffer',
-                                      # PAR 2022-04-20 Not sure what to set the element id to so it doesn't collide with the region/element used by TP buffers. Make it some big number that shouldn't already be used by the TP buffer
-                                      conf = get_buffer_conf(region_id, TA_ELEMENT_ID, DATA_REQUEST_TIMEOUT))]
-
-            for idy in range(RU_CONFIG[ru]["tp_link_count"]):
-                # 1 buffer per TPG channel
-                modules += [DAQModule(name = f'buf_ru{ru}_link{idy}',
-                                      plugin = 'TPBuffer',
-                                      conf = get_buffer_conf(region_id, idy, DATA_REQUEST_TIMEOUT))]
+                            ]
 
     if USE_HSI_INPUT:
         modules += [DAQModule(name = 'ttcm',
@@ -300,6 +316,9 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
     if SOFTWARE_TPG_ENABLED or FIRMWARE_TPG_ENABLED:
         mgraph.connect_modules("tazipper.output", "tcm.input", size_hint=1000)
+        mgraph.connect_modules("tp_buf_zipper.output", "tp_buf.tpset_source", size_hint=1000)
+        mgraph.connect_modules("ta_buf_zipper.output", "ta_buf.taset_source", size_hint=1000)
+        
         for ruidx, ru_config in enumerate(RU_CONFIG):
             for link_idx in range(ru_config["tp_link_count"]):
                     link_id = f'ru{ruidx}_link{link_idx}'
@@ -308,7 +327,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                         mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', size_hint=1000)
 
                     mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'heartbeatmaker_{link_id}.tpset_source', size_hint=1000)
-                    mgraph.connect_modules(f'tpsettee_{link_id}.output2', f'buf_{link_id}.tpset_source', size_hint=1000)
+                    mgraph.connect_modules(f'tpsettee_{link_id}.output2', f'tp_buf_zipper.input', 'tps_to_buf', size_hint=1000)
 
                     mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{ru_config['region_id']}.input", f"{ru_config['region_id']}_tpset_q", size_hint=1000)
 
@@ -324,7 +343,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
         for region_id in region_ids_set:
             mgraph.connect_modules(f'tam_{region_id}.output',              f'tasettee_region_{region_id}.input',      size_hint=1000)
             mgraph.connect_modules(f'tasettee_region_{region_id}.output1', f'tazipper.input', "tas_to_tazipper",      size_hint=1000)
-            mgraph.connect_modules(f'tasettee_region_{region_id}.output2', f'ta_buf_region_{region_id}.taset_source', size_hint=1000)
+            mgraph.connect_modules(f'tasettee_region_{region_id}.output2', f'ta_buf_zipper.input', "tas_to_buf",      size_hint=1000)
 
     if USE_HSI_INPUT:
         mgraph.add_endpoint("hsievents", None, Direction.IN)
@@ -337,6 +356,13 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                                  fragments_out="tc_buf.fragment_sink")
 
     if SOFTWARE_TPG_ENABLED or FIRMWARE_TPG_ENABLED:
+        mgraph.add_fragment_producer(region=TP_REGION_ID, element=TP_ELEMENT_ID, system="DataSelection",
+                                     requests_in="tp_buf.data_request_source",
+                                     fragments_out="tp_buf.fragment_sink")
+        mgraph.add_fragment_producer(region=TA_REGION_ID, element=TA_ELEMENT_ID, system="DataSelection",
+                                     requests_in="ta_buf.data_request_source",
+                                     fragments_out="ta_buf.fragment_sink")
+
         for ruidx, ru_config in enumerate(RU_CONFIG):
             for link_idx in range(ru_config["tp_link_count"]):
                 # 1 buffer per link
@@ -349,16 +375,6 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                 else:
                     mgraph.add_endpoint(f"tpsets_{link_id}_sub", f'tpsettee_{link_id}.input',             Direction.IN, topic=["TPSets"])
                     
-
-                mgraph.add_fragment_producer(region=ru_config['region_id'], element=global_link, system="DataSelection",
-                                             requests_in=f"{buf_name}.data_request_source",
-                                             fragments_out=f"{buf_name}.fragment_sink")
-        for region_id in region_ids:
-            buf_name = f'ta_buf_region_{region_id}'
-            mgraph.add_fragment_producer(region=region_id, element=TA_ELEMENT_ID, system="DataSelection",
-                                         requests_in=f"{buf_name}.data_request_source",
-                                         fragments_out=f"{buf_name}.fragment_sink")
-
 
     trigger_app = App(modulegraph=mgraph, host=HOST, name='TriggerApp')
     
