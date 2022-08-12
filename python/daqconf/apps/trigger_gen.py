@@ -31,6 +31,11 @@ from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Direction, Queue
 
+from dataclasses import dataclass
+from rich.console import Console
+
+console = Console()
+
 TP_REGION_ID = 0
 TP_ELEMENT_ID = 0
 
@@ -61,6 +66,112 @@ def make_moo_record(conf_dict,name,path='temptypes'):
             raise Exception(f'Invalid config argument type: {type(pvalue)}')
         fields.append(dict(name=pname,item=typename))
     moo.otypes.make_type(schema='record', fields=fields, name=name, path=path)
+
+
+@dataclass
+class TPLink:
+    region: int
+    idx: int
+    def get_name(self):
+        return f"ru{self.region}_link{self.idx}"
+
+#===============================================================================
+def make_ta_chain_modules(all_tp_links, tp_links_by_region, activity_plugin, activity_config, use_channel_filter, channel_map_name, ticks_per_wall_clock_s):
+    import temptypes
+    modules = []
+    # Make one heartbeatmaker per link
+    for tp_link in all_tp_links:
+        link_id = tp_link.get_name()
+        if use_channel_filter:
+            modules += [DAQModule(name = f'channelfilter_{link_id}',
+                                  plugin = 'TPChannelFilter',
+                                  conf = chfilter.Conf(channel_map_name=channel_map_name,
+                                                       keep_collection=True,
+                                                       keep_induction=False))]
+        modules += [DAQModule(name = f'tpsettee_{link_id}',
+                              plugin = 'TPSetTee'),
+                    DAQModule(name = f'heartbeatmaker_{link_id}',
+                              plugin = 'FakeTPCreatorHeartbeatMaker',
+                              conf = heartbeater.Conf(heartbeat_interval=ticks_per_wall_clock_s//100))]
+
+    for region_id, tp_links in tp_links_by_region.items():
+        ## 1 zipper/TAM per region id
+        # (PAR 2022-06-09) The max_latency_ms here should be
+        # kept smaller than the corresponding value in the
+        # downstream TAZipper. The reason is to avoid tardy
+        # sets at run stop, which are caused as follows:
+        #
+        # 1. The TPZipper receives its last input TPSets from
+        # multiple links. In general, the last time received
+        # from each link will be different (because the
+        # upstream readout senders don't all stop
+        # simultaneously). So there will be sets on one link
+        # that don't have time-matched sets on the other
+        # links. TPZipper sends these unmatched sets out after
+        # TPZipper's max_latency_ms milliseconds have passed,
+        # so these sets are delayed by
+        # "tpzipper.max_latency_ms"
+        #
+        # 2. Meanwhile, the TAZipper has also stopped
+        # receiving data from all but one of the readout units
+        # (which are stopped sequentially), and so is in a
+        # similar situation. Once tazipper.max_latency_ms has
+        # passed, it sends out the sets from the remaining
+        # live input, and "catches up" with the current time
+        #
+        # So, if tpzipper.max_latency_ms >
+        # tazipper.max_latency_ms, the TA inputs made from the
+        # delayed TPSets will certainly arrive at the TAZipper
+        # after it has caught up to the current time, and be
+        # tardy. If the tpzipper.max_latency_ms ==
+        # tazipper.max_latency_ms, then depending on scheduler
+        # delays etc, the delayed TPSets's TAs _may_ arrive at
+        # the TAZipper tardily. With tpzipper.max_latency_ms <
+        # tazipper.max_latency_ms, everything should be fine.
+        modules += [DAQModule(name   = f'zip_{region_id}',
+                              plugin = 'TPZipper',
+                              conf   = tzip.ConfParams(cardinality=len(tp_links),
+                                                       max_latency_ms=100,
+                                                       region_id=region_id,
+                                                       element_id=TA_ELEMENT_ID)),
+
+                    DAQModule(name   = f'tam_{region_id}',
+                              plugin = 'TriggerActivityMaker',
+                              conf   = tam.Conf(activity_maker=activity_plugin,
+                                                geoid_region=region_id,
+                                                geoid_element=0,
+                                                window_time=10000,  # should match whatever makes TPSets, in principle
+                                                buffer_time=10*ticks_per_wall_clock_s//1000, # 10 wall-clock ms
+                                                activity_maker_config=temptypes.ActivityConf(**activity_config))),
+
+                    DAQModule(name   = f'tasettee_region_{region_id}',
+                              plugin = "TASetTee"),
+                    ]
+    return modules
+
+#===============================================================================
+def connect_ta_chain_modules(mgraph, all_tp_links, tp_links_by_region, use_channel_filter):
+    for tp_link in all_tp_links:
+        link_id = tp_link.get_name()
+
+        if use_channel_filter:
+            mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', size_hint=1000)
+
+        mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'heartbeatmaker_{link_id}.tpset_source', size_hint=1000)
+        mgraph.connect_modules(f'tpsettee_{link_id}.output2', f'tp_buf_zipper.input', 'tps_to_buf', size_hint=1000)
+
+        mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{tp_link.region}.input", f"{tp_link.region}_tpset_q", size_hint=1000)
+
+    for region_id in tp_links_by_region.keys():
+        mgraph.connect_modules(f'zip_{region_id}.output', f'tam_{region_id}.input', size_hint=1000)
+        for tp_link in all_tp_links:
+            link_id=tp_link.get_name()
+
+            if use_channel_filter:
+                mgraph.add_endpoint(f"tpsets_{link_id}_sub", f"channelfilter_{link_id}.tpset_source", Direction.IN, topic=["TPSets"])
+            else:
+                mgraph.add_endpoint(f"tpsets_{link_id}_sub", f'tpsettee_{link_id}.input',             Direction.IN, topic=["TPSets"])
+
 
 #===============================================================================
 def get_buffer_conf(region_id, element_id, data_request_timeout):
@@ -136,8 +247,19 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
             tp_links = 0
         ru["tp_link_count"] = tp_links
 
+    all_tp_links = []
+    tp_links_by_region = {}
+    if SOFTWARE_TPG_ENABLED or FIRMWARE_TPG_ENABLED:
+        for ru in RU_CONFIG:
+            this_tp_links = [ TPLink(region = ru["region_id"], idx = i) for i in range(ru["tp_link_count"]) ]
+            tp_links_by_region[ ru["region_id"] ] = this_tp_links
+            all_tp_links += this_tp_links
+
+    console.log(f"all_tp_links: {all_tp_links}")
+    console.log(f"tp_links_by_region: {tp_links_by_region}")
+    
     # The total number of TP links in the system
-    n_tp_links = sum([ru["tp_link_count"] for ru in RU_CONFIG])
+    n_tp_links = len(all_tp_links)
         
     region_ids_set = set([ru["region_id"] for ru in RU_CONFIG])
     assert len(region_ids_set) == len(RU_CONFIG), "There are duplicate region IDs for RUs. Trigger can't handle this case. Please use --region-id to set distinct region IDs for each RU"
@@ -191,77 +313,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                     DAQModule(name = 'tctee_chain',
                               plugin = 'TCTee'),
                     ]
-
-        # Make one heartbeatmaker per link
-        for ruidx, ru_config in enumerate(RU_CONFIG):
-            for link_idx in range(ru_config["tp_link_count"]):
-                link_id = f'ru{ruidx}_link{link_idx}'
-                if USE_CHANNEL_FILTER:
-                    modules += [DAQModule(name = f'channelfilter_{link_id}',
-                                          plugin = 'TPChannelFilter',
-                                          conf = chfilter.Conf(channel_map_name=CHANNEL_MAP_NAME,
-                                                               keep_collection=True,
-                                                               keep_induction=False))]
-                modules += [DAQModule(name = f'tpsettee_{link_id}',
-                                      plugin = 'TPSetTee'),
-                            DAQModule(name = f'heartbeatmaker_{link_id}',
-                                      plugin = 'FakeTPCreatorHeartbeatMaker',
-                                      conf = heartbeater.Conf(heartbeat_interval=ticks_per_wall_clock_s//100))]
-                    
-        for ru_config in RU_CONFIG:
-            ## 1 zipper/TAM per region id
-            region_id = ru_config["region_id"]
-            # (PAR 2022-06-09) The max_latency_ms here should be
-            # kept smaller than the corresponding value in the
-            # downstream TAZipper. The reason is to avoid tardy
-            # sets at run stop, which are caused as follows:
-            #
-            # 1. The TPZipper receives its last input TPSets from
-            # multiple links. In general, the last time received
-            # from each link will be different (because the
-            # upstream readout senders don't all stop
-            # simultaneously). So there will be sets on one link
-            # that don't have time-matched sets on the other
-            # links. TPZipper sends these unmatched sets out after
-            # TPZipper's max_latency_ms milliseconds have passed,
-            # so these sets are delayed by
-            # "tpzipper.max_latency_ms"
-            #
-            # 2. Meanwhile, the TAZipper has also stopped
-            # receiving data from all but one of the readout units
-            # (which are stopped sequentially), and so is in a
-            # similar situation. Once tazipper.max_latency_ms has
-            # passed, it sends out the sets from the remaining
-            # live input, and "catches up" with the current time
-            #
-            # So, if tpzipper.max_latency_ms >
-            # tazipper.max_latency_ms, the TA inputs made from the
-            # delayed TPSets will certainly arrive at the TAZipper
-            # after it has caught up to the current time, and be
-            # tardy. If the tpzipper.max_latency_ms ==
-            # tazipper.max_latency_ms, then depending on scheduler
-            # delays etc, the delayed TPSets's TAs _may_ arrive at
-            # the TAZipper tardily. With tpzipper.max_latency_ms <
-            # tazipper.max_latency_ms, everything should be fine.
-            modules += [DAQModule(name   = f'zip_{region_id}',
-                                  plugin = 'TPZipper',
-                                  conf   = tzip.ConfParams(cardinality=ru_config["tp_link_count"],
-                                                           max_latency_ms=100,
-                                                           region_id=region_id,
-                                                           element_id=TA_ELEMENT_ID)),
-
-                        DAQModule(name   = f'tam_{region_id}',
-                                  plugin = 'TriggerActivityMaker',
-                                  conf   = tam.Conf(activity_maker=ACTIVITY_PLUGIN,
-                                                    geoid_region=region_id,
-                                                    geoid_element=0,
-                                                    window_time=10000,  # should match whatever makes TPSets, in principle
-                                                    buffer_time=10*ticks_per_wall_clock_s//1000, # 10 wall-clock ms
-                                                    activity_maker_config=temptypes.ActivityConf(**ACTIVITY_CONFIG))),
-
-                        DAQModule(name   = f'tasettee_region_{region_id}',
-                                  plugin = "TASetTee"),
-                        ]
+        modules += make_ta_chain_modules(all_tp_links, tp_links_by_region, ACTIVITY_PLUGIN, ACTIVITY_CONFIG, USE_CHANNEL_FILTER, CHANNEL_MAP_NAME, ticks_per_wall_clock_s)
 
     if USE_HSI_INPUT:
         modules += [DAQModule(name = 'ttcm',
@@ -303,24 +355,13 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
         mgraph.connect_modules("tctee_ttcm.output2",  "tc_buf.tc_source",             "tcs_to_buf", size_hint=1000)
 
     if SOFTWARE_TPG_ENABLED or FIRMWARE_TPG_ENABLED:
+
+        connect_ta_chain_modules(mgraph, all_tp_links, tp_links_by_region, USE_CHANNEL_FILTER)
+        
         mgraph.connect_modules("tazipper.output", "tcm.input", size_hint=1000)
         mgraph.connect_modules("tp_buf_zipper.output", "tp_buf.tpset_source", size_hint=1000)
         mgraph.connect_modules("ta_buf_zipper.output", "ta_buf.taset_source", size_hint=1000)
         
-        for ruidx, ru_config in enumerate(RU_CONFIG):
-            for link_idx in range(ru_config["tp_link_count"]):
-                link_id = f'ru{ruidx}_link{link_idx}'
-
-                if USE_CHANNEL_FILTER:
-                    mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', size_hint=1000)
-
-                mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'heartbeatmaker_{link_id}.tpset_source', size_hint=1000)
-                mgraph.connect_modules(f'tpsettee_{link_id}.output2', f'tp_buf_zipper.input', 'tps_to_buf', size_hint=1000)
-
-                mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{ru_config['region_id']}.input", f"{ru_config['region_id']}_tpset_q", size_hint=1000)
-
-        for region_id in region_ids_set:
-            mgraph.connect_modules(f'zip_{region_id}.output', f'tam_{region_id}.input', size_hint=1000)
         # Use connect_modules to connect up the Tees to the buffers/MLT,
         # as manually adding Queues doesn't give the desired behaviour
         mgraph.connect_modules("tcm.output",          "tctee_chain.input",            "chain_input", size_hint=1000)
@@ -350,17 +391,6 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
         mgraph.add_fragment_producer(region=TA_REGION_ID, element=TA_ELEMENT_ID, system="DataSelection",
                                      requests_in="ta_buf.data_request_source",
                                      fragments_out="ta_buf.fragment_sink")
-
-        for ruidx, ru_config in enumerate(RU_CONFIG):
-            for link_idx in range(ru_config["tp_link_count"]):
-                # 1 buffer per link
-                link_id=f"ru{ruidx}_link{link_idx}"
-                buf_name=f'buf_{link_id}'
-
-                if USE_CHANNEL_FILTER:
-                    mgraph.add_endpoint(f"tpsets_{link_id}_sub", f"channelfilter_{link_id}.tpset_source", Direction.IN, topic=["TPSets"])
-                else:
-                    mgraph.add_endpoint(f"tpsets_{link_id}_sub", f'tpsettee_{link_id}.input',             Direction.IN, topic=["TPSets"])
                     
 
     trigger_app = App(modulegraph=mgraph, host=HOST, name='TriggerApp')
