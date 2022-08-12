@@ -119,6 +119,7 @@ def get_readout_app(RU_CONFIG=[],
         for idx in range(tp_links):
             if FIRMWARE_TPG_ENABLED:
                 queues += [Queue(f"tp_datahandler_{idx}.errored_frames", 'errored_frame_consumer.input_queue', "errored_frames_q")]
+                queues += [Queue(f"tp_datahandler_{idx}.tp_out",f"tp_out_datahandler_{idx}.raw_input",f"sw_tp_link_{idx}",100000 )]
             modules += [DAQModule(name = f"tp_datahandler_{idx}",
                                   plugin = "DataLinkHandler", 
                                   conf = rconf.Conf(
@@ -126,7 +127,7 @@ def get_readout_app(RU_CONFIG=[],
                                           source_queue_timeout_ms= QUEUE_POP_WAIT_MS,
                                           # fake_trigger_flag=0, # default
                                           region_id = RU_CONFIG[RUIDX]["region_id"],
-                                          element_id = idx,
+                                          element_id = 10 + idx,
                                           timesync_connection_name = f"timesync_{RUIDX}",
                                           timesync_topic_name = "Timesync",
                                       ),
@@ -138,7 +139,7 @@ def get_readout_app(RU_CONFIG=[],
                                       ),
                                       rawdataprocessorconf= rconf.RawDataProcessorConf(
                                           region_id = RU_CONFIG[RUIDX]["region_id"],
-                                          element_id = idx,
+                                          element_id = 10 + idx,
                                           enable_software_tpg = False,
                                           enable_firmware_tpg = True,
                                           channel_map_name = TPG_CHANNEL_MAP,
@@ -152,13 +153,32 @@ def get_readout_app(RU_CONFIG=[],
                                           pop_limit_pct = 0.8,
                                           pop_size_pct = 0.1,
                                           region_id = RU_CONFIG[RUIDX]["region_id"],
-                                          element_id = idx,
+                                          element_id = 10 + idx,
                                           output_file = path.join(RAW_RECORDING_OUTPUT_DIR, f"output_tp_{RUIDX}_{idx}.out"),
                                           stream_buffer_size = 8388608,
                                           request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                           enable_raw_recording = RAW_RECORDING_ENABLED,
                                       )))]
-
+            modules += [DAQModule(name = f"tp_out_datahandler_{idx}",
+                               plugin = "DataLinkHandler",
+                               conf = rconf.Conf(readoutmodelconf = rconf.ReadoutModelConf(source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
+                                                                                         region_id = RU_CONFIG[RUIDX]["region_id"],
+                                                                                         element_id = total_link_count+idx),
+                                                 latencybufferconf = rconf.LatencyBufferConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
+                                                                                            region_id = RU_CONFIG[RUIDX]["region_id"],
+                                                                                            element_id = total_link_count + idx),
+                                                 rawdataprocessorconf = rconf.RawDataProcessorConf(region_id = RU_CONFIG[RUIDX]["region_id"],
+                                                                                                   element_id = total_link_count + idx,
+                                                                                                   enable_software_tpg = False,
+                                                                                                   channel_map_name=TPG_CHANNEL_MAP),
+                                                 requesthandlerconf= rconf.RequestHandlerConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
+                                                                                              pop_limit_pct = 0.8,
+                                                                                              pop_size_pct = 0.1,
+                                                                                              region_id = RU_CONFIG[RUIDX]["region_id"],
+                                                                                              element_id =total_link_count + idx,
+                                                                                              stream_buffer_size = 100 if FRONTEND_TYPE=='pacman' else 8388608,
+                                                                                              request_timeout_ms = DATA_REQUEST_TIMEOUT,
+                                                                                              enable_raw_recording = False)))]
 
     if FRONTEND_TYPE == 'wib' and not USE_FAKE_DATA_PRODUCERS:
         modules += [DAQModule(name = "errored_frame_consumer",
@@ -345,6 +365,12 @@ def get_readout_app(RU_CONFIG=[],
                                     fragments_out = f"tp_datahandler_{idx}.fragment_queue")
             mgraph.add_endpoint(f"timesync_{idx}", f"tp_datahandler_{idx}.timesync_output",    Direction.OUT, ["Timesync"])
 
+            mgraph.add_endpoint(f"timesync_tp_out_dlh_ru{RUIDX}_{idx}", f"tp_out_datahandler_{idx}.timesync_output",    Direction.OUT, ["Timesync"])
+            assert total_link_count < 3000
+            mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = idx + 3000, system = SYSTEM_TYPE,
+                                            requests_in   = f"tp_out_datahandler_{idx}.request_input",
+                                            fragments_out = f"tp_out_datahandler_{idx}.fragment_queue")
+
     for idx in range(MIN_LINK, MAX_LINK):
         if FIRMWARE_TPG_ENABLED and idx > 4:
             link_num = idx + 1
@@ -394,3 +420,4 @@ def get_readout_app(RU_CONFIG=[],
         readout_app.export("readout_app.dot")
 
     return readout_app
+
