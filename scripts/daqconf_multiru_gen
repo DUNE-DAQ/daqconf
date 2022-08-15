@@ -162,7 +162,7 @@ class ConfigFileProcessor(ConfigFileReader):
         path,delim,name = filename.rpartition('/')
         ConfigFileProcessor.config_searchpath = [path]
         ConfigFileProcessor.config_files=[name]
-        console.log(f"Reading config file {name} from {path}")
+        console.log(f"Reading config file {filename}")
         output_dict = ConfigFileProcessor.read_config()
         output_dict["config_file"] = filename
         return output_dict
@@ -174,7 +174,6 @@ class ConfigFileProcessor(ConfigFileReader):
         return ConfigFileReader.get_storage_name_for(section_name)
 
 def configure(ctx, param, filename):
-    console.log(f"Reading config file {filename}")
     cfg = ConfigFileProcessor().read_file(filename)
     for key in cfg:
         ctx.default_map[key]  =cfg[key]

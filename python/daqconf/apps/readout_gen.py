@@ -75,7 +75,7 @@ def get_readout_app(DRO_CONFIG=None,
     host = DRO_CONFIG.host.replace("-","_")
     RUIDX = f"{host}_{DRO_CONFIG.card}"
     FRONTEND_TYPE = DetID.subdetector_to_string(DetID.Subdetector(DRO_CONFIG.links[0].det_id))
-    print(f'FRONTENT_TYPE={FRONTEND_TYPE}')
+    if DEBUG: print(f'FRONTENT_TYPE={FRONTEND_TYPE}')
 
     for link in DRO_CONFIG.links:
         if link.source_id_subsystem == 1: # Readout
