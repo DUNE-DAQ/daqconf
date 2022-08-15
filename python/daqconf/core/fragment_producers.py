@@ -18,6 +18,8 @@ import dunedaq.dfmodules.fragmentreceiver as frcv
 import dunedaq.dfmodules.requestreceiver as rrcv
 import dunedaq.dfmodules.triggerrecordbuilder as trb
 
+from daqconf.core.conf_utils import source_id_raw_str, Direction, ensure_subsystem_string
+
 console = Console()
 
 def set_mlt_links(the_system, mlt_app_name="trigger", verbose=False):
@@ -32,7 +34,7 @@ def set_mlt_links(the_system, mlt_app_name="trigger", verbose=False):
     mlt_links = []
     for producer in the_system.get_fragment_producers():
         source_id = producer.source_id
-        mlt_links.append( mlt.SourceID(subsystem=source_id.subsystem, element=source_id.id) )
+        mlt_links.append( mlt.SourceID(subsystem=ensure_subsystem_string(source_id.subsystem), element=source_id.id) )
     if verbose:
         console.log(f"Adding {len(mlt_links)} links to mlt.links: {mlt_links}")
     mgraph = the_system.apps[mlt_app_name].modulegraph
@@ -90,7 +92,6 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
 
     request_connection_name = f"data_requests_for_{app_name}"
 
-    from daqconf.core.conf_utils import source_id_raw_str, Direction
     
     source_id_to_queue_inst = []
     trb_source_id_to_connection = []
@@ -99,10 +100,10 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         source_id = producer.source_id
         queue_inst = f"data_request_q_for_{producer.source_id}"
         source_id_to_queue_inst.append(rrcv.sourceidinst(source_id = source_id.id,
-                                                  system  = source_id.subsystem,
+                                                  system  = ensure_subsystem_string(source_id.subsystem),
                                                   connection_uid = queue_inst))
         trb_source_id_to_connection.append(trb.sourceidinst(source_id = source_id.id,
-                                                     system  = source_id.subsystem,
+                                                     system  = ensure_subsystem_string(source_id.subsystem),
                                                      connection_uid = request_connection_name))
         
         # Connect the fragment output queue to the fragment sender

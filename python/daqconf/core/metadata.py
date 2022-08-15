@@ -6,7 +6,7 @@ from os.path import exists, join
 
 console = Console()
 
-def write_metadata_file(json_dir, generator):
+def write_metadata_file(json_dir, generator, config_file):
     console.log("Generating metadata file")
     with open(join(json_dir, f"{generator}.info"), 'w') as f:
         daqconf_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
@@ -26,6 +26,7 @@ def write_metadata_file(json_dir, generator):
         daqconf_info = {
             "command_line": ' '.join(sys.argv),
             "daqconf_exe_dir": daqconf_dir,
-            "build_info": buildinfo
+            "build_info": buildinfo,
+            "config_file": config_file
         }
         json.dump(daqconf_info, f, indent=4, sort_keys=True)

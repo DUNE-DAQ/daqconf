@@ -81,7 +81,7 @@ class ConfigSectionSchema(object):
     class Readout(SectionSchema):
         hardware_map_file = Param( default='./HardwareMap.txt', help="File containing detector hardware map for configuration to run")
         emulator_mode = Param( type=bool, default=False, help="If active, timestamps of data frames are overwritten when processed by the readout. This is necessary if the felix card does not set correct timestamps.")
-        thread_pinning_file = Param( default=None, type=click.Path(exists=True), help="A thread pinning configuration file that gets executed after conf.")
+        thread_pinning_file = Param( default="", type=click.Path(exists=True), help="A thread pinning configuration file that gets executed after conf.")
         data_rate_slowdown_factor = Param( default=1)
         clock_speed_hz = Param( type=int, default=50000000)
         data_file = Param( type=click.Path(), default='./frames.bin', help="File containing data frames to be replayed by the fake cards")
@@ -162,8 +162,9 @@ class ConfigFileProcessor(ConfigFileReader):
         path,delim,name = filename.rpartition('/')
         ConfigFileProcessor.config_searchpath = [path]
         ConfigFileProcessor.config_files=[name]
-        # console.log(f"Reading config file {name} from {path}")
+        console.log(f"Reading config file {name} from {path}")
         output_dict = ConfigFileProcessor.read_config()
+        output_dict["config_file"] = filename
         return output_dict
 
     @classmethod
@@ -173,7 +174,7 @@ class ConfigFileProcessor(ConfigFileReader):
         return ConfigFileReader.get_storage_name_for(section_name)
 
 def configure(ctx, param, filename):
-    # console.log(f"Reading config file {filename}")
+    console.log(f"Reading config file {filename}")
     cfg = ConfigFileProcessor().read_file(filename)
     for key in cfg:
         ctx.default_map[key]  =cfg[key]
@@ -237,11 +238,11 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
     token_count = 0
     for k,v in ctx.default_map.items():
         if "dataflow." in k:
-            appconfig_df[k] = v
+            appconfig_df[k[9:]] = v
             token_count += v['token_count']
             host_df += [v['host_df']]
         if "dqm." in k:
-            appconfig_dqm[k] = v
+            appconfig_dqm[k[4:]] = v
             host_dqm += [v['host_dqm']]
 
     console.log(f"Generating configs for hosts trigger={host_trigger} DFO={host_dfo} dataflow={host_df} hsi={host_hsi} dqm={host_dqm}")
@@ -257,7 +258,14 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
     dro_infos = hw_map_service.get_all_dro_info()
 
     for dro_info in dro_infos:
-        console.log(f"Will start a RU process on {dro_info.host} reading card number {dro_info.card}, {len(dro_info.links)} links active")
+        dro_links = 0
+        tp_links = 0
+        for link in dro_info.links:
+            if link.source_id_subsystem == 1:
+                dro_links += 1
+            elif link.source_id_subsystem == 3:
+                tp_links += 1
+        console.log(f"Will start a RU process on {dro_info.host} reading card number {dro_info.card}, {dro_links} links active ({tp_links} TP links)")
 
 
 #    total_number_of_data_producers = 0
@@ -560,29 +568,29 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
 
     df_app_names = []
     dqm_df_app_names = [f"dqm{idx}-df" for idx in range(len(host_df))]
+    dfidx = 0
 
-    for i,host in enumerate(host_df):
-        app_name = f'dataflow{i}'
-
+    for app_name,df_config in appconfig_df.items():
         df_app_names.append(app_name)
         the_system.apps[app_name] = get_dataflow_app(
-            HOSTIDX = i,
-            OUTPUT_PATH = output_path,
+            HOSTIDX=dfidx,
+            OUTPUT_PATH = df_config["output_path"],
             OPERATIONAL_ENVIRONMENT = op_env,
-            MAX_FILE_SIZE = max_file_size,
-            MAX_TRIGGER_RECORD_WINDOW = max_trigger_record_window,
+            MAX_FILE_SIZE = df_config["max_file_size"],
+            MAX_TRIGGER_RECORD_WINDOW = df_config["max_trigger_record_window"],
             MAX_EXPECTED_TR_SEQUENCES = max_expected_tr_sequences,
-            TOKEN_COUNT = trigemu_token_count,
+            TOKEN_COUNT = df_config["token_count"],
             TRB_TIMEOUT = trigger_record_building_timeout,
-            HOST=host,
+            HOST=df_config["host_df"],
             HAS_DQM=enable_dqm,
             DEBUG=debug
         )
+        dfidx = dfidx + 1
         if use_k8s:
             the_system.apps[app_name].mounted_dirs += [{
                 'name': 'raw-data',
-                'physical_location':output_path,
-                'in_pod_location':output_path,
+                'physical_location':df_config["output_path"],
+                'in_pod_location':df_config["output_path"],
                 'read_only': False,
             }]
 
@@ -746,7 +754,7 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
         )
 
 
-    if thread_pinning_file:
+    if thread_pinning_file != "" and exists(thread_pinning_file):
         boot['scripts'] = {
             "thread_pinning": {
                 "cmd": [
@@ -768,7 +776,7 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
     console.log(f"MDAapp config generated in {json_dir}")
 
 
-    write_metadata_file(json_dir, "daqconf_multiru_gen")
+    write_metadata_file(json_dir, "daqconf_multiru_gen", config_file)
 
 if __name__ == '__main__':
     try:

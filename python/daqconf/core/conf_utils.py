@@ -475,6 +475,13 @@ def source_id_raw_str(source_id):
     """Get a string representation of a SourceID suitable for using in queue names"""
     return f"sourceid{source_id.subsystem}_{source_id.id}"
 
+def ensure_subsystem_string(subsystem):
+    if isinstance(subsystem, str):
+        return subsystem
+    
+    from daqdataformats._daq_daqdataformats_py import SourceID
+    return SourceID.subsystem_to_string(SourceID.Subsystem(subsystem))
+
 def data_request_endpoint_name(producer):
     return f"data_request_{geoid_raw_str(producer.geoid)}"
 
