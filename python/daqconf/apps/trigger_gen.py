@@ -73,10 +73,18 @@ class TPLink:
     region: int
     idx: int
     def get_name(self):
+        # TODO 2022-08-15: At time of writing, this name has to match
+        # the one given to the TPSet link in readout_gen.py. Hopefully
+        # an update to the way endpoints are linked up will fix that
+        # in future
         return f"ru{self.region}_link{self.idx}"
 
 #===============================================================================
 def make_ta_chain_modules(all_tp_links, tp_links_by_region, activity_plugin, activity_config, use_channel_filter, channel_map_name, ticks_per_wall_clock_s):
+    '''Make the modules needed for a set of TA makers which read the TPs
+       from `all_tp_links`. Aggregate them according to
+       `tp_links_by_region`. Use the TA maker plugin specified by
+       `activity_plugin`, with configuration `activity_config`'''
     import temptypes
     modules = []
     # Make one heartbeatmaker per link
@@ -151,6 +159,9 @@ def make_ta_chain_modules(all_tp_links, tp_links_by_region, activity_plugin, act
 
 #===============================================================================
 def connect_ta_chain_modules(mgraph, all_tp_links, tp_links_by_region, use_channel_filter):
+    '''Connect up the TA chain modules in mgraph. Return the list of
+       endpoints that should be connected to a downstream TC maker'''
+    
     for tp_link in all_tp_links:
         link_id = tp_link.get_name()
 
@@ -162,15 +173,63 @@ def connect_ta_chain_modules(mgraph, all_tp_links, tp_links_by_region, use_chann
 
         mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{tp_link.region}.input", f"{tp_link.region}_tpset_q", size_hint=1000)
 
+    downstream_outputs = []
     for region_id in tp_links_by_region.keys():
-        mgraph.connect_modules(f'zip_{region_id}.output', f'tam_{region_id}.input', size_hint=1000)
-        for tp_link in all_tp_links:
-            link_id=tp_link.get_name()
+        mgraph.connect_modules(f'zip_{region_id}.output',              f'tam_{region_id}.input',             size_hint=1000)
+        mgraph.connect_modules(f'tam_{region_id}.output',              f'tasettee_region_{region_id}.input', size_hint=1000)
+        # output1 is connected to the downstream TC maker in connect_tc_maker()
+        downstream_outputs.append(f'tasettee_region_{region_id}.output1')
+        mgraph.connect_modules(f'tasettee_region_{region_id}.output2', f'ta_buf_zipper.input', "tas_to_buf", size_hint=1000)
 
-            if use_channel_filter:
-                mgraph.add_endpoint(f"tpsets_{link_id}_sub", f"channelfilter_{link_id}.tpset_source", Direction.IN, topic=["TPSets"])
-            else:
-                mgraph.add_endpoint(f"tpsets_{link_id}_sub", f'tpsettee_{link_id}.input',             Direction.IN, topic=["TPSets"])
+
+    for tp_link in all_tp_links:
+        link_id=tp_link.get_name()
+
+        if use_channel_filter:
+            mgraph.add_endpoint(f"tpsets_{link_id}_sub", f"channelfilter_{link_id}.tpset_source", Direction.IN, topic=["TPSets"])
+        else:
+            mgraph.add_endpoint(f"tpsets_{link_id}_sub", f'tpsettee_{link_id}.input',             Direction.IN, topic=["TPSets"])
+
+    return downstream_outputs
+
+#===============================================================================
+def create_tc_maker(mgraph, module_name, plugin, conf, zipper_inputs: list):
+    '''Create the modules for a TC maker that reads TAs from the list of
+       endpoints specified by `zipper_inputs`'''
+    import temptypes
+
+    # (PAR 2022-06-09) The max_latency_ms here should be kept
+    # larger than the corresponding value in the upstream
+    # TPZippers. See comment below for more details
+    mgraph.add_module(name = 'tazipper',
+                      plugin = 'TAZipper',
+                      conf = tzip.ConfParams(cardinality=len(zipper_inputs),
+                                                 max_latency_ms=1000,
+                                                 region_id=TC_REGION_ID,
+                                                 element_id=TC_ELEMENT_ID))
+
+    config_tcm =  tcm.Conf(candidate_maker = plugin,
+                           candidate_maker_config = temptypes.CandidateConf(**conf))
+    mgraph.add_module(name = f'tcm_{module_name}',
+                      plugin = 'TriggerCandidateMaker',
+                      conf = config_tcm)
+    
+#===============================================================================
+def connect_tc_maker(mgraph, module_name, zipper_inputs: list):
+    '''Connect up a TC maker as created by create_tc_maker() to its
+       upstream TA inputs (from `zipper_inputs`) and downstream to the TC
+       buffer and MLT.'''
+    mgraph.add_module(name   = f'tctee_{module_name}',
+                      plugin = 'TCTee')
+
+    if zipper_inputs:
+        for zipper_input in zipper_inputs:
+            mgraph.connect_modules(zipper_input, f'tazipper.input', "tas_to_tazipper",      size_hint=1000)
+        mgraph.connect_modules("tazipper.output", f"tcm_{module_name}.input", size_hint=1000)
+        
+    mgraph.connect_modules(f"tcm_{module_name}.output",    f"tctee_{module_name}.input",    f"{module_name}_input", size_hint=1000)
+    mgraph.connect_modules(f"tctee_{module_name}.output1",  "mlt.trigger_candidate_source",  "tcs_to_mlt",          size_hint=1000)
+    mgraph.connect_modules(f"tctee_{module_name}.output2",  "tc_buf.tc_source",              "tcs_to_buf",          size_hint=1000)
 
 
 #===============================================================================
@@ -234,7 +293,6 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     modules = []
 
     # This modifies RU_CONFIG, which we probably shouldn't do, but meh
-    
     for ru in RU_CONFIG:
         if FIRMWARE_TPG_ENABLED:
             if ru["channel_count"] > 5:
@@ -293,26 +351,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                     DAQModule(name   = 'ta_buf',
                               plugin = 'TABuffer',
                               conf   = get_buffer_conf(TA_REGION_ID, TA_ELEMENT_ID, DATA_REQUEST_TIMEOUT))]
-        
-        config_tcm =  tcm.Conf(candidate_maker=CANDIDATE_PLUGIN,
-                               candidate_maker_config=temptypes.CandidateConf(**CANDIDATE_CONFIG))
 
-        # (PAR 2022-06-09) The max_latency_ms here should be kept
-        # larger than the corresponding value in the upstream
-        # TPZippers. See comment below for more details
-        modules += [DAQModule(name = 'tazipper',
-                              plugin = 'TAZipper',
-                              conf = tzip.ConfParams(cardinality=len(region_ids_set),
-                                                     max_latency_ms=1000,
-                                                     region_id=TC_REGION_ID,
-                                                     element_id=TC_ELEMENT_ID)),
-                    DAQModule(name = 'tcm',
-                              plugin = 'TriggerCandidateMaker',
-                              conf = config_tcm),
-
-                    DAQModule(name = 'tctee_chain',
-                              plugin = 'TCTee'),
-                    ]
         modules += make_ta_chain_modules(all_tp_links, tp_links_by_region, ACTIVITY_PLUGIN, ACTIVITY_CONFIG, USE_CHANNEL_FILTER, CHANNEL_MAP_NAME, ticks_per_wall_clock_s)
 
     if USE_HSI_INPUT:
@@ -356,24 +395,14 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
     if SOFTWARE_TPG_ENABLED or FIRMWARE_TPG_ENABLED:
 
-        connect_ta_chain_modules(mgraph, all_tp_links, tp_links_by_region, USE_CHANNEL_FILTER)
-        
-        mgraph.connect_modules("tazipper.output", "tcm.input", size_hint=1000)
+        ta_chain_outputs = connect_ta_chain_modules(mgraph, all_tp_links, tp_links_by_region, USE_CHANNEL_FILTER)
+
+        create_tc_maker(mgraph, "chain", CANDIDATE_PLUGIN, CANDIDATE_CONFIG, len(ta_chain_outputs))
+        connect_tc_maker(mgraph, "chain", ta_chain_outputs)
+
         mgraph.connect_modules("tp_buf_zipper.output", "tp_buf.tpset_source", size_hint=1000)
         mgraph.connect_modules("ta_buf_zipper.output", "ta_buf.taset_source", size_hint=1000)
         
-        # Use connect_modules to connect up the Tees to the buffers/MLT,
-        # as manually adding Queues doesn't give the desired behaviour
-        mgraph.connect_modules("tcm.output",          "tctee_chain.input",            "chain_input", size_hint=1000)
-        mgraph.connect_modules("tctee_chain.output1", "mlt.trigger_candidate_source", "tcs_to_mlt",  size_hint=1000)
-        mgraph.connect_modules("tctee_chain.output2", "tc_buf.tc_source",             "tcs_to_buf",  size_hint=1000)
-
-
-        for region_id in region_ids_set:
-            mgraph.connect_modules(f'tam_{region_id}.output',              f'tasettee_region_{region_id}.input',      size_hint=1000)
-            mgraph.connect_modules(f'tasettee_region_{region_id}.output1', f'tazipper.input', "tas_to_tazipper",      size_hint=1000)
-            mgraph.connect_modules(f'tasettee_region_{region_id}.output2', f'ta_buf_zipper.input', "tas_to_buf",      size_hint=1000)
-
     if USE_HSI_INPUT:
         mgraph.add_endpoint("hsievents", None, Direction.IN)
         
