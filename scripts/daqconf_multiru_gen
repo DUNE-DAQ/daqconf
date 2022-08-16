@@ -257,14 +257,7 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
     dro_infos = hw_map_service.get_all_dro_info()
 
     for dro_info in dro_infos:
-        dro_links = 0
-        tp_links = 0
-        for link in dro_info.links:
-            if link.source_id_subsystem == 1:
-                dro_links += 1
-            elif link.source_id_subsystem == 3:
-                tp_links += 1
-        console.log(f"Will start a RU process on {dro_info.host} reading card number {dro_info.card}, {dro_links} links active ({tp_links} TP links)")
+        console.log(f"Will start a RU process on {dro_info.host} reading card number {dro_info.card}, {len(dro_info.links)} links active")
 
 
 #    total_number_of_data_producers = 0

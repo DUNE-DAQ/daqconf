@@ -45,6 +45,7 @@ QUEUE_POP_WAIT_MS = 10 # This affects stop time, as each link will wait this lon
 def get_readout_app(DRO_CONFIG=None,
                     EMULATOR_MODE=False,
                     DATA_RATE_SLOWDOWN_FACTOR=1,
+                    RUN_NUMBER=333, 
                     DATA_FILE="./frames.bin",
                     FLX_INPUT=False,
                     CLOCK_SPEED_HZ=50000000,
@@ -75,71 +76,11 @@ def get_readout_app(DRO_CONFIG=None,
     host = DRO_CONFIG.host.replace("-","_")
     RUIDX = f"{host}_{DRO_CONFIG.card}"
     FRONTEND_TYPE = DetID.subdetector_to_string(DetID.Subdetector(DRO_CONFIG.links[0].det_id))
-    if DEBUG: print(f'FRONTENT_TYPE={FRONTEND_TYPE}')
+    print(f'FRONTENT_TYPE={FRONTEND_TYPE}')
 
-    for link in DRO_CONFIG.links:
-        if link.source_id_subsystem == 1: # Readout
-            if USE_FAKE_DATA_PRODUCERS:
-                modules += [DAQModule(name = f"fakedataprod_{link.source_id_id}",
-                                  plugin='FakeDataProd',
-                                  conf = fdp.ConfParams(
-                                  system_type = SYSTEM_TYPE,
-                                  apa_number = link.det_crate,
-                                  link_number = link.source_id_id,
-                                  time_tick_diff = 25 if CLOCK_SPEED_HZ == 50000000 else 32, # WIB1 only if clock is WIB1 clock, otherwise WIB2
-                                  frame_size = 464 if CLOCK_SPEED_HZ == 50000000 else 472, # WIB1 only if clock is WIB1 clock, otherwise WIB2
-                                  response_delay = 0,
-                                  fragment_type = "FakeData",
-                                  timesync_topic_name = "Timesync",
-                                  ))]
-            else:
-                if SOFTWARE_TPG_ENABLED:
-                    queues += [Queue(f"datahandler_{link.source_id_id}.tp_out",f"tp_datahandler_{link.source_id_id}.raw_input",f"sw_tp_link_{link.source_id_id}",100000 )]                
-                
-                if FRONTEND_TYPE == 'wib':
-                    queues += [Queue(f"datahandler_{link.source_id_id}.errored_frames", 'errored_frame_consumer.input_queue', "errored_frames_q")]
-
-                if SOFTWARE_TPG_ENABLED: 
-                    tpset_topic = "TPSets"
-                else:
-                    tpset_topic = "None"
-                modules += [DAQModule(name = f"datahandler_{link.source_id_id}",
-                                  plugin = "DataLinkHandler", 
-                                  conf = rconf.Conf(
-                                      readoutmodelconf= rconf.ReadoutModelConf(
-                                          source_queue_timeout_ms= QUEUE_POP_WAIT_MS,
-                                          # fake_trigger_flag=0, # default
-                                          source_id =  link.source_id_id,
-                                          timesync_connection_name = f"timesync_{RUIDX}",
-                                          timesync_topic_name = "Timesync",
-                                      ),
-                                      latencybufferconf= rconf.LatencyBufferConf(
-                                          latency_buffer_alignment_size = 4096,
-                                          latency_buffer_size = LATENCY_BUFFER_SIZE,
-                                          source_id =  link.source_id_id,
-                                      ),
-                                      rawdataprocessorconf= rconf.RawDataProcessorConf(
-                                          source_id =  link.source_id_id,
-                                          enable_software_tpg = SOFTWARE_TPG_ENABLED,
-                                          channel_map_name = TPG_CHANNEL_MAP,
-                                          emulator_mode = EMULATOR_MODE,
-                                          error_counter_threshold=100,
-                                          error_reset_freq=10000,
-                                          tpset_topic=tpset_topic
-                                      ),
-                                      requesthandlerconf= rconf.RequestHandlerConf(
-                                          latency_buffer_size = LATENCY_BUFFER_SIZE,
-                                          pop_limit_pct = 0.8,
-                                          pop_size_pct = 0.1,
-                                          source_id = link.source_id_id,
-                                          output_file = path.join(RAW_RECORDING_OUTPUT_DIR, f"output_{RUIDX}_{link.source_id_id}.out"),
-                                          stream_buffer_size = 8388608,
-                                          request_timeout_ms = DATA_REQUEST_TIMEOUT,
-                                          enable_raw_recording = RAW_RECORDING_ENABLED,
-                                      )))]
-        elif link.source_id_subsystem == 3: # Trigger
-            if SOFTWARE_TPG_ENABLED:
-                modules += [DAQModule(name = f"tp_datahandler_{idx}",
+    if SOFTWARE_TPG_ENABLED:
+        for link in DRO_CONFIG.links:
+            modules += [DAQModule(name = f"tp_datahandler_{idx}",
                                plugin = "DataLinkHandler",
                                conf = rconf.Conf(readoutmodelconf = rconf.ReadoutModelConf(source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
                                                                                          source_id = total_link_count+idx),
@@ -156,9 +97,15 @@ def get_readout_app(DRO_CONFIG=None,
                                                                                               stream_buffer_size = 100 if FRONTEND_TYPE=='pacman' else 8388608,
                                                                                               request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                               enable_raw_recording = False)))]
-            elif FIRMWARE_TPG_ENABLED:
+    if FIRMWARE_TPG_ENABLED:
+        if RU_CONFIG[RUIDX]["channel_count"] > 5:
+            tp_links = 2
+        else:
+            tp_links = 1
+        for idx in range(tp_links):
+            if FIRMWARE_TPG_ENABLED:
                 queues += [Queue(f"tp_datahandler_{idx}.errored_frames", 'errored_frame_consumer.input_queue', "errored_frames_q")]
-                modules += [DAQModule(name = f"tp_datahandler_{idx}",
+            modules += [DAQModule(name = f"tp_datahandler_{idx}",
                                   plugin = "DataLinkHandler", 
                                   conf = rconf.Conf(
                                       readoutmodelconf= rconf.ReadoutModelConf(
@@ -195,8 +142,6 @@ def get_readout_app(DRO_CONFIG=None,
                                       )))]
 
 
-
-
     if FRONTEND_TYPE == 'wib' and not USE_FAKE_DATA_PRODUCERS:
         modules += [DAQModule(name = "errored_frame_consumer",
                            plugin = "ErroredFrameConsumer")]
@@ -204,7 +149,65 @@ def get_readout_app(DRO_CONFIG=None,
     # There are two flags to be checked so I think a for loop
     # is the closest way to the blocks that are being used here
     
-        
+    for link in DRO_CONFIG.links:
+        if USE_FAKE_DATA_PRODUCERS:
+            modules += [DAQModule(name = f"fakedataprod_{link.dro_source_id}",
+                                  plugin='FakeDataProd',
+                                  conf = fdp.ConfParams(
+                                  system_type = SYSTEM_TYPE,
+                                  apa_number = link.det_crate,
+                                  link_number = link.dro_source_id,
+                                  time_tick_diff = 25 if CLOCK_SPEED_HZ == 50000000 else 32, # WIB1 only if clock is WIB1 clock, otherwise WIB2
+                                  frame_size = 464 if CLOCK_SPEED_HZ == 50000000 else 472, # WIB1 only if clock is WIB1 clock, otherwise WIB2
+                                  response_delay = 0,
+                                  fragment_type = "FakeData",
+                                  timesync_topic_name = "Timesync",
+                                  ))]
+        else:
+            if SOFTWARE_TPG_ENABLED:
+                queues += [Queue(f"datahandler_{link.dro_source_id}.tp_out",f"tp_datahandler_{link.dro_source_id}.raw_input",f"sw_tp_link_{link.dro_source_id}",100000 )]                
+                
+            if FRONTEND_TYPE == 'wib':
+                queues += [Queue(f"datahandler_{link.dro_source_id}.errored_frames", 'errored_frame_consumer.input_queue', "errored_frames_q")]
+
+            if SOFTWARE_TPG_ENABLED: 
+                tpset_topic = "TPSets"
+            else:
+                tpset_topic = "None"
+            modules += [DAQModule(name = f"datahandler_{link.dro_source_id}",
+                                  plugin = "DataLinkHandler", 
+                                  conf = rconf.Conf(
+                                      readoutmodelconf= rconf.ReadoutModelConf(
+                                          source_queue_timeout_ms= QUEUE_POP_WAIT_MS,
+                                          # fake_trigger_flag=0, # default
+                                          source_id =  link.dro_source_id,
+                                          timesync_connection_name = f"timesync_{RUIDX}",
+                                          timesync_topic_name = "Timesync",
+                                      ),
+                                      latencybufferconf= rconf.LatencyBufferConf(
+                                          latency_buffer_alignment_size = 4096,
+                                          latency_buffer_size = LATENCY_BUFFER_SIZE,
+                                          source_id =  link.dro_source_id,
+                                      ),
+                                      rawdataprocessorconf= rconf.RawDataProcessorConf(
+                                          source_id =  link.dro_source_id,
+                                          enable_software_tpg = SOFTWARE_TPG_ENABLED,
+                                          channel_map_name = TPG_CHANNEL_MAP,
+                                          emulator_mode = EMULATOR_MODE,
+                                          error_counter_threshold=100,
+                                          error_reset_freq=10000,
+                                          tpset_topic=tpset_topic
+                                      ),
+                                      requesthandlerconf= rconf.RequestHandlerConf(
+                                          latency_buffer_size = LATENCY_BUFFER_SIZE,
+                                          pop_limit_pct = 0.8,
+                                          pop_size_pct = 0.1,
+                                          source_id = link.dro_source_id,
+                                          output_file = path.join(RAW_RECORDING_OUTPUT_DIR, f"output_{RUIDX}_{link.dro_source_id}.out"),
+                                          stream_buffer_size = 8388608,
+                                          request_timeout_ms = DATA_REQUEST_TIMEOUT,
+                                          enable_raw_recording = RAW_RECORDING_ENABLED,
+                                      )))]
 
                     
     if not USE_FAKE_DATA_PRODUCERS:
@@ -257,9 +260,9 @@ def get_readout_app(DRO_CONFIG=None,
         else:
             fake_source = "fake_source"
             card_reader = "FakeCardReader"
-            conf = sec.Conf(link_confs = [sec.LinkConfiguration(source_id=link.source_id_id,
+            conf = sec.Conf(link_confs = [sec.LinkConfiguration(source_id=link.dro_source_id,
                                                                 slowdown=DATA_RATE_SLOWDOWN_FACTOR,
-                                                                queue_name=f"output_{link.source_id_id}",
+                                                                queue_name=f"output_{link.dro_source_id}",
                                                                 data_filename = DATA_FILE,
                                                                 emu_frame_error_rate=0) for link in DRO_CONFIG.links],
                             # input_limit=10485100, # default
@@ -268,13 +271,13 @@ def get_readout_app(DRO_CONFIG=None,
             if FRONTEND_TYPE=='pacman':
                 fake_source = "pacman_source"
                 card_reader = "PacmanCardReader"
-                conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(source_id=link.source_id_id)
+                conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(source_id=link.dro_source_id)
                                                for link in DRO_CONFIG.links],
                                 zmq_receiver_timeout = 10000)
             modules += [DAQModule(name = fake_source,
                                plugin = card_reader,
                                conf = conf)]
-            queues += [Queue(f"{fake_source}.output_{link.source_id_id}",f"datahandler_{link.source_id_id}.raw_input",f'{FRONTEND_TYPE}_link_{link.source_id_id}', 100000) for link in DRO_CONFIG.links]
+            queues += [Queue(f"{fake_source}.output_{link.dro_source_id}",f"datahandler_{link.dro_source_id}.raw_input",f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
 
     # modules += [
     #     DAQModule(name = "fragment_sender",
@@ -291,28 +294,28 @@ def get_readout_app(DRO_CONFIG=None,
         for idx in range(tp_links):
             assert total_link_count < 1000
             mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{idx}", f"tp_datahandler_{idx}.tpset_out",    Direction.OUT, topic=["TPSets"])
-            mgraph.add_fragment_producer(id = idx + 1000, subsystem = link.source_id_subsystem,
+            mgraph.add_fragment_producer(id = idx + 1000, subsystem = FRONTEND_TYPE,
                                     requests_in   = f"tp_datahandler_{idx}.request_input",
                                     fragments_out = f"tp_datahandler_{idx}.fragment_queue")
             mgraph.add_endpoint(f"timesync_{idx}", f"tp_datahandler_{idx}.timesync_output",    Direction.OUT, ["Timesync"])
 
     for link in DRO_CONFIG.links:
         if SOFTWARE_TPG_ENABLED:
-            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{link.source_id_id}", f"datahandler_{link.source_id_id}.tpset_out",    Direction.OUT, topic=["TPSets"])
-            mgraph.add_endpoint(f"timesync_tp_dlh_ru{RUIDX}_{link.source_id_id}", f"tp_datahandler_{link.source_id_id}.timesync_output",    Direction.OUT, ["Timesync"])
+            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{link.dro_source_id}", f"datahandler_{link.dro_source_id}.tpset_out",    Direction.OUT, topic=["TPSets"])
+            mgraph.add_endpoint(f"timesync_tp_dlh_ru{RUIDX}_{link.dro_source_id}", f"tp_datahandler_{link.dro_source_id}.timesync_output",    Direction.OUT, ["Timesync"])
         
         if USE_FAKE_DATA_PRODUCERS:
             # Add fragment producers for fake data. This call is necessary to create the RequestReceiver instance, but we don't need the generated FragmentSender or its queues...
-            mgraph.add_fragment_producer(id = link.source_id_id, subsystem = link.source_id_subsystem,
-                                         requests_in   = f"fakedataprod_{link.source_id_id}.data_request_input_queue",
-                                         fragments_out = f"fakedataprod_{link.source_id_id}.fragment_queue")
-            mgraph.add_endpoint(f"timesync_ru{RUIDX}_{link.source_id_id}", f"fakedataprod_{link.source_id_id}.timesync_output",    Direction.OUT, ["Timesync"], toposort=False)
+            mgraph.add_fragment_producer(id = link.dro_source_id, subsystem = FRONTEND_TYPE,
+                                         requests_in   = f"fakedataprod_{link.dro_source_id}.data_request_input_queue",
+                                         fragments_out = f"fakedataprod_{link.dro_source_id}.fragment_queue")
+            mgraph.add_endpoint(f"timesync_ru{RUIDX}_{link.dro_source_id}", f"fakedataprod_{link.dro_source_id}.timesync_output",    Direction.OUT, ["Timesync"], toposort=False)
         else:
             # Add fragment producers for raw data
-            mgraph.add_fragment_producer(id = link.source_id_id, subsystem = link.source_id_subsystem,
-                                         requests_in   = f"datahandler_{link.source_id_id}.request_input",
-                                         fragments_out = f"datahandler_{link.source_id_id}.fragment_queue")
-            mgraph.add_endpoint(f"timesync_ru{RUIDX}_{link.source_id_id}", f"datahandler_{link.source_id_id}.timesync_output",    Direction.OUT, ["Timesync"], toposort=False)
+            mgraph.add_fragment_producer(id = link.dro_source_id, subsystem = FRONTEND_TYPE,
+                                         requests_in   = f"datahandler_{link.dro_source_id}.request_input",
+                                         fragments_out = f"datahandler_{link.dro_source_id}.fragment_queue")
+            mgraph.add_endpoint(f"timesync_ru{RUIDX}_{link.dro_source_id}", f"datahandler_{link.dro_source_id}.timesync_output",    Direction.OUT, ["Timesync"], toposort=False)
 
             # Add fragment producers for TPC TPs. Make sure the element index doesn't overlap with the ones for raw data
             #
@@ -332,9 +335,9 @@ def get_readout_app(DRO_CONFIG=None,
             # real firmware TPs become available
             if SOFTWARE_TPG_ENABLED:
                 assert total_link_count < 1000
-                mgraph.add_fragment_producer(id = link.source_id_id + 1000, subsystem = link.source_id_subsystem,
-                                             requests_in   = f"tp_datahandler_{link.source_id_id}.request_input",
-                                             fragments_out = f"tp_datahandler_{link.source_id_id}.fragment_queue")
+                mgraph.add_fragment_producer(id = link.dro_source_id + 1000, subsystem = FRONTEND_TYPE,
+                                             requests_in   = f"tp_datahandler_{link.dro_source_id}.request_input",
+                                             fragments_out = f"tp_datahandler_{link.dro_source_id}.fragment_queue")
 
     readout_app = App(mgraph, host=HOST)
     if DEBUG:
