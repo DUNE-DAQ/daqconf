@@ -397,7 +397,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
         ta_chain_outputs = connect_ta_chain_modules(mgraph, all_tp_links, tp_links_by_region, USE_CHANNEL_FILTER)
 
-        create_tc_maker(mgraph, "chain", CANDIDATE_PLUGIN, CANDIDATE_CONFIG, len(ta_chain_outputs))
+        create_tc_maker(mgraph, "chain", CANDIDATE_PLUGIN, CANDIDATE_CONFIG, ta_chain_outputs)
         connect_tc_maker(mgraph, "chain", ta_chain_outputs)
 
         mgraph.connect_modules("tp_buf_zipper.output", "tp_buf.tpset_source", size_hint=1000)
