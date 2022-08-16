@@ -51,11 +51,11 @@ class ConfigSectionSchema(object):
         port_timing = Param( default=12345, help='Port to host running the (global) timing hardware interface app on')
         host_hsi = Param( default='localhost', help='Host to run the HSI app on')
         host_tprtc = Param( default='localhost', help='Host to run the timing partition controller app on')
-# hsi readout options
+        # hsi readout options
         hsi_hw_connections_file = Param( default="${TIMING_SHARE}/config/etc/connections.xml", help='Real timing hardware only: path to hardware connections file')
         hsi_device_name = Param( default="", help='Real HSI hardware only: device name of HSI hw')
         hsi_readout_period = Param( default=1e3, help='Real HSI hardware only: Period between HSI hardware polling [us]')
-# hw hsi options
+        # hw hsi options
         control_hsi_hw = Param( type=bool, default=False, help='Flag to control whether we are controlling hsi hardware')
         hsi_endpoint_address = Param( default=1, help='Timing address of HSI endpoint')
         hsi_endpoint_partition = Param( default=0, help='Timing partition of HSI endpoint')
@@ -63,13 +63,13 @@ class ConfigSectionSchema(object):
         hsi_fe_mask = Param( default=0x0, help='Falling-edge trigger mask')
         hsi_inv_mask = Param( default=0x0, help='Invert-edge mask')
         hsi_source = Param( default=0x1, help='HSI signal source; 0 - hardware, 1 - emulation (trigger timestamp bits)')
-# fake hsi options
+        # fake hsi options
         use_hsi_hw = Param( type=bool, default=False, help='Flag to control whether fake or real hardware HSI config is generated. Default is fake')
         hsi_device_id = Param( default=0, help='Fake HSI only: device ID of fake HSIEvents')
         mean_hsi_signal_multiplicity = Param( default=1, help='Fake HSI only: rate of individual HSI signals in emulation mode 1')
         hsi_signal_emulation_mode = Param( default=0, help='Fake HSI only: HSI signal emulation mode')
         enabled_hsi_signals = Param( default=0b00000001, help='Fake HSI only: bit mask of enabled fake HSI signals')
-# timing hw partition options
+        # timing hw partition options
         control_timing_partition = Param( type=bool, default=False, help='Flag to control whether we are controlling timing partition in master hardware')
         timing_partition_master_device_name = Param( default="", help='Timing partition master hardware device name')
         timing_partition_id = Param( default=0, help='Timing partition id')
@@ -100,7 +100,7 @@ class ConfigSectionSchema(object):
         trigger_window_after_ticks = Param( default=1000)
         host_trigger = Param( default='localhost', help='Host to run the trigger app on')
         host_tpw = Param( default='localhost', help='Host to run the TPWriter app on')
-# trigger options
+        # trigger options
         ttcm_s1 = Param( default=1, help="Timing trigger candidate maker accepted HSI signal ID 1")
         ttcm_s2 = Param( default=2, help="Timing trigger candidate maker accepted HSI signal ID 2")
         trigger_activity_plugin = Param( default='TriggerActivityMakerPrescalePlugin', help="Trigger activity algorithm plugin")
@@ -398,7 +398,7 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
         effective_number_of_data_producers = len(dro_infos)  # number of DataLinkHandlers
         if enable_software_tpg or enable_firmware_tpg:
             effective_number_of_data_producers *= 2  # add in TPSet producers from Trigger (one per Link)
-            effective_number_of_data_producers += len(region_id)  # add in TA producers from Trigger (one per RU)
+            effective_number_of_data_producers += len(dro_infos)  # add in TA producers from Trigger (one per RU)
         trigger_record_building_timeout = int(math.sqrt(effective_number_of_data_producers) * trigger_record_building_timeout)
     trigger_record_building_timeout += 15 * TRB_TIMEOUT_SAFETY_FACTOR * max_expected_tr_sequences
     dfo_stop_timeout = max(DFO_TIMEOUT_SAFETY_FACTOR * trigger_record_building_timeout, MINIMUM_DFO_TIMEOUT)

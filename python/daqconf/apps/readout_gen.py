@@ -80,25 +80,25 @@ def get_readout_app(DRO_CONFIG=None,
 
     if SOFTWARE_TPG_ENABLED:
         for link in DRO_CONFIG.links:
-            modules += [DAQModule(name = f"tp_datahandler_{idx}",
+            modules += [DAQModule(name = f"tp_datahandler_{link.dro_source_id}",
                                plugin = "DataLinkHandler",
                                conf = rconf.Conf(readoutmodelconf = rconf.ReadoutModelConf(source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
-                                                                                         source_id = total_link_count+idx),
+                                                                                         source_id = link.dro_source_id),
                                                  latencybufferconf = rconf.LatencyBufferConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
-                                                                                            source_id = total_link_count + idx),
-                                                 rawdataprocessorconf = rconf.RawDataProcessorConf(source_id = total_link_count + idx,
+                                                                                            source_id =  link.dro_source_id),
+                                                 rawdataprocessorconf = rconf.RawDataProcessorConf(source_id =  link.dro_source_id,
                                                                                                    enable_software_tpg = False,
                                                                                                    channel_map_name=TPG_CHANNEL_MAP),
                                                  requesthandlerconf= rconf.RequestHandlerConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
                                                                                               pop_limit_pct = 0.8,
                                                                                               pop_size_pct = 0.1,
-                                                                                              source_id =total_link_count + idx,
+                                                                                              source_id = link.dro_source_id,
                                                                                               # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                               stream_buffer_size = 100 if FRONTEND_TYPE=='pacman' else 8388608,
                                                                                               request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                               enable_raw_recording = False)))]
     if FIRMWARE_TPG_ENABLED:
-        if RU_CONFIG[RUIDX]["channel_count"] > 5:
+        if len(DRO_CONFIG.links) > 5:
             tp_links = 2
         else:
             tp_links = 1
@@ -334,8 +334,7 @@ def get_readout_app(DRO_CONFIG=None,
             # This situation should change after release 2.10, when
             # real firmware TPs become available
             if SOFTWARE_TPG_ENABLED:
-                assert total_link_count < 1000
-                mgraph.add_fragment_producer(id = link.dro_source_id + 1000, subsystem = FRONTEND_TYPE,
+                mgraph.add_fragment_producer(id = link.dro_source_id, subsystem = "SW_Trigger_Primitive",
                                              requests_in   = f"tp_datahandler_{link.dro_source_id}.request_input",
                                              fragments_out = f"tp_datahandler_{link.dro_source_id}.fragment_queue")
 
