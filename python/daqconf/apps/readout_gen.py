@@ -294,7 +294,7 @@ def get_readout_app(DRO_CONFIG=None,
         for idx in range(tp_links):
             assert total_link_count < 1000
             mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{idx}", f"tp_datahandler_{idx}.tpset_out",    Direction.OUT, topic=["TPSets"])
-            mgraph.add_fragment_producer(id = idx + 1000, subsystem = FRONTEND_TYPE,
+            mgraph.add_fragment_producer(id = idx + 1000, subsystem = "Detector_Readout",
                                     requests_in   = f"tp_datahandler_{idx}.request_input",
                                     fragments_out = f"tp_datahandler_{idx}.fragment_queue")
             mgraph.add_endpoint(f"timesync_{idx}", f"tp_datahandler_{idx}.timesync_output",    Direction.OUT, ["Timesync"])
@@ -306,13 +306,13 @@ def get_readout_app(DRO_CONFIG=None,
         
         if USE_FAKE_DATA_PRODUCERS:
             # Add fragment producers for fake data. This call is necessary to create the RequestReceiver instance, but we don't need the generated FragmentSender or its queues...
-            mgraph.add_fragment_producer(id = link.dro_source_id, subsystem = FRONTEND_TYPE,
+            mgraph.add_fragment_producer(id = link.dro_source_id, subsystem = "Detector_Readout",
                                          requests_in   = f"fakedataprod_{link.dro_source_id}.data_request_input_queue",
                                          fragments_out = f"fakedataprod_{link.dro_source_id}.fragment_queue")
             mgraph.add_endpoint(f"timesync_ru{RUIDX}_{link.dro_source_id}", f"fakedataprod_{link.dro_source_id}.timesync_output",    Direction.OUT, ["Timesync"], toposort=False)
         else:
             # Add fragment producers for raw data
-            mgraph.add_fragment_producer(id = link.dro_source_id, subsystem = FRONTEND_TYPE,
+            mgraph.add_fragment_producer(id = link.dro_source_id, subsystem = "Detector_Readout",
                                          requests_in   = f"datahandler_{link.dro_source_id}.request_input",
                                          fragments_out = f"datahandler_{link.dro_source_id}.fragment_queue")
             mgraph.add_endpoint(f"timesync_ru{RUIDX}_{link.dro_source_id}", f"datahandler_{link.dro_source_id}.timesync_output",    Direction.OUT, ["Timesync"], toposort=False)
@@ -334,7 +334,7 @@ def get_readout_app(DRO_CONFIG=None,
             # This situation should change after release 2.10, when
             # real firmware TPs become available
             if SOFTWARE_TPG_ENABLED:
-                mgraph.add_fragment_producer(id = link.dro_source_id, subsystem = "SW_Trigger_Primitive",
+                mgraph.add_fragment_producer(id = link.dro_source_id, subsystem = "Trigger",
                                              requests_in   = f"tp_datahandler_{link.dro_source_id}.request_input",
                                              fragments_out = f"tp_datahandler_{link.dro_source_id}.fragment_queue")
 

@@ -98,7 +98,7 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
 
     for producer in producers.values():
         source_id = producer.source_id
-        queue_inst = f"data_request_q_for_{producer.source_id}"
+        queue_inst = f"data_request_q_for_{source_id_raw_str(producer.source_id)}"
         source_id_to_queue_inst.append(rrcv.sourceidinst(source_id = source_id.id,
                                                   system  = ensure_subsystem_string(source_id.subsystem),
                                                   connection_uid = queue_inst))

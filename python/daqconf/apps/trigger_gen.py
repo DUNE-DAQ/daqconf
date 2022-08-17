@@ -342,7 +342,7 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
     mgraph.add_endpoint("td_to_dfo", None, Direction.OUT, toposort=True)
     mgraph.add_endpoint("df_busy_signal", None, Direction.IN)
 
-    mgraph.add_fragment_producer(id=TC_ELEMENT_ID, subsystem="DataSelection",
+    mgraph.add_fragment_producer(id=TC_ELEMENT_ID, subsystem="Trigger",
                                  requests_in="tc_buf.data_request_source",
                                  fragments_out="tc_buf.fragment_sink")
 
@@ -363,12 +363,12 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
                     mgraph.add_endpoint(f"tpsets_{link_id1}_sub", f'tpsettee_{link_id2}.input',             Direction.IN, topic=["TPSets"])
                     
 
-                mgraph.add_fragment_producer(id=link_conf.dro_source_id, subsystem="DataSelection",
+                mgraph.add_fragment_producer(id=link_conf.dro_source_id, subsystem="Trigger",
                                              requests_in=f"{buf_name}.data_request_source",
                                              fragments_out=f"{buf_name}.fragment_sink")
         for region_id in region_ids:
             buf_name = f'ta_buf_region_{region_id}'
-            mgraph.add_fragment_producer(id=TA_ELEMENT_ID*region_id, subsystem="DataSelection",
+            mgraph.add_fragment_producer(id=TA_ELEMENT_ID*region_id, subsystem="Trigger",
                                          requests_in=f"{buf_name}.data_request_source",
                                          fragments_out=f"{buf_name}.fragment_sink")
 
