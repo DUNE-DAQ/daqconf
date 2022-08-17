@@ -353,13 +353,14 @@ def get_trigger_app(SOFTWARE_TPG_ENABLED: bool = False,
 
             for link_conf in tp_links:
                 # 1 buffer per link
-                link_id=f"ru{ruidx}_link{link_conf.dro_source_id}"
-                buf_name=f'buf_{link_id}'
+                link_id1=f"ru{link_conf.dro_host}_{ruidx}_link{link_conf.dro_source_id}"
+                link_id2=f"ru{ruidx}_link{link_conf.dro_source_id}"
+                buf_name=f'buf_{link_id2}'
 
                 if USE_CHANNEL_FILTER:
-                    mgraph.add_endpoint(f"tpsets_{link_id}_sub", f"channelfilter_{link_id}.tpset_source", Direction.IN, topic=["TPSets"])
+                    mgraph.add_endpoint(f"tpsets_{link_id1}_sub", f"channelfilter_{link_id2}.tpset_source", Direction.IN, topic=["TPSets"])
                 else:
-                    mgraph.add_endpoint(f"tpsets_{link_id}_sub", f'tpsettee_{link_id}.input',             Direction.IN, topic=["TPSets"])
+                    mgraph.add_endpoint(f"tpsets_{link_id1}_sub", f'tpsettee_{link_id2}.input',             Direction.IN, topic=["TPSets"])
                     
 
                 mgraph.add_fragment_producer(id=link_conf.dro_source_id, subsystem="DataSelection",
