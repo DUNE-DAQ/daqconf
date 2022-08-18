@@ -18,7 +18,8 @@ import dunedaq.dfmodules.fragmentreceiver as frcv
 import dunedaq.dfmodules.requestreceiver as rrcv
 import dunedaq.dfmodules.triggerrecordbuilder as trb
 
-from daqconf.core.conf_utils import source_id_raw_str, Direction, ensure_subsystem_string
+from daqconf.core.conf_utils import Direction
+from daqconf.core.sourceid import source_id_raw_str, ensure_subsystem_string
 
 console = Console()
 

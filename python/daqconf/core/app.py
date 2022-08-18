@@ -1,5 +1,6 @@
 from daqconf.core.daqmodule import DAQModule
-from daqconf.core.conf_utils import Endpoint, Direction, SourceID, FragmentProducer, Queue, ExternalConnection
+from daqconf.core.conf_utils import Endpoint, Direction, FragmentProducer, Queue, ExternalConnection
+from daqconf.core.sourceid import SourceID, ensure_subsystem
 import networkx as nx
 
 class ModuleGraph:
@@ -199,7 +200,7 @@ class ModuleGraph:
         return self.endpoints.keys()
 
     def add_fragment_producer(self, subsystem, id, requests_in, fragments_out):
-        source_id = SourceID(subsystem, id)
+        source_id = SourceID(ensure_subsystem(subsystem), id)
         if source_id in self.fragment_producers:
             raise ValueError(f"There is already a fragment producer for SourceID {source_id}")
         # Can't set queue_name here, because the queue names need to be unique system-wide,

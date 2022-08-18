@@ -64,10 +64,16 @@ class SourceIDBroker:
 
 def source_id_raw_str(source_id: SourceID):
     """Get a string representation of a SourceID suitable for using in queue names"""
-    return f"sourceid{source_id.subsystem}_{source_id.id}"
+    return f"sourceid{SourceID.subsystem_to_string(source_id.subsystem)}_{source_id.id}"
 
 def ensure_subsystem_string(subsystem):
     if isinstance(subsystem, str):
         return subsystem
     
     return SourceID.subsystem_to_string(SourceID.Subsystem(subsystem))
+
+def ensure_subsystem(subsystem):
+    if isinstance(subsystem, str):
+        return SourceID.string_to_subsystem(subsystem)
+
+    return SourceID.Subsystem(subsystem)
