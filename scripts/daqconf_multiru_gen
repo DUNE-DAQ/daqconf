@@ -10,6 +10,7 @@ from collections import defaultdict
 from os.path import exists, join
 from daqconf.core.system import System
 from daqconf.core.metadata import write_metadata_file
+from daqconf.core.sourceid import *
 import random
 import string
 
@@ -256,6 +257,13 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
     # Get the list of RU processes
     dro_infos = hw_map_service.get_all_dro_info()
 
+    sourceid_broker = SourceIDBroker()
+    sourceid_broker.debug = debug
+    sourceid_broker.register_readout_source_ids(dro_infos)
+    tp_mode = get_tpg_mode(enable_firmware_tpg,enable_software_tpg)
+    sourceid_broker.generate_trigger_source_ids(dro_infos, tp_mode)
+    tp_infos = sourceid_broker.get_all_source_ids("Trigger")
+
     for dro_info in dro_infos:
         console.log(f"Will start a RU process on {dro_info.host} reading card number {dro_info.card}, {len(dro_info.links)} links active")
 
@@ -451,11 +459,9 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
             DEBUG=debug)
 
     the_system.apps['trigger'] = get_trigger_app(
-        SOFTWARE_TPG_ENABLED = enable_software_tpg,
-        FIRMWARE_TPG_ENABLED = enable_firmware_tpg,
         DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
         CLOCK_SPEED_HZ = clock_speed_hz,
-        DRO_CONFIG = dro_infos,
+        TP_CONFIG = tp_infos,
         ACTIVITY_PLUGIN = trigger_activity_plugin,
         ACTIVITY_CONFIG = eval(trigger_activity_config),
         CANDIDATE_PLUGIN = trigger_candidate_plugin,
