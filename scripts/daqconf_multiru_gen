@@ -133,11 +133,8 @@ class ConfigSectionSchema(object):
     class DQMConfig(SectionSchema):
         enable_dqm = Param( type=bool, default=False, help="Enable Data Quality Monitoring")
         dqm_impl = Param( type=click.Choice(['local','cern','pocket'], case_sensitive=False), default='local', help="DQM destination (Kafka used for cern and pocket)")
-
-    @matches_section("dqm.*")
-    class DQMApp(SectionSchema):
-        host_dqm = Param( default='localhost', help='Host to run the DQM app on')
         dqm_cmap = Param( type=click.Choice(['HD', 'VD', 'PD2HD', 'HDCB']), default='HD', help="Which channel map to use for DQM")
+        host_dqm = Param( multiple=True, default=['localhost'], help='Host(s) to run the DQM app on')
         dqm_rawdisplay_params = Param( multiple=True, default=[60, 50], help="Parameters that control the data sent for the raw display plot")
         dqm_meanrms_params = Param( multiple=True, default=[10, 100], help="Parameters that control the data sent for the mean/rms plot")
         dqm_fourier_params = Param( multiple=True, default=[0, 0], help="Parameters that control the data sent for the fourier transform plot")
@@ -155,8 +152,7 @@ class ConfigFileProcessor(ConfigFileReader):
         ConfigSectionSchema.Trigger,
         ConfigSectionSchema.DataflowConfig,
         ConfigSectionSchema.DataflowApp,
-        ConfigSectionSchema.DQMConfig,
-        ConfigSectionSchema.DQMApp
+        ConfigSectionSchema.DQMConfig
     ]
 
     def read_file(self, filename):
@@ -232,18 +228,13 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
         from daqconf.apps.tpwriter_gen import get_tpwriter_app
 
     host_df = []
-    host_dqm = []
     appconfig_df ={}
-    appconfig_dqm = {}
     token_count = 0
     for k,v in ctx.default_map.items():
         if "dataflow." in k:
             appconfig_df[k[9:]] = v
             token_count += v['token_count']
             host_df += [v['host_df']]
-        if "dqm." in k:
-            appconfig_dqm[k[4:]] = v
-            host_dqm += [v['host_dqm']]
 
     console.log(f"Generating configs for hosts trigger={host_trigger} DFO={host_dfo} dataflow={host_df} hsi={host_hsi} dqm={host_dqm}")
 
@@ -522,12 +513,9 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
         if enable_dqm:
             dqm_name = "dqm_" + ru_name
             dqm_app_names.append(dqm_name)
+            dqm_links = [link.dro_source_id for link in dro_config.links]
             the_system.apps[dqm_name] = get_dqm_app(
-                DRO_CONFIG = dro_config,
-                RU_NAME=ru_name,
-                EMULATOR_MODE = emulator_mode,
                 DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
-                DATA_FILE = data_file,
                 CLOCK_SPEED_HZ = clock_speed_hz,
                 DQMIDX = dro_idx,
                 DQM_KAFKA_ADDRESS=dqm_kafka_address,
@@ -536,8 +524,8 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
                 DQM_MEANRMS_PARAMS=dqm_meanrms_params,
                 DQM_FOURIER_PARAMS=dqm_fourier_params,
                 DQM_FOURIERSUM_PARAMS=dqm_fouriersum_params,
+                LINKS=dqm_links,
                 HOST=host_dqm[dro_idx % len(host_dqm)],
-                NUM_DF_APPS=len(host_df),
                 DEBUG=debug)
 
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
@@ -565,11 +553,12 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
         if debug: console.log(f"{tpw_name} app: {the_system.apps[tpw_name]}")
 
     df_app_names = []
-    dqm_df_app_names = [f"dqm{idx}-df" for idx in range(len(host_df))]
-    dfidx = 0
+    dqm_df_app_names = []
 
     for app_name,df_config in appconfig_df.items():
         df_app_names.append(app_name)
+        dfidx = sourceid_broker.get_next_source_id("TRBuilder")
+        sourceid_broker.register_source_id("TRBuilder", dfidx, None)
         the_system.apps[app_name] = get_dataflow_app(
             HOSTIDX=dfidx,
             OUTPUT_PATH = df_config["output_path"],
@@ -583,7 +572,6 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
             HAS_DQM=enable_dqm,
             DEBUG=debug
         )
-        dfidx = dfidx + 1
         if use_k8s:
             the_system.apps[app_name].mounted_dirs += [{
                 'name': 'raw-data',
@@ -594,28 +582,26 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
 
 
         if enable_dqm:
-            dqm_name = dqm_df_app_names[i]
+            dqm_name = f"dqm_df{dfidx}"
+            dqm_df_app_names.append(dqm_name)
+            dqm_links = [link.dro_source_id for link in dro_config.links for dro_config in dro_infos]
             the_system.apps[dqm_name] = get_dqm_app(
-                DRO_CONFIG = None,
-                RU_NAME= None,
-                EMULATOR_MODE = emulator_mode,
                 DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
-                DATA_FILE = data_file,
                 CLOCK_SPEED_HZ = clock_speed_hz,
-                DQMIDX = i,
+                DQMIDX = dfidx,
                 DQM_KAFKA_ADDRESS=dqm_kafka_address,
                 DQM_CMAP=dqm_cmap,
                 DQM_RAWDISPLAY_PARAMS=[0, 0],
                 DQM_MEANRMS_PARAMS=[0, 0],
                 DQM_FOURIER_PARAMS=[0, 0],
                 DQM_FOURIERSUM_PARAMS=[0, 0],
-                HOST=host_dqm[i%len(host_dqm)],
+                LINKS=dqm_links,
+                HOST=host_dqm[dfidx%len(host_dqm)],
                 MODE='df',
-                DF_RATE=dqm_df_rate,
+                DF_RATE=dqm_df_rate * len(host_df),
                 DF_ALGS=dqm_df_algs,
                 DF_TIME_WINDOW=trigger_window_before_ticks + trigger_window_after_ticks,
-                NUM_DF_APPS=len(host_df),
-                FRONTEND_TYPE=frontend_type,
+                FRONTEND_TYPE='',
                 DEBUG=debug)
 
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")

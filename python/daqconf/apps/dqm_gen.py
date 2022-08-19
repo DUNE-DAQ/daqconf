@@ -32,23 +32,17 @@ QUEUE_POP_WAIT_MS = 100
 # local clock speed Hz
 # CLOCK_SPEED_HZ = 50000000;
 
-def get_dqm_app(RU_CONFIG=[],
-                 RU_NAME='',
-                 EMULATOR_MODE=False,
-                 DATA_RATE_SLOWDOWN_FACTOR=1,
-                 RUN_NUMBER=333,
-                 DATA_FILE="./frames.bin",
+def get_dqm_app( DATA_RATE_SLOWDOWN_FACTOR=1,
                  CLOCK_SPEED_HZ=50000000,
                  DQMIDX=0,
-                 SYSTEM_TYPE='TPC',
                  DQM_KAFKA_ADDRESS='',
                  DQM_CMAP='HD',
                  DQM_RAWDISPLAY_PARAMS=[60, 50],
                  DQM_MEANRMS_PARAMS=[10, 100],
                  DQM_FOURIER_PARAMS=[600, 100],
                  DQM_FOURIERSUM_PARAMS=[60, 1000],
+                 LINKS=[],
                  HOST="localhost",
-                 NUM_DF_APPS=1,
                  MODE="readout",
                  DF_RATE=10,
                  DF_ALGS='hist mean_rms fourier_sum',
@@ -57,14 +51,9 @@ def get_dqm_app(RU_CONFIG=[],
                  DEBUG=False,
                  ):
 
-    cmd_data = {}
-
     modules = []
 
     if MODE == 'readout':
-
-        MIN_LINK = RU_CONFIG[DQMIDX]["start_channel"]
-        MAX_LINK = MIN_LINK + RU_CONFIG[DQMIDX]["channel_count"]
 
         modules += [DAQModule(name='trb_dqm',
                             plugin='TriggerRecordBuilder',
@@ -72,13 +61,8 @@ def get_dqm_app(RU_CONFIG=[],
                                 general_queue_timeout=QUEUE_POP_WAIT_MS,
                                 source_id = DQMIDX,
                                 max_time_window=0,
-                                map=trb.mapgeoidconnections([])
+                                map=trb.mapsourceidconnections([])
                             ))]
-
-    # if this is a DQM-DF app
-    else:
-        MIN_LINK = RU_CONFIG[0]["start_channel"]
-        MAX_LINK = RU_CONFIG[-1]["start_channel"] + RU_CONFIG[-1]["channel_count"]
 
     # Algorithms to run for TRs coming from DF
     algs = DF_ALGS.split(' ')
@@ -91,7 +75,6 @@ def get_dqm_app(RU_CONFIG=[],
     modules += [DAQModule(name='dqmprocessor',
                           plugin='DQMProcessor',
                           conf=dqmprocessor.Conf(
-                              region=RU_CONFIG[DQMIDX if MODE == 'readout' else 0]["region_id"],
                               channel_map=DQM_CMAP, # 'HD' for horizontal drift (PD1), PD2HD or 'VD' for vertical drift
                               mode=MODE,
                               hist=dqmprocessor.StandardDQM(**{'how_often' : DQM_RAWDISPLAY_PARAMS[0], 'num_frames' : DQM_RAWDISPLAY_PARAMS[1]}),
@@ -99,14 +82,14 @@ def get_dqm_app(RU_CONFIG=[],
                               fourier=dqmprocessor.StandardDQM(**{'how_often' : DQM_FOURIER_PARAMS[0], 'num_frames' : DQM_FOURIER_PARAMS[1]}),
                               fourier_sum=dqmprocessor.StandardDQM(**{'how_often' : DQM_FOURIERSUM_PARAMS[0], 'num_frames' : DQM_FOURIERSUM_PARAMS[1]}),
                               kafka_address=DQM_KAFKA_ADDRESS,
-                              link_idx=list(range(MIN_LINK, MAX_LINK)),
+                              link_idx=LINKS,
                               clock_frequency=CLOCK_SPEED_HZ,
                               timesync_topic_name = f"Timesync",
-                              df2dqm_connection_name=f"tr_df2dqm_{DQMIDX}" if DQMIDX < NUM_DF_APPS else '',
-                              dqm2df_connection_name=f"trmon_dqm2df_{DQMIDX}" if DQMIDX < NUM_DF_APPS else '',
+                              df2dqm_connection_name=f"tr_df2dqm_{DQMIDX}" if MODE == "df" else '',
+                              dqm2df_connection_name=f"trmon_dqm2df_{DQMIDX}" if MODE == "df" else '',
                               readout_window_offset=10**7 / DATA_RATE_SLOWDOWN_FACTOR, # 10^7 works fine for WIBs with no slowdown
-                              df_seconds=DF_RATE * NUM_DF_APPS if MODE == 'df' else 0,
-                              df_offset=DF_RATE * DQMIDX,
+                              df_seconds=DF_RATE if MODE == 'df' else 0,
+                              df_offset=DF_RATE * DQMIDX if MODE == 'df' else 0,
                               df_algs=algs_bitfield,
                               df_num_frames=DF_TIME_WINDOW / 25,
                               frontend_type=FRONTEND_TYPE,
@@ -120,7 +103,7 @@ def get_dqm_app(RU_CONFIG=[],
     if MODE == 'readout':
         mgraph.connect_modules("dqmprocessor.trigger_decision_input_queue", "trb_dqm.trigger_decision_input", 'trigger_decision_q_dqm')
         mgraph.connect_modules('trb_dqm.trigger_record_output', 'dqmprocessor.trigger_record_dqm_processor', 'trigger_record_q_dqm', toposort=False)  
-    elif DQMIDX < NUM_DF_APPS:
+    else:
         mgraph.add_endpoint(f'trmon_dqm2df_{DQMIDX}', None, Direction.OUT)
         mgraph.add_endpoint(f"tr_df2dqm_{DQMIDX}", None, Direction.IN, toposort=True)
     

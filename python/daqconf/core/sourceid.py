@@ -37,7 +37,7 @@ class SourceIDBroker:
     debug: bool = False
 
     def get_next_source_id(self, subsystem):
-        next_id = 1
+        next_id = 0
         while self.source_id_exists(subsystem, next_id):
             next_id += 1
         if self.debug: console.log(f"Returning {next_id} from get_next_source_id for subsystem {subsystem}")
