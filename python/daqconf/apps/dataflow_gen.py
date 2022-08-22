@@ -80,15 +80,15 @@ def get_dataflow_app(HOSTIDX=0,
                                    record_name_prefix= "TriggerRecord",
                                    digits_for_record_number = 5,
                                    path_param_list = h5fl.PathParamList(
-                                       [h5fl.PathParams(detector_group_type="HD_TPC",
-                                                        detector_group_name="HD_TPC",
+                                       [h5fl.PathParams(detector_group_type="Detector_Readout",
+                                                        detector_group_name="TPC",
                                                         element_name_prefix="Link"),
-                                        h5fl.PathParams(detector_group_type="PDS",
+                                        h5fl.PathParams(detector_group_type="Detector_Readout",
                                                         detector_group_name="PDS"),
-                                        h5fl.PathParams(detector_group_type="NDLArTPC",
+                                        h5fl.PathParams(detector_group_type="Detector_Readout",
                                                         detector_group_name="NDLArTPC"),
-                                        h5fl.PathParams(detector_group_type="DataSelection",
-                                                        detector_group_name="Trigger",
+                                        h5fl.PathParams(detector_group_type="Trigger",
+                                                        detector_group_name="DataSelection",
                                                         digits_for_element_number=5)
                                     ])))))]
 
