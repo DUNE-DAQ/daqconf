@@ -19,11 +19,13 @@ class TPInfo:
     host = ""
     card = 0
     region_id = 0
+    dro_source_id = 0
 
     def __init__(self, link):
         self.host = link.dro_host
         self.card = link.dro_card
         self.region_id = link.det_crate
+        self.dro_source_id = link.dro_source_id
 
 class TAInfo:
     region_id = 0
