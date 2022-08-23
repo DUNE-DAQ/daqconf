@@ -322,7 +322,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
         for tp_sid,tp_conf in TP_SOURCE_IDS.items():
                 # 1 buffer per link
                 host_underscore = tp_conf.host.replace('-','_')
-                link_id1=f"ru_{host_underscore}_{tp_conf.card}_link{tp_sid}"
+                link_id1=f"ru{host_underscore}_{tp_conf.card}_link{tp_sid}"
                 link_id2=f"tplink{tp_sid}"
                 buf_name=f'buf_{link_id2}'
 
