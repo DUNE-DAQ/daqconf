@@ -571,6 +571,7 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
             TRB_TIMEOUT = trigger_record_building_timeout,
             HOST=df_config["host_df"],
             HAS_DQM=enable_dqm,
+            HARDWARE_MAP_FILE=hardware_map_file,
             DEBUG=debug
         )
         if use_k8s:
