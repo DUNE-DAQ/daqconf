@@ -75,7 +75,22 @@ def get_readout_app(DRO_CONFIG=None,
 
     host = DRO_CONFIG.host.replace("-","_")
     RUIDX = f"{host}_{DRO_CONFIG.card}"
+
+    # Hack on strings to be used for connection instances: will be solved when data_type is properly used.
+
     FRONTEND_TYPE = DetID.subdetector_to_string(DetID.Subdetector(DRO_CONFIG.links[0].det_id))
+    if ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 50000000):
+        FRONTEND_TYPE = "wib"
+    elif ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 62500000):
+        FRONTEND_TYPE = "wib2"
+    elif FRONTEND_TYPE== "HD_PDS" or FRONTEND_TYPE== "VD_Cathode_PDS" or FRONTEND_TYPE=="VD_Membrane_PDS":
+        FRONTEND_TYPE = "pds_list"
+    elif FRONTEND_TYPE== "VD_Top_TPC":
+        FRONTEND_TYPE = "tde"
+    elif FRONTEND_TYPE== "ND_LAR":
+        FRONTEND_TYPE = "pacman"
+    
+
     if DEBUG: print(f'FRONTENT_TYPE={FRONTEND_TYPE}')
 
     if SOFTWARE_TPG_ENABLED:
