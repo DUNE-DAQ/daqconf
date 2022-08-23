@@ -485,7 +485,7 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
         ru_name = f"dro_{host}_{dro_config.card}"
         ru_app_names.append(ru_name)
         the_system.apps[ru_name] = get_readout_app(
-            HOST=dro_config.host
+            HOST=dro_config.host,
             DRO_CONFIG=dro_config,
             EMULATOR_MODE = emulator_mode,
             DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
