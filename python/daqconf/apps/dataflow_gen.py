@@ -90,7 +90,9 @@ def get_dataflow_app(HOSTIDX=0,
                                         h5fl.PathParams(detector_group_type="DataSelection",
                                                         detector_group_name="Trigger",
                                                         digits_for_region_number=5,
-                                                        digits_for_element_number=5)
+                                                        digits_for_element_number=5),
+                                        h5fl.PathParams(detector_group_type="HSI",
+                                                        detector_group_name="HSI")
                                     ])))))]
 
     mgraph=ModuleGraph(modules)
