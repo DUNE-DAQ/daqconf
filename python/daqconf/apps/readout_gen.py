@@ -169,9 +169,8 @@ def get_readout_app(DRO_CONFIG=None,
             modules += [DAQModule(name = f"fakedataprod_{link.dro_source_id}",
                                   plugin='FakeDataProd',
                                   conf = fdp.ConfParams(
-                                  system_type = SYSTEM_TYPE,
-                                  apa_number = link.det_crate,
-                                  link_number = link.dro_source_id,
+                                  system_type = "Detector_Readout",
+                                  source_id = link.dro_source_id,
                                   time_tick_diff = 25 if CLOCK_SPEED_HZ == 50000000 else 32, # WIB1 only if clock is WIB1 clock, otherwise WIB2
                                   frame_size = 464 if CLOCK_SPEED_HZ == 50000000 else 472, # WIB1 only if clock is WIB1 clock, otherwise WIB2
                                   response_delay = 0,
@@ -227,20 +226,23 @@ def get_readout_app(DRO_CONFIG=None,
                     
     if not USE_FAKE_DATA_PRODUCERS:
         if FLX_INPUT:
-            link_0 = [i for i in range(min(5, RU_CONFIG[RUIDX]["channel_count"]))]
-            link_1 = [i-5 for i in range(5, max(5, RU_CONFIG[RUIDX]["channel_count"]))]
+            link_0 = []
+            link_1 = []
+            for link in DRO_CONFIG.links:
+                if link.dro_slr == 0: link_0.append(link.dro_link)
+                if link.dro_slr == 1: link_1.append(link.dro_link)
             if FIRMWARE_TPG_ENABLED:
                 link_0.append(5)
-                if RU_CONFIG[RUIDX]["channel_count"] > 5:
+                if len(link_1) > 0:
                     link_1.append(5)
-            for idx in range(MIN_LINK, MIN_LINK + min(5, RU_CONFIG[RUIDX]["channel_count"])):
+            for idx in link_0:
                 queues += [Queue(f'flxcard_0.output_{idx}',f"datahandler_{idx}.raw_input",f'{FRONTEND_TYPE}_link_{idx}', 100000 )]
             if FIRMWARE_TPG_ENABLED:
                 queues += [Queue(f'flxcard_0.output_5',f"tp_datahandler_0.raw_input",f'raw_tp_link_5', 100000 )]
 
             modules += [DAQModule(name = 'flxcard_0',
                                plugin = 'FelixCardReader',
-                               conf = flxcr.Conf(card_id = RU_CONFIG[RUIDX]["card_id"],
+                               conf = flxcr.Conf(card_id = DRO_CONFIG.links[0].dro_card,
                                                  logical_unit = 0,
                                                  dma_id = 0,
                                                  chunk_trailer_size = 32,
@@ -249,21 +251,15 @@ def get_readout_app(DRO_CONFIG=None,
                                                  numa_id = 0,
                                                  links_enabled = link_0))]
             
-            if RU_CONFIG[RUIDX]["channel_count"] > 5 :
-                if FIRMWARE_TPG_ENABLED:
-                    min_offset = 6
-                    max_offset = 1
-                else:
-                    min_offset = 5
-                    max_offset = 0
-                for idx in range(MIN_LINK+min_offset, MAX_LINK+max_offset):
+            if len(link_1) > 0:
+                for idx in link_1:
                     queues += [Queue(f'flxcard_1.output_{idx}',f"datahandler_{idx}.raw_input",f'{FRONTEND_TYPE}_link_{idx}', 100000 )]
                 if FIRMWARE_TPG_ENABLED:
                     queues += [Queue(f'flxcard_1.output_11',f"tp_datahandler_1.raw_input",f'raw_tp_link_11', 100000 )]
 
                 modules += [DAQModule(name = "flxcard_1",
                                    plugin = "FelixCardReader",
-                                   conf = flxcr.Conf(card_id = RU_CONFIG[RUIDX]["card_id"],
+                                   conf = flxcr.Conf(card_id = DRO_CONFIG.links[0].dro_card,
                                                      logical_unit = 1,
                                                      dma_id = 0,
                                                      chunk_trailer_size = 32,
@@ -302,14 +298,14 @@ def get_readout_app(DRO_CONFIG=None,
     mgraph = ModuleGraph(modules, queues=queues)
 
     if FIRMWARE_TPG_ENABLED:
-        if RU_CONFIG[RUIDX]["channel_count"] > 5:
-            tp_links = 2
-        else:
-            tp_links = 1
+        tp_links = 1
+        for link in DRO_CONFIG.links:
+            if link.dro_slr == 1:
+                tp_links = 2
+                break
         for idx in range(tp_links):
-            assert total_link_count < 1000
             mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{idx}", f"tp_datahandler_{idx}.tpset_out",    Direction.OUT, topic=["TPSets"])
-            mgraph.add_fragment_producer(id = idx + 1000, subsystem = "Detector_Readout",
+            mgraph.add_fragment_producer(id = idx, subsystem = "Trigger",
                                     requests_in   = f"tp_datahandler_{idx}.request_input",
                                     fragments_out = f"tp_datahandler_{idx}.fragment_queue")
             mgraph.add_endpoint(f"timesync_{idx}", f"tp_datahandler_{idx}.timesync_output",    Direction.OUT, ["Timesync"])
