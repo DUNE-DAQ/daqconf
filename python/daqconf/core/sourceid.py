@@ -4,11 +4,14 @@ import moo.io
 moo.io.default_load_path = get_moo_model_path()
 from rich.console import Console
 from enum import Enum
+from collections import namedtuple, defaultdict
 
 console = Console()
 
 from daqdataformats._daq_daqdataformats_py import SourceID
 from detchannelmaps._daq_detchannelmaps_py import *
+
+TAID = namedtuple('TAID', ['detector', 'crate'])
 
 class TPGenMode(Enum):
     DISABLED = 1
@@ -89,12 +92,13 @@ class SourceIDBroker:
                 for link in dro_config.links:
                     if link.det_id != 3: continue # Only HD_TPC for now
                     dro_sends_data = True
-                    if link.det_crate not in ta_infos:
-                        ta_infos[link.det_crate] = TAInfo()
-                        ta_infos[link.det_crate].region_id = link.det_crate
-                        ta_infos[link.det_crate].link_count = 1
+                    taid = TAID(link.det_id, link.det_crate)
+                    if taid not in ta_infos:
+                        ta_infos[taid] = TAInfo()
+                        ta_infos[taid].region_id = link.det_crate
+                        ta_infos[taid].link_count = 1
                     else:
-                        ta_infos[link.det_crate].link_count += 1
+                        ta_infos[taid].link_count += 1
                     if link.dro_slr == 0 and not slr0_found:
                         sid = self.get_next_source_id("Trigger")
                         self.register_source_id("Trigger", sid, TPInfo(link))
@@ -106,12 +110,13 @@ class SourceIDBroker:
                 for link in dro_config.links:
                     if link.det_id != 3: continue # Only HD_TPC for now
                     dro_sends_data = True
-                    if link.det_crate not in ta_infos:
-                        ta_infos[link.det_crate] = TAInfo()
-                        ta_infos[link.det_crate].region_id = link.det_crate
-                        ta_infos[link.det_crate].link_count = 1
+                    taid = TAID(link.det_id, link.det_crate)
+                    if taid not in ta_infos:
+                        ta_infos[taid] = TAInfo()
+                        ta_infos[taid].region_id = link.det_crate
+                        ta_infos[taid].link_count = 1
                     else:
-                        ta_infos[link.det_crate].link_count += 1
+                        ta_infos[taid].link_count += 1
                     if not self.source_id_exists("Trigger", link.dro_source_id):
                         self.register_source_id("Trigger", link.dro_source_id, TPInfo(link))
                     else:

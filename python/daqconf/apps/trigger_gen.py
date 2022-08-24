@@ -130,8 +130,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                          plugin = 'TCTee')]
 
     
-    if len(TP_SOURCE_IDS) > 0:
-        
+    if len(TP_SOURCE_IDS) > 0:        
         config_tcm =  tcm.Conf(candidate_maker=CANDIDATE_PLUGIN,
                                candidate_maker_config=temptypes.CandidateConf(**CANDIDATE_CONFIG))
 
@@ -294,6 +293,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                 mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', size_hint=1000)
 
             mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'heartbeatmaker_{link_id}.tpset_source', size_hint=1000)
+            mgraph.connect_modules(f'tpsettee_{link_id}.output2', f'buf_{link_id}.tpset_source', size_hint=1000)
 
             mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{tp_conf.region_id}.input", f"{tp_conf.region_id}_tpset_q", size_hint=1000)
 
@@ -309,7 +309,8 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
         for region_id in TA_SOURCE_IDS.keys():
             mgraph.connect_modules(f'tam_{region_id}.output',              f'tasettee_region_{region_id}.input',      size_hint=1000)
             mgraph.connect_modules(f'tasettee_region_{region_id}.output1', f'tazipper.input', "tas_to_tazipper",      size_hint=1000)
-    
+            mgraph.connect_modules(f'tasettee_region_{region_id}.output2', f'ta_buf_region_{region_id}.taset_source', size_hint=1000)
+
     if USE_HSI_INPUT:
         mgraph.add_endpoint("hsievents", None, Direction.IN)
         

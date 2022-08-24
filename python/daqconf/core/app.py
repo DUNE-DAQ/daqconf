@@ -210,7 +210,7 @@ class ModuleGraph:
             return [ e[0] for e in self.endpoints.items() if e[1].inout==inout ]
         return self.endpoints.keys()
 
-    def add_fragment_producer(self, subsystem, id, requests_in, fragments_out):
+    def add_fragment_producer(self, subsystem, id, requests_in, fragments_out, is_mlt_producer=True):
         source_id = SourceID(ensure_subsystem(subsystem), id)
         if source_id in self.fragment_producers:
             raise ValueError(f"There is already a fragment producer for SourceID {source_id}")
@@ -218,7 +218,7 @@ class ModuleGraph:
         # but we're inside a particular app here. Instead, we create the queue names in readout_gen.generate,
         # where all of the fragment producers are known
         queue_name = None
-        self.fragment_producers[source_id] = FragmentProducer(source_id, requests_in, fragments_out, queue_name)
+        self.fragment_producers[source_id] = FragmentProducer(source_id, requests_in, fragments_out, queue_name, is_mlt_producer)
 
 class App:
     """

@@ -90,7 +90,7 @@ class Queue:
     def __repr__(self):
         return self.name
 
-FragmentProducer = namedtuple('FragmentProducer', ['source_id', 'requests_in', 'fragments_out', 'queue_name'])
+FragmentProducer = namedtuple('FragmentProducer', ['source_id', 'requests_in', 'fragments_out', 'queue_name', 'is_mlt_producer'])
 
 
 Publisher = namedtuple(

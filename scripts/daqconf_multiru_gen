@@ -93,6 +93,7 @@ class ConfigSectionSchema(object):
         enable_raw_recording = Param( type=bool, default=False, help="Add queues and modules necessary for the record command")
         raw_recording_output_dir = Param( type=click.Path(), default='.', help="Output directory where recorded data is written to. Data for each link is written to a separate file")
         use_fake_data_producers = Param( type=bool, default=False, help="Use fake data producers that respond with empty fragments immediately instead of (fake) cards and DLHs")
+        readout_sends_tp_fragments = Param(type=bool, default=False, help="Send TP Fragments from Readout to Dataflow (via enabling TP Fragment links in MLT)")
 
     @matches_section("trigger")
     class Trigger(SectionSchema):
@@ -500,6 +501,8 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
             USE_FAKE_DATA_PRODUCERS = use_fake_data_producers,
             LATENCY_BUFFER_SIZE=latency_buffer_size,
             DATA_REQUEST_TIMEOUT=readout_data_request_timeout,
+            SOURCEID_BROKER = sourceid_broker,
+            READOUT_SENDS_TP_FRAGMENTS = readout_sends_tp_fragments,
             DEBUG=debug)
         if use_k8s:
             if use_felix:
