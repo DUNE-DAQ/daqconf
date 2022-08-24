@@ -112,12 +112,12 @@ class SourceIDBroker:
                         ta_infos[link.det_crate].link_count = 1
                     else:
                         ta_infos[link.det_crate].link_count += 1
-                    if not self.source_id_exists("Trigger", link.dro_source_id):
-                        self.register_source_id("Trigger", link.dro_source_id, TPInfo(link))
-                    else:
-                        sid = self.get_next_source_id("Trigger")
-                        console.log("SourceID Conflict in Trigger! {link.dro_source_id} will correspond to Trigger SourceID {sid}!")
-                        self.register_source_id("Trigger", sid, TPInfo(link))
+        #            if not self.source_id_exists("Trigger", link.dro_source_id):
+        #                self.register_source_id("Trigger", link.dro_source_id, TPInfo(link))
+        #            else:
+                    sid = self.get_next_source_id("Trigger")
+                    console.log(f"Readout link SourceID {link.dro_source_id} will correspond to Trigger SourceID {sid}!")
+                    self.register_source_id("Trigger", sid, TPInfo(link))
             if dro_sends_data:
                 tc_info.ru_count += 1
 
