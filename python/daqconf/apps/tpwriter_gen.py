@@ -25,7 +25,7 @@ from daqconf.core.conf_utils import Direction
 # Time to wait on pop()
 QUEUE_POP_WAIT_MS = 100
 
-def get_tpwriter_app(RU_CONFIG,
+def get_tpwriter_app(
                      FIRMWARE_TPG_ENABLED: bool = False,
                      OUTPUT_PATH=".",
                      OPERATIONAL_ENVIRONMENT="swtest",
