@@ -178,9 +178,6 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         total_number_of_data_producers = number_of_data_producers * len(host_ru)
         console.log(f"Will setup {number_of_data_producers} TPC channels per host, for a total of {total_number_of_data_producers}")
 
-    if enable_software_tpg and frontend_type != 'wib':
-        raise Exception("Software TPG is only available for the wib at the moment!")
-
     if enable_software_tpg and use_fake_data_producers:
         raise Exception("Fake data producers don't support software tpg")
 
