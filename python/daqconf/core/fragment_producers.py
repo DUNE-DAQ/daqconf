@@ -12,16 +12,6 @@ moo.otypes.load_types('trigger/moduleleveltrigger.jsonnet')
 moo.otypes.load_types('dfmodules/fragmentreceiver.jsonnet')
 moo.otypes.load_types('dfmodules/requestreceiver.jsonnet')
 moo.otypes.load_types('dfmodules/triggerrecordbuilder.jsonnet')
-#
-# (P. Rodrigues 2022-03-01) You would think that we need the
-# load_types() line below, but when it's included, the conversion of
-# app's "init" commands fails with error:
-#
-# AttributeError: Connection missing required field topics
-#
-# It's very unclear to me what's going on
-#
-# moo.otypes.load_types('networkmanager/nwmgr.jsonnet')
 
 import dunedaq.trigger.moduleleveltrigger as mlt
 import dunedaq.dfmodules.fragmentreceiver as frcv
@@ -50,7 +40,10 @@ def set_mlt_links(the_system, mlt_app_name="trigger", verbose=False):
     mgraph.reset_module_conf("mlt", mlt.ConfParams(links=mlt_links, 
                                                    dfo_connection=old_mlt_conf.dfo_connection, 
                                                    dfo_busy_connection=old_mlt_conf.dfo_busy_connection,
-                                                   hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough))
+                                                   hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough,
+						   buffer_timeout=old_mlt_conf.buffer_timeout,
+                                                   td_out_of_timeout=old_mlt_conf.td_out_of_timeout,
+                                                   td_readout_limit=old_mlt_conf.td_readout_limit))
 
 def remove_mlt_link(the_system, geoid, mlt_app_name="trigger"):
     """
@@ -65,8 +58,11 @@ def remove_mlt_link(the_system, geoid, mlt_app_name="trigger"):
     mgraph.reset_module_conf("mlt", mlt.ConfParams(links=mlt_links, 
                                                    dfo_connection=old_mlt_conf.dfo_connection, 
                                                    dfo_busy_connection=old_mlt_conf.dfo_busy_connection,
-                                                   hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough))
-    
+                                                   hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough,
+                                                   buffer_timeout=old_mlt_conf.buffer_timeout,
+					       	   td_out_of_timeout=old_mlt_conf.td_out_of_timeout,
+                                                   td_readout_limit=old_mlt_conf.td_readout_limit))
+
 def connect_fragment_producers(app_name, the_system, verbose=False):
     """Connect the data request and fragment sending queues from all of
        the fragment producers in the app with name `app_name` to the
@@ -146,7 +142,7 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         fragment_connection_name = f"fragments_to_{df_name}"
         app.modulegraph.add_endpoint(fragment_connection_name, None, Direction.OUT)
         df_mgraph = df_app.modulegraph
-        df_mgraph.add_endpoint(fragment_connection_name, "trb.data_fragment_all", Direction.IN)            
+        df_mgraph.add_endpoint(fragment_connection_name, "trb.data_fragment_all", Direction.IN, toposort=True)            
         df_mgraph.add_endpoint(request_connection_name, f"trb.request_output_{app_name}", Direction.OUT)
 
         # Add the new geoid-to-connections map to the
@@ -156,9 +152,10 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         df_mgraph.reset_module_conf("trb", trb.ConfParams(general_queue_timeout=old_trb_conf.general_queue_timeout,
                                                           reply_connection_name = fragment_connection_name,
                                                           max_time_window = old_trb_conf.max_time_window,
+                                                          trigger_record_timeout_ms = old_trb_conf.trigger_record_timeout_ms,
                                                           map=trb.mapgeoidconnections(new_trb_map)))
                           
-    dqm_apps = [ (name,app) for (name,app) in the_system.apps.items() if re.match("dqm\d+_ru", name) ]
+    dqm_apps = [ (name,app) for (name,app) in the_system.apps.items() if re.match("dqm\d+-ru", name) ]
 
     for dqm_name, dqm_app in dqm_apps:
         fragment_connection_name = f"fragments_to_{dqm_name}"
@@ -174,6 +171,7 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         dqm_mgraph.reset_module_conf("trb_dqm", trb.ConfParams(general_queue_timeout=old_trb_conf.general_queue_timeout,
                                                           reply_connection_name = fragment_connection_name,
                                                           max_time_window = old_trb_conf.max_time_window,
+                                                          trigger_record_timeout_ms = old_trb_conf.trigger_record_timeout_ms,
                                                           map=trb.mapgeoidconnections(new_trb_map)))
 
 def connect_all_fragment_producers(the_system, dataflow_name="dataflow", verbose=False):

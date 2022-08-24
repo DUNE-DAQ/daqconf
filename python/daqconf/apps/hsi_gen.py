@@ -70,8 +70,8 @@ def get_hsi_app(RUN_NUMBER = 333,
     elif CONTROL_HSI_HARDWARE:
         console.log('WARNING! Emulated trigger rate of 0 will not disable signal emulation in real HSI hardware! To disable emulated HSI triggers, use  option: "--hsi-source 0" or mask all signal bits', style="bold red")
     
-    startpars = rccmd.StartParams(run=RUN_NUMBER, trigger_interval_ticks = trigger_interval_ticks)
-    resumepars = rccmd.ResumeParams(trigger_interval_ticks = trigger_interval_ticks)
+    startpars = rccmd.StartParams(run=RUN_NUMBER, trigger_rate = TRIGGER_RATE_HZ)
+    # resumepars = rccmd.ResumeParams(trigger_interval_ticks = trigger_interval_ticks)
 
     if CONTROL_HSI_HARDWARE:
         modules.extend( [
@@ -79,15 +79,14 @@ def get_hsi_app(RUN_NUMBER = 333,
                                 plugin = "HSIController",
                                 conf = hsic.ConfParams( device=HSI_DEVICE_NAME,
                                                         clock_frequency=CLOCK_SPEED_HZ,
-                                                        trigger_interval_ticks=trigger_interval_ticks,
+                                                        trigger_rate=TRIGGER_RATE_HZ,
                                                         address=HSI_ENDPOINT_ADDRESS,
                                                         partition=HSI_ENDPOINT_PARTITION,
                                                         rising_edge_mask=HSI_RE_MASK,
                                                         falling_edge_mask=HSI_FE_MASK,
                                                         invert_edge_mask=HSI_INV_MASK,
                                                         data_source=HSI_SOURCE),
-                                extra_commands = {"start": startpars,
-                                                  "resume": resumepars}),
+                                extra_commands = {"start": startpars}),
                         ] )
     
     mgraph = ModuleGraph(modules)

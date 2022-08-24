@@ -14,7 +14,6 @@ moo.otypes.load_types('readoutlibs/sourceemulatorconfig.jsonnet')
 moo.otypes.load_types('readoutlibs/readoutconfig.jsonnet')
 moo.otypes.load_types('lbrulibs/pacmancardreader.jsonnet')
 moo.otypes.load_types('dfmodules/fakedataprod.jsonnet')
-moo.otypes.load_types('networkmanager/nwmgr.jsonnet')
 
 # Import new types
 import dunedaq.cmdlib.cmd as basecmd # AddressedCmd,
@@ -27,7 +26,6 @@ import dunedaq.readoutlibs.readoutconfig as rconf
 import dunedaq.lbrulibs.pacmancardreader as pcr
 # import dunedaq.dfmodules.triggerrecordbuilder as trb
 import dunedaq.dfmodules.fakedataprod as fdp
-import dunedaq.networkmanager.nwmgr as nwmgr
 
 from appfwk.utils import acmd, mcmd, mrccmd, mspec
 from os import path
@@ -38,7 +36,7 @@ from daqconf.core.daqmodule import DAQModule
 from daqconf.core.app import App,ModuleGraph
 
 # Time to wait on pop()
-QUEUE_POP_WAIT_MS = 100
+QUEUE_POP_WAIT_MS = 10 # This affects stop time, as each link will wait this long before stop
 # local clock speed Hz
 # CLOCK_SPEED_HZ = 50000000;
 
@@ -60,6 +58,7 @@ def get_readout_app(RU_CONFIG=[],
                     TPG_CHANNEL_MAP= "ProtoDUNESP1ChannelMap",
                     USE_FAKE_DATA_PRODUCERS=False,
                     LATENCY_BUFFER_SIZE=499968,
+                    DATA_REQUEST_TIMEOUT=1000,
                     HOST="localhost",
                     DEBUG=False):
     """Generate the json configuration for the readout and DF process"""
@@ -110,6 +109,7 @@ def get_readout_app(RU_CONFIG=[],
                                                                                               element_id =total_link_count + idx,
                                                                                               # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                               stream_buffer_size = 100 if FRONTEND_TYPE=='pacman' else 8388608,
+                                                                                              request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                               enable_raw_recording = False)))]
     if FIRMWARE_TPG_ENABLED:
         if RU_CONFIG[RUIDX]["channel_count"] > 5:
@@ -146,7 +146,7 @@ def get_readout_app(RU_CONFIG=[],
                                           emulator_mode = EMULATOR_MODE,
                                           error_counter_threshold=100,
                                           error_reset_freq=10000,
-                                          tpset_topic=RU_CONFIG[RUIDX]["tpset_topics"][idx]
+                                          tpset_topic="TPSets"
                                       ),
                                       requesthandlerconf= rconf.RequestHandlerConf(
                                           latency_buffer_size = LATENCY_BUFFER_SIZE,
@@ -156,6 +156,7 @@ def get_readout_app(RU_CONFIG=[],
                                           element_id = 10 + idx,
                                           output_file = path.join(RAW_RECORDING_OUTPUT_DIR, f"output_tp_{RUIDX}_{idx}.out"),
                                           stream_buffer_size = 8388608,
+                                          request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                           enable_raw_recording = RAW_RECORDING_ENABLED,
                                       )))]
             modules += [DAQModule(name = f"tp_out_datahandler_{idx}",
@@ -194,8 +195,8 @@ def get_readout_app(RU_CONFIG=[],
                                   system_type = SYSTEM_TYPE,
                                   apa_number = RU_CONFIG[RUIDX]["region_id"],
                                   link_number = idx,
-                                  time_tick_diff = 25,
-                                  frame_size = 464,
+                                  time_tick_diff = 25 if CLOCK_SPEED_HZ == 50000000 else 32, # WIB1 only if clock is WIB1 clock, otherwise WIB2
+                                  frame_size = 464 if CLOCK_SPEED_HZ == 50000000 else 472, # WIB1 only if clock is WIB1 clock, otherwise WIB2
                                   response_delay = 0,
                                   fragment_type = "FakeData",
                                   timesync_topic_name = "Timesync",
@@ -212,7 +213,7 @@ def get_readout_app(RU_CONFIG=[],
                 queues += [Queue(f"datahandler_{link_num}.errored_frames", 'errored_frame_consumer.input_queue', "errored_frames_q")]
 
             if SOFTWARE_TPG_ENABLED: 
-                tpset_topic = RU_CONFIG[RUIDX]["tpset_topics"][idx]
+                tpset_topic = "TPSets"
             else:
                 tpset_topic = "None"
             modules += [DAQModule(name = f"datahandler_{link_num}",
@@ -250,6 +251,7 @@ def get_readout_app(RU_CONFIG=[],
                                           element_id = link_num,
                                           output_file = path.join(RAW_RECORDING_OUTPUT_DIR, f"output_{RUIDX}_{link_num}.out"),
                                           stream_buffer_size = 8388608,
+                                          request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                           enable_raw_recording = RAW_RECORDING_ENABLED,
                                       )))]
 
@@ -357,7 +359,7 @@ def get_readout_app(RU_CONFIG=[],
             tp_links = 1
         for idx in range(tp_links):
             assert total_link_count < 1000
-            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{idx}", f"tp_datahandler_{idx}.tpset_out",    Direction.OUT, topic=[RU_CONFIG[RUIDX]["tpset_topics"][idx]])
+            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{idx}", f"tp_datahandler_{idx}.tpset_out",    Direction.OUT, topic=["TPSets"])
             mgraph.add_fragment_producer(region = RU_CONFIG[RUIDX]["region_id"], element = idx + 1000, system = SYSTEM_TYPE,
                                     requests_in   = f"tp_datahandler_{idx}.request_input",
                                     fragments_out = f"tp_datahandler_{idx}.fragment_queue")
@@ -375,7 +377,7 @@ def get_readout_app(RU_CONFIG=[],
         else:
             link_num = idx
         if SOFTWARE_TPG_ENABLED:
-            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{idx}", f"datahandler_{link_num}.tpset_out",    Direction.OUT, topic=[RU_CONFIG[RUIDX]["tpset_topics"][idx]])
+            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{idx}", f"datahandler_{link_num}.tpset_out",    Direction.OUT, topic=["TPSets"])
             mgraph.add_endpoint(f"timesync_tp_dlh_ru{RUIDX}_{idx}", f"tp_datahandler_{link_num}.timesync_output",    Direction.OUT, ["Timesync"])
         
         if USE_FAKE_DATA_PRODUCERS:

@@ -15,7 +15,6 @@ moo.otypes.load_types('dfmodules/datawriter.jsonnet')
 moo.otypes.load_types('dfmodules/hdf5datastore.jsonnet')
 moo.otypes.load_types('dfmodules/fragmentreceiver.jsonnet')
 moo.otypes.load_types('dfmodules/triggerdecisionreceiver.jsonnet')
-moo.otypes.load_types('networkmanager/nwmgr.jsonnet')
 
 
 # Import new types
@@ -29,7 +28,6 @@ import dunedaq.hdf5libs.hdf5filelayout as h5fl
 import dunedaq.dfmodules.hdf5datastore as hdf5ds
 import dunedaq.dfmodules.fragmentreceiver as frcv
 import dunedaq.dfmodules.triggerdecisionreceiver as tdrcv
-import dunedaq.networkmanager.nwmgr as nwmgr
 
 from appfwk.utils import acmd, mcmd, mrccmd, mspec
 from daqconf.core.app import App, ModuleGraph
@@ -45,6 +43,9 @@ def get_dataflow_app(HOSTIDX=0,
                      TPC_REGION_NAME_PREFIX="APA",
                      MAX_FILE_SIZE=4*1024*1024*1024,
                      MAX_TRIGGER_RECORD_WINDOW=0,
+                     MAX_EXPECTED_TR_SEQUENCES=1,
+                     TOKEN_COUNT=10,
+                     TRB_TIMEOUT=200,
                      HOST="localhost",
                      HAS_DQM=False,
                      DEBUG=False):
@@ -58,6 +59,7 @@ def get_dataflow_app(HOSTIDX=0,
                           conf = trb.ConfParams(general_queue_timeout=QUEUE_POP_WAIT_MS,
                                                 reply_connection_name = "",
                                                 max_time_window=MAX_TRIGGER_RECORD_WINDOW,
+                                                trigger_record_timeout_ms=TRB_TIMEOUT,
                                                 map=trb.mapgeoidconnections([]))), # We patch this up in connect_fragment_producers
                 DAQModule(name = 'datawriter',
                        plugin = 'DataWriter',
@@ -93,7 +95,9 @@ def get_dataflow_app(HOSTIDX=0,
 
     mgraph=ModuleGraph(modules)
 
-    mgraph.connect_modules("trb.trigger_record_output", "datawriter.trigger_record_input", "trigger_records")
+    queue_size_based_on_number_of_sequences = max(10, int(MAX_EXPECTED_TR_SEQUENCES * TOKEN_COUNT * 1.1))
+    mgraph.connect_modules("trb.trigger_record_output", "datawriter.trigger_record_input", "trigger_records",
+                           queue_size_based_on_number_of_sequences)
     mgraph.add_endpoint(f"trigger_decision_{HOSTIDX}", "trb.trigger_decision_input", Direction.IN)
     mgraph.add_endpoint("triginh", "datawriter.token_output", Direction.OUT, toposort=True)
     if HAS_DQM:

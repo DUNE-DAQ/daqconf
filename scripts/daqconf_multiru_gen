@@ -10,6 +10,8 @@ from collections import defaultdict
 from os.path import exists, join
 from daqconf.core.system import System
 from daqconf.core.metadata import write_metadata_file
+import random
+import string
 
 # Add -h as default help option
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -47,6 +49,7 @@ import click
 @click.option('--disable-trace', is_flag=True, help="Do not enable TRACE (default TRACE_FILE is /tmp/trace_buffer_\${HOSTNAME}_\${USER})")
 @click.option('-f', '--use-felix', is_flag=True, help="Use real felix cards instead of fake ones")
 @click.option('--use-ssp', is_flag=True, help="Use real SSPs instead of fake sources")
+
 @click.option('--host-df', multiple=True, default=['localhost'], help="This option is repeatable, with each repetition adding another dataflow app.")
 @click.option('--host-dfo', default='localhost', help="Sets the host for the DFO app")
 @click.option('--host-ru', multiple=True, default=['localhost'], help="This option is repeatable, with each repetition adding an additional ru process.")
@@ -55,7 +58,7 @@ import click
 @click.option('--host-tpw', default='localhost', help='Host to run the TPWriter app on')
 @click.option('--host-tprtc', default='localhost', help='Host to run the timing partition controller app on')
 @click.option('--host-dqm', multiple=True, default=['localhost'], help='Host to run the DQM aps on')
-@click.option('--region-id', multiple=True, default=[0], help="Define the Region IDs for the RUs. If only specified once, will apply to all RUs.")
+@click.option('--region-id', multiple=True, default=[], help="Define the Region IDs for the RUs. If not specified, each RU will be assigned a Region ID based on declared order.")
 @click.option('--latency-buffer-size', default=499968, help="Size of the latency buffers (in number of elements)")
 # hsi readout options
 @click.option('--hsi-hw-connections-file', default="${TIMING_SHARE}/config/etc/connections.xml", help='Real timing hardware only: path to hardware connections file')
@@ -83,6 +86,10 @@ import click
 @click.option('--trigger-candidate-plugin', default='TriggerCandidateMakerPrescalePlugin', help="Trigger candidate algorithm plugin")
 @click.option('--trigger-candidate-config', default='dict(prescale=100)', help="Trigger candidate algorithm config (string containing python dictionary)")
 @click.option('--hsi-trigger-type-passthrough', is_flag=True, default=False, help="Option to override trigger type in the MLT")
+@click.option('--mlt-buffer-timeout', default=100, help="Timeout (buffer) to wait for new overlapping TCs before sending TD")
+@click.option('--mlt-send-timed-out-tds', is_flag=True, default=False, help="Option to drop TD if TC comes out of timeout window")
+@click.option('--mlt-max-td-length-ms', default=1000, help="Maximum allowed time length [ms] for a readout window of a single TD")
+
 # timing hw partition options
 @click.option('--control-timing-partition', is_flag=True, default=False, help='Flag to control whether we are controlling timing partition in master hardware')
 @click.option('--timing-partition-master-device-name', default="", help='Timing partition master hardware device name')
@@ -93,7 +100,7 @@ import click
 
 @click.option('--enable-raw-recording', is_flag=True, help="Add queues and modules necessary for the record command")
 @click.option('--raw-recording-output-dir', type=click.Path(), default='.', help="Output directory where recorded data is written to. Data for each link is written to a separate file")
-@click.option('--frontend-type', type=click.Choice(['wib', 'wib2', 'pds_queue', 'pds_list', 'pacman', 'ssp']), default='wib', help="Frontend type (wib, wib2 or pds) and latency buffer implementation in case of pds (folly queue or skip list)")
+@click.option('--frontend-type', type=click.Choice(['wib', 'wib2', 'pds_queue', 'pds_list', 'pacman', 'ssp', 'tde']), default='wib', help="Frontend type (wib, wib2, tde or pds) and latency buffer implementation in case of pds (folly queue or skip list)")
 @click.option('--enable-dqm', is_flag=True, help="Enable Data Quality Monitoring")
 @click.option('--opmon-impl', type=click.Choice(['json','cern','pocket'], case_sensitive=False),default='json', help="Info collector service implementation to use")
 @click.option('--ers-impl', type=click.Choice(['local','cern','pocket'], case_sensitive=False), default='local', help="ERS destination (Kafka used for cern and pocket)")
@@ -109,13 +116,13 @@ import click
 @click.option('--dqm-meanrms-params', nargs=2, default=[10, 100], help="Parameters that control the data sent for the mean/rms plot")
 @click.option('--dqm-fourier-params', nargs=2, default=[0, 0], help="Parameters that control the data sent for the fourier transform plot")
 @click.option('--dqm-fouriersum-params', nargs=2, default=[600, 1000], help="Parameters that control the data sent for the summed fourier transform plot")
-@click.option('--dqm-channelmask-params', nargs=2, default=[60, 1], help="Parameters that control the data sent for the channel mask stream plot")
 @click.option('--dqm-df-rate', nargs=1, default=10, help='How many seconds between requests to DF for Trigger Records')
 @click.option('--dqm-df-algs', nargs=1, default='hist mean_rms fourier_sum', help='Algorithms to be run on Trigger Records from DF (use quotes)')
 @click.option('--op-env', default='swtest', help="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files")
 @click.option('--tpc-region-name-prefix', default='APA', help="Prefix to be used for the 'Region' Group name inside the HDF5 file")
 @click.option('--max-file-size', default=4*1024*1024*1024, help="The size threshold when raw data files are closed (in bytes)")
 @click.option('--max-trigger-record-window', default=0, help="The maximum size for the window of data that will included in a single TriggerRecord (in ticks). Readout windows that are longer than this size will result in TriggerRecords being split into a sequence of TRs. A zero value for this parameter means no splitting.")
+@click.option('--data-request-timeout-ms', default=1000, help="The baseline data request timeout that will be used by modules in the Readout and Trigger subsystems (i.e. any module that produces data fragments). Downstream timeouts, such as the trigger-record-building timeout, are derived from this.")
 @click.option('--image', default="", type=str, help="Which docker image to use")
 @click.option('--use-k8s', is_flag=True, default=False, help="Whether to use k8s")
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
@@ -126,11 +133,12 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         token_count, data_file, output_path, disable_trace, use_felix, use_ssp, host_df, host_dfo, host_ru, host_trigger, host_hsi, host_tpw, host_tprtc, host_dqm, region_id, latency_buffer_size,
         hsi_hw_connections_file, hsi_device_name, hsi_readout_period, control_hsi_hw, hsi_endpoint_address, hsi_endpoint_partition, hsi_re_mask, hsi_fe_mask, hsi_inv_mask, hsi_source,
         use_hsi_hw, hsi_device_id, mean_hsi_signal_multiplicity, hsi_signal_emulation_mode, enabled_hsi_signals,
-        ttcm_s1, ttcm_s2, trigger_activity_plugin, trigger_activity_config, trigger_candidate_plugin, trigger_candidate_config, hsi_trigger_type_passthrough,
+        ttcm_s1, ttcm_s2, trigger_activity_plugin, trigger_activity_config, trigger_candidate_plugin, trigger_candidate_config, hsi_trigger_type_passthrough, mlt_buffer_timeout, mlt_send_timed_out_tds, mlt_max_td_length_ms,
         control_timing_partition, timing_partition_master_device_name, timing_partition_id, timing_partition_trigger_mask, timing_partition_rate_control_enabled, timing_partition_spill_gate_enabled,
         enable_raw_recording, raw_recording_output_dir, frontend_type, opmon_impl, enable_dqm, ers_impl, dqm_impl, pocket_url, enable_software_tpg, enable_firmware_tpg, tpg_channel_map, enable_tpset_writing, use_fake_data_producers, dqm_cmap,
-        dqm_rawdisplay_params, dqm_meanrms_params, dqm_fourier_params, dqm_fouriersum_params, dqm_channelmask_params, dqm_df_rate,
-        dqm_df_algs, op_env, tpc_region_name_prefix, max_file_size, max_trigger_record_window, image, use_k8s, debug, json_dir):
+        dqm_rawdisplay_params, dqm_meanrms_params, dqm_fourier_params, dqm_fouriersum_params, dqm_df_rate,
+        dqm_df_algs, op_env, tpc_region_name_prefix, max_file_size, max_trigger_record_window, data_request_timeout_ms,
+        image, use_k8s, debug, json_dir):
 
     if exists(json_dir):
         raise RuntimeError(f"Directory {json_dir} already exists")
@@ -193,8 +201,15 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     else:
         trigemu_token_count = 0
 
-    if (len(region_id) != len(host_ru)) and (len(region_id) != 1):
-        raise Exception("--region-id should be specified either once only or once for each --host-ru!")
+    if (len(region_id) != len(host_ru)) and (len(region_id) != 0):
+        raise Exception("--region-id should be specified once for each --host-ru, or not at all!")
+
+    # TODO, Eric Flumerfelt <eflumerf@github.com> 22-June-2022: Fix if/when multiple frontend types are supported. (Use https://click.palletsprojects.com/en/8.1.x/options/#multi-value-options for RU host/frontend/region config?)
+    if len(region_id) == 0:
+        region_id_temp = []
+        for reg in range(len(host_ru)):
+            region_id_temp.append(reg)
+        region_id = tuple(region_id_temp)
 
     if use_hsi_hw and not hsi_device_name:
         raise Exception("If --use-hsi-hw flag is set to true, --hsi-device-name must be specified!")
@@ -205,17 +220,27 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     if control_hsi_hw and not use_hsi_hw:
         raise Exception("HSI hardware control can only be enabled if HSI hardware is used!")
 
-    if frontend_type == 'wib' or frontend_type == 'wib2':
+    if frontend_type == 'wib' or frontend_type == 'wib2' or frontend_type == 'tde':
         system_type = 'TPC'
     elif frontend_type == 'pacman':
         system_type = 'NDLArTPC'
     else:
         system_type = 'PDS'
 
+    # For raw recording to work the size of the LB has to be a multiple of 4096 bytes so that gives
+    # us the following problem:
+    # number_of_elements * element_size = 4096 * M,  where M is an arbitrary integer,
+    # so only a value of number_elements that satisfies the equation above is valid.
+    if frontend_type == 'tde':
+        # number_of_elements = 4096 is always a solution by construction and
+        # the total size happens to be quite close to the one when using WIB
+        # as the frontend type
+        latency_buffer_size = 4096
+
     if opmon_impl == 'cern':
-        info_svc_uri = "influx://opmondb.cern.ch:31002/write?db=influxdb"
+        info_svc_uri = "kafka://monkafka.cern.ch:30092/opmon"
     elif opmon_impl == 'pocket':
-        info_svc_uri = "influx://" + pocket_url + ":31002/write?db=influxdb"
+        info_svc_uri = "kafka://" + pocket_url + ":30092/opmon"
     else:
         info_svc_uri = "file://info_{APP_NAME}_{APP_PORT}.json"
 
@@ -249,19 +274,15 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     ru_configs = []
     ru_channel_counts = {}
     for region in region_id: ru_channel_counts[region] = 0
-    regionidx = 0
 
-    ru_app_names=[f"ruflx{idx}" if use_felix else f"ruemu{idx}" for idx in range(len(host_ru))]
-    dqm_app_names = [f"dqm{idx}_ru" for idx in range(len(host_ru))]
+    if debug:
+        console.log(f"Output data written to \"{output_path}\"")
 
-    if enable_firmware_tpg:
-        if number_of_data_producers > 5:
-            n_tp = 2
-        else:
-            n_tp = 1
-        topic_tpsets = [ f"topic_tpsets_ru{region_id[regionidx]}_link{i}" for i in range(n_tp) ]
-    else:
-        topic_tpsets = [ f"topic_tpsets_ru{region_id[regionidx]}_link{i}" for i in range(number_of_data_producers) ]
+    if use_k8s and output_path == '.':
+        output_path = os.getcwd()
+
+    ru_app_names = [f"ruflx{idx}" if use_felix else f"ruemu{idx}" for idx in range(len(host_ru))]
+    dqm_app_names = [f"dqm{idx}-ru" for idx in range(len(host_ru))]
 
     for hostidx,ru_host in enumerate(ru_app_names):
         cardid = 0
@@ -272,12 +293,36 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             host_id_dict[host_ru[hostidx]] = 0
         ru_configs.append( {"host": host_ru[hostidx],
                             "card_id": cardid,
-                            "region_id": region_id[regionidx],
-                            "start_channel": ru_channel_counts[region_id[regionidx]],
-                            "channel_count": number_of_data_producers,
-                            "tpset_topics":  topic_tpsets} )
-        ru_channel_counts[region_id[regionidx]] += number_of_data_producers
-        if len(region_id) != 1: regionidx = regionidx + 1
+                            "region_id": region_id[hostidx],
+                            "start_channel": ru_channel_counts[region_id[hostidx]],
+                            "channel_count": number_of_data_producers })
+        ru_channel_counts[region_id[hostidx]] += number_of_data_producers
+
+    max_expected_tr_sequences = 1 if max_trigger_record_window < 1 else ((trigger_window_before_ticks + trigger_window_after_ticks) / max_trigger_record_window)
+
+    # 11-Jul-2022, KAB: added timeout calculations. The Readout and Trigger App DataRequest timeouts
+    # are set based on the command-line parameter that is specified in this script, and they are
+    # treated separately here in case we want to customize them somehow in the future.
+    # The trigger-record-building timeout is intended to be a multiple of the larger of those two,
+    # and it needs to have a non-trivial minimum value.
+    # We also include a factor in the TRB timeout that takes into account the number of data producers.
+    # At the moment, that factor uses the square root of the number of data producers, and it attempts
+    # to take into account the number of data producers in Readout and Trigger.
+    MINIMUM_BASIC_TRB_TIMEOUT = 200  # msec
+    TRB_TIMEOUT_SAFETY_FACTOR = 2
+    DFO_TIMEOUT_SAFETY_FACTOR = 3
+    MINIMUM_DFO_TIMEOUT = 10000
+    readout_data_request_timeout = data_request_timeout_ms
+    trigger_data_request_timeout = data_request_timeout_ms
+    trigger_record_building_timeout = max(MINIMUM_BASIC_TRB_TIMEOUT, TRB_TIMEOUT_SAFETY_FACTOR * max(readout_data_request_timeout, trigger_data_request_timeout))
+    if total_number_of_data_producers >= 1:
+        effective_number_of_data_producers = total_number_of_data_producers  # number of DataLinkHandlers
+        if enable_software_tpg or enable_firmware_tpg:
+            effective_number_of_data_producers *= 2  # add in TPSet producers from Trigger (one per Link)
+            effective_number_of_data_producers += len(region_id)  # add in TA producers from Trigger (one per RU)
+        trigger_record_building_timeout = int(math.sqrt(effective_number_of_data_producers) * trigger_record_building_timeout)
+    trigger_record_building_timeout += 15 * TRB_TIMEOUT_SAFETY_FACTOR * max_expected_tr_sequences
+    dfo_stop_timeout = max(DFO_TIMEOUT_SAFETY_FACTOR * trigger_record_building_timeout, MINIMUM_DFO_TIMEOUT)
 
     if use_hsi_hw:
         the_system.apps["hsi"] = get_hsi_app(
@@ -344,13 +389,18 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         TRIGGER_WINDOW_BEFORE_TICKS = trigger_window_before_ticks,
         TRIGGER_WINDOW_AFTER_TICKS = trigger_window_after_ticks,
         HSI_TRIGGER_TYPE_PASSTHROUGH = hsi_trigger_type_passthrough,
+	MLT_BUFFER_TIMEOUT = mlt_buffer_timeout,
+        MLT_MAX_TD_LENGTH_MS = mlt_max_td_length_ms,
+        MLT_SEND_TIMED_OUT_TDS = mlt_send_timed_out_tds,
         CHANNEL_MAP_NAME = tpg_channel_map,
+        DATA_REQUEST_TIMEOUT=trigger_data_request_timeout,
         HOST=host_trigger,
         DEBUG=debug)
 
     the_system.apps['dfo'] = get_dfo_app(
         DF_COUNT = len(host_df),
         TOKEN_COUNT = trigemu_token_count,
+        STOP_TIMEOUT = dfo_stop_timeout,
         HOST=host_dfo,
         DEBUG=debug)
 
@@ -377,7 +427,14 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             USE_FAKE_DATA_PRODUCERS = use_fake_data_producers,
             HOST=host,
             LATENCY_BUFFER_SIZE=latency_buffer_size,
+            DATA_REQUEST_TIMEOUT=readout_data_request_timeout,
             DEBUG=debug)
+        if use_k8s:
+            if use_felix:
+                the_system.apps[ru_name].resources = {
+                    "felix.cern/flx0-data": "1", # requesting FLX0
+                    "memory": "32Gi" # yes bro
+                }
 
         if debug:
             console.log(f"{ru_name} app: {the_system.apps[ru_name]}")
@@ -400,11 +457,11 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
                 DQM_MEANRMS_PARAMS=dqm_meanrms_params,
                 DQM_FOURIER_PARAMS=dqm_fourier_params,
                 DQM_FOURIERSUM_PARAMS=dqm_fouriersum_params,
-                DQM_CHANNELMASK_PARAMS=dqm_channelmask_params,
                 HOST=host_dqm[i % len(host_dqm)],
                 NUM_DF_APPS=len(host_df),
                 FRONTEND_TYPE=frontend_type,
                 DEBUG=debug)
+
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
 
     if enable_tpset_writing:
@@ -421,13 +478,22 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             CLOCK_SPEED_HZ = clock_speed_hz,
             HOST=host_tpw,
             DEBUG=debug)
+        if use_k8s: ## TODO schema
+            the_system.apps[tpw_name].mounted_dirs += [{
+                'name': 'raw-data',
+                'physical_location':output_path,
+                'in_pod_location':output_path,
+                'read_only': False
+            }]
+
         if debug: console.log(f"{tpw_name} app: {the_system.apps[tpw_name]}")
 
     df_app_names = []
-    dqm_df_app_names = [f"dqm{idx}_df" for idx in range(len(host_df))]
-    for i,host in enumerate(host_df):
+    dqm_df_app_names = [f"dqm{idx}-df" for idx in range(len(host_df))]
 
+    for i,host in enumerate(host_df):
         app_name = f'dataflow{i}'
+
         df_app_names.append(app_name)
         the_system.apps[app_name] = get_dataflow_app(
             HOSTIDX = i,
@@ -436,10 +502,22 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             TPC_REGION_NAME_PREFIX = tpc_region_name_prefix,
             MAX_FILE_SIZE = max_file_size,
             MAX_TRIGGER_RECORD_WINDOW = max_trigger_record_window,
+            MAX_EXPECTED_TR_SEQUENCES = max_expected_tr_sequences,
+            TOKEN_COUNT = trigemu_token_count,
+            TRB_TIMEOUT = trigger_record_building_timeout,
             HOST=host,
             HAS_DQM=enable_dqm,
             DEBUG=debug
         )
+        if use_k8s:
+            the_system.apps[app_name].mounted_dirs += [{
+                'name': 'raw-data',
+                'physical_location':output_path,
+                'in_pod_location':output_path,
+                'read_only': False,
+            }]
+
+
         if enable_dqm:
             dqm_name = dqm_df_app_names[i]
             the_system.apps[dqm_name] = get_dqm_app(
@@ -458,7 +536,6 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
                 DQM_MEANRMS_PARAMS=[0, 0],
                 DQM_FOURIER_PARAMS=[0, 0],
                 DQM_FOURIERSUM_PARAMS=[0, 0],
-                DQM_CHANNELMASK_PARAMS=[0, 0],
                 HOST=host_ru[i%len(host_ru)],
                 MODE='df',
                 DF_RATE=dqm_df_rate,
@@ -467,12 +544,26 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
                 NUM_DF_APPS=len(host_df),
                 FRONTEND_TYPE=frontend_type,
                 DEBUG=debug)
+
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
 
+
+    all_apps_except_ru = []
+    all_apps_except_ru_and_df = []
 
     for name,app in the_system.apps.items():
         if app.name=="__app":
             app.name=name
+
+        if app.name not in ru_app_names:
+            all_apps_except_ru += [app]
+        if app.name not in ru_app_names+df_app_names:
+            all_apps_except_ru_and_df += [name]
+
+        # HACK
+        boot_order = ru_app_names + df_app_names + [app for app in all_apps_except_ru_and_df]
+        if debug:
+            console.log(f'Boot order: {boot_order}')
 
     #     console.log(f"MDAapp config generated in {json_dir}")
     from daqconf.core.conf_utils import make_app_command_data
@@ -522,21 +613,32 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
 
     # Arrange per-app command data into the format used by util.write_json_files()
     app_command_datas = {
-        name : make_app_command_data(the_system, app,name, verbose=debug)
+        name : make_app_command_data(the_system, app,name, verbose=debug, use_k8s=use_k8s)
         for name,app in the_system.apps.items()
     }
 
     ##################################################################################
 
     # Make boot.json config
-    from daqconf.core.conf_utils import make_system_command_datas,generate_boot, write_json_files
+    from daqconf.core.conf_utils import make_system_command_datas,generate_boot_common, write_json_files
 
     # HACK: Make sure RUs start after trigger
     forced_deps = []
 
     for i,host in enumerate(host_ru):
         ru_name = ru_app_names[i]
-        forced_deps.append(['trigger', ru_name])
+        forced_deps.append(['hsi', ru_name])
+        if enable_tpset_writing:
+            forced_deps.append(['tpwriter', ru_name])
+
+    if enable_dqm:
+        for i,host in enumerate(host_ru):
+            dqm_name = dqm_app_names[i]
+            forced_deps.append([dqm_name, 'dfo'])
+        for i,host in enumerate(host_df):
+            dqm_name = dqm_df_app_names[i]
+            forced_deps.append([dqm_name, 'dfo'])
+    forced_deps.append(['trigger','hsi'])
 
     system_command_datas = make_system_command_datas(the_system, forced_deps, verbose=debug)
 
@@ -545,12 +647,37 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         external_connections += [ext.external_name for ext in the_system.apps[app].modulegraph.external_connections]
 
     # Override the default boot.json with the one from minidaqapp
-    boot = generate_boot(the_system.apps, base_command_port=base_command_port,
-                         ers_settings=ers_settings, info_svc_uri=info_svc_uri,
-                         disable_trace=disable_trace, use_kafka=use_kafka,
-                         external_connections=external_connections,
-                         use_k8s=use_k8s,
-                         image=image)
+    boot = generate_boot_common(
+        ers_settings = ers_settings,
+        info_svc_uri = info_svc_uri,
+        disable_trace = disable_trace,
+        use_kafka = use_kafka,
+        external_connections = external_connections,
+        daq_app_exec_name = "daq_application_ssh" if not use_k8s else "daq_application_k8s",
+        verbose = debug,
+    )
+
+    if use_k8s:
+        from daqconf.core.conf_utils import update_with_k8s_boot_data
+        console.log("Generating k8s boot.json")
+        update_with_k8s_boot_data(
+            boot_data = boot,
+            apps = the_system.apps,
+            base_command_port = base_command_port,
+            boot_order = boot_order,
+            image = image,
+            verbose = debug,
+        )
+    else:
+        from daqconf.core.conf_utils import update_with_ssh_boot_data
+        console.log("Generating ssh boot.json")
+        update_with_ssh_boot_data(
+            boot_data = boot,
+            apps = the_system.apps,
+            base_command_port = base_command_port,
+            verbose = debug,
+        )
+
 
     if thread_pinning_file:
         boot['scripts'] = {
