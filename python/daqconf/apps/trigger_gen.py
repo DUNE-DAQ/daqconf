@@ -11,7 +11,6 @@ moo.otypes.load_types('trigger/triggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/triggerzipper.jsonnet')
 moo.otypes.load_types('trigger/moduleleveltrigger.jsonnet')
 moo.otypes.load_types('trigger/timingtriggercandidatemaker.jsonnet')
-moo.otypes.load_types('trigger/tpsetbuffercreator.jsonnet')
 moo.otypes.load_types('trigger/faketpcreatorheartbeatmaker.jsonnet')
 moo.otypes.load_types('trigger/txbuffer.jsonnet')
 moo.otypes.load_types('readoutlibs/readoutconfig.jsonnet')
@@ -23,7 +22,6 @@ import dunedaq.trigger.triggercandidatemaker as tcm
 import dunedaq.trigger.triggerzipper as tzip
 import dunedaq.trigger.moduleleveltrigger as mlt
 import dunedaq.trigger.timingtriggercandidatemaker as ttcm
-import dunedaq.trigger.tpsetbuffercreator as buf
 import dunedaq.trigger.faketpcreatorheartbeatmaker as heartbeater
 import dunedaq.trigger.txbufferconfig as bufferconf
 import dunedaq.readoutlibs.readoutconfig as readoutconf
@@ -56,6 +54,20 @@ def make_moo_record(conf_dict,name,path='temptypes'):
         fields.append(dict(name=pname,item=typename))
     moo.otypes.make_type(schema='record', fields=fields, name=name, path=path)
 
+#===============================================================================
+def get_buffer_conf(source_id, data_request_timeout):
+    return bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 100_000,
+                                                                             source_id = source_id),
+                           requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = 100_000,
+                                                                               pop_limit_pct = 0.8,
+                                                                               pop_size_pct = 0.1,
+                                                                               source_id = source_id,
+                                                                               # output_file = f"output_{idx + MIN_LINK}.out",
+                                                                               stream_buffer_size = 8388608,
+                                                                               request_timeout_ms = data_request_timeout,
+                                                                               warn_on_timeout = False,
+                                                                               enable_raw_recording = False))
+    
 #===============================================================================
 def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                     DATA_RATE_SLOWDOWN_FACTOR: float = 1,
@@ -111,24 +123,15 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
 
     # We always have a TC buffer even when there are no TPs, because we want to put the timing TC in the output file
     modules += [DAQModule(name = 'tc_buf',
-                         plugin = 'TCBuffer',
-                         conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 100_000,
-                                                                                                  source_id = TC_SOURCE_ID["source_id"]),
-                                                requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = 100_000,
-                                                                                                    pop_limit_pct = 0.8,
-                                                                                                    pop_size_pct = 0.1,
-                                                                                                    source_id = TC_SOURCE_ID["source_id"],
-                                                                                                    # output_file = f"output_{idx + MIN_LINK}.out",
-                                                                                                    stream_buffer_size = 8388608,
-                                                                                                    request_timeout_ms = DATA_REQUEST_TIMEOUT,
-                                                                                                    warn_on_timeout = False,
-                                                                                                    enable_raw_recording = False)))]
+                          plugin = 'TCBuffer',
+                          conf = get_buffer_conf(TC_SOURCE_ID["source_id"], DATA_REQUEST_TIMEOUT))]
     if USE_HSI_INPUT:
         modules += [DAQModule(name = 'tctee_ttcm',
                          plugin = 'TCTee')]
 
     
     if len(TP_SOURCE_IDS) > 0:
+        
         config_tcm =  tcm.Conf(candidate_maker=CANDIDATE_PLUGIN,
                                candidate_maker_config=temptypes.CandidateConf(**CANDIDATE_CONFIG))
 
@@ -162,7 +165,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                         DAQModule(name = f'heartbeatmaker_{link_id}',
                                   plugin = 'FakeTPCreatorHeartbeatMaker',
                                   conf = heartbeater.Conf(heartbeat_interval=ticks_per_wall_clock_s//100))]
-                    
+            
             # 1 buffer per TPG channel
             modules += [DAQModule(name = f'buf_{link_id}',
                                   plugin = 'TPBuffer',
@@ -283,16 +286,16 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
 
     if len(TP_SOURCE_IDS) > 0:
         mgraph.connect_modules("tazipper.output", "tcm.input", size_hint=1000)
+
         for tp_sid,tp_conf in TP_SOURCE_IDS.items():
-                    link_id = f'tplink{tp_sid}'
+            link_id = f'tplink{tp_sid}'
 
-                    if USE_CHANNEL_FILTER:
-                        mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', size_hint=1000)
+            if USE_CHANNEL_FILTER:
+                mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', size_hint=1000)
 
-                    mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'heartbeatmaker_{link_id}.tpset_source', size_hint=1000)
-                    mgraph.connect_modules(f'tpsettee_{link_id}.output2', f'buf_{link_id}.tpset_source', size_hint=1000)
+            mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'heartbeatmaker_{link_id}.tpset_source', size_hint=1000)
 
-                    mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{tp_conf.region_id}.input", f"{tp_conf.region_id}_tpset_q", size_hint=1000)
+            mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{tp_conf.region_id}.input", f"{tp_conf.region_id}_tpset_q", size_hint=1000)
 
         for region_id in TA_SOURCE_IDS.keys():
             mgraph.connect_modules(f'zip_{region_id}.output', f'tam_{region_id}.input', size_hint=1000)
@@ -306,7 +309,6 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
         for region_id in TA_SOURCE_IDS.keys():
             mgraph.connect_modules(f'tam_{region_id}.output',              f'tasettee_region_{region_id}.input',      size_hint=1000)
             mgraph.connect_modules(f'tasettee_region_{region_id}.output1', f'tazipper.input', "tas_to_tazipper",      size_hint=1000)
-            mgraph.connect_modules(f'tasettee_region_{region_id}.output2', f'ta_buf_region_{region_id}.taset_source', size_hint=1000)
     
     if USE_HSI_INPUT:
         mgraph.add_endpoint("hsievents", None, Direction.IN)
