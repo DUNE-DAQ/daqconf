@@ -534,7 +534,6 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
     if enable_tpset_writing:
         tpw_name=f'tpwriter'
         the_system.apps[tpw_name] = get_tpwriter_app(
-            DRO_CONFIGS = dro_infos,
             FIRMWARE_TPG_ENABLED = enable_firmware_tpg,
             OUTPUT_PATH = output_path,
             OPERATIONAL_ENVIRONMENT = op_env,
