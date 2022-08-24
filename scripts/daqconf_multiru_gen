@@ -504,7 +504,7 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
         if use_k8s:
             if use_felix:
                 the_system.apps[ru_name].resources = {
-                    "felix.cern/flx": "2", # requesting 2 FLXs
+                    "felix.cern/flx0-data": "1", # requesting FLX0
                     "memory": "32Gi" # yes bro
                 }
 
