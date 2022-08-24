@@ -178,6 +178,7 @@ def get_readout_app(RU_CONFIG=[],
                                                                                               element_id =total_link_count + idx,
                                                                                               # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                               stream_buffer_size = 100 if FRONTEND_TYPE=='pacman' else 8388608,
+                                                                                              request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                               enable_raw_recording = False)))]
 
     if FRONTEND_TYPE == 'wib' and not USE_FAKE_DATA_PRODUCERS:
@@ -420,3 +421,4 @@ def get_readout_app(RU_CONFIG=[],
         readout_app.export("readout_app.dot")
 
     return readout_app
+
