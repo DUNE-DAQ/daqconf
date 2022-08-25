@@ -482,8 +482,8 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
     ru_app_names=[]
     dqm_app_names = []
     for dro_idx,dro_config in enumerate(dro_infos):
-        host=dro_config.host.replace("-","_")
-        ru_name = f"dro_{host}_{dro_config.card}"
+        host=dro_config.host.replace("-","")
+        ru_name = f"dro{host}{dro_config.card}"
         ru_app_names.append(ru_name)
         the_system.apps[ru_name] = get_readout_app(
             HOST=dro_config.host,
