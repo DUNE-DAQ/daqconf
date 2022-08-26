@@ -26,10 +26,8 @@ from daqconf.core.conf_utils import Direction
 QUEUE_POP_WAIT_MS = 100
 
 def get_tpwriter_app(
-                     FIRMWARE_TPG_ENABLED: bool = False,
                      OUTPUT_PATH=".",
                      OPERATIONAL_ENVIRONMENT="swtest",
-                     TPC_REGION_NAME_PREFIX="APA",
                      MAX_FILE_SIZE=4*1024*1024*1024,
                      DATA_RATE_SLOWDOWN_FACTOR=1,
                      CLOCK_SPEED_HZ=50000000,
@@ -62,9 +60,8 @@ def get_tpwriter_app(
                                   digits_for_record_number = 6,
                                   digits_for_sequence_number = 0,
                                   path_param_list = h5fl.PathParamList(
-                                      [h5fl.PathParams(detector_group_type="TPC",
+                                      [h5fl.PathParams(detector_group_type="Detector_Readout",
                                                        detector_group_name="TPC",
-                                                       region_name_prefix=TPC_REGION_NAME_PREFIX,
                                                        element_name_prefix="Link")])))))]
 
     mgraph=ModuleGraph(modules)
