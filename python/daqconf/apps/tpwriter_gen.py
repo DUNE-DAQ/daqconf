@@ -31,6 +31,7 @@ def get_tpwriter_app(
                      MAX_FILE_SIZE=4*1024*1024*1024,
                      DATA_RATE_SLOWDOWN_FACTOR=1,
                      CLOCK_SPEED_HZ=50000000,
+                     HARDWARE_MAP_FILE="./HardwareMap.txt",
                      HOST="localhost",
                      DEBUG=False):
 
@@ -49,6 +50,7 @@ def get_tpwriter_app(
                               directory_path = OUTPUT_PATH,
                               max_file_size_bytes = MAX_FILE_SIZE,
                               disable_unique_filename_suffix = False,
+                              hardware_map_file=HARDWARE_MAP_FILE,
                               filename_parameters = hdf5ds.FileNameParams(
                                   overall_prefix = "tpstream",
                                   digits_for_run_number = 6,

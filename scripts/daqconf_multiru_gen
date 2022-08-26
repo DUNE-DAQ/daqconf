@@ -543,6 +543,7 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
             MAX_FILE_SIZE = tpset_output_file_size,
             DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
             CLOCK_SPEED_HZ = clock_speed_hz,
+            HARDWARE_MAP_FILE=hardware_map_file,
             HOST=host_tpw,
             DEBUG=debug)
         if use_k8s: ## TODO schema
