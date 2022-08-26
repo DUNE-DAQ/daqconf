@@ -38,7 +38,8 @@ from daqconf.core.conf_utils import Direction, data_request_endpoint_name
 QUEUE_POP_WAIT_MS = 100
 
 def get_dataflow_app(HOSTIDX=0,
-                     OUTPUT_PATH=".",
+                     OUTPUT_PATHS=["."],
+                     APP_NAME="dataflow0",
                      OPERATIONAL_ENVIRONMENT="swtest",
                      TPC_REGION_NAME_PREFIX="APA",
                      MAX_FILE_SIZE=4*1024*1024*1024,
@@ -62,14 +63,16 @@ def get_dataflow_app(HOSTIDX=0,
                                                 max_time_window=MAX_TRIGGER_RECORD_WINDOW,
                                                 source_id = HOSTIDX,
                                                 trigger_record_timeout_ms=TRB_TIMEOUT,
-                                                map=trb.mapsourceidconnections([]))), # We patch this up in connect_fragment_producers
-                DAQModule(name = 'datawriter',
+                                                map=trb.mapsourceidconnections([])))] # We patch this up in connect_fragment_producers
+                      
+    for i in range(len(OUTPUT_PATHS)):                      
+        modules += [DAQModule(name = f'datawriter_{i}',
                        plugin = 'DataWriter',
                        conf = dw.ConfParams(decision_connection=f"trigger_decision_{HOSTIDX}",
                            data_store_parameters=hdf5ds.ConfParams(
                                name="data_store",
                                operational_environment = OPERATIONAL_ENVIRONMENT,
-                               directory_path = OUTPUT_PATH,
+                               directory_path = OUTPUT_PATHS[i],
                                max_file_size_bytes = MAX_FILE_SIZE,
                                disable_unique_filename_suffix = False,
                                hardware_map_file=HARDWARE_MAP_FILE,
@@ -77,7 +80,8 @@ def get_dataflow_app(HOSTIDX=0,
                                    overall_prefix = OPERATIONAL_ENVIRONMENT,
                                    digits_for_run_number = 6,
                                    file_index_prefix = "",
-                                   digits_for_file_index = 4),
+                                   digits_for_file_index = 4,
+                                   writer_identifier = f"{APP_NAME}_datawiter_{i}"),
                                file_layout_parameters = h5fl.FileLayoutParams(
                                    record_name_prefix= "TriggerRecord",
                                    digits_for_record_number = 5,
@@ -96,11 +100,14 @@ def get_dataflow_app(HOSTIDX=0,
 
     mgraph=ModuleGraph(modules)
 
-    queue_size_based_on_number_of_sequences = max(10, int(MAX_EXPECTED_TR_SEQUENCES * TOKEN_COUNT * 1.1))
-    mgraph.connect_modules("trb.trigger_record_output", "datawriter.trigger_record_input", "trigger_records",
-                           queue_size_based_on_number_of_sequences)
     mgraph.add_endpoint(f"trigger_decision_{HOSTIDX}", "trb.trigger_decision_input", Direction.IN)
-    mgraph.add_endpoint("triginh", "datawriter.token_output", Direction.OUT, toposort=True)
+
+    queue_size_based_on_number_of_sequences = max(10, int(MAX_EXPECTED_TR_SEQUENCES * TOKEN_COUNT * 1.1))
+    for i in range(len(OUTPUT_PATHS)):
+        mgraph.connect_modules("trb.trigger_record_output", f"datawriter_{i}.trigger_record_input", "trigger_records",
+                               queue_size_based_on_number_of_sequences)
+        mgraph.add_endpoint("triginh", f"datawriter_{i}.token_output", Direction.OUT, toposort=True)
+
     if HAS_DQM:
         mgraph.add_endpoint(f"trmon_dqm2df_{HOSTIDX}", "trb.mon_connection", Direction.IN)
         mgraph.add_endpoint(f"tr_df2dqm_{HOSTIDX}", None, Direction.OUT)
