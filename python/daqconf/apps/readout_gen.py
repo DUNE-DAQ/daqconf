@@ -243,12 +243,18 @@ def get_readout_app(DRO_CONFIG=None,
         if FLX_INPUT:
             link_0 = []
             link_1 = []
+            sid_0 = []
+            sid_1 = []
             for link in DRO_CONFIG.links:
-                if link.dro_slr == 0: link_0.append(link.dro_link)
-                if link.dro_slr == 1: link_1.append(link.dro_link)
-            for idx in link_0:
+                if link.dro_slr == 0:
+                    link_0.append(link.dro_link)
+                    sid_0.append(link.dro_source_id)
+                if link.dro_slr == 1:
+                    link_1.append(link.dro_link)
+                    sid_1.append(link.dro_source_id)
+            for idx in sid_0:
                 queues += [Queue(f'flxcard_0.output_{idx}',f"datahandler_{idx}.raw_input",f'{FRONTEND_TYPE}_link_{idx}', 100000 )]
-            for idx in link_1:
+            for idx in sid_1:
                 queues += [Queue(f'flxcard_1.output_{idx}',f"datahandler_{idx}.raw_input",f'{FRONTEND_TYPE}_link_{idx}', 100000 )]
             if FIRMWARE_TPG_ENABLED:
                 link_0.append(5)
