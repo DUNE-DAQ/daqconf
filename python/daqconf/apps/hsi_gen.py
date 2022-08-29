@@ -22,16 +22,18 @@ moo.io.default_load_path = get_moo_model_path()
 # Load configuration types
 import moo.otypes
 moo.otypes.load_types('rcif/cmd.jsonnet')
-moo.otypes.load_types('timinglibs/hsireadout.jsonnet')
-moo.otypes.load_types('timinglibs/hsicontroller.jsonnet')
+moo.otypes.load_types('hsilibs/hsireadout.jsonnet')
+moo.otypes.load_types('hsilibs/hsicontroller.jsonnet')
+moo.otypes.load_types('readoutlibs/readoutconfig.jsonnet')
 
 import dunedaq.rcif.cmd as rccmd # AddressedCmd, 
-import dunedaq.timinglibs.hsireadout as hsi
-import dunedaq.timinglibs.hsicontroller as hsic
+import dunedaq.hsilibs.hsireadout as hsir
+import dunedaq.hsilibs.hsicontroller as hsic
+import dunedaq.readoutlibs.readoutconfig as rconf
 
 from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
-from daqconf.core.conf_utils import Direction
+from daqconf.core.conf_utils import Direction, Queue
 
 #===============================================================================
 def get_hsi_app(RUN_NUMBER = 333,
@@ -51,6 +53,9 @@ def get_hsi_app(RUN_NUMBER = 333,
                 TIMING_PARTITION="UNKNOWN",
                 TIMING_HOST="np04-srv-012.cern.ch",
                 TIMING_PORT=12345,
+                QUEUE_POP_WAIT_MS=10,
+                LATENCY_BUFFER_SIZE=100000,
+                DATA_REQUEST_TIMEOUT=1000,
                 HOST="localhost",
                 DEBUG=False):
     modules = {}
@@ -58,12 +63,35 @@ def get_hsi_app(RUN_NUMBER = 333,
     ## TODO all the connections...
     modules = [DAQModule(name = "hsir",
                         plugin = "HSIReadout",
-                        conf = hsi.ConfParams(connections_file=CONNECTIONS_FILE,
+                        conf = hsir.ConfParams(connections_file=CONNECTIONS_FILE,
                                             readout_period=READOUT_PERIOD_US,
                                             hsi_device_name=HSI_DEVICE_NAME,
                                             uhal_log_level=UHAL_LOG_LEVEL,
                                             hsievent_connection_name = "hsievents"))]
     
+    region_id=0
+    element_id=0
+
+    modules += [DAQModule(name = f"hsi_datahandler",
+                        plugin = "HSIDataLinkHandler",
+                        conf = rconf.Conf(readoutmodelconf = rconf.ReadoutModelConf(source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
+                                                                                     region_id = region_id,
+                                                                                     element_id = element_id),
+                                             latencybufferconf = rconf.LatencyBufferConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
+                                                                                        region_id = region_id,
+                                                                                        element_id = element_id),
+                                             rawdataprocessorconf = rconf.RawDataProcessorConf(region_id = region_id,
+                                                                                               element_id = element_id),
+                                             requesthandlerconf= rconf.RequestHandlerConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
+                                                                                          pop_limit_pct = 0.8,
+                                                                                          pop_size_pct = 0.1,
+                                                                                          region_id = region_id,
+                                                                                          element_id = element_id,
+                                                                                          # output_file = f"output_{idx + MIN_LINK}.out",
+                                                                                          request_timeout_ms = DATA_REQUEST_TIMEOUT,
+                                                                                          enable_raw_recording = False)
+                                             ))]
+
     trigger_interval_ticks=0
     if TRIGGER_RATE_HZ > 0:
         trigger_interval_ticks=math.floor((1/TRIGGER_RATE_HZ) * CLOCK_SPEED_HZ)
@@ -89,7 +117,15 @@ def get_hsi_app(RUN_NUMBER = 333,
                                 extra_commands = {"start": startpars}),
                         ] )
     
-    mgraph = ModuleGraph(modules)
+    queues = [Queue(f"hsir.output",f"hsi_datahandler.raw_input",f'hsi_link_0', 100000)]
+
+    mgraph = ModuleGraph(modules, queues=queues)
+    
+    mgraph.add_fragment_producer(region = region_id, element = element_id, system = "HSI",
+                                         requests_in   = f"hsi_datahandler.request_input",
+                                         fragments_out = f"hsi_datahandler.fragment_queue")
+    mgraph.add_endpoint(f"timesync_hsi", f"hsi_datahandler.timesync_output",    Direction.OUT, ["Timesync"], toposort=False)
+
     
     if CONTROL_HSI_HARDWARE:
         mgraph.add_external_connection("timing_cmds", "hsic.timing_cmds", Direction.OUT, TIMING_HOST, TIMING_PORT)
