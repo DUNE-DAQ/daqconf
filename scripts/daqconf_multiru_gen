@@ -126,7 +126,7 @@ class ConfigSectionSchema(object):
     @matches_section("dataflow.*")
     class DataflowApp(SectionSchema):
         token_count = Param(type=int, default=10)
-        output_path = Param(type=click.Path(), default='.')
+        output_paths = Param(multiple=True, default=['.'])
         host_df = Param(default='localhost')
         max_file_size = Param( default=4*1024*1024*1024, help="The size threshold when raw data files are closed (in bytes)")
         max_trigger_record_window = Param( default=0, help="The maximum size for the window of data that will included in a single TriggerRecord (in ticks). Readout windows that are longer than this size will result in TriggerRecords being split into a sequence of TRs. A zero value for this parameter means no splitting.")
@@ -565,7 +565,8 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
         sourceid_broker.register_source_id("TRBuilder", dfidx, None)
         the_system.apps[app_name] = get_dataflow_app(
             HOSTIDX=dfidx,
-            OUTPUT_PATH = df_config["output_path"],
+            OUTPUT_PATHS = df_config["output_paths"],
+            APP_NAME=app_name,
             OPERATIONAL_ENVIRONMENT = op_env,
             MAX_FILE_SIZE = df_config["max_file_size"],
             MAX_TRIGGER_RECORD_WINDOW = df_config["max_trigger_record_window"],
@@ -580,8 +581,8 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
         if use_k8s:
             the_system.apps[app_name].mounted_dirs += [{
                 'name': 'raw-data',
-                'physical_location':df_config["output_path"],
-                'in_pod_location':df_config["output_path"],
+                'physical_location':df_config["output_paths"],
+                'in_pod_location':df_config["output_paths"],
                 'read_only': False,
             }]
 
