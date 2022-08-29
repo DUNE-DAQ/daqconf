@@ -112,6 +112,7 @@ class ConfigSectionSchema(object):
         hsi_trigger_type_passthrough = Param( type=bool, default=False, help="Option to override trigger type in the MLT")
         enable_tpset_writing = Param( type=bool, default=False, help="Enable the writing of TPs to disk (only works with enable_software_tpg")
         tpset_output_path = Param(default='.', type=click.Path(), help="Output directory for TPSet stream files")
+        tpset_output_file_size = Param(default=4*1024*1024*1024, help="The size threshold when TPSet stream files are closed (in bytes)")
         tpg_channel_map = Param( type=click.Choice(["VDColdboxChannelMap", "ProtoDUNESP1ChannelMap", "PD2HDChannelMap", "HDColdboxChannelMap"]), default="ProtoDUNESP1ChannelMap", help="Channel map for software TPG")
         mlt_buffer_timeout = Param( default=100, help="Timeout (buffer) to wait for new overlapping TCs before sending TD")
         mlt_send_timed_out_tds = Param( type=bool, default=False, help="Option to drop TD if TC comes out of timeout window")
@@ -483,7 +484,7 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
     dqm_app_names = []
     for dro_idx,dro_config in enumerate(dro_infos):
         host=dro_config.host.replace("-","")
-        ru_name = f"dro{host}{dro_config.card}"
+        ru_name = f"ru{host}{dro_config.card}"
         ru_app_names.append(ru_name)
         the_system.apps[ru_name] = get_readout_app(
             HOST=dro_config.host,
@@ -537,12 +538,12 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
     if enable_tpset_writing:
         tpw_name=f'tpwriter'
         the_system.apps[tpw_name] = get_tpwriter_app(
-            FIRMWARE_TPG_ENABLED = enable_firmware_tpg,
-            OUTPUT_PATH = output_path,
+            OUTPUT_PATH = tpset_output_path,
             OPERATIONAL_ENVIRONMENT = op_env,
-            MAX_FILE_SIZE = max_file_size,
+            MAX_FILE_SIZE = tpset_output_file_size,
             DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
             CLOCK_SPEED_HZ = clock_speed_hz,
+            HARDWARE_MAP_FILE=hardware_map_file,
             HOST=host_tpw,
             DEBUG=debug)
         if use_k8s: ## TODO schema
