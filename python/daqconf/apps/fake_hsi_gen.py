@@ -22,7 +22,7 @@ moo.otypes.load_types('rcif/cmd.jsonnet')
 moo.otypes.load_types('appfwk/cmd.jsonnet')
 moo.otypes.load_types('appfwk/app.jsonnet')
 
-moo.otypes.load_types('timinglibs/fakehsieventgenerator.jsonnet')
+moo.otypes.load_types('hsilibs/fakehsieventgenerator.jsonnet')
 moo.otypes.load_types('readoutlibs/readoutconfig.jsonnet')
 
 # Import new types
@@ -30,7 +30,7 @@ import dunedaq.cmdlib.cmd as basecmd # AddressedCmd,
 import dunedaq.rcif.cmd as rccmd # AddressedCmd,
 import dunedaq.appfwk.cmd as cmd # AddressedCmd,
 import dunedaq.appfwk.app as app # AddressedCmd,
-import dunedaq.timinglibs.fakehsieventgenerator as fhsig
+import dunedaq.hsilibs.fakehsieventgenerator as fhsig
 import dunedaq.readoutlibs.readoutconfig as rconf
 
 from appfwk.utils import acmd, mcmd, mrccmd, mspec
@@ -46,7 +46,7 @@ def get_fake_hsi_app(RUN_NUMBER=333,
                      CLOCK_SPEED_HZ: int=50000000,
                      DATA_RATE_SLOWDOWN_FACTOR: int=1,
                      TRIGGER_RATE_HZ: int=1,
-                     HSI_DEVICE_ID: int=0,
+                     HSI_SOURCE_ID: int=0,
                      MEAN_SIGNAL_MULTIPLICITY: int=0,
                      SIGNAL_EMULATION_MODE: int=0,
                      ENABLED_SIGNALS: int=0b00000001,
@@ -80,18 +80,14 @@ def get_fake_hsi_app(RUN_NUMBER=333,
     modules += [DAQModule(name = f"hsi_datahandler",
                         plugin = "HSIDataLinkHandler",
                         conf = rconf.Conf(readoutmodelconf = rconf.ReadoutModelConf(source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
-                                                                                     region_id = region_id,
-                                                                                     element_id = element_id),
+                                                                                     source_id=HSI_SOURCE_ID),
                                              latencybufferconf = rconf.LatencyBufferConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
-                                                                                        region_id = region_id,
-                                                                                        element_id = element_id),
-                                             rawdataprocessorconf = rconf.RawDataProcessorConf(region_id = region_id,
-                                                                                               element_id = element_id),
+                                                                                        source_id=HSI_SOURCE_ID),
+                                             rawdataprocessorconf = rconf.RawDataProcessorConf(source_id=HSI_SOURCE_ID),
                                              requesthandlerconf= rconf.RequestHandlerConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
                                                                                           pop_limit_pct = 0.8,
                                                                                           pop_size_pct = 0.1,
-                                                                                          region_id = region_id,
-                                                                                          element_id = element_id,
+                                                                                          source_id=HSI_SOURCE_ID,
                                                                                           # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                           request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                           enable_raw_recording = False)
@@ -101,7 +97,7 @@ def get_fake_hsi_app(RUN_NUMBER=333,
 
     mgraph = ModuleGraph(modules, queues=queues)
     
-    mgraph.add_fragment_producer(region = region_id, element = element_id, system = "HSI",
+    mgraph.add_fragment_producer(id = HSI_SOURCE_ID, subsystem = "HW_Signals_Interface",
                                          requests_in   = f"hsi_datahandler.request_input",
                                          fragments_out = f"hsi_datahandler.fragment_queue")
     mgraph.add_endpoint(f"timesync_hsi", f"hsi_datahandler.timesync_output",    Direction.OUT, ["Timesync"], toposort=False)

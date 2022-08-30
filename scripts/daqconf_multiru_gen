@@ -404,6 +404,8 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
     trigger_record_building_timeout += 15 * TRB_TIMEOUT_SAFETY_FACTOR * max_expected_tr_sequences
     dfo_stop_timeout = max(DFO_TIMEOUT_SAFETY_FACTOR * trigger_record_building_timeout, MINIMUM_DFO_TIMEOUT)
 
+    hsi_source_id = sourceid_broker.get_next_source_id("HW_Signals_Interface")
+    sourceid_broker.register_source_id(hsi_source_id, "HW_Signals_Interface", None)
     if use_hsi_hw:
         the_system.apps["hsi"] = get_hsi_app(
             CLOCK_SPEED_HZ = clock_speed_hz,
@@ -418,6 +420,7 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
             HSI_FE_MASK=hsi_fe_mask,
             HSI_INV_MASK=hsi_inv_mask,
             HSI_SOURCE=hsi_source,
+            HSI_SOURCE_ID=hsi_source_id,
             TIMING_PARTITION=timing_partition_name,
             TIMING_HOST=host_timing,
             TIMING_PORT=port_timing,
@@ -428,7 +431,7 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
             CLOCK_SPEED_HZ = clock_speed_hz,
             DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
             TRIGGER_RATE_HZ = trigger_rate_hz,
-            HSI_DEVICE_ID = hsi_device_id,
+            HSI_SOURCE_ID=hsi_source_id,
             MEAN_SIGNAL_MULTIPLICITY = mean_hsi_signal_multiplicity,
             SIGNAL_EMULATION_MODE = hsi_signal_emulation_mode,
             ENABLED_SIGNALS =  enabled_hsi_signals,
