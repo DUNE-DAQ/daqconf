@@ -90,8 +90,7 @@ class Queue:
     def __repr__(self):
         return self.name
 
-GeoID = namedtuple('GeoID', ['system', 'region', 'element'])
-FragmentProducer = namedtuple('FragmentProducer', ['geoid', 'requests_in', 'fragments_out', 'queue_name'])
+FragmentProducer = namedtuple('FragmentProducer', ['source_id', 'requests_in', 'fragments_out', 'queue_name', 'is_mlt_producer'])
 
 
 Publisher = namedtuple(
@@ -470,10 +469,6 @@ def make_app_command_data(system, app, appkey, verbose=False, use_k8s=False):
     # TODO: handle modules' `extra_commands`, including "record"
 
     return command_data
-
-def geoid_raw_str(geoid):
-    """Get a string representation of a GeoID suitable for using in queue names"""
-    return f"geoid{geoid.system}_{geoid.region}_{geoid.element}"
 
 def data_request_endpoint_name(producer):
     return f"data_request_{geoid_raw_str(producer.geoid)}"

@@ -1,5 +1,6 @@
 from daqconf.core.daqmodule import DAQModule
-from daqconf.core.conf_utils import Endpoint, Direction, GeoID, FragmentProducer, Queue, ExternalConnection
+from daqconf.core.conf_utils import Endpoint, Direction, FragmentProducer, Queue, ExternalConnection
+from daqconf.core.sourceid import SourceID, ensure_subsystem
 import networkx as nx
 
 class ModuleGraph:
@@ -209,15 +210,15 @@ class ModuleGraph:
             return [ e[0] for e in self.endpoints.items() if e[1].inout==inout ]
         return self.endpoints.keys()
 
-    def add_fragment_producer(self, system, region, element, requests_in, fragments_out):
-        geoid = GeoID(system, region, element)
-        if geoid in self.fragment_producers:
-            raise ValueError(f"There is already a fragment producer for GeoID {geoid}")
+    def add_fragment_producer(self, subsystem, id, requests_in, fragments_out, is_mlt_producer=True):
+        source_id = SourceID(ensure_subsystem(subsystem), id)
+        if source_id in self.fragment_producers:
+            raise ValueError(f"There is already a fragment producer for SourceID {source_id}")
         # Can't set queue_name here, because the queue names need to be unique system-wide,
         # but we're inside a particular app here. Instead, we create the queue names in readout_gen.generate,
         # where all of the fragment producers are known
         queue_name = None
-        self.fragment_producers[geoid] = FragmentProducer(geoid, requests_in, fragments_out, queue_name)
+        self.fragment_producers[source_id] = FragmentProducer(source_id, requests_in, fragments_out, queue_name, is_mlt_producer)
 
 class App:
     """

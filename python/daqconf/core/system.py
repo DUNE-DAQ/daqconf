@@ -36,9 +36,9 @@ class System:
         for app in self.apps.values():
             producers = app.modulegraph.fragment_producers
             for producer in producers.values():
-                if producer.geoid in all_geoids:
-                    raise ValueError(f"GeoID {producer.geoid} has multiple fragment producers")
-                all_geoids.add(producer.geoid)
+                if producer.source_id in all_geoids:
+                    raise ValueError(f"SourceID {producer.source_id} has multiple fragment producers")
+                all_geoids.add(producer.source_id)
                 all_producers.append(producer)
         return all_producers
 

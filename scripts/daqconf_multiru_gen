@@ -10,11 +10,11 @@ from collections import defaultdict
 from os.path import exists, join
 from daqconf.core.system import System
 from daqconf.core.metadata import write_metadata_file
+from daqconf.core.sourceid import *
 import random
 import string
 
-# Add -h as default help option
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+from detchannelmaps._daq_detchannelmaps_py import *
 
 console = Console()
 
@@ -26,123 +26,187 @@ moo.io.default_load_path = get_moo_model_path()
 # Load configuration types
 import moo.otypes
 
-
+from click_configfile import ConfigFileReader, Param, SectionSchema
+from click_configfile import matches_section
 import click
 
+class ConfigSectionSchema(object):
+    """Describes all config sections of this configuration file."""
+
+    @matches_section("daqconf")
+    class Daqconf(SectionSchema):
+        base_command_port = Param(type=int, default=3333, help="Base port of application command endpoints")
+        disable_trace = Param( type=bool, default=False, help="Do not enable TRACE (default TRACE_FILE is /tmp/trace_buffer_\${HOSTNAME}_\${USER})")
+        opmon_impl = Param( type=click.Choice(['json','cern','pocket'], case_sensitive=False),default='json', help="Info collector service implementation to use")
+        ers_impl = Param( type=click.Choice(['local','cern','pocket'], case_sensitive=False), default='local', help="ERS destination (Kafka used for cern and pocket)")
+        pocket_url = Param( default='127.0.0.1', help="URL for connecting to Pocket services")
+        image = Param( default="", type=str, help="Which docker image to use")
+        use_k8s = Param( type=bool, default=False, help="Whether to use k8s")
+        op_env = Param( default='swtest', help="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files")
+        data_request_timeout_ms = Param( default=1000, help="The baseline data request timeout that will be used by modules in the Readout and Trigger subsystems (i.e. any module that produces data fragments). Downstream timeouts, such as the trigger-record-building timeout, are derived from this.")
+
+    @matches_section("timing")
+    class Timing(SectionSchema):
+        timing_partition_name = Param(default="timing", help="Name of the global partition to use, for ERS and OPMON and timing commands")
+        host_timing = Param( default='np04-srv-012.cern.ch', help='Host to run the (global) timing hardware interface app on')
+        port_timing = Param( default=12345, help='Port to host running the (global) timing hardware interface app on')
+        host_hsi = Param( default='localhost', help='Host to run the HSI app on')
+        host_tprtc = Param( default='localhost', help='Host to run the timing partition controller app on')
+        # hsi readout options
+        hsi_hw_connections_file = Param( default="${TIMING_SHARE}/config/etc/connections.xml", help='Real timing hardware only: path to hardware connections file')
+        hsi_device_name = Param( default="", help='Real HSI hardware only: device name of HSI hw')
+        hsi_readout_period = Param( default=1e3, help='Real HSI hardware only: Period between HSI hardware polling [us]')
+        # hw hsi options
+        control_hsi_hw = Param( type=bool, default=False, help='Flag to control whether we are controlling hsi hardware')
+        hsi_endpoint_address = Param( default=1, help='Timing address of HSI endpoint')
+        hsi_endpoint_partition = Param( default=0, help='Timing partition of HSI endpoint')
+        hsi_re_mask = Param( default=0x0, help='Rising-edge trigger mask')
+        hsi_fe_mask = Param( default=0x0, help='Falling-edge trigger mask')
+        hsi_inv_mask = Param( default=0x0, help='Invert-edge mask')
+        hsi_source = Param( default=0x1, help='HSI signal source; 0 - hardware, 1 - emulation (trigger timestamp bits)')
+        # fake hsi options
+        use_hsi_hw = Param( type=bool, default=False, help='Flag to control whether fake or real hardware HSI config is generated. Default is fake')
+        hsi_device_id = Param( default=0, help='Fake HSI only: device ID of fake HSIEvents')
+        mean_hsi_signal_multiplicity = Param( default=1, help='Fake HSI only: rate of individual HSI signals in emulation mode 1')
+        hsi_signal_emulation_mode = Param( default=0, help='Fake HSI only: HSI signal emulation mode')
+        enabled_hsi_signals = Param( default=0b00000001, help='Fake HSI only: bit mask of enabled fake HSI signals')
+        # timing hw partition options
+        control_timing_partition = Param( type=bool, default=False, help='Flag to control whether we are controlling timing partition in master hardware')
+        timing_partition_master_device_name = Param( default="", help='Timing partition master hardware device name')
+        timing_partition_id = Param( default=0, help='Timing partition id')
+        timing_partition_trigger_mask = Param( default=0xff, help='Timing partition trigger mask')
+        timing_partition_rate_control_enabled = Param( default=False, help='Timing partition rate control enabled')
+        timing_partition_spill_gate_enabled = Param( default=False, help='Timing partition spill gate enabled')
+
+    @matches_section("readout")
+    class Readout(SectionSchema):
+        hardware_map_file = Param( default='./HardwareMap.txt', help="File containing detector hardware map for configuration to run")
+        emulator_mode = Param( type=bool, default=False, help="If active, timestamps of data frames are overwritten when processed by the readout. This is necessary if the felix card does not set correct timestamps.")
+        thread_pinning_file = Param( default="", type=click.Path(exists=True), help="A thread pinning configuration file that gets executed after conf.")
+        data_rate_slowdown_factor = Param( default=1)
+        clock_speed_hz = Param( type=int, default=50000000)
+        data_file = Param( type=click.Path(), default='./frames.bin', help="File containing data frames to be replayed by the fake cards")
+        use_felix = Param( type=bool, default=False, help="Use real felix cards instead of fake ones")
+        latency_buffer_size = Param( default=499968, help="Size of the latency buffers (in number of elements)")
+        enable_software_tpg = Param( type=bool, default=False, help="Enable software TPG")
+        enable_firmware_tpg = Param( type=bool, default=False, help="Enable firmware TPG")
+        enable_raw_recording = Param( type=bool, default=False, help="Add queues and modules necessary for the record command")
+        raw_recording_output_dir = Param( type=click.Path(), default='.', help="Output directory where recorded data is written to. Data for each link is written to a separate file")
+        use_fake_data_producers = Param( type=bool, default=False, help="Use fake data producers that respond with empty fragments immediately instead of (fake) cards and DLHs")
+        readout_sends_tp_fragments = Param(type=bool, default=False, help="Send TP Fragments from Readout to Dataflow (via enabling TP Fragment links in MLT)")
+
+    @matches_section("trigger")
+    class Trigger(SectionSchema):
+        trigger_rate_hz = Param( default=1.0, help='Fake HSI only: rate at which fake HSIEvents are sent. 0 - disable HSIEvent generation.')
+        trigger_window_before_ticks = Param( default=1000)
+        trigger_window_after_ticks = Param( default=1000)
+        host_trigger = Param( default='localhost', help='Host to run the trigger app on')
+        host_tpw = Param( default='localhost', help='Host to run the TPWriter app on')
+        # trigger options
+        ttcm_s1 = Param( default=1, help="Timing trigger candidate maker accepted HSI signal ID 1")
+        ttcm_s2 = Param( default=2, help="Timing trigger candidate maker accepted HSI signal ID 2")
+        trigger_activity_plugin = Param( default='TriggerActivityMakerPrescalePlugin', help="Trigger activity algorithm plugin")
+        trigger_activity_config = Param( default='dict(prescale=100)', help="Trigger activity algorithm config (string containing python dictionary)")
+        trigger_candidate_plugin = Param( default='TriggerCandidateMakerPrescalePlugin', help="Trigger candidate algorithm plugin")
+        trigger_candidate_config = Param( default='dict(prescale=100)', help="Trigger candidate algorithm config (string containing python dictionary)")
+        hsi_trigger_type_passthrough = Param( type=bool, default=False, help="Option to override trigger type in the MLT")
+        enable_tpset_writing = Param( type=bool, default=False, help="Enable the writing of TPs to disk (only works with enable_software_tpg or enable_firmware_tpg)")
+        tpset_output_path = Param(default='.', type=click.Path(), help="Output directory for TPSet stream files")
+        tpset_output_file_size = Param(default=4*1024*1024*1024, help="The size threshold when TPSet stream files are closed (in bytes)")
+        tpg_channel_map = Param( type=click.Choice(["VDColdboxChannelMap", "ProtoDUNESP1ChannelMap", "PD2HDChannelMap", "HDColdboxChannelMap"]), default="ProtoDUNESP1ChannelMap", help="Channel map for software TPG")
+        mlt_buffer_timeout = Param( default=100, help="Timeout (buffer) to wait for new overlapping TCs before sending TD")
+        mlt_send_timed_out_tds = Param( type=bool, default=False, help="Option to drop TD if TC comes out of timeout window")
+        mlt_max_td_length_ms = Param(default=1000, help="Maximum allowed time length [ms] for a readout window of a single TD")
+
+
+    @matches_section("dataflow")
+    class DataflowConfig(SectionSchema):
+        host_dfo = Param(default='localhost', help="Sets the host for the DFO app")
+
+    @matches_section("dataflow.*")
+    class DataflowApp(SectionSchema):
+        token_count = Param(type=int, default=10)
+        output_paths = Param(multiple=True, default=['.'])
+        host_df = Param(default='localhost')
+        max_file_size = Param( default=4*1024*1024*1024, help="The size threshold when raw data files are closed (in bytes)")
+        max_trigger_record_window = Param( default=0, help="The maximum size for the window of data that will included in a single TriggerRecord (in ticks). Readout windows that are longer than this size will result in TriggerRecords being split into a sequence of TRs. A zero value for this parameter means no splitting.")
+
+    @matches_section("dqm")
+    class DQMConfig(SectionSchema):
+        enable_dqm = Param( type=bool, default=False, help="Enable Data Quality Monitoring")
+        dqm_impl = Param( type=click.Choice(['local','cern','pocket'], case_sensitive=False), default='local', help="DQM destination (Kafka used for cern and pocket)")
+        dqm_cmap = Param( type=click.Choice(['HD', 'VD', 'PD2HD', 'HDCB']), default='HD', help="Which channel map to use for DQM")
+        host_dqm = Param( multiple=True, default=['localhost'], help='Host(s) to run the DQM app on')
+        dqm_rawdisplay_params = Param( multiple=True, default=[60, 50], help="Parameters that control the data sent for the raw display plot")
+        dqm_meanrms_params = Param( multiple=True, default=[10, 100], help="Parameters that control the data sent for the mean/rms plot")
+        dqm_fourier_params = Param( multiple=True, default=[0, 0], help="Parameters that control the data sent for the fourier transform plot")
+        dqm_fouriersum_params = Param( multiple=True, default=[600, 1000], help="Parameters that control the data sent for the summed fourier transform plot")
+        dqm_df_rate = Param( default=10, help='How many seconds between requests to DF for Trigger Records')
+        dqm_df_algs = Param( default='hist mean_rms fourier_sum', help='Algorithms to be run on Trigger Records from DF (use quotes)')
+
+class ConfigFileProcessor(ConfigFileReader):
+    config_files = ["default.ini"]
+    config_searchpath = ['.']
+    config_section_schemas = [
+        ConfigSectionSchema.Daqconf,     # PRIMARY SCHEMA
+        ConfigSectionSchema.Timing,
+        ConfigSectionSchema.Readout,
+        ConfigSectionSchema.Trigger,
+        ConfigSectionSchema.DataflowConfig,
+        ConfigSectionSchema.DataflowApp,
+        ConfigSectionSchema.DQMConfig
+    ]
+
+    def read_file(self, filename):
+        path,delim,name = filename.rpartition('/')
+        ConfigFileProcessor.config_searchpath = [path]
+        ConfigFileProcessor.config_files=[name]
+        console.log(f"Reading config file {filename}")
+        output_dict = ConfigFileProcessor.read_config()
+        output_dict["config_file"] = filename
+        return output_dict
+
+    @classmethod
+    def get_storage_name_for(cls, section_name):
+        if section_name == "daqconf" or section_name =="timing" or section_name  == "readout" or section_name == "trigger" or section_name == "dataflow" or section_name == "dqm":
+            return ""   # -- MERGE-INTO-STORAGE
+        return ConfigFileReader.get_storage_name_for(section_name)
+
+def configure(ctx, param, filename):
+    cfg = ConfigFileProcessor().read_file(filename)
+    for key in cfg:
+        ctx.default_map[key]  =cfg[key]
+
+# Add -h as default help option
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'], default_map=ConfigFileProcessor.read_config())
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.option('--timing-partition-name', default="timing", help="Name of the global partition to use, for ERS and OPMON and timing commands")
-@click.option('--host-timing', default='np04-srv-012.cern.ch', help='Host to run the (global) timing hardware interface app on')
-@click.option('--port-timing', default=12345, help='Port to host running the (global) timing hardware interface app on')
+@click.option(
+    '-c', '--config',
+    type         = click.Path(dir_okay=False),
+    default      = os.path.join(os.path.dirname(os.path.realpath(__file__)),"daqconf.ini"),
+    callback     = configure,
+    is_eager     = True,
+    expose_value = False,
+    help         = 'Read option defaults from the specified INI file',
+    show_default = True,
+)
 @click.option('--base-command-port', type=int, default=3333, help="Base port of application command endpoints")
-@click.option('-n', '--number-of-data-producers', default=2, help="Number of links to use for each readout application")
-@click.option('-e', '--emulator-mode', is_flag=True, help="If active, timestamps of data frames are overwritten when processed by the readout. This is necessary if the felix card does not set correct timestamps.")
-@click.option('--thread-pinning-file', default=None, type=click.Path(exists=True), help="A thread pinning configuration file that gets executed after conf.")
-@click.option('-s', '--data-rate-slowdown-factor', default=1)
-@click.option('-r', '--run-number', default=333)
-@click.option('--clock-speed-hz', type=int, default=50000000)
+@click.option('--hardware-map-file', default='./HardwareMap.txt', help="File containing detector hardware map for configuration to run")
+@click.option('--data-rate-slowdown-factor', default=1)
 @click.option('-t', '--trigger-rate-hz', default=1.0, help='Fake HSI only: rate at which fake HSIEvents are sent. 0 - disable HSIEvent generation.')
-@click.option('-b', '--trigger-window-before-ticks', default=1000)
-@click.option('-a', '--trigger-window-after-ticks', default=1000)
-@click.option('-c', '--token-count', default=10)
-@click.option('-d', '--data-file', type=click.Path(), default='./frames.bin', help="File containing data frames to be replayed by the fake cards")
-@click.option('-o', '--output-path', type=click.Path(), default='.')
-@click.option('--disable-trace', is_flag=True, help="Do not enable TRACE (default TRACE_FILE is /tmp/trace_buffer_\${HOSTNAME}_\${USER})")
 @click.option('-f', '--use-felix', is_flag=True, help="Use real felix cards instead of fake ones")
-@click.option('--use-ssp', is_flag=True, help="Use real SSPs instead of fake sources")
-
-@click.option('--host-df', multiple=True, default=['localhost'], help="This option is repeatable, with each repetition adding another dataflow app.")
-@click.option('--host-dfo', default='localhost', help="Sets the host for the DFO app")
-@click.option('--host-ru', multiple=True, default=['localhost'], help="This option is repeatable, with each repetition adding an additional ru process.")
-@click.option('--host-trigger', default='localhost', help='Host to run the trigger app on')
-@click.option('--host-hsi', default='localhost', help='Host to run the HSI app on')
-@click.option('--host-tpw', default='localhost', help='Host to run the TPWriter app on')
-@click.option('--host-tprtc', default='localhost', help='Host to run the timing partition controller app on')
-@click.option('--host-dqm', multiple=True, default=['localhost'], help='Host to run the DQM aps on')
-@click.option('--region-id', multiple=True, default=[], help="Define the Region IDs for the RUs. If not specified, each RU will be assigned a Region ID based on declared order.")
-@click.option('--latency-buffer-size', default=499968, help="Size of the latency buffers (in number of elements)")
-# hsi readout options
-@click.option('--hsi-hw-connections-file', default="${TIMING_SHARE}/config/etc/connections.xml", help='Real timing hardware only: path to hardware connections file')
-@click.option('--hsi-device-name', default="", help='Real HSI hardware only: device name of HSI hw')
-@click.option('--hsi-readout-period', default=1e3, help='Real HSI hardware only: Period between HSI hardware polling [us]')
-# hw hsi options
-@click.option('--control-hsi-hw', is_flag=True, default=False, help='Flag to control whether we are controlling hsi hardware')
-@click.option('--hsi-endpoint-address', default=1, help='Timing address of HSI endpoint')
-@click.option('--hsi-endpoint-partition', default=0, help='Timing partition of HSI endpoint')
-@click.option('--hsi-re-mask', default=0x0, help='Rising-edge trigger mask')
-@click.option('--hsi-fe-mask', default=0x0, help='Falling-edge trigger mask')
-@click.option('--hsi-inv-mask', default=0x0, help='Invert-edge mask')
-@click.option('--hsi-source', default=0x1, help='HSI signal source; 0 - hardware, 1 - emulation (trigger timestamp bits)')
-# fake hsi options
-@click.option('--use-hsi-hw', is_flag=True, default=False, help='Flag to control whether fake or real hardware HSI config is generated. Default is fake')
-@click.option('--hsi-device-id', default=0, help='Fake HSI only: device ID of fake HSIEvents')
-@click.option('--mean-hsi-signal-multiplicity', default=1, help='Fake HSI only: rate of individual HSI signals in emulation mode 1')
-@click.option('--hsi-signal-emulation-mode', default=0, help='Fake HSI only: HSI signal emulation mode')
-@click.option('--enabled-hsi-signals', default=0b00000001, help='Fake HSI only: bit mask of enabled fake HSI signals')
-# trigger options
-@click.option('--ttcm-s1', default=1, help="Timing trigger candidate maker accepted HSI signal ID 1")
-@click.option('--ttcm-s2', default=2, help="Timing trigger candidate maker accepted HSI signal ID 2")
-@click.option('--trigger-activity-plugin', default='TriggerActivityMakerPrescalePlugin', help="Trigger activity algorithm plugin")
-@click.option('--trigger-activity-config', default='dict(prescale=100)', help="Trigger activity algorithm config (string containing python dictionary)")
-@click.option('--trigger-candidate-plugin', default='TriggerCandidateMakerPrescalePlugin', help="Trigger candidate algorithm plugin")
-@click.option('--trigger-candidate-config', default='dict(prescale=100)', help="Trigger candidate algorithm config (string containing python dictionary)")
-@click.option('--hsi-trigger-type-passthrough', is_flag=True, default=False, help="Option to override trigger type in the MLT")
-@click.option('--mlt-buffer-timeout', default=100, help="Timeout (buffer) to wait for new overlapping TCs before sending TD")
-@click.option('--mlt-send-timed-out-tds', is_flag=True, default=False, help="Option to drop TD if TC comes out of timeout window")
-@click.option('--mlt-max-td-length-ms', default=1000, help="Maximum allowed time length [ms] for a readout window of a single TD")
-
-# timing hw partition options
-@click.option('--control-timing-partition', is_flag=True, default=False, help='Flag to control whether we are controlling timing partition in master hardware')
-@click.option('--timing-partition-master-device-name', default="", help='Timing partition master hardware device name')
-@click.option('--timing-partition-id', default=0, help='Timing partition id')
-@click.option('--timing-partition-trigger-mask', default=0xff, help='Timing partition trigger mask')
-@click.option('--timing-partition-rate-control-enabled', default=False, help='Timing partition rate control enabled')
-@click.option('--timing-partition-spill-gate-enabled', default=False, help='Timing partition spill gate enabled')
-
-@click.option('--enable-raw-recording', is_flag=True, help="Add queues and modules necessary for the record command")
-@click.option('--raw-recording-output-dir', type=click.Path(), default='.', help="Output directory where recorded data is written to. Data for each link is written to a separate file")
-@click.option('--frontend-type', type=click.Choice(['wib', 'wib2', 'pds_queue', 'pds_list', 'pacman', 'ssp', 'tde']), default='wib', help="Frontend type (wib, wib2, tde or pds) and latency buffer implementation in case of pds (folly queue or skip list)")
-@click.option('--enable-dqm', is_flag=True, help="Enable Data Quality Monitoring")
-@click.option('--opmon-impl', type=click.Choice(['json','cern','pocket'], case_sensitive=False),default='json', help="Info collector service implementation to use")
-@click.option('--ers-impl', type=click.Choice(['local','cern','pocket'], case_sensitive=False), default='local', help="ERS destination (Kafka used for cern and pocket)")
-@click.option('--dqm-impl', type=click.Choice(['local','cern','pocket'], case_sensitive=False), default='local', help="DQM destination (Kafka used for cern and pocket)")
-@click.option('--pocket-url', default='127.0.0.1', help="URL for connecting to Pocket services")
-@click.option('--enable-software-tpg', is_flag=True, default=False, help="Enable software TPG")
-@click.option('--enable-firmware-tpg', is_flag=True, default=False, help="Enable firmware TPG")
-@click.option('--tpg-channel-map', type=click.Choice(["VDColdboxChannelMap", "ProtoDUNESP1ChannelMap", "PD2HDChannelMap", "HDColdboxChannelMap"]), default="ProtoDUNESP1ChannelMap", help="Channel map for software TPG")
-@click.option('--enable-tpset-writing', is_flag=True, default=False, help="Enable the writing of TPs to disk (only works with --enable-software-tpg")
-@click.option('--use-fake-data-producers', is_flag=True, default=False, help="Use fake data producers that respond with empty fragments immediately instead of (fake) cards and DLHs")
-@click.option('--dqm-cmap', type=click.Choice(['HD', 'VD', 'PD2HD', 'HDCB']), default='HD', help="Which channel map to use for DQM")
-@click.option('--dqm-rawdisplay-params', nargs=2, default=[60, 50], help="Parameters that control the data sent for the raw display plot")
-@click.option('--dqm-meanrms-params', nargs=2, default=[10, 100], help="Parameters that control the data sent for the mean/rms plot")
-@click.option('--dqm-fourier-params', nargs=2, default=[0, 0], help="Parameters that control the data sent for the fourier transform plot")
-@click.option('--dqm-fouriersum-params', nargs=2, default=[600, 1000], help="Parameters that control the data sent for the summed fourier transform plot")
-@click.option('--dqm-df-rate', nargs=1, default=10, help='How many seconds between requests to DF for Trigger Records')
-@click.option('--dqm-df-algs', nargs=1, default='hist mean_rms fourier_sum', help='Algorithms to be run on Trigger Records from DF (use quotes)')
 @click.option('--op-env', default='swtest', help="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files")
-@click.option('--tpc-region-name-prefix', default='APA', help="Prefix to be used for the 'Region' Group name inside the HDF5 file")
-@click.option('--max-file-size', default=4*1024*1024*1024, help="The size threshold when raw data files are closed (in bytes)")
-@click.option('--max-trigger-record-window', default=0, help="The maximum size for the window of data that will included in a single TriggerRecord (in ticks). Readout windows that are longer than this size will result in TriggerRecords being split into a sequence of TRs. A zero value for this parameter means no splitting.")
-@click.option('--data-request-timeout-ms', default=1000, help="The baseline data request timeout that will be used by modules in the Readout and Trigger subsystems (i.e. any module that produces data fragments). Downstream timeouts, such as the trigger-record-building timeout, are derived from this.")
-@click.option('--image', default="", type=str, help="Which docker image to use")
-@click.option('--use-k8s', is_flag=True, default=False, help="Whether to use k8s")
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
-
-def cli(timing_partition_name, host_timing, port_timing, base_command_port, number_of_data_producers, emulator_mode, data_rate_slowdown_factor, run_number, clock_speed_hz, trigger_rate_hz, trigger_window_before_ticks, trigger_window_after_ticks,
-        thread_pinning_file,
-        token_count, data_file, output_path, disable_trace, use_felix, use_ssp, host_df, host_dfo, host_ru, host_trigger, host_hsi, host_tpw, host_tprtc, host_dqm, region_id, latency_buffer_size,
-        hsi_hw_connections_file, hsi_device_name, hsi_readout_period, control_hsi_hw, hsi_endpoint_address, hsi_endpoint_partition, hsi_re_mask, hsi_fe_mask, hsi_inv_mask, hsi_source,
-        use_hsi_hw, hsi_device_id, mean_hsi_signal_multiplicity, hsi_signal_emulation_mode, enabled_hsi_signals,
-        ttcm_s1, ttcm_s2, trigger_activity_plugin, trigger_activity_config, trigger_candidate_plugin, trigger_candidate_config, hsi_trigger_type_passthrough, mlt_buffer_timeout, mlt_send_timed_out_tds, mlt_max_td_length_ms,
-        control_timing_partition, timing_partition_master_device_name, timing_partition_id, timing_partition_trigger_mask, timing_partition_rate_control_enabled, timing_partition_spill_gate_enabled,
-        enable_raw_recording, raw_recording_output_dir, frontend_type, opmon_impl, enable_dqm, ers_impl, dqm_impl, pocket_url, enable_software_tpg, enable_firmware_tpg, tpg_channel_map, enable_tpset_writing, use_fake_data_producers, dqm_cmap,
-        dqm_rawdisplay_params, dqm_meanrms_params, dqm_fourier_params, dqm_fouriersum_params, dqm_df_rate,
-        dqm_df_algs, op_env, tpc_region_name_prefix, max_file_size, max_trigger_record_window, data_request_timeout_ms,
-        image, use_k8s, debug, json_dir):
-
+@click.pass_context
+def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, trigger_rate_hz, use_felix, op_env, debug, json_dir):
+    
     if exists(json_dir):
         raise RuntimeError(f"Directory {json_dir} already exists")
 
+    if debug:
+        console.log(f"Configuration for daqconf: {ctx.default_map}")
+    globals().update(ctx.default_map)
 
     console.log("Loading dataflow config generator")
     from daqconf.apps.dataflow_gen import get_dataflow_app
@@ -165,21 +229,49 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         console.log("Loading TPWriter config generator")
         from daqconf.apps.tpwriter_gen import get_tpwriter_app
 
-    console.log(f"Generating configs for hosts trigger={host_trigger} DFO={host_dfo} dataflow={host_df} readout={host_ru} hsi={host_hsi} dqm={host_dqm}")
+    host_df = []
+    appconfig_df ={}
+    token_count = 0
+    for k,v in ctx.default_map.items():
+        if "dataflow." in k:
+            appconfig_df[k[9:]] = v
+            token_count += v['token_count']
+            host_df += [v['host_df']]
+
+    console.log(f"Generating configs for hosts trigger={host_trigger} DFO={host_dfo} dataflow={host_df} hsi={host_hsi} dqm={host_dqm}")
 
     the_system = System(first_port=port_timing+1)
 
-    total_number_of_data_producers = 0
+    # Load the hw map file here to extract ru hosts, cards, slr, links, forntend types, sourceIDs and geoIDs
+    # The ru apps are determined by the combinations of hostname and card_id, the SourceID determines the 
+    # DLH (with physical slr+link information), the detId acts as system_type allows to infer the frontend_type
+    hw_map_service = HardwareMapService(hardware_map_file)
 
-    if use_ssp:
-        total_number_of_data_producers = number_of_data_producers * len(host_ru)
-        console.log(f"Will setup {number_of_data_producers} SSP channels per host, for a total of {total_number_of_data_producers}")
-    else:
-        total_number_of_data_producers = number_of_data_producers * len(host_ru)
-        console.log(f"Will setup {number_of_data_producers} TPC channels per host, for a total of {total_number_of_data_producers}")
+    # Get the list of RU processes
+    dro_infos = hw_map_service.get_all_dro_info()
 
-    if enable_software_tpg and frontend_type != 'wib':
-        raise Exception("Software TPG is only available for the wib at the moment!")
+    sourceid_broker = SourceIDBroker()
+    sourceid_broker.debug = debug
+    sourceid_broker.register_readout_source_ids(dro_infos)
+    tp_mode = get_tpg_mode(enable_firmware_tpg,enable_software_tpg)
+    sourceid_broker.generate_trigger_source_ids(dro_infos, tp_mode)
+    tp_infos = sourceid_broker.get_all_source_ids("Trigger")
+
+    for dro_info in dro_infos:
+        console.log(f"Will start a RU process on {dro_info.host} reading card number {dro_info.card}, {len(dro_info.links)} links active")
+
+
+#    total_number_of_data_producers = 0
+
+#    if use_ssp:
+#        total_number_of_data_producers = number_of_data_producers * len(host_ru)
+#        console.log(f"Will setup {number_of_data_producers} SSP channels per host, for a total of {total_number_of_data_producers}")
+#    else:
+#        total_number_of_data_producers = number_of_data_producers * len(host_ru)
+#        console.log(f"Will setup {number_of_data_producers} TPC channels per host, for a total of {total_number_of_data_producers}")
+#
+#    if enable_software_tpg and frontend_type != 'wib':
+#        raise Exception("Software TPG is only available for the wib at the moment!")
 
     if enable_software_tpg and use_fake_data_producers:
         raise Exception("Fake data producers don't support software tpg")
@@ -201,15 +293,15 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     else:
         trigemu_token_count = 0
 
-    if (len(region_id) != len(host_ru)) and (len(region_id) != 0):
-        raise Exception("--region-id should be specified once for each --host-ru, or not at all!")
+#    if (len(region_id) != len(host_ru)) and (len(region_id) != 0):
+#        raise Exception("--region-id should be specified once for each --host-ru, or not at all!")
 
     # TODO, Eric Flumerfelt <eflumerf@github.com> 22-June-2022: Fix if/when multiple frontend types are supported. (Use https://click.palletsprojects.com/en/8.1.x/options/#multi-value-options for RU host/frontend/region config?)
-    if len(region_id) == 0:
-        region_id_temp = []
-        for reg in range(len(host_ru)):
-            region_id_temp.append(reg)
-        region_id = tuple(region_id_temp)
+#    if len(region_id) == 0:
+#        region_id_temp = []
+#        for reg in range(len(host_ru)):
+#            region_id_temp.append(reg)
+#        region_id = tuple(region_id_temp)
 
     if use_hsi_hw and not hsi_device_name:
         raise Exception("If --use-hsi-hw flag is set to true, --hsi-device-name must be specified!")
@@ -219,23 +311,6 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
 
     if control_hsi_hw and not use_hsi_hw:
         raise Exception("HSI hardware control can only be enabled if HSI hardware is used!")
-
-    if frontend_type == 'wib' or frontend_type == 'wib2' or frontend_type == 'tde':
-        system_type = 'TPC'
-    elif frontend_type == 'pacman':
-        system_type = 'NDLArTPC'
-    else:
-        system_type = 'PDS'
-
-    # For raw recording to work the size of the LB has to be a multiple of 4096 bytes so that gives
-    # us the following problem:
-    # number_of_elements * element_size = 4096 * M,  where M is an arbitrary integer,
-    # so only a value of number_elements that satisfies the equation above is valid.
-    if frontend_type == 'tde':
-        # number_of_elements = 4096 is always a solution by construction and
-        # the total size happens to be quite close to the one when using WIB
-        # as the frontend type
-        latency_buffer_size = 4096
 
     if opmon_impl == 'cern':
         info_svc_uri = "kafka://monkafka.cern.ch:30092/opmon"
@@ -270,35 +345,40 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
 
     dqm_kafka_address = "monkafka.cern.ch:30092" if dqm_impl == 'cern' else pocket_url + ":30092" if dqm_impl == 'pocket' else ''
 
-    host_id_dict = {}
-    ru_configs = []
-    ru_channel_counts = {}
-    for region in region_id: ru_channel_counts[region] = 0
+#    host_id_dict = {}
+#    ru_configs = []
+#    ru_channel_counts = {}
+#    for region in region_id: ru_channel_counts[region] = 0
+#
+#    ru_app_names=[f"ruflx{idx}" if use_felix else f"ruemu{idx}" for idx in range(len(host_ru))]
+#    dqm_app_names = [f"dqm{idx}_ru" for idx in range(len(host_ru))]
+#
+#    for hostidx,ru_host in enumerate(ru_app_names):
+#        cardid = 0
+#        if host_ru[hostidx] in host_id_dict:
+#            host_id_dict[host_ru[hostidx]] = host_id_dict[host_ru[hostidx]] + 1
+#            cardid = host_id_dict[host_ru[hostidx]]
+#        else:
+#            host_id_dict[host_ru[hostidx]] = 0
+#        ru_configs.append( {"host": host_ru[hostidx],
+#                            "card_id": cardid,
+#                            "region_id": region_id[hostidx],
+#                            "start_channel": ru_channel_counts[region_id[hostidx]],
+#                            "channel_count": number_of_data_producers })
+#        ru_channel_counts[region_id[hostidx]] += number_of_data_producers
 
-    if debug:
-        console.log(f"Output data written to \"{output_path}\"")
+#    if debug:
+#        console.log(f"Output data written to \"{output_path}\"")
 
-    if use_k8s and output_path == '.':
-        output_path = os.getcwd()
+#    if use_k8s and output_path == '.':
+#        output_path = os.getcwd()
 
-    ru_app_names = [f"ruflx{idx}" if use_felix else f"ruemu{idx}" for idx in range(len(host_ru))]
-    dqm_app_names = [f"dqm{idx}-ru" for idx in range(len(host_ru))]
-
-    for hostidx,ru_host in enumerate(ru_app_names):
-        cardid = 0
-        if host_ru[hostidx] in host_id_dict:
-            host_id_dict[host_ru[hostidx]] = host_id_dict[host_ru[hostidx]] + 1
-            cardid = host_id_dict[host_ru[hostidx]]
-        else:
-            host_id_dict[host_ru[hostidx]] = 0
-        ru_configs.append( {"host": host_ru[hostidx],
-                            "card_id": cardid,
-                            "region_id": region_id[hostidx],
-                            "start_channel": ru_channel_counts[region_id[hostidx]],
-                            "channel_count": number_of_data_producers })
-        ru_channel_counts[region_id[hostidx]] += number_of_data_producers
-
-    max_expected_tr_sequences = 1 if max_trigger_record_window < 1 else ((trigger_window_before_ticks + trigger_window_after_ticks) / max_trigger_record_window)
+    max_expected_tr_sequences = 1
+    for df_config in appconfig_df.values():
+        if df_config['max_trigger_record_window'] >= 1:
+            df_max_sequences = ((trigger_window_before_ticks + trigger_window_after_ticks) / df_config['max_trigger_record_window'])
+            if df_max_sequences > max_expected_tr_sequences:
+                max_expected_tr_sequences = df_max_sequences
 
     # 11-Jul-2022, KAB: added timeout calculations. The Readout and Trigger App DataRequest timeouts
     # are set based on the command-line parameter that is specified in this script, and they are
@@ -315,18 +395,19 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     readout_data_request_timeout = data_request_timeout_ms
     trigger_data_request_timeout = data_request_timeout_ms
     trigger_record_building_timeout = max(MINIMUM_BASIC_TRB_TIMEOUT, TRB_TIMEOUT_SAFETY_FACTOR * max(readout_data_request_timeout, trigger_data_request_timeout))
-    if total_number_of_data_producers >= 1:
-        effective_number_of_data_producers = total_number_of_data_producers  # number of DataLinkHandlers
+    if len(dro_infos) >= 1:
+        effective_number_of_data_producers = len(dro_infos)  # number of DataLinkHandlers
         if enable_software_tpg or enable_firmware_tpg:
             effective_number_of_data_producers *= 2  # add in TPSet producers from Trigger (one per Link)
-            effective_number_of_data_producers += len(region_id)  # add in TA producers from Trigger (one per RU)
+            effective_number_of_data_producers += len(dro_infos)  # add in TA producers from Trigger (one per RU)
         trigger_record_building_timeout = int(math.sqrt(effective_number_of_data_producers) * trigger_record_building_timeout)
     trigger_record_building_timeout += 15 * TRB_TIMEOUT_SAFETY_FACTOR * max_expected_tr_sequences
     dfo_stop_timeout = max(DFO_TIMEOUT_SAFETY_FACTOR * trigger_record_building_timeout, MINIMUM_DFO_TIMEOUT)
 
+    hsi_source_id = sourceid_broker.get_next_source_id("HW_Signals_Interface")
+    sourceid_broker.register_source_id(hsi_source_id, "HW_Signals_Interface", None)
     if use_hsi_hw:
         the_system.apps["hsi"] = get_hsi_app(
-            RUN_NUMBER = run_number,
             CLOCK_SPEED_HZ = clock_speed_hz,
             TRIGGER_RATE_HZ = trigger_rate_hz,
             CONTROL_HSI_HARDWARE=control_hsi_hw,
@@ -339,6 +420,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             HSI_FE_MASK=hsi_fe_mask,
             HSI_INV_MASK=hsi_inv_mask,
             HSI_SOURCE=hsi_source,
+            HSI_SOURCE_ID=hsi_source_id,
             TIMING_PARTITION=timing_partition_name,
             TIMING_HOST=host_timing,
             TIMING_PORT=port_timing,
@@ -346,11 +428,10 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             DEBUG=debug)
     else:
         the_system.apps["hsi"] = get_fake_hsi_app(
-            RUN_NUMBER = run_number,
             CLOCK_SPEED_HZ = clock_speed_hz,
             DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
             TRIGGER_RATE_HZ = trigger_rate_hz,
-            HSI_DEVICE_ID = hsi_device_id,
+            HSI_SOURCE_ID=hsi_source_id,
             MEAN_SIGNAL_MULTIPLICITY = mean_hsi_signal_multiplicity,
             SIGNAL_EMULATION_MODE = hsi_signal_emulation_mode,
             ENABLED_SIGNALS =  enabled_hsi_signals,
@@ -374,16 +455,13 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             DEBUG=debug)
 
     the_system.apps['trigger'] = get_trigger_app(
-        SOFTWARE_TPG_ENABLED = enable_software_tpg,
-        FIRMWARE_TPG_ENABLED = enable_firmware_tpg,
         DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
         CLOCK_SPEED_HZ = clock_speed_hz,
-        RU_CONFIG = ru_configs,
+        TP_CONFIG = tp_infos,
         ACTIVITY_PLUGIN = trigger_activity_plugin,
         ACTIVITY_CONFIG = eval(trigger_activity_config),
         CANDIDATE_PLUGIN = trigger_candidate_plugin,
         CANDIDATE_CONFIG = eval(trigger_candidate_config),
-        SYSTEM_TYPE = system_type,
         TTCM_S1=ttcm_s1,
         TTCM_S2=ttcm_s2,
         TRIGGER_WINDOW_BEFORE_TICKS = trigger_window_before_ticks,
@@ -404,30 +482,31 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         HOST=host_dfo,
         DEBUG=debug)
 
-
-    mgraphs_readout = []
-    for i,host in enumerate(host_ru):
-        ru_name = ru_app_names[i]
+        
+    ru_app_names=[]
+    dqm_app_names = []
+    for dro_idx,dro_config in enumerate(dro_infos):
+        host=dro_config.host.replace("-","")
+        ru_name = f"ru{host}{dro_config.card}"
+        ru_app_names.append(ru_name)
         the_system.apps[ru_name] = get_readout_app(
-            RU_CONFIG=ru_configs,
+            HOST=dro_config.host,
+            DRO_CONFIG=dro_config,
             EMULATOR_MODE = emulator_mode,
             DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
             DATA_FILE = data_file,
             FLX_INPUT = use_felix,
-            SSP_INPUT = use_ssp,
             CLOCK_SPEED_HZ = clock_speed_hz,
-            RUIDX = i,
             RAW_RECORDING_ENABLED = enable_raw_recording,
             RAW_RECORDING_OUTPUT_DIR = raw_recording_output_dir,
-            FRONTEND_TYPE = frontend_type,
-            SYSTEM_TYPE = system_type,
             SOFTWARE_TPG_ENABLED = enable_software_tpg,
             FIRMWARE_TPG_ENABLED = enable_firmware_tpg,
             TPG_CHANNEL_MAP = tpg_channel_map,
             USE_FAKE_DATA_PRODUCERS = use_fake_data_producers,
-            HOST=host,
             LATENCY_BUFFER_SIZE=latency_buffer_size,
             DATA_REQUEST_TIMEOUT=readout_data_request_timeout,
+            SOURCEID_BROKER = sourceid_broker,
+            READOUT_SENDS_TP_FRAGMENTS = readout_sends_tp_fragments,
             DEBUG=debug)
         if use_k8s:
             if use_felix:
@@ -440,26 +519,21 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
             console.log(f"{ru_name} app: {the_system.apps[ru_name]}")
 
         if enable_dqm:
-            dqm_name = dqm_app_names[i]
+            dqm_name = "dqm_" + ru_name
+            dqm_app_names.append(dqm_name)
+            dqm_links = [link.dro_source_id for link in dro_config.links]
             the_system.apps[dqm_name] = get_dqm_app(
-                RU_CONFIG = ru_configs,
-                RU_NAME=ru_name,
-                EMULATOR_MODE = emulator_mode,
                 DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
-                RUN_NUMBER = run_number,
-                DATA_FILE = data_file,
                 CLOCK_SPEED_HZ = clock_speed_hz,
-                DQMIDX = i,
-                SYSTEM_TYPE = system_type,
+                DQMIDX = dro_idx,
                 DQM_KAFKA_ADDRESS=dqm_kafka_address,
                 DQM_CMAP=dqm_cmap,
                 DQM_RAWDISPLAY_PARAMS=dqm_rawdisplay_params,
                 DQM_MEANRMS_PARAMS=dqm_meanrms_params,
                 DQM_FOURIER_PARAMS=dqm_fourier_params,
                 DQM_FOURIERSUM_PARAMS=dqm_fouriersum_params,
-                HOST=host_dqm[i % len(host_dqm)],
-                NUM_DF_APPS=len(host_df),
-                FRONTEND_TYPE=frontend_type,
+                LINKS=dqm_links,
+                HOST=host_dqm[dro_idx % len(host_dqm)],
                 DEBUG=debug)
 
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
@@ -467,13 +541,12 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     if enable_tpset_writing:
         tpw_name=f'tpwriter'
         the_system.apps[tpw_name] = get_tpwriter_app(
-            FIRMWARE_TPG_ENABLED = enable_firmware_tpg,
-            OUTPUT_PATH = output_path,
+            OUTPUT_PATH = tpset_output_path,
             OPERATIONAL_ENVIRONMENT = op_env,
-            TPC_REGION_NAME_PREFIX = tpc_region_name_prefix,
-            MAX_FILE_SIZE = max_file_size,
+            MAX_FILE_SIZE = tpset_output_file_size,
             DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
             CLOCK_SPEED_HZ = clock_speed_hz,
+            HARDWARE_MAP_FILE=hardware_map_file,
             HOST=host_tpw,
             DEBUG=debug)
         if use_k8s: ## TODO schema
@@ -487,60 +560,57 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         if debug: console.log(f"{tpw_name} app: {the_system.apps[tpw_name]}")
 
     df_app_names = []
-    dqm_df_app_names = [f"dqm{idx}-df" for idx in range(len(host_df))]
+    dqm_df_app_names = []
 
-    for i,host in enumerate(host_df):
-        app_name = f'dataflow{i}'
-
+    for app_name,df_config in appconfig_df.items():
         df_app_names.append(app_name)
+        dfidx = sourceid_broker.get_next_source_id("TRBuilder")
+        sourceid_broker.register_source_id("TRBuilder", dfidx, None)
         the_system.apps[app_name] = get_dataflow_app(
-            HOSTIDX = i,
-            OUTPUT_PATH = output_path,
+            HOSTIDX=dfidx,
+            OUTPUT_PATHS = df_config["output_paths"],
+            APP_NAME=app_name,
             OPERATIONAL_ENVIRONMENT = op_env,
-            TPC_REGION_NAME_PREFIX = tpc_region_name_prefix,
-            MAX_FILE_SIZE = max_file_size,
-            MAX_TRIGGER_RECORD_WINDOW = max_trigger_record_window,
+            MAX_FILE_SIZE = df_config["max_file_size"],
+            MAX_TRIGGER_RECORD_WINDOW = df_config["max_trigger_record_window"],
             MAX_EXPECTED_TR_SEQUENCES = max_expected_tr_sequences,
-            TOKEN_COUNT = trigemu_token_count,
+            TOKEN_COUNT = df_config["token_count"],
             TRB_TIMEOUT = trigger_record_building_timeout,
-            HOST=host,
+            HOST=df_config["host_df"],
             HAS_DQM=enable_dqm,
+            HARDWARE_MAP_FILE=hardware_map_file,
             DEBUG=debug
         )
         if use_k8s:
             the_system.apps[app_name].mounted_dirs += [{
                 'name': 'raw-data',
-                'physical_location':output_path,
-                'in_pod_location':output_path,
+                'physical_location':df_config["output_paths"],
+                'in_pod_location':df_config["output_paths"],
                 'read_only': False,
             }]
 
 
         if enable_dqm:
-            dqm_name = dqm_df_app_names[i]
+            dqm_name = f"dqm_df{dfidx}"
+            dqm_df_app_names.append(dqm_name)
+            dqm_links = [link.dro_source_id for link in dro_config.links for dro_config in dro_infos]
             the_system.apps[dqm_name] = get_dqm_app(
-                RU_CONFIG = ru_configs,
-                RU_NAME=ru_name,
-                EMULATOR_MODE = emulator_mode,
                 DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
-                RUN_NUMBER = run_number,
-                DATA_FILE = data_file,
                 CLOCK_SPEED_HZ = clock_speed_hz,
-                DQMIDX = i,
-                SYSTEM_TYPE = system_type,
+                DQMIDX = dfidx,
                 DQM_KAFKA_ADDRESS=dqm_kafka_address,
                 DQM_CMAP=dqm_cmap,
                 DQM_RAWDISPLAY_PARAMS=[0, 0],
                 DQM_MEANRMS_PARAMS=[0, 0],
                 DQM_FOURIER_PARAMS=[0, 0],
                 DQM_FOURIERSUM_PARAMS=[0, 0],
-                HOST=host_ru[i%len(host_ru)],
+                LINKS=dqm_links,
+                HOST=host_dqm[dfidx%len(host_dqm)],
                 MODE='df',
-                DF_RATE=dqm_df_rate,
+                DF_RATE=dqm_df_rate * len(host_df),
                 DF_ALGS=dqm_df_algs,
                 DF_TIME_WINDOW=trigger_window_before_ticks + trigger_window_after_ticks,
-                NUM_DF_APPS=len(host_df),
-                FRONTEND_TYPE=frontend_type,
+                FRONTEND_TYPE='',
                 DEBUG=debug)
 
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
@@ -593,9 +663,9 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     #
     # This code should be removed after 2.10, when we will have
     # decided how to handle raw TP data as fragments
-    for link in mlt_links:
-        if link["system"] == system_type and link["element"] >= 1000:
-            remove_mlt_link(the_system, link)
+#    for link in mlt_links:
+#        if link["subsystem"] == system_type and link["element"] >= 1000:
+#            remove_mlt_link(the_system, link)
 
     mlt_links=the_system.apps["trigger"].modulegraph.get_module("mlt").conf.links
     if debug:
@@ -623,14 +693,14 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     # HACK: Make sure RUs start after trigger
     forced_deps = []
 
-    for i,host in enumerate(host_ru):
+    for i,host in enumerate(dro_infos):
         ru_name = ru_app_names[i]
         forced_deps.append(['hsi', ru_name])
         if enable_tpset_writing:
             forced_deps.append(['tpwriter', ru_name])
 
     if enable_dqm:
-        for i,host in enumerate(host_ru):
+        for i,host in enumerate(dro_infos):
             dqm_name = dqm_app_names[i]
             forced_deps.append([dqm_name, 'dfo'])
         for i,host in enumerate(host_df):
@@ -677,7 +747,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
         )
 
 
-    if thread_pinning_file:
+    if thread_pinning_file != "" and exists(thread_pinning_file):
         boot['scripts'] = {
             "thread_pinning": {
                 "cmd": [
@@ -699,7 +769,7 @@ def cli(timing_partition_name, host_timing, port_timing, base_command_port, numb
     console.log(f"MDAapp config generated in {json_dir}")
 
 
-    write_metadata_file(json_dir, "daqconf_multiru_gen")
+    write_metadata_file(json_dir, "daqconf_multiru_gen", config_file)
 
 if __name__ == '__main__':
     try:

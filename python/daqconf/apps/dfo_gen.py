@@ -31,7 +31,7 @@ def make_moo_record(conf_dict,name,path='temptypes'):
         elif type(pvalue) == str:
             typename = 'temptypes.temp_string'
         else:
-            raise Exception(f'Invalid config argument type: {type(value)}')
+            raise Exception(f'Invalid config argument type: {type(pvalue)}')
         fields.append(dict(name=pname,item=typename))
     moo.otypes.make_type(schema='record', fields=fields, name=name, path=path)
 
