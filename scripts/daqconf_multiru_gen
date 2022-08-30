@@ -110,7 +110,7 @@ class ConfigSectionSchema(object):
         trigger_candidate_plugin = Param( default='TriggerCandidateMakerPrescalePlugin', help="Trigger candidate algorithm plugin")
         trigger_candidate_config = Param( default='dict(prescale=100)', help="Trigger candidate algorithm config (string containing python dictionary)")
         hsi_trigger_type_passthrough = Param( type=bool, default=False, help="Option to override trigger type in the MLT")
-        enable_tpset_writing = Param( type=bool, default=False, help="Enable the writing of TPs to disk (only works with enable_software_tpg")
+        enable_tpset_writing = Param( type=bool, default=False, help="Enable the writing of TPs to disk (only works with enable_software_tpg or enable_firmware_tpg)")
         tpset_output_path = Param(default='.', type=click.Path(), help="Output directory for TPSet stream files")
         tpset_output_file_size = Param(default=4*1024*1024*1024, help="The size threshold when TPSet stream files are closed (in bytes)")
         tpg_channel_map = Param( type=click.Choice(["VDColdboxChannelMap", "ProtoDUNESP1ChannelMap", "PD2HDChannelMap", "HDColdboxChannelMap"]), default="ProtoDUNESP1ChannelMap", help="Channel map for software TPG")
