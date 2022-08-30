@@ -132,8 +132,26 @@ def get_readout_app(DRO_CONFIG=None,
     if FIRMWARE_TPG_ENABLED:
         assert(len(link_to_tp_sid_map) <= 2)
         for sid in link_to_tp_sid_map.values():
-            if FIRMWARE_TPG_ENABLED:
-                queues += [Queue(f"tp_datahandler_{sid}.errored_frames", 'errored_frame_consumer.input_queue', "errored_frames_q")]
+            queues += [Queue(f"tp_datahandler_{sid}.errored_frames", 'errored_frame_consumer.input_queue', "errored_frames_q")]
+            queues += [Queue(f"tp_datahandler_{sid}.tp_out",f"tp_out_datahandler_{sid}.raw_input",f"sw_tp_link_{sid}",100000 )]                
+            modules += [DAQModule(name = f"tp_out_datahandler_{sid}",
+                               plugin = "DataLinkHandler",
+                               conf = rconf.Conf(readoutmodelconf = rconf.ReadoutModelConf(source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
+                                                                                         source_id = sid),
+                                                 latencybufferconf = rconf.LatencyBufferConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
+                                                                                            source_id = sid),
+                                                 rawdataprocessorconf = rconf.RawDataProcessorConf(source_id =  sid,
+                                                                                                   enable_software_tpg = False,
+                                                                                                   channel_map_name=TPG_CHANNEL_MAP),
+                                                 requesthandlerconf= rconf.RequestHandlerConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
+                                                                                              pop_limit_pct = 0.8,
+                                                                                              pop_size_pct = 0.1,
+                                                                                              source_id = sid,
+                                                                                              det_id = 1,
+                                                                                              stream_buffer_size = 100 if FRONTEND_TYPE=='pacman' else 8388608,
+                                                                                              request_timeout_ms = DATA_REQUEST_TIMEOUT,
+                                                                                              enable_raw_recording = False)))]
+
             modules += [DAQModule(name = f"tp_datahandler_{sid}",
                                   plugin = "DataLinkHandler", 
                                   conf = rconf.Conf(
@@ -324,6 +342,11 @@ def get_readout_app(DRO_CONFIG=None,
                                     requests_in   = f"tp_datahandler_{sid}.request_input",
                                     fragments_out = f"tp_datahandler_{sid}.fragment_queue", is_mlt_producer = READOUT_SENDS_TP_FRAGMENTS)
             mgraph.add_endpoint(f"timesync_{sid}", f"tp_datahandler_{sid}.timesync_output",    Direction.OUT, ["Timesync"])
+            mgraph.add_endpoint(f"timesync_tp_out_{sid}", f"tp_out_datahandler_{sid}.timesync_output",    Direction.OUT, ["Timesync"])
+            mgraph.add_fragment_producer(id = sid, subsystem = "Trigger",
+                                    requests_in   = f"tp_out_datahandler_{sid}.request_input",
+                                    fragments_out = f"tp_out_datahandler_{sid}.fragment_queue", is_mlt_producer = READOUT_SENDS_TP_FRAGMENTS)
+
 
 
     for link in DRO_CONFIG.links:
