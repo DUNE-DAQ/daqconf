@@ -212,7 +212,8 @@ def get_readout_app(DRO_CONFIG=None,
         else:
             if SOFTWARE_TPG_ENABLED:
                 queues += [Queue(f"datahandler_{link.dro_source_id}.tp_out",f"tp_datahandler_{link_to_tp_sid_map[link.dro_source_id]}.raw_input",f"sw_tp_link_{link.dro_source_id}",100000 )]                
-                
+
+            #? why only create errored frames for wib, should this also be created for wib2 or other FE's?
             if FRONTEND_TYPE == 'wib':
                 queues += [Queue(f"datahandler_{link.dro_source_id}.errored_frames", 'errored_frame_consumer.input_queue', "errored_frames_q")]
 
