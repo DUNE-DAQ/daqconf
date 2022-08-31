@@ -10,10 +10,12 @@ moo.otypes.load_types('appfwk/cmd.jsonnet')
 moo.otypes.load_types('appfwk/app.jsonnet')
 
 moo.otypes.load_types('flxlibs/felixcardreader.jsonnet')
+moo.otypes.load_types('dtpctrllibs/dtpcontroller.jsonnet')
 moo.otypes.load_types('readoutlibs/sourceemulatorconfig.jsonnet')
 moo.otypes.load_types('readoutlibs/readoutconfig.jsonnet')
 moo.otypes.load_types('lbrulibs/pacmancardreader.jsonnet')
 moo.otypes.load_types('dfmodules/fakedataprod.jsonnet')
+
 
 # Import new types
 import dunedaq.cmdlib.cmd as basecmd # AddressedCmd,
@@ -22,6 +24,7 @@ import dunedaq.appfwk.cmd as cmd # AddressedCmd,
 import dunedaq.appfwk.app as app # AddressedCmd,
 import dunedaq.readoutlibs.sourceemulatorconfig as sec
 import dunedaq.flxlibs.felixcardreader as flxcr
+import dunedaq.dtpctrllibs.dtpcontroller as dtpctrl
 import dunedaq.readoutlibs.readoutconfig as rconf
 import dunedaq.lbrulibs.pacmancardreader as pcr
 # import dunedaq.dfmodules.triggerrecordbuilder as trb
@@ -54,6 +57,7 @@ def get_readout_app(DRO_CONFIG=None,
                     RAW_RECORDING_OUTPUT_DIR=".",
                     SOFTWARE_TPG_ENABLED=False,
                     FIRMWARE_TPG_ENABLED=False,
+                    DTP_CONNECTIONS_FILE="file://${DTPCONTROLS_SHARE}/config/dtp_connections.xml",
                     TPG_CHANNEL_MAP= "ProtoDUNESP1ChannelMap",
                     USE_FAKE_DATA_PRODUCERS=False,
                     LATENCY_BUFFER_SIZE=499968,
@@ -304,7 +308,32 @@ def get_readout_app(DRO_CONFIG=None,
                                                      dma_memory_size_gb = 4,
                                                      numa_id = 0,
                                                      links_enabled = link_1))]
-                
+            
+            # DTPController - only required if FW TPs enabled
+            if FIRMWARE_TPG_ENABLED:
+                if len(link_0) > 0:
+                    modules += [DAQModule(
+                                name = 'dtpctrl_0',
+                                plugin = 'DTPController',
+                                conf = dtpctrl.Conf(connections_file=path.expandvars(DTP_CONNECTIONS_FILE),
+                                                    device="flx-0-p2-hf",
+                                                    uhal_log_level="notice",
+                                                    source="ext",
+                                                    pattern="",
+                                                    threshold=20,
+                                                    masks=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]) )]
+                if len(link_1) > 0:
+                    modules += [DAQModule(
+                                name = 'dtpctrl_1',
+                                plugin = 'DTPController',
+                                conf = dtpctrl.Conf(connections_file=path.expandvars(DTP_CONNECTIONS_FILE),
+                                                    device="flx-0-p2-hf",
+                                                    uhal_log_level="notice",
+                                                    source="ext",
+                                                    pattern="",
+                                                    threshold=20,
+                                                    masks=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]) )]
+
         else:
             fake_source = "fake_source"
             card_reader = "FakeCardReader"
