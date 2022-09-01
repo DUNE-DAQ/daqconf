@@ -239,7 +239,7 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
             dfapp = k[9:]
             appconfig_df[dfapp] = v
             appconfig_df[dfapp]['source_id'] = sourceid_broker.get_next_source_id("TRBuilder")
-            sourceid_broker.register_source_id(appconfig_df[dfapp]['source_id'], "TRBuilder", None)
+            sourceid_broker.register_source_id("TRBuilder", appconfig_df[dfapp]['source_id'], None)
             host_df += [v['host_df']]
 
     console.log(f"Generating configs for hosts trigger={host_trigger} DFO={host_dfo} dataflow={host_df} hsi={host_hsi} dqm={host_dqm}")
@@ -402,7 +402,7 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
     dfo_stop_timeout = max(DFO_TIMEOUT_SAFETY_FACTOR * trigger_record_building_timeout, MINIMUM_DFO_TIMEOUT)
 
     hsi_source_id = sourceid_broker.get_next_source_id("HW_Signals_Interface")
-    sourceid_broker.register_source_id(hsi_source_id, "HW_Signals_Interface", None)
+    sourceid_broker.register_source_id("HW_Signals_Interface", hsi_source_id, None)
     if use_hsi_hw:
         the_system.apps["hsi"] = get_hsi_app(
             CLOCK_SPEED_HZ = clock_speed_hz,
