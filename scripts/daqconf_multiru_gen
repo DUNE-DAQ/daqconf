@@ -538,27 +538,6 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
 
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
 
-    if enable_tpset_writing:
-        tpw_name=f'tpwriter'
-        the_system.apps[tpw_name] = get_tpwriter_app(
-            OUTPUT_PATH = tpset_output_path,
-            OPERATIONAL_ENVIRONMENT = op_env,
-            MAX_FILE_SIZE = tpset_output_file_size,
-            DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
-            CLOCK_SPEED_HZ = clock_speed_hz,
-            HARDWARE_MAP_FILE=hardware_map_file,
-            HOST=host_tpw,
-            DEBUG=debug)
-        if use_k8s: ## TODO schema
-            the_system.apps[tpw_name].mounted_dirs += [{
-                'name': 'raw-data',
-                'physical_location':output_path,
-                'in_pod_location':output_path,
-                'read_only': False
-            }]
-
-        if debug: console.log(f"{tpw_name} app: {the_system.apps[tpw_name]}")
-
     df_app_names = []
     dqm_df_app_names = []
 
@@ -615,6 +594,31 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
 
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
 
+
+    if enable_tpset_writing:
+        tpw_name=f'tpwriter'
+        dfidx = sourceid_broker.get_next_source_id("TRBuilder")
+        sourceid_broker.register_source_id("TRBuilder", dfidx, None)
+        the_system.apps[tpw_name] = get_tpwriter_app(
+            OUTPUT_PATH = tpset_output_path,
+            APP_NAME = tpw_name,
+            OPERATIONAL_ENVIRONMENT = op_env,
+            MAX_FILE_SIZE = tpset_output_file_size,
+            DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
+            CLOCK_SPEED_HZ = clock_speed_hz,
+            HARDWARE_MAP_FILE=hardware_map_file,
+            SOURCE_IDX=dfidx,
+            HOST=host_tpw,
+            DEBUG=debug)
+        if use_k8s: ## TODO schema
+            the_system.apps[tpw_name].mounted_dirs += [{
+                'name': 'raw-data',
+                'physical_location':output_path,
+                'in_pod_location':output_path,
+                'read_only': False
+            }]
+
+        if debug: console.log(f"{tpw_name} app: {the_system.apps[tpw_name]}")
 
     all_apps_except_ru = []
     all_apps_except_ru_and_df = []
