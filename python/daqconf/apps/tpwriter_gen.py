@@ -32,6 +32,7 @@ def get_tpwriter_app(
                      DATA_RATE_SLOWDOWN_FACTOR=1,
                      CLOCK_SPEED_HZ=50000000,
                      HARDWARE_MAP_FILE="./HardwareMap.txt",
+                     SOURCE_IDX=998,
                      HOST="localhost",
                      DEBUG=False):
 
@@ -44,6 +45,7 @@ def get_tpwriter_app(
     modules += [DAQModule(name = 'tpswriter',
                           plugin = "TPStreamWriter",
                           conf = tpsw.ConfParams(tp_accumulation_interval_ticks=ONE_SECOND_INTERVAL_TICKS,
+                              source_id=SOURCE_IDX,
                               data_store_parameters=hdf5ds.ConfParams(
                               name="tp_stream_writer",
                               operational_environment = OPERATIONAL_ENVIRONMENT,
