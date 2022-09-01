@@ -37,8 +37,18 @@ local cs = {
          s.field( "timing_partition_name", self.string, default="timing", doc="Name of the global partition to use, for ERS and OPMON and timing commands"),
          s.field( "host_timing", self.host, default='np04-srv-012.cern.ch', doc='Host to run the (global) timing hardware interface app on'),
          s.field( "port_timing", self.port, default=12345, doc='Port to host running the (global) timing hardware interface app on'),
-         s.field( "host_hsi", self.host, default='localhost', doc='Host to run the HSI app on'),
          s.field( "host_tprtc", self.host, default='localhost', doc='Host to run the timing partition controller app on'),
+        # timing hw partition options
+         s.field( "control_timing_partition", self.flag, default=false, doc='Flag to control whether we are controlling timing partition in master hardware'),
+         s.field( "timing_partition_master_device_name", self.string, default="", doc='Timing partition master hardware device name'),
+         s.field( "timing_partition_id", self.count, default=0, doc='Timing partition id'),
+         s.field( "timing_partition_trigger_mask", self.count, default=255, doc='Timing partition trigger mask'),
+         s.field( "timing_partition_rate_control_enabled", self.flag, default=false, doc='Timing partition rate control enabled'),
+         s.field( "timing_partition_spill_gate_enabled", self.flag, default=false, doc='Timing partition spill gate enabled'),
+        ]),
+
+        hsi: s.record("hsi", [
+         s.field( "host_hsi", self.host, default='localhost', doc='Host to run the HSI app on'),
         # hsi readout options
          s.field( "hsi_hw_connections_file", self.path, default="${TIMING_SHARE}/config/etc/connections.xml", doc='Real timing hardware only: path to hardware connections file'),
          s.field( "hsi_device_name", self.string, default="", doc='Real HSI hardware only: device name of HSI hw'),
@@ -57,13 +67,6 @@ local cs = {
          s.field( "mean_hsi_signal_multiplicity", self.count, default=1, doc='Fake HSI only: rate of individual HSI signals in emulation mode 1'),
          s.field( "hsi_signal_emulation_mode", self.count, default=0, doc='Fake HSI only: HSI signal emulation mode'),
          s.field( "enabled_hsi_signals", self.count, default=1, doc='Fake HSI only: bit mask of enabled fake HSI signals'),
-        # timing hw partition options
-         s.field( "control_timing_partition", self.flag, default=false, doc='Flag to control whether we are controlling timing partition in master hardware'),
-         s.field( "timing_partition_master_device_name", self.string, default="", doc='Timing partition master hardware device name'),
-         s.field( "timing_partition_id", self.count, default=0, doc='Timing partition id'),
-         s.field( "timing_partition_trigger_mask", self.count, default=255, doc='Timing partition trigger mask'),
-         s.field( "timing_partition_rate_control_enabled", self.flag, default=false, doc='Timing partition rate control enabled'),
-         s.field( "timing_partition_spill_gate_enabled", self.flag, default=false, doc='Timing partition spill gate enabled'),
         ]),
 
         readout: s.record("readout", [
@@ -83,7 +86,7 @@ local cs = {
          s.field( "readout_sends_tp_fragments",self.flag, default=false, doc="Send TP Fragments from Readout to Dataflow (via enabling TP Fragment links in MLT)"),
         ]),
 
-        trigger_algo_config: s.record("algo_config", [
+        trigger_algo_config: s.record("trigger_algo_config", [
             s.field("prescale", self.count, default=100),
         ]),
 
@@ -111,6 +114,7 @@ local cs = {
         ]),
 
         dataflowapp: s.record("dataflowapp",[
+         s.field("app_name", self.string, default="dataflow0"),
          s.field( "token_count",self.count, default=10),
          s.field( "output_paths",self.paths, default=['.']),
          s.field( "host_df", self.host, default='localhost'),
@@ -118,11 +122,11 @@ local cs = {
          s.field( "max_trigger_record_window",self.count, default=0, doc="The maximum size for the window of data that will included in a single TriggerRecord (in ticks). Readout windows that are longer than this size will result in TriggerRecords being split into a sequence of TRs. A zero value for this parameter means no splitting."),
 
         ]),
-        dataflowapps: s.assoc("dataflowapps", self.string, self.dataflowapp),
+        dataflowapps: s.sequence("dataflowapps", self.dataflowapp),
 
         dataflow: s.record("dataflow", [
          s.field( "host_dfo", self.host, default='localhost', doc="Sets the host for the DFO app"),
-         s.field("apps", self.dataflowapps),
+         s.field("apps", self.dataflowapps, default=[]),
         ]),
 
         dqm: s.record("dqm", [
@@ -137,15 +141,6 @@ local cs = {
          s.field( "dqm_df_rate", self.count, default=10, doc='How many seconds between requests to DF for Trigger Records'),
          s.field( "dqm_df_algs", self.string, default='hist mean_rms fourier_sum', doc='Algorithms to be run on Trigger Records from DF (use quotes)'),
         ]),
-
-    confgen_config: s.record("Config", [
-        s.field("daqconf", self.daqconf, default="daqconf()"),
-        s.field("timing", self.timing, default={}),
-        s.field("readout", self.readout, default={}),
-        s.field("trigger", self.trigger, default={}),
-        s.field("dataflow", self.dataflow, default={}),
-        s.field("dqm", self.dqm, default={}),
-    ]),
 
 };
 
