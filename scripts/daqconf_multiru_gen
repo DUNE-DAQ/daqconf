@@ -597,6 +597,7 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
         sourceid_broker.register_source_id("TRBuilder", dfidx, None)
         the_system.apps[tpw_name] = get_tpwriter_app(
             OUTPUT_PATH = tpset_output_path,
+            APP_NAME = tpw_name,
             OPERATIONAL_ENVIRONMENT = op_env,
             MAX_FILE_SIZE = tpset_output_file_size,
             DATA_RATE_SLOWDOWN_FACTOR = data_rate_slowdown_factor,
