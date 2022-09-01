@@ -140,7 +140,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
         # TPZippers. See comment below for more details
         modules += [DAQModule(name = 'tazipper',
                               plugin = 'TAZipper',
-                              conf = tzip.ConfParams(cardinality=TC_SOURCE_ID["conf"].ru_count,
+                              conf = tzip.ConfParams(cardinality=len(TA_SOURCE_IDS),
                                                      max_latency_ms=1000,
                                                      element_id=TC_SOURCE_ID["source_id"])),
                     DAQModule(name = 'tcm',
