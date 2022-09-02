@@ -9,7 +9,7 @@ local cs = {
     port:            s.number(   "Port", "i4", doc="A TCP/IP port number"),
     freq:            s.number(   "Frequency", "u4", doc="A frequency"),
     rate:            s.number(   "Rate", "f8", doc="A rate as a double"),
-    count:           s.number(   "count", "i4", doc="A count of things"),
+    count:           s.number(   "count", "i8", doc="A count of things"),
     flag:            s.boolean(  "Flag", doc="Parameter that can be used to enable or disable functionality"),
     monitoring_dest: s.enum(     "MonitoringDest", ["local", "cern", "pocket"]),
     path:            s.string(   "Path", doc="Location on a filesystem"),
