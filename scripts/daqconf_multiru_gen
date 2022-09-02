@@ -119,6 +119,9 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
     if trigger.enable_tpset_writing:
         console.log("Loading TPWriter config generator")
         from daqconf.apps.tpwriter_gen import get_tpwriter_app
+        
+    sourceid_broker = SourceIDBroker()
+    sourceid_broker.debug = debug
 
     if len(dataflow.apps) == 0:
         console.log(f"No Dataflow apps defined, adding default dataflow0")
@@ -127,15 +130,16 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
     host_df = []
     appconfig_df ={}
     df_app_names = []
-    token_count = 0
     for appconfig in dataflow.apps:
         console.log(f"Parsing dataflow app config {appconfig}")
-        if appconfig['app_name'] in df_app_names:
-            appconfig_df[appconfig['app_name']].update(appconfig)
+        dfapp = appconfig['app_name']
+        if dfapp in df_app_names:
+            appconfig_df[dfapp].update(appconfig)
         else:
-            df_app_names.append(appconfig['app_name'])
-            appconfig_df[appconfig['app_name']] = appconfig
-            token_count += appconfig['token_count']
+            df_app_names.append(dfapp)
+            appconfig_df[dfapp] = appconfig
+            appconfig_df[dfapp]['source_id'] = sourceid_broker.get_next_source_id("TRBuilder")
+            sourceid_broker.register_source_id("TRBuilder", appconfig_df[dfapp]['source_id'], None)
             host_df += [appconfig['host_df']]
 
     console.log(f"Generating configs for hosts trigger={trigger.host_trigger} DFO={dataflow.host_dfo} dataflow={host_df} hsi={hsi.host_hsi} dqm={dqm.host_dqm}")
@@ -150,8 +154,6 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
     # Get the list of RU processes
     dro_infos = hw_map_service.get_all_dro_info()
 
-    sourceid_broker = SourceIDBroker()
-    sourceid_broker.debug = debug
     sourceid_broker.register_readout_source_ids(dro_infos)
     tp_mode = get_tpg_mode(readout.enable_firmware_tpg,readout.enable_software_tpg)
     sourceid_broker.generate_trigger_source_ids(dro_infos, tp_mode)
@@ -187,11 +189,6 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
 
     if readout.enable_firmware_tpg and readout.use_fake_data_producers:
         raise Exception("Fake data producers don't support firmware tpg")
-
-    if token_count > 0:
-        trigemu_token_count = token_count
-    else:
-        trigemu_token_count = 0
 
 #    if (len(region_id) != len(host_ru)) and (len(region_id) != 0):
 #        raise Exception("--region-id should be specified once for each --host-ru, or not at all!")
@@ -305,7 +302,7 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
     dfo_stop_timeout = max(DFO_TIMEOUT_SAFETY_FACTOR * trigger_record_building_timeout, MINIMUM_DFO_TIMEOUT)
 
     hsi_source_id = sourceid_broker.get_next_source_id("HW_Signals_Interface")
-    sourceid_broker.register_source_id(hsi_source_id, "HW_Signals_Interface", None)
+    sourceid_broker.register_source_id("HW_Signals_Interface", hsi_source_id, None)
     if hsi.use_hsi_hw:
         the_system.apps["hsi"] = get_hsi_app(
             CLOCK_SPEED_HZ = readout.clock_speed_hz,
@@ -376,8 +373,7 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
         DEBUG=debug)
 
     the_system.apps['dfo'] = get_dfo_app(
-        DF_COUNT = len(host_df),
-        TOKEN_COUNT = trigemu_token_count,
+        DF_CONF = appconfig_df,
         STOP_TIMEOUT = dfo_stop_timeout,
         HOST=dataflow.host_dfo,
         DEBUG=debug)
@@ -439,10 +435,10 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
 
     dqm_df_app_names = []
+    idx = 0
 
     for app_name,df_config in appconfig_df.items():
-        dfidx = sourceid_broker.get_next_source_id("TRBuilder")
-        sourceid_broker.register_source_id("TRBuilder", dfidx, None)
+        dfidx = df_config["source_id"]
         the_system.apps[app_name] = get_dataflow_app(
             HOSTIDX=dfidx,
             OUTPUT_PATHS = df_config['output_paths'],
@@ -482,7 +478,7 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
                 DQM_FOURIER_PARAMS=[0, 0],
                 DQM_FOURIERSUM_PARAMS=[0, 0],
                 LINKS=dqm_links,
-                HOST=dqm.host_dqm[dfidx%len(dqm.host_dqm)],
+                HOST=host_dqm[idx%len(host_dqm)],
                 MODE='df',
                 DF_RATE=dqm.dqm_df_rate * len(host_df),
                 DF_ALGS=dqm.dqm_df_algs,
@@ -491,6 +487,7 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
                 DEBUG=debug)
 
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
+        idx += 1
             
     if trigger.enable_tpset_writing:
         tpw_name=f'tpwriter'
