@@ -504,7 +504,7 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
             SOURCE_IDX=dfidx,
             HOST=trigger.host_tpw,
             DEBUG=debug)
-        if use_k8s: ## TODO schema
+        if daqconf.use_k8s: ## TODO schema
             the_system.apps[tpw_name].mounted_dirs += [{
                 'name': 'raw-data',
                 'physical_location':trigger.tpset_output_path,
