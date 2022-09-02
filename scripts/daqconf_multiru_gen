@@ -71,13 +71,19 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
         
     # Get our config objects
     daqconf = ctx.default_map["daqconf"]
-    console.log(f"DAQCONF config section: {json.dumps(daqconf.pod())}")
+    if debug: console.log(f"daqconf configuration object: {daqconf.pod()}")
     timing = ctx.default_map["timing"]
+    if debug: console.log(f"timing configuration object: {timing.pod()}")
     hsi = ctx.default_map["hsi"]
+    if debug: console.log(f"hsi configuration object: {hsi.pod()}")
     readout = ctx.default_map["readout"]
+    if debug: console.log(f"readout configuration object: {readout.pod()}")
     trigger = ctx.default_map["trigger"]
+    if debug: console.log(f"trigger configuration object: {trigger.pod()}")
     dataflow = ctx.default_map["dataflow"]
+    if debug: console.log(f"dataflow configuration object: {dataflow.pod()}")
     dqm = ctx.default_map["dqm"]
+    if debug: console.log(f"dqm configuration object: {dqm.pod()}")
     config_file = ctx.default_map['config_file']
 
     # Update with command-line options
@@ -120,9 +126,14 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
 
     host_df = []
     appconfig_df ={}
+    df_app_names = []
     token_count = 0
     for appconfig in dataflow.apps:
-            console.log(f"Parsing dataflow app config {appconfig}")
+        console.log(f"Parsing dataflow app config {appconfig}")
+        if appconfig['app_name'] in df_app_names:
+            appconfig_df[appconfig['app_name']].update(appconfig)
+        else:
+            df_app_names.append(appconfig['app_name'])
             appconfig_df[appconfig['app_name']] = appconfig
             token_count += appconfig['token_count']
             host_df += [appconfig['host_df']]
@@ -427,11 +438,9 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
 
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
 
-    df_app_names = []
     dqm_df_app_names = []
 
     for app_name,df_config in appconfig_df.items():
-        df_app_names.append(app_name)
         dfidx = sourceid_broker.get_next_source_id("TRBuilder")
         sourceid_broker.register_source_id("TRBuilder", dfidx, None)
         the_system.apps[app_name] = get_dataflow_app(
@@ -501,8 +510,8 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
         if use_k8s: ## TODO schema
             the_system.apps[tpw_name].mounted_dirs += [{
                 'name': 'raw-data',
-                'physical_location':trigger.tpset_output_path,,
-                'in_pod_location':trigger.tpset_output_path,,
+                'physical_location':trigger.tpset_output_path,
+                'in_pod_location':trigger.tpset_output_path,
                 'read_only': False
             }]
 
