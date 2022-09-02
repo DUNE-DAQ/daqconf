@@ -478,7 +478,7 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
                 DQM_FOURIER_PARAMS=[0, 0],
                 DQM_FOURIERSUM_PARAMS=[0, 0],
                 LINKS=dqm_links,
-                HOST=host_dqm[idx%len(host_dqm)],
+                HOST=dqm.host_dqm[idx%len(dqm.host_dqm)],
                 MODE='df',
                 DF_RATE=dqm.dqm_df_rate * len(host_df),
                 DF_ALGS=dqm.dqm_df_algs,

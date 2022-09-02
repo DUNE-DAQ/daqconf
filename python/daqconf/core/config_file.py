@@ -72,9 +72,9 @@ def parse_ini(input_dict, filename):
     for section in config.sections():
         sectiondict = {k:v for k,v in config[section].items()}
         for k,v in sectiondict.items():
-            if v == "true":
+            if v == "true" or v == "True":
                 sectiondict[k] = True
-            if v == "false":
+            if v == "false" or v == "False":
                 sectiondict[k] = False
         console.log(f"Updating config section {section} with {sectiondict}")
         if section in input_dict.keys():
