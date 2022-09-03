@@ -91,6 +91,7 @@ class ConfigSectionSchema(object):
         enable_software_tpg = Param( type=bool, default=False, help="Enable software TPG")
         enable_firmware_tpg = Param( type=bool, default=False, help="Enable firmware TPG")
         dtp_connections_file = Param( default="${DTPCONTROLS_SHARE}/config/dtp_connections.xml", help='Real FELIX hardware only: path to hardware connections file')
+        firmware_hit_threshold = Param( default=20, help="hit threshold to set in the firmware TPG." )
         enable_raw_recording = Param( type=bool, default=False, help="Add queues and modules necessary for the record command")
         raw_recording_output_dir = Param( type=click.Path(), default='.', help="Output directory where recorded data is written to. Data for each link is written to a separate file")
         use_fake_data_producers = Param( type=bool, default=False, help="Use fake data producers that respond with empty fragments immediately instead of (fake) cards and DLHs")
@@ -502,6 +503,8 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
             RAW_RECORDING_OUTPUT_DIR = raw_recording_output_dir,
             SOFTWARE_TPG_ENABLED = enable_software_tpg,
             FIRMWARE_TPG_ENABLED = enable_firmware_tpg,
+            DTP_CONNECTIONS_FILE = dtp_connections_file,
+            FIRMWARE_HIT_THRESHOLD = firmware_hit_threshold,
             TPG_CHANNEL_MAP = tpg_channel_map,
             USE_FAKE_DATA_PRODUCERS = use_fake_data_producers,
             LATENCY_BUFFER_SIZE=latency_buffer_size,

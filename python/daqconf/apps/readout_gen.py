@@ -58,6 +58,7 @@ def get_readout_app(DRO_CONFIG=None,
                     SOFTWARE_TPG_ENABLED=False,
                     FIRMWARE_TPG_ENABLED=False,
                     DTP_CONNECTIONS_FILE="${DTPCONTROLS_SHARE}/config/dtp_connections.xml",
+                    FIRMWARE_HIT_THRESHOLD=20,
                     TPG_CHANNEL_MAP= "ProtoDUNESP1ChannelMap",
                     USE_FAKE_DATA_PRODUCERS=False,
                     LATENCY_BUFFER_SIZE=499968,
@@ -320,7 +321,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                     uhal_log_level="notice",
                                                     source="ext",
                                                     pattern="",
-                                                    threshold=20,
+                                                    threshold=FIRMWARE_HIT_THRESHOLD,
                                                     masks=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]) )]
                 if len(link_1) > 0:
                     modules += [DAQModule(
@@ -331,7 +332,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                     uhal_log_level="notice",
                                                     source="ext",
                                                     pattern="",
-                                                    threshold=20,
+                                                    threshold=FIRMWARE_HIT_THRESHOLD,
                                                     masks=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]) )]
 
         else:
