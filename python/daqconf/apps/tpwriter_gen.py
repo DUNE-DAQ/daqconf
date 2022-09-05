@@ -27,11 +27,13 @@ QUEUE_POP_WAIT_MS = 100
 
 def get_tpwriter_app(
                      OUTPUT_PATH=".",
+                     APP_NAME="tpwriter",
                      OPERATIONAL_ENVIRONMENT="swtest",
                      MAX_FILE_SIZE=4*1024*1024*1024,
                      DATA_RATE_SLOWDOWN_FACTOR=1,
                      CLOCK_SPEED_HZ=50000000,
                      HARDWARE_MAP_FILE="./HardwareMap.txt",
+                     SOURCE_IDX=998,
                      HOST="localhost",
                      DEBUG=False):
 
@@ -44,6 +46,7 @@ def get_tpwriter_app(
     modules += [DAQModule(name = 'tpswriter',
                           plugin = "TPStreamWriter",
                           conf = tpsw.ConfParams(tp_accumulation_interval_ticks=ONE_SECOND_INTERVAL_TICKS,
+                              source_id=SOURCE_IDX,
                               data_store_parameters=hdf5ds.ConfParams(
                               name="tp_stream_writer",
                               operational_environment = OPERATIONAL_ENVIRONMENT,
@@ -55,7 +58,8 @@ def get_tpwriter_app(
                                   overall_prefix = "tpstream",
                                   digits_for_run_number = 6,
                                   file_index_prefix = "",
-                                  digits_for_file_index = 4),
+                                  digits_for_file_index = 4,
+                                  writer_identifier = f"{APP_NAME}_tpswriter"),
                               file_layout_parameters = h5fl.FileLayoutParams(
                                   record_name_prefix= "TimeSlice",
                                   record_header_dataset_name = "TimeSliceHeader",
