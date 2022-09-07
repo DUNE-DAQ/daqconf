@@ -497,81 +497,6 @@ def make_unique_name(base, module_list):
 
     return f"{base}_{suffix}"
 
-def generate_boot_common(
-        ers_settings=None,
-        info_svc_uri="file://info_{APP_NAME}_{APP_PORT}.json",
-        disable_trace=False,
-        use_kafka=False,
-        verbose=False,
-        daq_app_exec_name:str="daq_application_ssh",
-        extra_env_vars=dict(),
-        external_connections=[]) -> dict:
-    """
-    Generate the dictionary that will become the boot.json file
-    """
-
-    if ers_settings is None:
-        ers_settings={
-            "INFO":    "erstrace,throttle,lstdout",
-            "WARNING": "erstrace,throttle,lstdout",
-            "ERROR":   "erstrace,throttle,lstdout",
-            "FATAL":   "erstrace,lstdout",
-        }
-
-    daq_app_specs = {
-        daq_app_exec_name : {
-            "comment": "Application profile using PATH variables (lower start time)",
-            "env":{
-                "CET_PLUGIN_PATH": "getenv",
-                "DETCHANNELMAPS_SHARE": "getenv",
-                "DUNEDAQ_SHARE_PATH": "getenv",
-                "TIMING_SHARE": "getenv",
-                "LD_LIBRARY_PATH": "getenv",
-                "PATH": "getenv",
-                "TRACE_FILE": "getenv:/tmp/trace_buffer_{APP_HOST}_{DUNEDAQ_PARTITION}",
-                "CMD_FAC": "rest://localhost:{APP_PORT}",
-                "INFO_SVC": info_svc_uri,
-            },
-            "cmd":"daq_application",
-            "args": [
-                "--name",
-                "{APP_NAME}",
-                "-c",
-                "{CMD_FAC}",
-                "-i",
-                "{INFO_SVC}",
-                "--configurationService",
-                "{CONF_LOC}"
-            ]
-        }
-    }
-
-    boot = {
-        "env": {
-            "DUNEDAQ_ERS_VERBOSITY_LEVEL": "getenv:1",
-            "DUNEDAQ_ERS_INFO": ers_settings["INFO"],
-            "DUNEDAQ_ERS_WARNING": ers_settings["WARNING"],
-            "DUNEDAQ_ERS_ERROR": ers_settings["ERROR"],
-            "DUNEDAQ_ERS_FATAL": ers_settings["FATAL"],
-            "DUNEDAQ_ERS_DEBUG_LEVEL": "getenv_ifset",
-        },
-        "response_listener": {
-            "port": 56789
-        },
-        "external_connections": external_connections,
-        "exec": daq_app_specs
-    }
-
-    if use_kafka:
-        boot["env"]["DUNEDAQ_ERS_STREAM_LIBS"] = "erskafka"
-
-    if disable_trace:
-        del boot["exec"][daq_app_exec_name]["env"]["TRACE_FILE"]
-
-    boot["exec"][daq_app_exec_name]["env"].update(extra_env_vars)
-
-    return boot
-
 def update_with_ssh_boot_data (
         boot_data:dict,
         apps: list,
@@ -631,6 +556,125 @@ def update_with_k8s_boot_data(
     boot_data["exec"]["daq_application_k8s"]["image"] = image
 
 
+def generate_boot(
+        conf,
+        system,
+        verbose=False) -> dict:
+    """
+    Generate the dictionary that will become the boot.json file
+    """
+    ers_settings=dict()
+
+    if conf.ers_impl == 'cern':
+        use_kafka = True
+        ers_settings["INFO"] =    "erstrace,throttle,lstdout,erskafka(monkafka.cern.ch:30092)"
+        ers_settings["WARNING"] = "erstrace,throttle,lstdout,erskafka(monkafka.cern.ch:30092)"
+        ers_settings["ERROR"] =   "erstrace,throttle,lstdout,erskafka(monkafka.cern.ch:30092)"
+        ers_settings["FATAL"] =   "erstrace,lstdout,erskafka(monkafka.cern.ch:30092)"
+    elif conf.ers_impl == 'pocket':
+        use_kafka = True
+        ers_settings["INFO"] =    "erstrace,throttle,lstdout,erskafka(" + conf.pocket_url + ":30092)"
+        ers_settings["WARNING"] = "erstrace,throttle,lstdout,erskafka(" + conf.pocket_url + ":30092)"
+        ers_settings["ERROR"] =   "erstrace,throttle,lstdout,erskafka(" + conf.pocket_url + ":30092)"
+        ers_settings["FATAL"] =   "erstrace,lstdout,erskafka(" + conf.pocket_url + ":30092)"
+    else:
+        use_kafka = False
+        ers_settings["INFO"] =    "erstrace,throttle,lstdout"
+        ers_settings["WARNING"] = "erstrace,throttle,lstdout"
+        ers_settings["ERROR"] =   "erstrace,throttle,lstdout"
+        ers_settings["FATAL"] =   "erstrace,lstdout"
+
+    if conf.opmon_impl == 'cern':
+        info_svc_uri = "kafka://monkafka.cern.ch:30092/opmon"
+    elif conf.opmon_impl == 'pocket':
+        info_svc_uri = "kafka://" + conf.pocket_url + ":30092/opmon"
+    else:
+        info_svc_uri = "file://info_{APP_NAME}_{APP_PORT}.json"
+
+    daq_app_exec_name = "daq_application_ssh" if not conf.use_k8s else "daq_application_k8s"
+
+    daq_app_specs = {
+        daq_app_exec_name : {
+            "comment": "Application profile using PATH variables (lower start time)",
+            "env":{
+                "CET_PLUGIN_PATH": "getenv",
+                "DETCHANNELMAPS_SHARE": "getenv",
+                "DUNEDAQ_SHARE_PATH": "getenv",
+                "TIMING_SHARE": "getenv",
+                "LD_LIBRARY_PATH": "getenv",
+                "PATH": "getenv",
+                "TRACE_FILE": "getenv:/tmp/trace_buffer_{APP_HOST}_{DUNEDAQ_PARTITION}",
+                "CMD_FAC": "rest://localhost:{APP_PORT}",
+                "INFO_SVC": info_svc_uri,
+            },
+            "cmd":"daq_application",
+            "args": [
+                "--name",
+                "{APP_NAME}",
+                "-c",
+                "{CMD_FAC}",
+                "-i",
+                "{INFO_SVC}",
+                "--configurationService",
+                "{CONF_LOC}"
+            ]
+        }
+    }
+
+
+    external_connections = []
+    for app in system.apps:
+        external_connections += [ext.external_name for ext in system.apps[app].modulegraph.external_connections]
+
+    boot = {
+        "env": {
+            "DUNEDAQ_ERS_VERBOSITY_LEVEL": "getenv:1",
+            "DUNEDAQ_ERS_INFO": ers_settings["INFO"],
+            "DUNEDAQ_ERS_WARNING": ers_settings["WARNING"],
+            "DUNEDAQ_ERS_ERROR": ers_settings["ERROR"],
+            "DUNEDAQ_ERS_FATAL": ers_settings["FATAL"],
+            "DUNEDAQ_ERS_DEBUG_LEVEL": "getenv_ifset",
+        },
+        "response_listener": {
+            "port": 56789
+        },
+        "external_connections": external_connections,
+        "exec": daq_app_specs
+    }
+
+    if use_kafka:
+        boot["env"]["DUNEDAQ_ERS_STREAM_LIBS"] = "erskafka"
+
+    if conf.disable_trace:
+        del boot["exec"][daq_app_exec_name]["env"]["TRACE_FILE"]
+
+    # boot["exec"][daq_app_exec_name]["env"].update(extra_env_vars)
+
+    if not conf.use_k8s:
+        update_with_ssh_boot_data(
+            boot_data = boot,
+            apps = system.apps,
+            base_command_port = conf.base_command_port,
+            verbose = verbose,
+        )
+    else:
+        # ARGGGGG (MASSIVE WARNING SIGN HERE)
+        ruapps    = [app for app in system.apps if app.name[:2] == 'ru']
+        dfapps    = [app for app in system.apps if app.name[:2] == 'df']
+        otherapps = [app for app in system.apps if not app.name in ruapps + dfapps]
+        boot_order = ruapps + dfapps + otherapps
+
+        update_with_k8s_boot_data(
+            boot_data = boot,
+            apps = system.apps,
+            boot_order = boot_order,
+            image = conf.image,
+            base_command_port = conf.base_command_port,
+            verbose = verbose,
+        )
+    return boot
+
+
 def set_strict_anti_affinity(apps, dont_run_with_me):
     for app in apps:
         app.pod_anti_affinity += [{
@@ -671,7 +715,7 @@ def make_app_json(app_name, app_command_data, data_dir, verbose=False):
         with open(f'{join(data_dir, app_name)}_{c}.json', 'w') as f:
             json.dump(app_command_data[c].pod(), f, indent=4, sort_keys=True)
 
-def make_system_command_datas(the_system, forced_deps=[], verbose=False):
+def make_system_command_datas(daqconf, the_system, forced_deps=[], verbose=False):
     """Generate the dictionary of commands and their data for the entire system"""
 
     # if the_system.app_start_order is None:
@@ -696,11 +740,11 @@ def make_system_command_datas(the_system, forced_deps=[], verbose=False):
             console.log(cfg)
 
     console.log(f"Generating boot json file")
-    system_command_datas['boot'] = generate_boot_common(verbose=verbose)
-    update_with_ssh_boot_data(
-        boot_data = system_command_datas['boot'],
-        apps = the_system.apps,
-        verbose = verbose)
+    system_command_datas['boot'] = generate_boot(
+        conf = daqconf,
+        system = the_system,
+        verbose = verbose,
+    )
 
     return system_command_datas
 

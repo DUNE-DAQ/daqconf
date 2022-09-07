@@ -586,7 +586,7 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
     ##################################################################################
 
     # Make boot.json config
-    from daqconf.core.conf_utils import make_system_command_datas,generate_boot_common, write_json_files
+    from daqconf.core.conf_utils import make_system_command_datas,generate_boot, write_json_files
 
     # HACK: Make sure RUs start after trigger
     forced_deps = []
@@ -606,47 +606,16 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
             forced_deps.append([dqm_name, 'dfo'])
     forced_deps.append(['trigger','hsi'])
 
-    system_command_datas = make_system_command_datas(the_system, forced_deps, verbose=debug)
-
-    external_connections = []
-    for app in the_system.apps:
-        external_connections += [ext.external_name for ext in the_system.apps[app].modulegraph.external_connections]
-
-    # Override the default boot.json with the one from minidaqapp
-    boot = generate_boot_common(
-        ers_settings = ers_settings,
-        info_svc_uri = info_svc_uri,
-        disable_trace = daqconf.disable_trace,
-        use_kafka = use_kafka,
-        external_connections = external_connections,
-        daq_app_exec_name = "daq_application_ssh" if not daqconf.use_k8s else "daq_application_k8s",
-        verbose = debug,
+    system_command_datas = make_system_command_datas(
+        daqconf,
+        the_system,
+        forced_deps,
+        verbose=debug
     )
-
-    if daqconf.use_k8s:
-        from daqconf.core.conf_utils import update_with_k8s_boot_data
-        console.log("Generating k8s boot.json")
-        update_with_k8s_boot_data(
-            boot_data = boot,
-            apps = the_system.apps,
-            base_command_port = daqconf.base_command_port,
-            boot_order = boot_order,
-            image = daqconf.image,
-            verbose = debug,
-        )
-    else:
-        from daqconf.core.conf_utils import update_with_ssh_boot_data
-        console.log("Generating ssh boot.json")
-        update_with_ssh_boot_data(
-            boot_data = boot,
-            apps = the_system.apps,
-            base_command_port = daqconf.base_command_port,
-            verbose = debug,
-        )
 
 
     if readout.thread_pinning_file != "" and exists(readout.thread_pinning_file):
-        boot['scripts'] = {
+        system_command_datas['boot']['scripts'] = {
             "thread_pinning": {
                 "cmd": [
                     "readout-affinity.py --pinfile ${DUNEDAQ_THREAD_PIN_FILE}"
@@ -659,8 +628,6 @@ def cli(ctx, base_command_port, hardware_map_file, data_rate_slowdown_factor, tr
             }
         }
 
-
-    system_command_datas['boot'] = boot
 
     write_json_files(app_command_datas, system_command_datas, json_dir, verbose=debug)
 
