@@ -103,7 +103,7 @@ def get_readout_app(DRO_CONFIG=None,
         FRONTEND_TYPE = "pds_list"
     elif FRONTEND_TYPE== "VD_Top_TPC":
         FRONTEND_TYPE = "tde"
-    elif FRONTEND_TYPE== "ND_LAR":
+    elif FRONTEND_TYPE== "ND_LAr":
         FRONTEND_TYPE = "pacman"
     
 
