@@ -71,12 +71,12 @@ local cs = {
 
         readout: s.record("readout", [
          s.field( "hardware_map_file", self.path, default='./HardwareMap.txt', doc="File containing detector hardware map for configuration to run"),
-         s.field( "emulator_mode", self.flag, default=false, doc="If active, timestamps of data frames are overwritten when processed by the readout. This is necessary if the felix card does not set correct timestamps. Former -e"),
+         s.field( "emulator_mode", self.flag, default=false, doc="If active, timestamps of data frames are overwritten when processed by the readout. This is necessary if the felix card does not set correct timestamps."),
          s.field( "thread_pinning_file", self.path, default="", doc="A thread pinning configuration file that gets executed after conf."),
-         s.field( "data_rate_slowdown_factor",self.count, default=1, doc="Factor by which to suppress data generation. Former -s"),
+         s.field( "data_rate_slowdown_factor",self.count, default=1),
          s.field( "clock_speed_hz", self.freq, default=50000000),
-         s.field( "data_file", self.path, default='./frames.bin', doc="File containing data frames to be replayed by the fake cards. Former -d"),
-         s.field( "use_felix", self.flag, default=false, doc="Use real felix cards instead of fake ones. Former -f"),
+         s.field( "data_file", self.path, default='./frames.bin', doc="File containing data frames to be replayed by the fake cards"),
+         s.field( "use_felix", self.flag, default=false, doc="Use real felix cards instead of fake ones"),
          s.field( "latency_buffer_size", self.count, default=499968, doc="Size of the latency buffers (in number of elements)"),
          s.field( "enable_software_tpg", self.flag, default=false, doc="Enable software TPG"),
          s.field( "enable_firmware_tpg", self.flag, default=false, doc="Enable firmware TPG"),
@@ -91,9 +91,9 @@ local cs = {
         ]),
 
         trigger: s.record("trigger",[
-         s.field( "trigger_rate_hz", self.rate, default=1.0, doc='Fake HSI only: rate at which fake HSIEvents are sent. 0 - disable HSIEvent generation. Former -t'),
-         s.field( "trigger_window_before_ticks",self.count, default=1000, doc="Trigger window before marker. Former -b"),
-         s.field( "trigger_window_after_ticks", self.count, default=1000, doc="Trigger window after marker. Former -a"),
+         s.field( "trigger_rate_hz", self.rate, default=1.0, doc='Fake HSI only: rate at which fake HSIEvents are sent. 0 - disable HSIEvent generation.'),
+         s.field( "trigger_window_before_ticks",self.count, default=1000),
+         s.field( "trigger_window_after_ticks", self.count, default=1000),
          s.field( "host_trigger", self.host, default='localhost', doc='Host to run the trigger app on'),
          s.field( "host_tpw", self.host, default='localhost', doc='Host to run the TPWriter app on'),
         # trigger options
@@ -115,8 +115,8 @@ local cs = {
 
         dataflowapp: s.record("dataflowapp",[
          s.field("app_name", self.string, default="dataflow0"),
-         s.field( "token_count",self.count, default=10, doc="Number of tokens this dataflow app gives to DFO. Former -c"),
-         s.field( "output_paths",self.paths, default=['.'], doc="Location(s) for the dataflow app to write data. Former -o"),
+         s.field( "token_count",self.count, default=10),
+         s.field( "output_paths",self.paths, default=['.']),
          s.field( "host_df", self.host, default='localhost'),
          s.field( "max_file_size",self.count, default=4*1024*1024*1024, doc="The size threshold when raw data files are closed (in bytes)"),
          s.field( "max_trigger_record_window",self.count, default=0, doc="The maximum size for the window of data that will included in a single TriggerRecord (in ticks). Readout windows that are longer than this size will result in TriggerRecords being split into a sequence of TRs. A zero value for this parameter means no splitting."),
