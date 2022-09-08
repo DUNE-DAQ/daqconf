@@ -39,6 +39,8 @@ def configure(ctx, param, filename):
             ctx.default_map = parse_json(ctx.default_map, filename)
         elif ".ini" in filename:
             ctx.default_map = parse_ini(ctx.default_map, filename)
+    elif filename != "":
+        raise ValueError(f"Configuration file {filename} does not exist!")
 
 # Add -h as default help option
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'], default_map=default_config())
