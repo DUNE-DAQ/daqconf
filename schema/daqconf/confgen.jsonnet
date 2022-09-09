@@ -14,7 +14,7 @@ local cs = {
   monitoring_dest: s.enum(     "MonitoringDest", ["local", "cern", "pocket"]),
   path:            s.string(   "Path", doc="Location on a filesystem"),
   paths:           s.sequence( "Paths",         self.path, doc="Multiple paths"),
-  host:            s.string(   "Host",          doc="A hostname"),
+  host:            s.string(  "Host", moo.re.dnshost,          doc="A hostname"),
   hosts:           s.sequence( "Hosts",         self.host, "Multiple hosts"),
   string:          s.string(   "Str",           doc="Generic string"),
   tpg_channel_map: s.enum(     "TPGChannelMap", ["VDColdboxChannelMap", "ProtoDUNESP1ChannelMap", "PD2HDChannelMap", "HDColdboxChannelMap"]),
