@@ -37,6 +37,9 @@ def configure(ctx, param, filename):
     daqconf_conf = confgen.daqconf_multiru_gen()
     from daqconf.core.config_file import parse_json, parse_ini
 
+    if filename is None:
+        return daqconf_conf
+
     if exists(filename):
         if  ".json" in filename:
             return parse_json(filename, daqconf_conf), filename
@@ -64,8 +67,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('--op-env', default='', help="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files")
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
-@click.pass_context
-def cli(ctx, config, base_command_port, hardware_map_file, data_rate_slowdown_factor, trigger_rate_hz, use_felix, op_env, debug, json_dir):
+def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor, trigger_rate_hz, use_felix, op_env, debug, json_dir):
 
     if exists(json_dir):
         raise RuntimeError(f"Directory {json_dir} already exists")
@@ -83,7 +85,7 @@ def cli(ctx, config, base_command_port, hardware_map_file, data_rate_slowdown_fa
     ## Hack, we shouldn't need to do that, in the future it should be, boot = confgen.boot
     boot = confgen.boot(**config_data.boot)
     if debug: console.log(f"daqconf configuration object: {boot.pod()}")
-    
+
     ## etc...
     timing = confgen.timing(**config_data.timing)
     if debug: console.log(f"timing configuration object: {timing.pod()}")
@@ -150,10 +152,10 @@ def cli(ctx, config, base_command_port, hardware_map_file, data_rate_slowdown_fa
     df_app_names = []
     for d in dataflow.apps:
         console.log(f"Parsing dataflow app config {d}")
-        
+
         ## Hack, we shouldn't need to do that, in the future, it should be appconfig = d
         appconfig = confgen.dataflowapp(**d)
-        
+
         dfapp = appconfig.app_name
         if dfapp in df_app_names:
             appconfig_df[dfapp].update(appconfig)
