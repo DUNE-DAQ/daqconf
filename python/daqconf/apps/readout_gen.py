@@ -117,7 +117,7 @@ def get_readout_app(DRO_CONFIG=None,
         FRONTEND_TYPE = "pds_list"
     elif FRONTEND_TYPE== "VD_Top_TPC":
         FRONTEND_TYPE = "tde"
-    elif FRONTEND_TYPE== "ND_LAR":
+    elif FRONTEND_TYPE== "ND_LAr":
         FRONTEND_TYPE = "pacman"
     
 
@@ -334,7 +334,7 @@ def get_readout_app(DRO_CONFIG=None,
             if FRONTEND_TYPE=='pacman':
                 fake_source = "pacman_source"
                 card_reader = "PacmanCardReader"
-                conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(source_id=link.dro_source_id)
+                conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=link.dro_source_id)
                                                for link in DRO_CONFIG.links],
                                 zmq_receiver_timeout = 10000)
             modules += [DAQModule(name = fake_source,
