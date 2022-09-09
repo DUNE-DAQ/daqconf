@@ -1,0 +1,140 @@
+{
+  "daqconf": {
+    "base_command_port": 3333,
+    "disable_trace": false,
+    "opmon_impl": "local",
+    "ers_impl": "local",
+    "pocket_url": "127.0.0.1",
+    "image": "",
+    "use_k8s": false,
+    "op_env": "swtest",
+    "data_request_timeout_ms": 1000
+  },
+  "timing": {
+    "timing_partition_name": "timing",
+    "host_timing": "np04-srv-012.cern.ch",
+    "port_timing": 12345,
+    "host_tprtc": "localhost",
+    "control_timing_partition": false,
+    "timing_partition_master_device_name": "",
+    "timing_partition_id": 0,
+    "timing_partition_trigger_mask": 255,
+    "timing_partition_rate_control_enabled": false,
+    "timing_partition_spill_gate_enabled": false
+  },
+  "hsi": {
+    "host_hsi": "localhost",
+    "hsi_hw_connections_file": "${TIMING_SHARE}/config/etc/connections.xml",
+    "hsi_device_name": "",
+    "hsi_readout_period": 1e3,
+    "control_hsi_hw": false,
+    "hsi_endpoint_address": 1,
+    "hsi_endpoint_partition": 0,
+    "hsi_re_mask": 0,
+    "hsi_fe_mask": 0,
+    "hsi_inv_mask": 0,
+    "hsi_source": 1,
+    "use_hsi_hw": false,
+    "hsi_device_id": 0,
+    "mean_hsi_signal_multiplicity": 1,
+    "hsi_signal_emulation_mode": 0,
+    "enabled_hsi_signals": 1
+  },
+  "readout": {
+    "hardware_map_file": "./HardwareMap.txt",
+    "emulator_mode": false,
+    "thread_pinning_file": "",
+    "data_rate_slowdown_factor": 1,
+    "clock_speed_hz": 50000000,
+    "data_file": "./frames.bin",
+    "use_felix": false,
+    "latency_buffer_size": 499968,
+    "enable_software_tpg": false,
+    "enable_firmware_tpg": false,
+    "enable_raw_recording": false,
+    "raw_recording_output_dir": ".",
+    "use_fake_data_producers": false,
+    "readout_sends_tp_fragments": false
+  },
+  "trigger": {
+    "trigger_rate_hz": 1.0,
+    "trigger_window_before_ticks": 1000,
+    "trigger_window_after_ticks": 1000,
+    "host_trigger": "localhost",
+    "host_tpw": "localhost",
+    "ttcm_s1": 1,
+    "ttcm_s2": 2,
+    "trigger_activity_plugin": "TriggerActivityMakerPrescalePlugin",
+    "trigger_activity_config": { "prescale": 100 },
+    "trigger_candidate_plugin": "TriggerCandidateMakerPrescalePlugin",
+    "trigger_candidate_config": { "prescale": 100 },
+    "hsi_trigger_type_passthrough": false,
+    "enable_tpset_writing": false,
+    "tpset_output_path": ".",
+    "tpset_output_file_size": 4294967296,
+    "tpg_channel_map": null,
+    "ProtoDUNESP1ChannelMap": null,
+    "mlt_buffer_timeout": 100,
+    "mlt_send_timed_out_tds": false,
+    "mlt_max_td_length_ms": 1000
+  },
+  "dataflow": {
+    "host_dfo": "localhost",
+    "apps": [
+      {
+        "app_name": "dataflow0",
+        "token_count": 10,
+        "output_paths": [ "." ],
+        "host_df": "localhost",
+        "max_file_size": 4294967296,
+        "max_trigger_record_window": 0
+
+      },
+      {
+        "app_name": "dataflow1",
+        "token_count": 10,
+        "output_paths": [ "." ],
+        "host_df": "localhost",
+        "max_file_size": 4294967296,
+        "max_trigger_record_window": 0
+
+      },
+      {
+        "app_name": "dataflow2",
+        "token_count": 10,
+        "output_paths": [ "." ],
+        "host_df": "localhost",
+        "max_file_size": 4294967296,
+        "max_trigger_record_window": 0
+
+      }
+    ]
+  },
+
+  "dqm": {
+    "enable_dqm": false,
+    "dqm_impl": "local",
+    "dqm_cmap": "HD",
+    "host_dqm": [ "localhost" ],
+    "dqm_rawdisplay_params": [
+      60,
+      50
+    ],
+    "dqm_meanrms_params": [
+      10,
+      100
+    ],
+    "dqm_fourier_params": [
+      0,
+      0
+    ],
+    "dqm_fouriersum_params": [
+      600,
+      1000
+    ],
+    "dqm_df_rate": 10,
+
+    "dqm_df_algs": "hist mean_rms fourier_sum"
+  }
+
+}

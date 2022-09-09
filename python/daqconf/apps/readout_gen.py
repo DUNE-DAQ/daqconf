@@ -86,15 +86,29 @@ def get_readout_app(DRO_CONFIG=None,
 
     link_to_tp_sid_map = {}
     slr_link = {}
+
+    max_sid = -1
+    for link in DRO_CONFIG.links:
+        if max_sid < link.dro_source_id:
+            max_sid = link.dro_source_id
+
+    if DEBUG: print(f"max sourcde id: {max_sid}")
+
     for link in DRO_CONFIG.links:
         if SOFTWARE_TPG_ENABLED:
             link_to_tp_sid_map[link.dro_source_id] = SOURCEID_BROKER.get_next_source_id("Trigger")
             SOURCEID_BROKER.register_source_id("Trigger", link_to_tp_sid_map[link.dro_source_id], None)
         elif FIRMWARE_TPG_ENABLED:
             if not link.dro_slr in link_to_tp_sid_map.keys():
-                link_to_tp_sid_map[link.dro_slr] = SOURCEID_BROKER.get_next_source_id("Trigger")
+                #link_to_tp_sid_map[link.dro_slr] = SOURCEID_BROKER.get_next_source_id("Trigger")
+                max_sid += 1
+                link_to_tp_sid_map[link.dro_slr] = max_sid
                 SOURCEID_BROKER.register_source_id("Trigger", link_to_tp_sid_map[link.dro_slr], None)
-                slr_link[link.dro_slr] = link.dro_source_id
+                slr_link[link.dro_slr] = max_sid
+
+
+    if DEBUG: print(link_to_tp_sid_map)
+    if DEBUG: print(slr_link)
 
 
     # Hack on strings to be used for connection instances: will be solved when data_type is properly used.
@@ -108,7 +122,7 @@ def get_readout_app(DRO_CONFIG=None,
         FRONTEND_TYPE = "pds_list"
     elif FRONTEND_TYPE== "VD_Top_TPC":
         FRONTEND_TYPE = "tde"
-    elif FRONTEND_TYPE== "ND_LAR":
+    elif FRONTEND_TYPE== "ND_LAr":
         FRONTEND_TYPE = "pacman"
     
 
@@ -136,10 +150,11 @@ def get_readout_app(DRO_CONFIG=None,
                                                                                               enable_raw_recording = False)))]
     if FIRMWARE_TPG_ENABLED:
         assert(len(link_to_tp_sid_map) <= 2)
+        print(f"Hey, Listen! :{link_to_tp_sid_map.values()}")
         for sid in link_to_tp_sid_map.values():
             queues += [Queue(f"tp_datahandler_{sid}.errored_frames", 'errored_frame_consumer.input_queue', "errored_frames_q")]
-            queues += [Queue(f"tp_datahandler_{sid}.tp_out",f"tp_out_datahandler_{sid}.raw_input",f"sw_tp_link_{sid}",100000 )]                
-            modules += [DAQModule(name = f"tp_out_datahandler_{sid}",
+            queues += [Queue(f"tp_datahandler_{sid}.tp_out",f"tp_out_datahandler_{sid+1}.raw_input",f"sw_tp_link_{sid+1}",100000 )]                
+            modules += [DAQModule(name = f"tp_out_datahandler_{sid+1}",
                                plugin = "DataLinkHandler",
                                conf = rconf.Conf(readoutmodelconf = rconf.ReadoutModelConf(source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
                                                                                          source_id = sid),
@@ -282,10 +297,10 @@ def get_readout_app(DRO_CONFIG=None,
                 queues += [Queue(f'flxcard_1.output_{idx}',f"datahandler_{idx}.raw_input",f'{FRONTEND_TYPE}_link_{idx}', 100000 )]
             if FIRMWARE_TPG_ENABLED:
                 link_0.append(5)
-                queues += [Queue(f'flxcard_0.output_5',f"tp_datahandler_{link_to_tp_sid_map[0]}.raw_input",f'raw_tp_link_5', 100000 )]
+                queues += [Queue(f'flxcard_0.output_{link_to_tp_sid_map[0]}',f"tp_datahandler_{link_to_tp_sid_map[0]}.raw_input",f'raw_tp_link_{link_to_tp_sid_map[0]}', 100000 )]
                 if len(link_1) > 0:
                     link_1.append(5)
-                    queues += [Queue(f'flxcard_1.output_5',f"tp_datahandler_{link_to_tp_sid_map[1]}.raw_input",f'raw_tp_link_11', 100000 )]
+                    queues += [Queue(f'flxcard_1.output_{link_to_tp_sid_map[1]}',f"tp_datahandler_{link_to_tp_sid_map[1]}.raw_input",f'raw_tp_link_{link_to_tp_sid_map[1]}', 100000 )]
 
             modules += [DAQModule(name = 'flxcard_0',
                                plugin = 'FelixCardReader',
@@ -349,7 +364,7 @@ def get_readout_app(DRO_CONFIG=None,
             if FRONTEND_TYPE=='pacman':
                 fake_source = "pacman_source"
                 card_reader = "PacmanCardReader"
-                conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(source_id=link.dro_source_id)
+                conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=link.dro_source_id)
                                                for link in DRO_CONFIG.links],
                                 zmq_receiver_timeout = 10000)
             modules += [DAQModule(name = fake_source,
@@ -365,18 +380,18 @@ def get_readout_app(DRO_CONFIG=None,
     mgraph = ModuleGraph(modules, queues=queues)
 
     if FIRMWARE_TPG_ENABLED:
-        mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{slr_link[0]}", f"tp_datahandler_{link_to_tp_sid_map[0]}.tpset_out",    Direction.OUT, topic=["TPSets"])
+        mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{DRO_CONFIG.links[0].dro_source_id}", f"tp_datahandler_{link_to_tp_sid_map[0]}.tpset_out",    Direction.OUT, topic=["TPSets"])
         if 1 in link_to_tp_sid_map.keys():
-            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{slr_link[1]}", f"tp_datahandler_{link_to_tp_sid_map[1]}.tpset_out",    Direction.OUT, topic=["TPSets"])
+            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{DRO_CONFIG.links[1].dro_source_id}", f"tp_datahandler_{link_to_tp_sid_map[1]}.tpset_out",    Direction.OUT, topic=["TPSets"])
         for sid in link_to_tp_sid_map.values():
             mgraph.add_fragment_producer(id = sid, subsystem = "Trigger",
                                     requests_in   = f"tp_datahandler_{sid}.request_input",
                                     fragments_out = f"tp_datahandler_{sid}.fragment_queue", is_mlt_producer = READOUT_SENDS_TP_FRAGMENTS)
             mgraph.add_endpoint(f"timesync_{sid}", f"tp_datahandler_{sid}.timesync_output",    Direction.OUT, ["Timesync"])
-            mgraph.add_endpoint(f"timesync_tp_out_{sid}", f"tp_out_datahandler_{sid}.timesync_output",    Direction.OUT, ["Timesync"])
-            mgraph.add_fragment_producer(id = sid, subsystem = "Trigger",
-                                    requests_in   = f"tp_out_datahandler_{sid}.request_input",
-                                    fragments_out = f"tp_out_datahandler_{sid}.fragment_queue", is_mlt_producer = READOUT_SENDS_TP_FRAGMENTS)
+            mgraph.add_endpoint(f"timesync_tp_out_{sid+1}", f"tp_out_datahandler_{sid+1}.timesync_output",    Direction.OUT, ["Timesync"])
+            mgraph.add_fragment_producer(id = sid+1, subsystem = "Trigger",
+                                    requests_in   = f"tp_out_datahandler_{sid+1}.request_input",
+                                    fragments_out = f"tp_out_datahandler_{sid+1}.fragment_queue", is_mlt_producer = READOUT_SENDS_TP_FRAGMENTS)
 
 
 
