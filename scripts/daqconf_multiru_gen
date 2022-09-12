@@ -1,21 +1,12 @@
 #!/usr/bin/env python3
-import json
-import os
+import click
 import math
-import sys
-import glob
-import rich.traceback
 from rich.console import Console
-from collections import defaultdict
-from os.path import exists, join
+from os.path import exists
 from daqconf.core.system import System
 from daqconf.core.metadata import write_metadata_file
 from daqconf.core.sourceid import SourceIDBroker, get_tpg_mode
-# from daqconf.core.config_file import par
-import random
-import string
-
-from detchannelmaps._daq_detchannelmaps_py import *
+from detchannelmaps._daq_detchannelmaps_py import HardwareMapService
 
 console = Console()
 
@@ -26,9 +17,6 @@ moo.io.default_load_path = get_moo_model_path()
 
 # Load configuration types
 import moo.otypes
-
-
-import click
 
 def configure(ctx, param, filename):
     moo.otypes.load_types('daqconf/confgen.jsonnet')
@@ -73,9 +61,9 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     moo.otypes.load_types('daqconf/confgen.jsonnet')
     import dunedaq.daqconf.confgen as confgen
 
-    ## Hack, we shouldn't need to do that, in the future it should be, boot = confgen.boot
-    boot = confgen.boot(**config_data.boot)
-    if debug: console.log(f"daqconf configuration object: {boot.pod()}")
+    ## Hack, we shouldn't need to do that, in the future it should be, daqconf = confgen.daqconf
+    daqconf = confgen.daqconf(**config_data.daqconf)
+    if debug: console.log(f"daqconf configuration object: {daqconf.pod()}")
 
     ## etc...
     timing = confgen.timing(**config_data.timing)
@@ -98,7 +86,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
     # Update with command-line options
     if base_command_port != -1:
-       boot.base_command_port = base_command_port
+       daqconf.base_command_port = base_command_port
     if hardware_map_file != '':
         readout.hardware_map_file = hardware_map_file
     if data_rate_slowdown_factor != 0:
@@ -108,7 +96,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
     readout.use_felix |= use_felix
     if op_env != '':
-        boot.op_env = op_env
+        daqconf.op_env = op_env
 
     console.log("Loading dataflow config generator")
     from daqconf.apps.dataflow_gen import get_dataflow_app
@@ -224,10 +212,10 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     if hsi.control_hsi_hw and not hsi.use_hsi_hw:
         raise Exception("HSI hardware control can only be enabled if HSI hardware is used!")
 
-    if boot.use_k8s and not boot.image:
+    if daqconf.use_k8s and not daqconf.image:
         raise Exception("You need to provide an --image if running with k8s")
 
-    dqm_kafka_address = "monkafka.cern.ch:30092" if dqm.dqm_impl == 'cern' else boot.pocket_url + ":30092" if dqm.dqm_impl == 'pocket' else ''
+    dqm_kafka_address = "monkafka.cern.ch:30092" if dqm.dqm_impl == 'cern' else daqconf.pocket_url + ":30092" if dqm.dqm_impl == 'pocket' else ''
 
 #    host_id_dict = {}
 #    ru_configs = []
@@ -276,8 +264,8 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     TRB_TIMEOUT_SAFETY_FACTOR = 2
     DFO_TIMEOUT_SAFETY_FACTOR = 3
     MINIMUM_DFO_TIMEOUT = 10000
-    readout_data_request_timeout = boot.data_request_timeout_ms # can that be put somewhere else? in dataflow?
-    trigger_data_request_timeout = boot.data_request_timeout_ms
+    readout_data_request_timeout = daqconf.data_request_timeout_ms # can that be put somewhere else? in dataflow?
+    trigger_data_request_timeout = daqconf.data_request_timeout_ms
     trigger_record_building_timeout = max(MINIMUM_BASIC_TRB_TIMEOUT, TRB_TIMEOUT_SAFETY_FACTOR * max(readout_data_request_timeout, trigger_data_request_timeout))
     if len(dro_infos) >= 1:
         effective_number_of_data_producers = len(dro_infos)  # number of DataLinkHandlers
@@ -391,7 +379,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             SOURCEID_BROKER = sourceid_broker,
             READOUT_SENDS_TP_FRAGMENTS = readout.readout_sends_tp_fragments,
             DEBUG=debug)
-        if boot.use_k8s:
+        if daqconf.use_k8s:
             if readout.use_felix:
                 the_system.apps[ru_name].resources = {
                     "felix.cern/flx0-data": "1", # requesting FLX0
@@ -430,7 +418,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             HOSTIDX=dfidx,
             OUTPUT_PATHS = df_config.output_paths,
             APP_NAME=app_name,
-            OPERATIONAL_ENVIRONMENT = boot.op_env,
+            OPERATIONAL_ENVIRONMENT = daqconf.op_env,
             MAX_FILE_SIZE = df_config.max_file_size,
             MAX_TRIGGER_RECORD_WINDOW = df_config.max_trigger_record_window,
             MAX_EXPECTED_TR_SEQUENCES = max_expected_tr_sequences,
@@ -441,7 +429,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             HARDWARE_MAP_FILE=readout.hardware_map_file,
             DEBUG=debug
         )
-        if boot.use_k8s:
+        if daqconf.use_k8s:
             the_system.apps[app_name].mounted_dirs += [{
                 'name': 'raw-data',
                 'physical_location': df_config.output_paths,
@@ -483,7 +471,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         the_system.apps[tpw_name] = get_tpwriter_app(
             OUTPUT_PATH = trigger.tpset_output_path,
             APP_NAME = tpw_name,
-            OPERATIONAL_ENVIRONMENT = boot.op_env,
+            OPERATIONAL_ENVIRONMENT = daqconf.op_env,
             MAX_FILE_SIZE = trigger.tpset_output_file_size,
             DATA_RATE_SLOWDOWN_FACTOR = readout.data_rate_slowdown_factor,
             CLOCK_SPEED_HZ = readout.clock_speed_hz,
@@ -491,7 +479,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             SOURCE_IDX=dfidx,
             HOST=trigger.host_tpw,
             DEBUG=debug)
-        if boot.use_k8s: ## TODO schema
+        if daqconf.use_k8s: ## TODO schema
             the_system.apps[tpw_name].mounted_dirs += [{
                 'name': 'raw-data',
                 'physical_location':trigger.tpset_output_path,
@@ -566,7 +554,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
     # Arrange per-app command data into the format used by util.write_json_files()
     app_command_datas = {
-        name : make_app_command_data(the_system, app,name, verbose=debug, use_k8s=boot.use_k8s)
+        name : make_app_command_data(the_system, app,name, verbose=debug, use_k8s=daqconf.use_k8s)
         for name,app in the_system.apps.items()
     }
 
@@ -594,7 +582,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     forced_deps.append(['trigger','hsi'])
 
     system_command_datas = make_system_command_datas(
-        boot,
+        daqconf,
         the_system,
         forced_deps,
         verbose=debug

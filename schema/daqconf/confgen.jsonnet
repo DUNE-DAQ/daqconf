@@ -21,7 +21,7 @@ local cs = {
   dqm_channel_map: s.enum(     "DQMChannelMap", ['HD', 'VD', 'PD2HD', 'HDCB']),
   dqm_params:      s.sequence( "DQMParams",     self.count, doc="Parameters for DQM (fixme)"),
 
-  boot: s.record("boot", [
+  daqconf: s.record("daqconf", [
     s.field( "base_command_port", self.port, default=3333, doc="Base port of application command endpoints"),
     s.field( "disable_trace", self.flag, false, doc="Do not enable TRACE (default TRACE_FILE is /tmp/trace_buffer_${HOSTNAME}_${USER})"),
     s.field( "opmon_impl", self.monitoring_dest, default='local', doc="Info collector service implementation to use"),
@@ -143,7 +143,7 @@ local cs = {
   ]),
 
   daqconf_multiru_gen: s.record('daqconf_multiru_gen', [
-    s.field('boot',     self.boot,     default=self.boot,     doc='Boot parameters'),
+    s.field('daqconf',  self.daqconf,  default=self.daqconf,  doc='Boot/daqconf parameters'),
     s.field('dataflow', self.dataflow, default=self.dataflow, doc='Dataflow paramaters'),
     s.field('dqm',      self.dqm,      default=self.dqm,      doc='DQM parameters'),
     s.field('hsi',      self.hsi,      default=self.hsi,      doc='HSI parameters'),
