@@ -35,19 +35,9 @@ def configure(ctx, param, filename):
     import dunedaq.daqconf.confgen as confgen
 
     daqconf_conf = confgen.daqconf_multiru_gen()
-    from daqconf.core.config_file import parse_json, parse_ini
+    from daqconf.core.config_file import parse_config_file
 
-    if filename is None:
-        return daqconf_conf, None
-
-    if exists(filename):
-        _, extension = os.path.splitext(filename)
-        if  ".json" == extension:
-            return parse_json(filename, daqconf_conf), filename
-        elif ".ini" == extension:
-            return parse_ini(filename, daqconf_conf), filename
-
-    raise RuntimeError(f'Configuration {filename} doesn\'t exist')
+    return parse_config_file(filename, daqconf_conf)
 
 # Add -h as default help option
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])

@@ -98,3 +98,23 @@ def parse_ini(filename, schemed_object):
         return schemed_object
     except Exception as e:
         raise RuntimeError(f'Couldn\'t update the object {schemed_object} with the file {filename},\nError: {e}')
+
+
+
+
+def parse_config_file(filename, configurer_conf):
+    from os.path import exists, splitext
+
+    if filename is None:
+        ## if we didn't provide any file, make sure the schema is valid, and return the default version of it
+        configurer_conf.pod()
+        return configurer_conf, None
+
+    if exists(filename):
+        _, extension = splitext(filename)
+        if  ".json" == extension:
+            return parse_json(filename, configurer_conf), filename
+        elif ".ini" == extension:
+            return parse_ini(filename, configurer_conf), filename
+
+    raise RuntimeError(f'Configuration {filename} doesn\'t exist')
