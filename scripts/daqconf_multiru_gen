@@ -38,12 +38,13 @@ def configure(ctx, param, filename):
     from daqconf.core.config_file import parse_json, parse_ini
 
     if filename is None:
-        return daqconf_conf
+        return daqconf_conf, None
 
     if exists(filename):
-        if  ".json" in filename:
+        _, extension = os.path.splitext(filename)
+        if  ".json" == extension:
             return parse_json(filename, daqconf_conf), filename
-        elif ".ini" in filename:
+        elif ".ini" == extension:
             return parse_ini(filename, daqconf_conf), filename
 
     raise RuntimeError(f'Configuration {filename} doesn\'t exist')
