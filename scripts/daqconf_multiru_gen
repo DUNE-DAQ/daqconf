@@ -40,13 +40,12 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 )
 @click.option('--base-command-port', type=int, default=-1, help="Base port of application command endpoints")
 @click.option('--hardware-map-file', default='', help="File containing detector hardware map for configuration to run")
-@click.option('--data-rate-slowdown-factor', default=0)
-@click.option('-t', '--trigger-rate-hz', default=0.0, help='Fake HSI only: rate at which fake HSIEvents are sent. 0 - disable HSIEvent generation.')
-@click.option('-f', '--use-felix', is_flag=True, help="Use real felix cards instead of fake ones")
+@click.option('-s', '--data-rate-slowdown-factor', default=0, help="Scale factor for readout internal clock to generate less data")
+@click.option('--enable-dqm', default=False, is_flag=True, help="Enable generation of DQM apps")
 @click.option('--op-env', default='', help="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files")
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
-def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor, trigger_rate_hz, use_felix, op_env, debug, json_dir):
+def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor, enable_dqm, op_env, debug, json_dir):
 
     if exists(json_dir):
         raise RuntimeError(f"Directory {json_dir} already exists")
@@ -91,10 +90,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         readout.hardware_map_file = hardware_map_file
     if data_rate_slowdown_factor != 0:
         readout.data_rate_slowdown_factor = data_rate_slowdown_factor
-    if trigger_rate_hz != 0.0:
-        trigger.trigger_rate_hz = trigger_rate_hz
-
-    readout.use_felix |= use_felix
+    dqm.enable_dqm |= enable_dqm
     if op_env != '':
         boot.op_env = op_env
 
