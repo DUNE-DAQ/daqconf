@@ -70,13 +70,22 @@ class SourceIDBroker:
         else:
             raise ValueError(f"SourceID {sid} already exists for Subsystem {subsystem}!")
 
-    def register_readout_source_ids(self, dro_configs):
+    def register_readout_source_ids(self, dro_configs, tp_mode: TPGenMode):
+        max_sid = -1
         for dro_config in dro_configs:
             for link in dro_config.links:
                 if not self.source_id_exists("Detector_Readout", link.dro_source_id):
                     self.register_source_id("Detector_Readout", link.dro_source_id, [link])
                 else:
                     self.sourceid_map["Detector_Readout"][link.dro_source_id].append(link)
+            if tp_mode == TPGenMode.FWTPG and max_sid < link.dro_source_id:
+                    max_sid = link.dro_source_id
+            if tp_mode == TPGenMode.FWTPG:
+                if self.debug: console.log(f"max source id: {max_sid}") 
+                for link in dro_config.links:
+                    max_sid += 1
+                    self.register_source_id("FW_TPG", max_sid, None)
+
 
     def generate_trigger_source_ids(self, dro_configs, tp_mode: TPGenMode):
         tc_info = TCInfo()

@@ -82,24 +82,16 @@ def get_readout_app(DRO_CONFIG=None,
     link_to_tp_sid_map = {}
     slr_link = {}
 
-    max_sid = -1
-    for link in DRO_CONFIG.links:
-        if max_sid < link.dro_source_id:
-            max_sid = link.dro_source_id
-
-    if DEBUG: print(f"max sourcde id: {max_sid}")
-
     for link in DRO_CONFIG.links:
         if SOFTWARE_TPG_ENABLED:
             link_to_tp_sid_map[link.dro_source_id] = SOURCEID_BROKER.get_next_source_id("Trigger")
             SOURCEID_BROKER.register_source_id("Trigger", link_to_tp_sid_map[link.dro_source_id], None)
-        elif FIRMWARE_TPG_ENABLED:
+    if FIRMWARE_TPG_ENABLED:
+        for fwsid in SOURCEID_BROKER.get_all_source_ids("FW_TPG"):
             if not link.dro_slr in link_to_tp_sid_map.keys():
-                #link_to_tp_sid_map[link.dro_slr] = SOURCEID_BROKER.get_next_source_id("Trigger")
-                max_sid += 1
-                link_to_tp_sid_map[link.dro_slr] = max_sid
+                link_to_tp_sid_map[link.dro_slr] = fwsid
+                slr_link[link.dro_slr] = link_to_tp_sid_map[link.dro_slr]
                 SOURCEID_BROKER.register_source_id("Trigger", link_to_tp_sid_map[link.dro_slr], None)
-                slr_link[link.dro_slr] = max_sid
 
 
     if DEBUG: print(link_to_tp_sid_map)
