@@ -72,19 +72,28 @@ class SourceIDBroker:
 
     def register_readout_source_ids(self, dro_configs, tp_mode: TPGenMode):
         max_sid = -1
+        slr_0 = False
+        slr_1 = False
         for dro_config in dro_configs:
             for link in dro_config.links:
                 if not self.source_id_exists("Detector_Readout", link.dro_source_id):
                     self.register_source_id("Detector_Readout", link.dro_source_id, [link])
                 else:
                     self.sourceid_map["Detector_Readout"][link.dro_source_id].append(link)
-            if tp_mode == TPGenMode.FWTPG and max_sid < link.dro_source_id:
-                    max_sid = link.dro_source_id
+                if tp_mode == TPGenMode.FWTPG:
+                    if max_sid < link.dro_source_id:
+                        max_sid = link.dro_source_id
+                    if link.dro_slr == 0: slr_0 = True
+                    if link.dro_slr == 1: slr_1 = True
+            if self.debug: console.log(f"found slr0: {slr_0}, found slr1: {slr_1}")
             if tp_mode == TPGenMode.FWTPG:
                 if self.debug: console.log(f"max source id: {max_sid}") 
-                for link in dro_config.links:
+                if slr_0 == True:
                     max_sid += 1
-                    self.register_source_id("FW_TPG", max_sid, None)
+                    self.register_source_id("FW_TPG", max_sid, 0)
+                if slr_1 == True:
+                    max_sid += 1
+                    self.register_source_id("FW_TPG", max_sid, 1)
 
 
     def generate_trigger_source_ids(self, dro_configs, tp_mode: TPGenMode):
@@ -98,6 +107,7 @@ class SourceIDBroker:
             if tp_mode == TPGenMode.FWTPG:
                 slr0_found = False
                 slr1_found = False
+                fwtp_sid = list(self.get_all_source_ids("FW_TPG").keys())
                 for link in dro_config.links:
                     if link.det_id != 3: continue # Only HD_TPC for now
                     dro_sends_data = True
@@ -108,12 +118,15 @@ class SourceIDBroker:
                         ta_infos[taid].link_count = 1
                     else:
                         ta_infos[taid].link_count += 1
+                    fwtp_link = TPInfo(link)
+                    sid = self.get_next_source_id("Trigger")
                     if link.dro_slr == 0 and not slr0_found:
-                        sid = self.get_next_source_id("Trigger")
-                        self.register_source_id("Trigger", sid, TPInfo(link))
+                        fwtp_link.dro_source_id = fwtp_sid[0]
+                        self.register_source_id("Trigger", sid, fwtp_link)
                         slr0_found = True
                     if link.dro_slr == 1 and not slr1_found:
-                        self.register_source_id("Trigger", sid, TPInfo(link))
+                        fwtp_link.dro_source_id = fwtp_sid[1]
+                        self.register_source_id("Trigger", sid, fwtp_link)
                         slr1_found = True
             elif tp_mode == TPGenMode.SWTPG:
                 for link in dro_config.links:
