@@ -22,6 +22,9 @@ import moo.oschema
 
 def _strict_recursive_update(dico1, dico2):
     for k, v in dico2.items():
+        if not k in dico1:
+            raise RuntimeError(f'\'{k}\' key is unknown, available keys are: {list(dico1.keys())}')
+
         if isinstance(v, dict):
             if v != {}:
                 try:
@@ -31,8 +34,6 @@ def _strict_recursive_update(dico1, dico2):
             else:
                 continue
         else:
-            if not k in dico1:
-                raise RuntimeError(f'\'{k}\' key is unknown, available keys are: {list(dico1.keys())}')
             dico1[k] = v
     return dico1
 
