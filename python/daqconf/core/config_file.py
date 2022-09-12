@@ -58,47 +58,47 @@ def parse_json(filename, schemed_object):
     raise RuntimeError(f"Couldn't find file {filename}")
 
 
-def _recursive_section(sections, data):
-    if len(sections) == 1:
-        d = data
-        for k,v in d.items():
-            if v == "true" or v == "True":
-                d[k] = True
-            if v == "false" or v == "False":
-                d[k] = False
-        return {sections[0]: d}
-    else:
-        return {sections[0]: _recursive_section(sections[1:], data)}
+# def _recursive_section(sections, data):
+#     if len(sections) == 1:
+#         d = data
+#         for k,v in d.items():
+#             if v == "true" or v == "True":
+#                 d[k] = True
+#             if v == "false" or v == "False":
+#                 d[k] = False
+#         return {sections[0]: d}
+#     else:
+#         return {sections[0]: _recursive_section(sections[1:], data)}
 
-def parse_ini(filename, schemed_object):
-    console.log(f"Parsing config ini file {filename}")
+# def parse_ini(filename, schemed_object):
+#     console.log(f"Parsing config ini file {filename}")
 
-    import configparser
-    config = configparser.ConfigParser()
-    try:
-        config.read(filename)
-    except Exception as e:
-        raise RuntimeError(f"Couldn't parse {filename}, error: {str(e)}")
+#     import configparser
+#     config = configparser.ConfigParser()
+#     try:
+#         config.read(filename)
+#     except Exception as e:
+#         raise RuntimeError(f"Couldn't parse {filename}, error: {str(e)}")
 
-    config_dict = {}
+#     config_dict = {}
 
-    for sect in config.sections():
-        sections = sect.split('.')
-        data = {k:v for k,v in config.items(sect)}
-        if sections[0] in config_dict:
-            config_dict[sections[0]].update(_recursive_section(sections, data)[sections[0]])
-        else:
-            config_dict[sections[0]] = _recursive_section(sections, data)[sections[0]]
+#     for sect in config.sections():
+#         sections = sect.split('.')
+#         data = {k:v for k,v in config.items(sect)}
+#         if sections[0] in config_dict:
+#             config_dict[sections[0]].update(_recursive_section(sections, data)[sections[0]])
+#         else:
+#             config_dict[sections[0]] = _recursive_section(sections, data)[sections[0]]
 
-    try:
-        new_parameters = config_dict
-        # validate the heck out of this but that doesn't change the object itself (ARG)
-        _strict_recursive_update(schemed_object.pod(), new_parameters)
-        # now its validated, update the object with moo
-        schemed_object.update(new_parameters)
-        return schemed_object
-    except Exception as e:
-        raise RuntimeError(f'Couldn\'t update the object {schemed_object} with the file {filename},\nError: {e}')
+#     try:
+#         new_parameters = config_dict
+#         # validate the heck out of this but that doesn't change the object itself (ARG)
+#         _strict_recursive_update(schemed_object.pod(), new_parameters)
+#         # now its validated, update the object with moo
+#         schemed_object.update(new_parameters)
+#         return schemed_object
+#     except Exception as e:
+#         raise RuntimeError(f'Couldn\'t update the object {schemed_object} with the file {filename},\nError: {e}')
 
 
 
@@ -116,6 +116,7 @@ def parse_config_file(filename, configurer_conf):
         if  ".json" == extension:
             return parse_json(filename, configurer_conf), filename
         elif ".ini" == extension:
-            return parse_ini(filename, configurer_conf), filename
+            raise RuntimeError(f'.ini configuration are not supported anymore, convert it to json')
+            # return parse_ini(filename, configurer_conf), filename
 
     raise RuntimeError(f'Configuration {filename} doesn\'t exist')
