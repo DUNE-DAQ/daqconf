@@ -1,5 +1,5 @@
 {
-  "daqconf": {
+  "boot": {
     "base_command_port": 3333,
     "disable_trace": false,
     "opmon_impl": "local",
