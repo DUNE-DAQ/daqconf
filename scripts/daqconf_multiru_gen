@@ -48,6 +48,7 @@ def helptext():
 
     output = helptree(confgen.daqconf_multiru_gen().ost)
     print(f"Configuration file parameters: \n{output}")
+    print(f"{helptree(confgen.dataflowapp().ost, '    ')}")
     return "Configuration JSON file to load"
 
 # Add -h as default help option
