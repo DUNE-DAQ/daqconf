@@ -61,15 +61,27 @@ def get_readout_app(DRO_CONFIG=None,
                     HOST="localhost",
                     SOURCEID_BROKER : SourceIDBroker = None,
                     READOUT_SENDS_TP_FRAGMENTS=False,
+                    ENABLE_DPDK_SENDER=False,
+                    ENABLE_DPDK_READER=False,
                     DEBUG=False):
     """Generate the json configuration for the readout process"""
-    cmd_data = {}
-    
-    RATE_KHZ = CLOCK_SPEED_HZ / (25 * 12 * DATA_RATE_SLOWDOWN_FACTOR * 1000)
     
     if DRO_CONFIG is None:
         raise RuntimeError(f"ERROR: DRO_CONFIG is None!")
 
+    # Hack on strings to be used for connection instances: will be solved when data_type is properly used.
+
+    FRONTEND_TYPE = DetID.subdetector_to_string(DetID.Subdetector(DRO_CONFIG.links[0].det_id))
+    if ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 50000000):
+        FRONTEND_TYPE = "wib"
+    elif ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 62500000):
+        FRONTEND_TYPE = "wib2"
+    elif FRONTEND_TYPE== "HD_PDS" or FRONTEND_TYPE== "VD_Cathode_PDS" or FRONTEND_TYPE=="VD_Membrane_PDS":
+        FRONTEND_TYPE = "pds_list"
+    elif FRONTEND_TYPE== "VD_Top_TPC":
+        FRONTEND_TYPE = "tde"
+    elif FRONTEND_TYPE== "ND_LAr":
+        FRONTEND_TYPE = "pacman"
 
     # For raw recording to work the size of the LB has to be a multiple of 4096 bytes so that gives
     # us the following problem:
@@ -80,8 +92,19 @@ def get_readout_app(DRO_CONFIG=None,
         # the total size happens to be quite close to the one when using WIB
         # as the frontend type
         LATENCY_BUFFER_SIZE = 4096
+
+    if (ENABLE_DPDK_SENDER or ENABLE_DPDK_READER) and FRONTEND_TYPE != 'tde':
+        raise RuntimeError(f'DPDK is only supported when using the frontend type TDE, current frontend type is {FRONTEND_TYPE}')
+    if ENABLE_DPDK_SENDER and not ENABLE_DPDK_READER:
+        raise RuntimeError('The DPDK sender can not be enabled and the DPDK reader disabled')
+
+    cmd_data = {}
+
+    RATE_KHZ = CLOCK_SPEED_HZ / (25 * 12 * DATA_RATE_SLOWDOWN_FACTOR * 1000)
     
     if DEBUG: print(f"ReadoutApp.__init__ with host={DRO_CONFIG.host} and {len(DRO_CONFIG.links)} links enabled")
+
+    if DEBUG: print(f'FRONTENT_TYPE={FRONTEND_TYPE}')
 
     modules = []
     queues = []
@@ -100,24 +123,6 @@ def get_readout_app(DRO_CONFIG=None,
                 link_to_tp_sid_map[link.dro_slr] = SOURCEID_BROKER.get_next_source_id("Trigger")
                 SOURCEID_BROKER.register_source_id("Trigger", link_to_tp_sid_map[link.dro_slr], None)
                 slr_link[link.dro_slr] = link.dro_source_id
-
-
-    # Hack on strings to be used for connection instances: will be solved when data_type is properly used.
-
-    FRONTEND_TYPE = DetID.subdetector_to_string(DetID.Subdetector(DRO_CONFIG.links[0].det_id))
-    if ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 50000000):
-        FRONTEND_TYPE = "wib"
-    elif ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 62500000):
-        FRONTEND_TYPE = "wib2"
-    elif FRONTEND_TYPE== "HD_PDS" or FRONTEND_TYPE== "VD_Cathode_PDS" or FRONTEND_TYPE=="VD_Membrane_PDS":
-        FRONTEND_TYPE = "pds_list"
-    elif FRONTEND_TYPE== "VD_Top_TPC":
-        FRONTEND_TYPE = "tde"
-    elif FRONTEND_TYPE== "ND_LAr":
-        FRONTEND_TYPE = "pacman"
-    
-
-    if DEBUG: print(f'FRONTENT_TYPE={FRONTEND_TYPE}')
 
     if SOFTWARE_TPG_ENABLED:
         for link in DRO_CONFIG.links:
@@ -315,7 +320,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                      numa_id = 0,
                                                      links_enabled = link_1))]
                 
-        else:
+        elif not ENABLE_DPDK_READER:
             fake_source = "fake_source"
             card_reader = "FakeCardReader"
             conf = sec.Conf(link_confs = [sec.LinkConfiguration(source_id=link.dro_source_id,
@@ -336,6 +341,12 @@ def get_readout_app(DRO_CONFIG=None,
                                plugin = card_reader,
                                conf = conf)]
             queues += [Queue(f"{fake_source}.output_{link.dro_source_id}",f"datahandler_{link.dro_source_id}.raw_input",f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
+
+        elif ENABLE_DPDK_READER:
+            queues += [Queue(f"nic_reader.output_{link.dro_source_id}",
+                             f"datahandler_{link.dro_source_id}.raw_input",
+                             f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
+
 
     # modules += [
     #     DAQModule(name = "fragment_sender",
@@ -399,6 +410,11 @@ def get_readout_app(DRO_CONFIG=None,
                                              requests_in   = f"tp_datahandler_{link_to_tp_sid_map[link.dro_source_id]}.request_input",
                                              fragments_out = f"tp_datahandler_{link_to_tp_sid_map[link.dro_source_id]}.fragment_queue",
                                                 is_mlt_producer = READOUT_SENDS_TP_FRAGMENTS)
+    # if ENABLE_DPDK_READER:
+    #     for link in DRO_CONFIG.links:
+    #         mgraph.connect_modules(f"datahandler_{link.dro_source_id}.timesync_output", "timesync_consumer.input_queue", "timesync_q")
+    #         mgraph.connect_modules(f"datahandler_{idx}.fragment_queue", "fragment_consumer.input_queue", "data_fragments_q", 100)
+
 
     readout_app = App(mgraph, host=HOST)
     if DEBUG:
