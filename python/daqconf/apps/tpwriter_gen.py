@@ -34,6 +34,7 @@ def get_tpwriter_app(
                      CLOCK_SPEED_HZ=50000000,
                      HARDWARE_MAP_FILE="./HardwareMap.txt",
                      SOURCE_IDX=998,
+                     FIRMWARE_TPG_ENABLED=False,
                      HOST="localhost",
                      DEBUG=False):
 
@@ -47,6 +48,7 @@ def get_tpwriter_app(
                           plugin = "TPStreamWriter",
                           conf = tpsw.ConfParams(tp_accumulation_interval_ticks=ONE_SECOND_INTERVAL_TICKS,
                               source_id=SOURCE_IDX,
+                              firmware_tpg_enabled=FIRMWARE_TPG_ENABLED,
                               data_store_parameters=hdf5ds.ConfParams(
                               name="tp_stream_writer",
                               operational_environment = OPERATIONAL_ENVIRONMENT,
