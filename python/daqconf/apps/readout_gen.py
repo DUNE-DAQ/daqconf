@@ -88,11 +88,10 @@ def get_readout_app(DRO_CONFIG=None,
             SOURCEID_BROKER.register_source_id("Trigger", link_to_tp_sid_map[link.dro_source_id], None)
     if FIRMWARE_TPG_ENABLED:
         for fwsid in SOURCEID_BROKER.get_all_source_ids("FW_TPG"):
-            if not link.dro_slr in link_to_tp_sid_map.keys():
-                link_to_tp_sid_map[link.dro_slr] = fwsid
-                slr_link[link.dro_slr] = link_to_tp_sid_map[link.dro_slr]
-                SOURCEID_BROKER.register_source_id("Trigger", link_to_tp_sid_map[link.dro_slr], None)
-
+            slr = SOURCEID_BROKER.sourceid_map["FW_TPG"][fwsid]
+            link_to_tp_sid_map[slr] = fwsid
+            slr_link[slr] = link_to_tp_sid_map[slr]
+            SOURCEID_BROKER.register_source_id("Trigger", link_to_tp_sid_map[slr], None)
 
     if DEBUG: print(link_to_tp_sid_map)
     if DEBUG: print(slr_link)
@@ -138,11 +137,10 @@ def get_readout_app(DRO_CONFIG=None,
                                                                                               enable_raw_recording = False)))]
     if FIRMWARE_TPG_ENABLED:
         assert(len(link_to_tp_sid_map) <= 2)
-        print(f"Hey, Listen! :{link_to_tp_sid_map.values()}")
         for sid in link_to_tp_sid_map.values():
             queues += [Queue(f"tp_datahandler_{sid}.errored_frames", 'errored_frame_consumer.input_queue', "errored_frames_q")]
-            queues += [Queue(f"tp_datahandler_{sid}.tp_out",f"tp_out_datahandler_{sid+1}.raw_input",f"sw_tp_link_{sid+1}",100000 )]                
-            modules += [DAQModule(name = f"tp_out_datahandler_{sid+1}",
+            queues += [Queue(f"tp_datahandler_{sid}.tp_out",f"tp_out_datahandler_{sid}.raw_input",f"sw_tp_link_{sid}",100000 )]                
+            modules += [DAQModule(name = f"tp_out_datahandler_{sid}",
                                plugin = "DataLinkHandler",
                                conf = rconf.Conf(readoutmodelconf = rconf.ReadoutModelConf(source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
                                                                                          source_id = sid),
@@ -343,18 +341,18 @@ def get_readout_app(DRO_CONFIG=None,
     mgraph = ModuleGraph(modules, queues=queues)
 
     if FIRMWARE_TPG_ENABLED:
-        mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{DRO_CONFIG.links[0].dro_source_id}", f"tp_datahandler_{link_to_tp_sid_map[0]}.tpset_out",    Direction.OUT, topic=["TPSets"])
+        mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{link_to_tp_sid_map[0]}", f"tp_datahandler_{link_to_tp_sid_map[0]}.tpset_out",    Direction.OUT, topic=["TPSets"])
         if 1 in link_to_tp_sid_map.keys():
-            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{DRO_CONFIG.links[1].dro_source_id}", f"tp_datahandler_{link_to_tp_sid_map[1]}.tpset_out",    Direction.OUT, topic=["TPSets"])
+            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{link_to_tp_sid_map[1]}", f"tp_datahandler_{link_to_tp_sid_map[1]}.tpset_out",    Direction.OUT, topic=["TPSets"])
         for sid in link_to_tp_sid_map.values():
             mgraph.add_fragment_producer(id = sid, subsystem = "Trigger",
                                     requests_in   = f"tp_datahandler_{sid}.request_input",
                                     fragments_out = f"tp_datahandler_{sid}.fragment_queue", is_mlt_producer = READOUT_SENDS_TP_FRAGMENTS)
             mgraph.add_endpoint(f"timesync_{sid}", f"tp_datahandler_{sid}.timesync_output",    Direction.OUT, ["Timesync"])
-            mgraph.add_endpoint(f"timesync_tp_out_{sid+1}", f"tp_out_datahandler_{sid+1}.timesync_output",    Direction.OUT, ["Timesync"])
-            mgraph.add_fragment_producer(id = sid+1, subsystem = "Trigger",
-                                    requests_in   = f"tp_out_datahandler_{sid+1}.request_input",
-                                    fragments_out = f"tp_out_datahandler_{sid+1}.fragment_queue", is_mlt_producer = READOUT_SENDS_TP_FRAGMENTS)
+            mgraph.add_endpoint(f"timesync_tp_out_{sid}", f"tp_out_datahandler_{sid}.timesync_output",    Direction.OUT, ["Timesync"])
+            mgraph.add_fragment_producer(id = sid, subsystem = "Trigger",
+                                    requests_in   = f"tp_out_datahandler_{sid}.request_input",
+                                    fragments_out = f"tp_out_datahandler_{sid}.fragment_queue", is_mlt_producer = READOUT_SENDS_TP_FRAGMENTS)
 
 
 
