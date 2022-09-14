@@ -120,3 +120,18 @@ def parse_config_file(filename, configurer_conf):
             # return parse_ini(filename, configurer_conf), filename
 
     raise RuntimeError(f'Configuration {filename} doesn\'t exist')
+
+def helptree(ost, prefix=''):
+    if 'doc' in ost.keys():
+        output = f"{prefix}{ost['name']}: {ost['doc']}"
+    else:
+        output = f"{prefix}{ost['name']}:"
+    for field in ost['fields']:
+        if type(field['default']) is dict:
+            output += "\n" + helptree(field["default"], prefix + "    ")
+        else:
+            docstr = ""
+            if 'doc' in field.keys():
+                docstr = f": {field['doc']}"
+            output += f"\n{prefix}    {field['name']} (Default: {field['default']}){docstr}"
+    return output

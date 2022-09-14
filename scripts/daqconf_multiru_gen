@@ -27,6 +27,16 @@ def configure(ctx, param, filename):
 
     return parse_config_file(filename, daqconf_conf)
 
+def helptext():
+    moo.otypes.load_types('daqconf/confgen.jsonnet')
+    import dunedaq.daqconf.confgen as confgen
+    from daqconf.core.config_file import helptree
+
+    output = helptree(confgen.daqconf_multiru_gen().ost)
+    print(f"Configuration file parameters: \n{output}")
+    print(f"{helptree(confgen.dataflowapp().ost, '    ')}")
+    return "Configuration JSON file to load"
+
 # Add -h as default help option
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(context_settings=CONTEXT_SETTINGS)
@@ -35,7 +45,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
     type         = click.Path(dir_okay=False),
     default      = None,
     callback     = configure,
-    help         = 'Read option defaults from the specified JSON file',
+    help         = helptext(),
     show_default = True,
 )
 @click.option('--base-command-port', type=int, default=-1, help="Base port of application command endpoints")
