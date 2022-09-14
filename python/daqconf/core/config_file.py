@@ -120,3 +120,27 @@ def parse_config_file(filename, configurer_conf):
             # return parse_ini(filename, configurer_conf), filename
 
     raise RuntimeError(f'Configuration {filename} doesn\'t exist')
+
+
+def generate_cli_from_schema(schema_file, schema_object_name):
+    def add_decorator(function):
+        moo.otypes.load_types(schema_file)
+        import importlib
+        module_name = schema_file.replace('.jsonnet', '').replace('/', '.')
+        config_module = importlib.import_module(f'dunedaq.{module_name}')
+        schema_object = getattr(config_module, schema_object_name)
+
+        def configure(ctx, param, filename):
+            return parse_config_file(filename, schema_object())
+
+        import click
+
+        return click.option(
+            '-c', '--config',
+            type         = click.Path(dir_okay=False),
+            default      = None,
+            callback     = configure,
+            help         = 'Read option defaults from the specified JSON file',## helptext(schema_object) here
+            show_default = True,
+        )(function)
+    return add_decorator
