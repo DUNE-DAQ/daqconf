@@ -128,6 +128,7 @@ def helptree(ost, prefix=''):
     else:
         output = f"{prefix}{ost['name']}:"
     for field in ost['fields']:
+
         if type(field['default']) is dict:
             output += "\n" + helptree(field["default"], prefix + "    ")
         else:
@@ -135,27 +136,32 @@ def helptree(ost, prefix=''):
             if 'doc' in field.keys():
                 docstr = f": {field['doc']}"
             output += f"\n{prefix}    {field['name']} (Default: {field['default']}){docstr}"
-    return output
+    return "\b\n"+output
 
-def generate_cli_from_schema(schema_file, schema_object_name):
+def generate_cli_from_schema(schema_file, schema_object_name, *args): ## doh
     def add_decorator(function):
         moo.otypes.load_types(schema_file)
         import importlib
         module_name = schema_file.replace('.jsonnet', '').replace('/', '.')
         config_module = importlib.import_module(f'dunedaq.{module_name}')
         schema_object = getattr(config_module, schema_object_name)
+        extra_schemas = [getattr(config_module, obj)() for obj in args]
 
         def configure(ctx, param, filename):
             return parse_config_file(filename, schema_object())
 
         import click
 
+        hlp = helptree(schema_object().ost)
+        for extra_schema in extra_schemas:
+            hlp+="\n\n\n"+helptree(extra_schema.ost)
+
         return click.option(
             '-c', '--config',
             type         = click.Path(dir_okay=False),
             default      = None,
             callback     = configure,
-            help         = helptree(schema_object().ost),
+            help         = hlp,
             show_default = True,
         )(function)
     return add_decorator
