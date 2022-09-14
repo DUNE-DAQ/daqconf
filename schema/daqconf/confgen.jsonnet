@@ -142,6 +142,20 @@ local cs = {
     s.field( "dqm_df_algs", self.string, default='hist mean_rms fourier_sum', doc='Algorithms to be run on Trigger Records from DF (use quotes)'),
   ]),
 
+  dpdk_sender: s.record("dpdk_sender", [
+      s.field( "enable_dpdk_sender", self.flag, default=false, doc="Enable sending frames using DPDK"),
+      s.field( "host_dpdk_sender", self.hosts, default=['np04-srv-021'], doc="Which host to use to send frames"),
+      s.field( "eal_args", self.string, default='', doc='Args passed to the EAL in DPDK'),
+  ]),
+
+  dpdk_reader: s.record("dpdk_reader", [
+      s.field( "enable_dpdk_reader", self.flag, default=false, doc="Enable sending frames using DPDK"),
+      s.field( "host_dpdk_reader", self.hosts, default=['np04-srv-022'], doc="Which host to use to receive frames"),
+      s.field( "eal_args", self.string, default='', doc='Args passed to the EAL in DPDK'),
+      s.field( "base_source_ip", self.string, default='10.73.139.', doc='First part of the IP of the source'),
+      s.field( "destination_ip", self.string, default='10.73.139.17', doc='IP of the destination'),
+  ]),
+
   daqconf_multiru_gen: s.record('daqconf_multiru_gen', [
     s.field('boot',     self.boot,    default=self.boot,      doc='Boot parameters'),
     s.field('dataflow', self.dataflow, default=self.dataflow, doc='Dataflow paramaters'),
@@ -150,7 +164,10 @@ local cs = {
     s.field('readout',  self.readout,  default=self.readout,  doc='Readout parameters'),
     s.field('timing',   self.timing,   default=self.timing,   doc='Timing parameters'),
     s.field('trigger',  self.trigger,  default=self.trigger,  doc='Trigger parameters'),
+    s.field('dpdk_sender', self.dpdk_sender, default=self.dpdk_sender, doc='DPDK sender parameters'),
+    s.field('dpdk_reader', self.dpdk_reader, default=self.dpdk_reader, doc='DPDK reader parameters'),
   ]),
+
 };
 
 // Output a topologically sorted array.
