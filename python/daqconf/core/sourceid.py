@@ -12,6 +12,7 @@ from daqdataformats._daq_daqdataformats_py import SourceID
 from detchannelmaps._daq_detchannelmaps_py import *
 
 TAID = namedtuple('TAID', ['detector', 'crate'])
+FWTPID = namedtuple('FWTPID', ['host', 'card', 'slr'])
 
 class TPGenMode(Enum):
     DISABLED = 1
@@ -41,12 +42,11 @@ class SourceIDBroker:
     sourceid_map = {}
     debug: bool = False
 
-    def get_next_source_id(self, subsystem):
-        next_id = 0
-        while self.source_id_exists(subsystem, next_id):
-            next_id += 1
-        if self.debug: console.log(f"Returning {next_id} from get_next_source_id for subsystem {subsystem}")
-        return next_id
+    def get_next_source_id(self, subsystem, start_id = 0):
+        while self.source_id_exists(subsystem, start_id):
+            start_id += 1
+        if self.debug: console.log(f"Returning {start_id} from get_next_source_id for subsystem {subsystem}")
+        return start_id
 
     def get_all_source_ids(self, subsystem):
         if subsystem in self.sourceid_map:
@@ -71,79 +71,71 @@ class SourceIDBroker:
             raise ValueError(f"SourceID {sid} already exists for Subsystem {subsystem}!")
 
     def register_readout_source_ids(self, dro_configs, tp_mode: TPGenMode):
-        max_sid = -1
-        slr_0 = False
-        slr_1 = False
+        if self.debug: console.log(f"Generating Detector_Readout Source IDs, tp_mode is {tp_mode}, dro_configs are {dro_configs}")
+        fw_tp_ids = []
         for dro_config in dro_configs:
+            slr_0 = False
+            slr_1 = False
             for link in dro_config.links:
                 if not self.source_id_exists("Detector_Readout", link.dro_source_id):
                     self.register_source_id("Detector_Readout", link.dro_source_id, [link])
                 else:
                     self.sourceid_map["Detector_Readout"][link.dro_source_id].append(link)
                 if tp_mode == TPGenMode.FWTPG:
-                    if max_sid < link.dro_source_id:
-                        max_sid = link.dro_source_id
-                    if link.dro_slr == 0: slr_0 = True
-                    if link.dro_slr == 1: slr_1 = True
+                    if link.dro_slr == 0 and slr_0 == False: 
+                        slr_0 = True
+                        fw_tp_ids.append(FWTPID(dro_config.host, dro_config.card, 0))
+                    if link.dro_slr == 1 and slr_1 == False: 
+                        slr_1 = True
+                        fw_tp_ids.append(FWTPID(dro_config.host, dro_config.card, 1))
             if self.debug: console.log(f"found slr0: {slr_0}, found slr1: {slr_1}")
-            if tp_mode == TPGenMode.FWTPG:
-                if self.debug: console.log(f"max source id: {max_sid}") 
-                if slr_0 == True:
-                    max_sid += 1
-                    self.register_source_id("FW_TPG", max_sid, 0)
-                if slr_1 == True:
-                    max_sid += 1
-                    self.register_source_id("FW_TPG", max_sid, 1)
+        if tp_mode == TPGenMode.FWTPG:
+            for fw_tp_id in fw_tp_ids:
+                sid = self.get_next_source_id("Detector_Readout")
+                if self.debug: console.log(f"Adding Detector_Readout SourceID {sid} for FW TP ID {fw_tp_id}")
+                self.register_source_id("Detector_Readout", sid, fw_tp_id)
 
 
     def generate_trigger_source_ids(self, dro_configs, tp_mode: TPGenMode):
         tc_info = TCInfo()
         ta_infos = {}
+        fw_tp_infos = {}
+        dro_sids = self.get_all_source_ids("Detector_Readout")
 
         if self.debug: console.log(f"Generating Trigger Source IDs, tp_mode is {tp_mode}, dro_configs are {dro_configs}")
 
         for dro_config in dro_configs:
             dro_sends_data = False
-            if tp_mode == TPGenMode.FWTPG:
-                slr0_found = False
-                slr1_found = False
-                fwtp_sid = list(self.get_all_source_ids("FW_TPG").keys())
-                for link in dro_config.links:
-                    if link.det_id != 3: continue # Only HD_TPC for now
-                    dro_sends_data = True
-                    taid = TAID(link.det_id, link.det_crate)
-                    if taid not in ta_infos:
-                        ta_infos[taid] = TAInfo()
-                        ta_infos[taid].region_id = link.det_crate
-                        ta_infos[taid].link_count = 1
-                    else:
-                        ta_infos[taid].link_count += 1
-                    fwtp_link = TPInfo(link)
-                    sid = self.get_next_source_id("Trigger")
-                    if link.dro_slr == 0 and not slr0_found:
-                        fwtp_link.dro_source_id = fwtp_sid[0]
+            for link in dro_config.links:
+                if link.det_id != 3: continue # Only HD_TPC for now
+                dro_sends_data = True
+                taid = TAID(link.det_id, link.det_crate)
+                if taid not in ta_infos:
+                    ta_infos[taid] = TAInfo()
+                    ta_infos[taid].region_id = link.det_crate
+                    ta_infos[taid].link_count = 1
+                else:
+                    ta_infos[taid].link_count += 1
+                    
+                if tp_mode == TPGenMode.FWTPG:
+                    fw_tp_id = FWTPID(dro_config.host, dro_config.card, link.dro_slr)
+                    if fw_tp_id not in fw_tp_infos:
+                        fwtp_link = TPInfo(link)
+                        fwtpid_found = False
+                        for fwsid,fwid in dro_sids.items():
+                            if isinstance(fwid, FWTPID) and fwid == fw_tp_id:
+                                if fwtpid_found == True:
+                                    raise ValueError(f"Multiple matches found for firmware TP ID {fw_tp_id}")
+                                fwtp_link.dro_source_id = fwsid
+                                fwtpid_found = True
+                        if fwtpid_found == False:
+                            raise ValueError(f"No match found for firmware TP ID {fw_tp_id}")
+                        sid = self.get_next_source_id("Trigger")
+                        if self.debug: console.log(f"Adding Trigger SourceID {sid} for FW TP ID {fw_tp_id}")
                         self.register_source_id("Trigger", sid, fwtp_link)
-                        slr0_found = True
-                    if link.dro_slr == 1 and not slr1_found:
-                        fwtp_link.dro_source_id = fwtp_sid[1]
-                        self.register_source_id("Trigger", sid, fwtp_link)
-                        slr1_found = True
-            elif tp_mode == TPGenMode.SWTPG:
-                for link in dro_config.links:
-                    if link.det_id != 3: continue # Only HD_TPC for now
-                    dro_sends_data = True
-                    taid = TAID(link.det_id, link.det_crate)
-                    if taid not in ta_infos:
-                        ta_infos[taid] = TAInfo()
-                        ta_infos[taid].region_id = link.det_crate
-                        ta_infos[taid].link_count = 1
-                    else:
-                        ta_infos[taid].link_count += 1
-                    #if not self.source_id_exists("Trigger", link.dro_source_id):
-                    #    self.register_source_id("Trigger", link.dro_source_id, TPInfo(link))
-                    #else:
+                        fw_tp_infos[fw_tp_id] = fwtp_link
+                elif tp_mode == TPGenMode.SWTPG:
                     sid = self.get_next_source_id("Trigger")
-                    #console.log("SourceID Conflict in Trigger! {link.dro_source_id} will correspond to Trigger SourceID {sid}!")
                     self.register_source_id("Trigger", sid, TPInfo(link))
             if dro_sends_data:
                 tc_info.ru_count += 1
