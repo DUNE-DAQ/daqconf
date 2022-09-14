@@ -70,6 +70,16 @@ def get_readout_app(DRO_CONFIG=None,
     if DRO_CONFIG is None:
         raise RuntimeError(f"ERROR: DRO_CONFIG is None!")
 
+
+    # For raw recording to work the size of the LB has to be a multiple of 4096 bytes so that gives
+    # us the following problem:
+    # number_of_elements * element_size = 4096 * M,  where M is an arbitrary integer,
+    # so only a value of number_elements that satisfies the equation above is valid.
+    if FRONTEND_TYPE == 'tde':
+        # number_of_elements = 4096 is always a solution by construction and
+        # the total size happens to be quite close to the one when using WIB
+        # as the frontend type
+        LATENCY_BUFFER_SIZE = 4096
     
     if DEBUG: print(f"ReadoutApp.__init__ with host={DRO_CONFIG.host} and {len(DRO_CONFIG.links)} links enabled")
 
