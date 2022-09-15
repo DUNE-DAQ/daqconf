@@ -6,6 +6,7 @@ from os.path import exists
 from daqconf.core.system import System
 from daqconf.core.metadata import write_metadata_file
 from daqconf.core.sourceid import SourceIDBroker, get_tpg_mode
+from daqconf.core.config_file import generate_cli_from_schema
 from detchannelmaps._daq_detchannelmaps_py import HardwareMapService
 
 console = Console()
@@ -18,26 +19,10 @@ moo.io.default_load_path = get_moo_model_path()
 # Load configuration types
 import moo.otypes
 
-def configure(ctx, param, filename):
-    moo.otypes.load_types('daqconf/confgen.jsonnet')
-    import dunedaq.daqconf.confgen as confgen
-
-    daqconf_conf = confgen.daqconf_multiru_gen()
-    from daqconf.core.config_file import parse_config_file
-
-    return parse_config_file(filename, daqconf_conf)
-
 # Add -h as default help option
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.option(
-    '-c', '--config',
-    type         = click.Path(dir_okay=False),
-    default      = None,
-    callback     = configure,
-    help         = 'Read option defaults from the specified JSON file',
-    show_default = True,
-)
+@generate_cli_from_schema('daqconf/confgen.jsonnet', 'daqconf_multiru_gen', 'dataflowapp')
 @click.option('--base-command-port', type=int, default=-1, help="Base port of application command endpoints")
 @click.option('--hardware-map-file', default='', help="File containing detector hardware map for configuration to run")
 @click.option('-s', '--data-rate-slowdown-factor', default=0, help="Scale factor for readout internal clock to generate less data")
@@ -57,10 +42,11 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         console.log(f"Configuration for daqconf: {config_data.pod()}")
 
     # Get our config objects
+    # Loading this one another time... (first time in config_file.generate_cli_from_schema)
     moo.otypes.load_types('daqconf/confgen.jsonnet')
     import dunedaq.daqconf.confgen as confgen
 
-    ## Hack, we shouldn't need to do that, in the future it should be, daqconf = confgen.boot
+    ## Hack, we shouldn't need to do that, in the future it should be, boot = config_data.boot
     boot = confgen.boot(**config_data.boot)
     if debug: console.log(f"boot configuration object: {boot.pod()}")
 
@@ -483,6 +469,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             CLOCK_SPEED_HZ = readout.clock_speed_hz,
             HARDWARE_MAP_FILE=readout.hardware_map_file,
             SOURCE_IDX=dfidx,
+            FIRMWARE_TPG_ENABLED=readout.enable_firmware_tpg,
             HOST=trigger.host_tpw,
             DEBUG=debug)
         if boot.use_k8s: ## TODO schema
