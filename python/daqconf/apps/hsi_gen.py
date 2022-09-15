@@ -87,6 +87,7 @@ def get_hsi_app(RUN_NUMBER = 333,
                                                                                           source_id=HSI_SOURCE_ID,
                                                                                           # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                           request_timeout_ms = DATA_REQUEST_TIMEOUT,
+                                                                                          warn_about_empty_buffer = False,
                                                                                           enable_raw_recording = False)
                                              ))]
 
