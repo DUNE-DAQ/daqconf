@@ -121,12 +121,12 @@ local cs = {
     s.field( "max_file_size",self.count, default=4*1024*1024*1024, doc="The size threshold when raw data files are closed (in bytes)"),
     s.field( "max_trigger_record_window",self.count, default=0, doc="The maximum size for the window of data that will included in a single TriggerRecord (in ticks). Readout windows that are longer than this size will result in TriggerRecords being split into a sequence of TRs. A zero value for this parameter means no splitting."),
 
-  ]),
-  dataflowapps: s.sequence("dataflowapps", self.dataflowapp),
+  ], doc="Element of the dataflow.apps array"),
+  dataflowapps: s.sequence("dataflowapps", self.dataflowapp, doc="List of dataflowapp instances"),
 
   dataflow: s.record("dataflow", [
     s.field( "host_dfo", self.host, default='localhost', doc="Sets the host for the DFO app"),
-    s.field("apps", self.dataflowapps, default=[]),
+    s.field("apps", self.dataflowapps, default=[], doc="Configuration for the dataflow apps (see dataflowapp for options)"),
   ]),
 
   dqm: s.record("dqm", [
