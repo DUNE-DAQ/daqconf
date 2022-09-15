@@ -85,9 +85,6 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
     dpdk_sender = confgen.dpdk_sender(**config_data.dpdk_sender)
     if debug: console.log(f"dpdk_sender configuration object: {dpdk_sender.pod()}")
-    dpdk_reader = confgen.dpdk_reader(**config_data.dpdk_reader)
-    if debug: console.log(f"dpdk_reader configuration object: {dpdk_reader.pod()}")
-
 
     # Update with command-line options
     if base_command_port != -1:
@@ -119,8 +116,6 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     from daqconf.apps.tprtc_gen import get_tprtc_app
     console.log("Loading DPDK sender config generator")
     from daqconf.apps.dpdk_sender_gen import get_dpdk_sender_app
-    console.log("Loading DPDK reader config generator")
-    from daqconf.apps.dpdk_reader_gen import get_dpdk_reader_app
     if trigger.enable_tpset_writing:
         console.log("Loading TPWriter config generator")
         from daqconf.apps.tpwriter_gen import get_tpwriter_app
@@ -385,10 +380,10 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             SOURCEID_BROKER = sourceid_broker,
             READOUT_SENDS_TP_FRAGMENTS = readout.readout_sends_tp_fragments,
             ENABLE_DPDK_SENDER=dpdk_sender.enable_dpdk_sender,
-            ENABLE_DPDK_READER=dpdk_reader.enable_dpdk_reader,
-            EAL_ARGS=dpdk_reader.eal_args,
-            BASE_SOURCE_IP=dpdk_reader.base_source_ip,
-            DESTINATION_IP=dpdk_reader.destination_ip,
+            ENABLE_DPDK_READER=readout.enable_dpdk_reader,
+            EAL_ARGS=readout.eal_args,
+            BASE_SOURCE_IP=readout.base_source_ip,
+            DESTINATION_IP=readout.destination_ip,
             DEBUG=debug)
         if boot.use_k8s:
             if readout.use_felix:

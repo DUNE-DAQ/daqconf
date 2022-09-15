@@ -150,7 +150,7 @@ local cs = {
   dpdk_sender: s.record("dpdk_sender", [
       s.field( "enable_dpdk_sender", self.flag, default=false, doc="Enable sending frames using DPDK"),
       s.field( "host_dpdk_sender", self.hosts, default=['np04-srv-021'], doc="Which host to use to send frames"),
-      s.field( "eal_args", self.string, default='', doc='Args passed to the EAL in DPDK'),
+      s.field( "eal_args", self.string, default='-l 0-1 -n 3 -- -m [0:1].0 -j', doc='Args passed to the EAL in DPDK'),
   ]),
 
   daqconf_multiru_gen: s.record('daqconf_multiru_gen', [
