@@ -153,9 +153,6 @@ local cs = {
       s.field( "eal_args", self.string, default='', doc='Args passed to the EAL in DPDK'),
   ]),
 
-  dpdk_reader: s.record("dpdk_reader", [
-  ]),
-
   daqconf_multiru_gen: s.record('daqconf_multiru_gen', [
     s.field('boot',     self.boot,    default=self.boot,      doc='Boot parameters'),
     s.field('dataflow', self.dataflow, default=self.dataflow, doc='Dataflow paramaters'),
@@ -165,7 +162,6 @@ local cs = {
     s.field('timing',   self.timing,   default=self.timing,   doc='Timing parameters'),
     s.field('trigger',  self.trigger,  default=self.trigger,  doc='Trigger parameters'),
     s.field('dpdk_sender', self.dpdk_sender, default=self.dpdk_sender, doc='DPDK sender parameters'),
-    s.field('dpdk_reader', self.dpdk_reader, default=self.dpdk_reader, doc='DPDK reader parameters'),
   ]),
 
 };
