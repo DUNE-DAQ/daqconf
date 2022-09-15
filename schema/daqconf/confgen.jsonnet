@@ -84,6 +84,11 @@ local cs = {
     s.field( "raw_recording_output_dir", self.path, default='.', doc="Output directory where recorded data is written to. Data for each link is written to a separate file"),
     s.field( "use_fake_data_producers", self.flag, default=false, doc="Use fake data producers that respond with empty fragments immediately instead of (fake) cards and DLHs"),
     s.field( "readout_sends_tp_fragments",self.flag, default=false, doc="Send TP Fragments from Readout to Dataflow (via enabling TP Fragment links in MLT)"),
+    s.field( "enable_dpdk_reader", self.flag, default=false, doc="Enable sending frames using DPDK"),
+    s.field( "host_dpdk_reader", self.hosts, default=['np04-srv-022'], doc="Which host to use to receive frames"),
+    s.field( "eal_args", self.string, default='-l 0-1 -n 3 -- -m [0:1].0 -j', doc='Args passed to the EAL in DPDK'),
+    s.field( "base_source_ip", self.string, default='10.73.139.', doc='First part of the IP of the source'),
+    s.field( "destination_ip", self.string, default='10.73.139.17', doc='IP of the destination'),
   ]),
 
   trigger_algo_config: s.record("trigger_algo_config", [
@@ -149,11 +154,6 @@ local cs = {
   ]),
 
   dpdk_reader: s.record("dpdk_reader", [
-      s.field( "enable_dpdk_reader", self.flag, default=false, doc="Enable sending frames using DPDK"),
-      s.field( "host_dpdk_reader", self.hosts, default=['np04-srv-022'], doc="Which host to use to receive frames"),
-      s.field( "eal_args", self.string, default='', doc='Args passed to the EAL in DPDK'),
-      s.field( "base_source_ip", self.string, default='10.73.139.', doc='First part of the IP of the source'),
-      s.field( "destination_ip", self.string, default='10.73.139.17', doc='IP of the destination'),
   ]),
 
   daqconf_multiru_gen: s.record('daqconf_multiru_gen', [

@@ -14,6 +14,7 @@ moo.otypes.load_types('readoutlibs/sourceemulatorconfig.jsonnet')
 moo.otypes.load_types('readoutlibs/readoutconfig.jsonnet')
 moo.otypes.load_types('lbrulibs/pacmancardreader.jsonnet')
 moo.otypes.load_types('dfmodules/fakedataprod.jsonnet')
+moo.otypes.load_types("dpdklibs/nicreader.jsonnet")
 
 # Import new types
 import dunedaq.cmdlib.cmd as basecmd # AddressedCmd,
@@ -26,6 +27,7 @@ import dunedaq.readoutlibs.readoutconfig as rconf
 import dunedaq.lbrulibs.pacmancardreader as pcr
 # import dunedaq.dfmodules.triggerrecordbuilder as trb
 import dunedaq.dfmodules.fakedataprod as fdp
+import dunedaq.dpdklibs.nicreader as nrc
 
 from appfwk.utils import acmd, mcmd, mrccmd, mspec
 from os import path
@@ -63,6 +65,9 @@ def get_readout_app(DRO_CONFIG=None,
                     READOUT_SENDS_TP_FRAGMENTS=False,
                     ENABLE_DPDK_SENDER=False,
                     ENABLE_DPDK_READER=False,
+                    EAL_ARGS='-l 0-1 -n 3 -- -m [0:1].0 -j',
+                    BASE_SOURCE_IP="10.73.139.",
+                    DESTINATION_IP="10.73.139.17",
                     DEBUG=False):
     """Generate the json configuration for the readout process"""
     
@@ -343,9 +348,37 @@ def get_readout_app(DRO_CONFIG=None,
             queues += [Queue(f"{fake_source}.output_{link.dro_source_id}",f"datahandler_{link.dro_source_id}.raw_input",f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
 
         elif ENABLE_DPDK_READER:
+            NUMBER_OF_GROUPS = 1
+            NUMBER_OF_LINKS_PER_GROUP = 1
+
+            number_of_dlh = NUMBER_OF_GROUPS
+
+            links = []
+            rxcores = []
+            lid = 0
+            last_ip = 100
+            for group in range(NUMBER_OF_GROUPS):
+                offset= 0
+                qlist = []
+                for src in range(NUMBER_OF_LINKS_PER_GROUP):
+                    links.append(nrc.Link(id=lid, ip=BASE_SOURCE_IP+str(last_ip), rx_q=lid, lcore=group+1))
+                    qlist.append(lid)
+                    lid += 1
+                    last_ip += 1
+                offset += NUMBER_OF_LINKS_PER_GROUP
+                rxcores.append(nrc.LCore(lcore_id=group+1, rx_qs=qlist))
+
+            modules += [DAQModule(name="nic_reader", plugin="NICReceiver",
+                                conf=nrc.Conf(eal_arg_list=EAL_ARGS,
+                                                dest_ip=DESTINATION_IP,
+                                                rx_cores=rxcores,
+                                                ip_sources=links),
+                )]
+
             queues += [Queue(f"nic_reader.output_{link.dro_source_id}",
                              f"datahandler_{link.dro_source_id}.raw_input",
                              f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
+
 
 
     # modules += [

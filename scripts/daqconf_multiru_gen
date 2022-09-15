@@ -386,6 +386,9 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             READOUT_SENDS_TP_FRAGMENTS = readout.readout_sends_tp_fragments,
             ENABLE_DPDK_SENDER=dpdk_sender.enable_dpdk_sender,
             ENABLE_DPDK_READER=dpdk_reader.enable_dpdk_reader,
+            EAL_ARGS=dpdk_reader.eal_args,
+            BASE_SOURCE_IP=dpdk_reader.base_source_ip,
+            DESTINATION_IP=dpdk_reader.destination_ip,
             DEBUG=debug)
         if boot.use_k8s:
             if readout.use_felix:
@@ -502,12 +505,6 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
     the_system.apps["dpdk_sender"] = get_dpdk_sender_app(
         HOST=dpdk_sender.host_dpdk_sender[0],
-    )
-    the_system.apps["dpdk_reader"] = get_dpdk_reader_app(
-        HOST=dpdk_reader.host_dpdk_reader[0],
-        EAL_ARGS=dpdk_reader.eal_args,
-        BASE_SOURCE_IP=dpdk_reader.base_source_ip,
-        DESTINATION_IP=dpdk_reader.destination_ip,
     )
 
     for name,app in the_system.apps.items():
