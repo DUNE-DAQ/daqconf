@@ -414,10 +414,10 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         if boot.use_k8s:
             the_system.apps[app_name].mounted_dirs += [{
                 'name': 'raw-data',
-                'physical_location': df_config.output_paths,
-                'in_pod_location': df_config.output_paths,
+                'physical_location': opath,
+                'in_pod_location': opath,
                 'read_only': False,
-            }]
+            } for opath in df_config.output_paths]
 
 
         if dqm.enable_dqm:
