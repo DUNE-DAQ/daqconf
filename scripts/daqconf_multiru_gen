@@ -139,8 +139,8 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     # Get the list of RU processes
     dro_infos = hw_map_service.get_all_dro_info()
 
-    sourceid_broker.register_readout_source_ids(dro_infos)
     tp_mode = get_tpg_mode(readout.enable_firmware_tpg,readout.enable_software_tpg)
+    sourceid_broker.register_readout_source_ids(dro_infos, tp_mode)
     sourceid_broker.generate_trigger_source_ids(dro_infos, tp_mode)
     tp_infos = sourceid_broker.get_all_source_ids("Trigger")
 
@@ -185,7 +185,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 #            region_id_temp.append(reg)
 #        region_id = tuple(region_id_temp)
 
-    if hsi.use_hsi_hw and not hsi_device_name:
+    if hsi.use_hsi_hw and not hsi.hsi_device_name:
         raise Exception("If --use-hsi-hw flag is set to true, --hsi-device-name must be specified!")
 
     if timing.control_timing_partition and not timing.timing_partition_master_device_name:
