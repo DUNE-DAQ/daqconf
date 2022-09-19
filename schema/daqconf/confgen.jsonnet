@@ -140,7 +140,7 @@ local cs = {
     s.field( "fourier_channel_params", self.dqm_params, default=[0, 0], doc="Parameters that control the data sent for the fourier transform plot"),
     s.field( "fourier_plane_params", self.dqm_params, default=[600, 1000], doc="Parameters that control the data sent for the summed fourier transform plot"),
     s.field( "df_rate", self.count, default=10, doc='How many seconds between requests to DF for Trigger Records'),
-    s.field( "df_algs", self.string, default='hist mean_rms fourier_sum', doc='Algorithms to be run on Trigger Records from DF (use quotes)'),
+    s.field( "df_algs", self.string, default='raw std fourier_plane', doc='Algorithms to be run on Trigger Records from DF (use quotes)'),
   ]),
 
   daqconf_multiru_gen: s.record('daqconf_multiru_gen', [
