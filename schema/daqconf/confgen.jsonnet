@@ -131,16 +131,16 @@ local cs = {
 
   dqm: s.record("dqm", [
     s.field( "enable_dqm", self.flag, default=false, doc="Enable Data Quality Monitoring"),
-    s.field( "dqm_impl", self.monitoring_dest, default='local', doc="DQM destination (Kafka used for cern and pocket)"),
-    s.field( "dqm_cmap", self.dqm_channel_map, default='HD', doc="Which channel map to use for DQM"),
+    s.field( "impl", self.monitoring_dest, default='local', doc="DQM destination (Kafka used for cern and pocket)"),
+    s.field( "cmap", self.dqm_channel_map, default='HD', doc="Which channel map to use for DQM"),
     s.field( "host_dqm", self.hosts, default=['localhost'], doc='Host(s) to run the DQM app on'),
-    s.field( "dqm_rawdisplay_params", self.dqm_params, default=[60, 50], doc="Parameters that control the data sent for the raw display plot"),
-    s.field( "dqm_std_params", self.dqm_params, default=[10, 1000], doc="Parameters that control the data sent for the mean/rms plot"),
-    s.field( "dqm_rms_params", self.dqm_params, default=[0, 1000], doc="Parameters that control the data sent for the mean/rms plot"),
-    s.field( "dqm_fourier_channel_params", self.dqm_params, default=[0, 0], doc="Parameters that control the data sent for the fourier transform plot"),
-    s.field( "dqm_fourier_plane_params", self.dqm_params, default=[600, 1000], doc="Parameters that control the data sent for the summed fourier transform plot"),
-    s.field( "dqm_df_rate", self.count, default=10, doc='How many seconds between requests to DF for Trigger Records'),
-    s.field( "dqm_df_algs", self.string, default='hist mean_rms fourier_sum', doc='Algorithms to be run on Trigger Records from DF (use quotes)'),
+    s.field( "raw_params", self.dqm_params, default=[60, 50], doc="Parameters that control the data sent for the raw display plot"),
+    s.field( "std_params", self.dqm_params, default=[10, 1000], doc="Parameters that control the data sent for the mean/rms plot"),
+    s.field( "rms_params", self.dqm_params, default=[0, 1000], doc="Parameters that control the data sent for the mean/rms plot"),
+    s.field( "fourier_channel_params", self.dqm_params, default=[0, 0], doc="Parameters that control the data sent for the fourier transform plot"),
+    s.field( "fourier_plane_params", self.dqm_params, default=[600, 1000], doc="Parameters that control the data sent for the summed fourier transform plot"),
+    s.field( "df_rate", self.count, default=10, doc='How many seconds between requests to DF for Trigger Records'),
+    s.field( "df_algs", self.string, default='hist mean_rms fourier_sum', doc='Algorithms to be run on Trigger Records from DF (use quotes)'),
   ]),
 
   daqconf_multiru_gen: s.record('daqconf_multiru_gen', [
