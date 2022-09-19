@@ -73,8 +73,8 @@ class SourceIDBroker:
     def register_readout_source_ids(self, dro_configs, tp_mode: TPGenMode):
         if self.debug: console.log(f"Generating Detector_Readout Source IDs, tp_mode is {tp_mode}, dro_configs are {dro_configs}")
         fw_tp_ids = []
+        max_sid = -1
         for dro_config in dro_configs:
-            max_sid = -1
             slr_0 = False
             slr_1 = False
             for link in dro_config.links:
