@@ -32,7 +32,7 @@ from os import path
 
 import json
 from daqconf.core.conf_utils import Direction, Queue
-from daqconf.core.sourceid import TPInfo, SourceIDBroker
+from daqconf.core.sourceid import TPInfo, SourceIDBroker, FWTPID
 from daqconf.core.daqmodule import DAQModule
 from daqconf.core.app import App,ModuleGraph
 
@@ -80,22 +80,18 @@ def get_readout_app(DRO_CONFIG=None,
     RUIDX = f"{host}_{DRO_CONFIG.card}"
 
     link_to_tp_sid_map = {}
-    slr_link = {}
+    fw_tp_id_map = {}
 
-    for link in DRO_CONFIG.links:
-        if SOFTWARE_TPG_ENABLED:
+    if SOFTWARE_TPG_ENABLED:
+        for link in DRO_CONFIG.links:
             link_to_tp_sid_map[link.dro_source_id] = SOURCEID_BROKER.get_next_source_id("Trigger")
             SOURCEID_BROKER.register_source_id("Trigger", link_to_tp_sid_map[link.dro_source_id], None)
     if FIRMWARE_TPG_ENABLED:
-        for fwsid in SOURCEID_BROKER.get_all_source_ids("FW_TPG"):
-            slr = SOURCEID_BROKER.sourceid_map["FW_TPG"][fwsid]
-            link_to_tp_sid_map[slr] = fwsid
-            slr_link[slr] = link_to_tp_sid_map[slr]
-            SOURCEID_BROKER.register_source_id("Trigger", link_to_tp_sid_map[slr], None)
-
-    if DEBUG: print(link_to_tp_sid_map)
-    if DEBUG: print(slr_link)
-
+        for fwsid,fwconf in SOURCEID_BROKER.get_all_source_ids("Detector_Readout").items():
+            if isinstance(fwconf, FWTPID) and fwconf.host == DRO_CONFIG.host and fwconf.card == DRO_CONFIG.card:
+                fw_tp_id_map[fwconf] = fwsid
+                link_to_tp_sid_map[fwconf] = SOURCEID_BROKER.get_next_source_id("Trigger")
+                SOURCEID_BROKER.register_source_id("Trigger", link_to_tp_sid_map[fwconf], None)
 
     # Hack on strings to be used for connection instances: will be solved when data_type is properly used.
 
@@ -284,10 +280,12 @@ def get_readout_app(DRO_CONFIG=None,
                 queues += [Queue(f'flxcard_1.output_{idx}',f"datahandler_{idx}.raw_input",f'{FRONTEND_TYPE}_link_{idx}', 100000 )]
             if FIRMWARE_TPG_ENABLED:
                 link_0.append(5)
-                queues += [Queue(f'flxcard_0.output_{link_to_tp_sid_map[0]}',f"tp_datahandler_{link_to_tp_sid_map[0]}.raw_input",f'raw_tp_link_{link_to_tp_sid_map[0]}', 100000 )]
+                fw_tp_sid = fw_tp_id_map[FWTPID(DRO_CONFIG.host, DRO_CONFIG.card, 0)]
+                queues += [Queue(f'flxcard_0.output_{fw_tp_sid}',f"tp_datahandler_{fw_tp_sid}.raw_input",f'raw_tp_link_{fw_tp_sid}', 100000 )]
                 if len(link_1) > 0:
                     link_1.append(5)
-                    queues += [Queue(f'flxcard_1.output_{link_to_tp_sid_map[1]}',f"tp_datahandler_{link_to_tp_sid_map[1]}.raw_input",f'raw_tp_link_{link_to_tp_sid_map[1]}', 100000 )]
+                    fw_tp_sid = fw_tp_id_map[FWTPID(DRO_CONFIG.host, DRO_CONFIG.card, 1)]
+                    queues += [Queue(f'flxcard_1.output_{fw_tp_sid}',f"tp_datahandler_{fw_tp_sid}.raw_input",f'raw_tp_link_{fw_tp_sid}', 100000 )]
 
             modules += [DAQModule(name = 'flxcard_0',
                                plugin = 'FelixCardReader',
@@ -342,9 +340,15 @@ def get_readout_app(DRO_CONFIG=None,
     mgraph = ModuleGraph(modules, queues=queues)
 
     if FIRMWARE_TPG_ENABLED:
-        mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{link_to_tp_sid_map[0]}", f"tp_datahandler_{link_to_tp_sid_map[0]}.tpset_out",    Direction.OUT, topic=["TPSets"])
-        if 1 in link_to_tp_sid_map.keys():
-            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{link_to_tp_sid_map[1]}", f"tp_datahandler_{link_to_tp_sid_map[1]}.tpset_out",    Direction.OUT, topic=["TPSets"])
+        tp_key_0 = FWTPID(DRO_CONFIG.host, DRO_CONFIG.card, 0)
+        tp_key_1 = FWTPID(DRO_CONFIG.host, DRO_CONFIG.card, 1)
+        if tp_key_0 in link_to_tp_sid_map.keys():
+            tp_sid_0 = link_to_tp_sid_map[tp_key_0]
+            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{tp_sid_0}", f"tp_datahandler_{tp_sid_0}.tpset_out",    Direction.OUT, topic=["TPSets"])
+        if tp_key_1 in link_to_tp_sid_map.keys():
+            tp_sid_1 = link_to_tp_sid_map[tp_key_1]
+            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{tp_sid_1}", f"tp_datahandler_{tp_sid_1}.tpset_out",    Direction.OUT, topic=["TPSets"])
+
         for sid in link_to_tp_sid_map.values():
             mgraph.add_fragment_producer(id = sid, subsystem = "Trigger",
                                     requests_in   = f"tp_datahandler_{sid}.request_input",
