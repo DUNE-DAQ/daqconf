@@ -249,7 +249,8 @@ def get_readout_app(DRO_CONFIG=None,
                                           emulator_mode = EMULATOR_MODE,
                                           error_counter_threshold=100,
                                           error_reset_freq=10000,
-                                          tpset_topic=tpset_topic
+                                          tpset_topic=tpset_topic,
+                                          tpset_sourceid=link_to_tp_sid_map[link.dro_source_id] if SOFTWARE_TPG_ENABLED else 0
                                       ),
                                       requesthandlerconf= rconf.RequestHandlerConf(
                                           latency_buffer_size = LATENCY_BUFFER_SIZE,
