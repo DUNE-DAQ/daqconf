@@ -82,3 +82,89 @@ For our configuration example, we see that we have one readout app on np04-srv-0
 The first column is the Source ID for a given link. Multiple links may have the same SourceID, depending on the detector configuration. The next four fields specify the physical location of the link in hardware coordinates and the [DetID](https://github.com/DUNE-DAQ/detdataformats/blob/develop/include/detdataformats/DetID.hpp). Next comes the FELIX card location, as host/card #, and the final two numbers are the link location within the FELIX (Super Logic Region and Link #). For physical (e.g. FELIX links), there are up to 2 SLRs each supporting up to 5 links. For the HD_TPC detector, "DetCrate" corresponds to "APA".
 
 _daqconf_multiru_gen_ will create a readout app for each unique host/card pair in the given hardware map file. The hardware map can be passed using the `--hardware-map-file` command-line option or via `readout.hardware_map_file`. Note that detector type HD_TPC can be used for both ProtoWIB and DUNEWIB configurations, they are distinguished using `readout.clock_speed_hz`.
+
+### Bonus Example (Coldbox Config)
+Command line version:
+```
+daqconf_multiru_gen --host-ru np04-srv-028 --host-df np04-srv-001 --host-dfo np04-srv-001 --host-hsi np04-srv-001 --host-trigger np04-srv-001 --op-env np04_coldbox -o /data1 --opmon-impl cern --ers-impl cern -n 10 -b 260000 -a 2144 --clock-speed-hz 62500000 -f --region-id 0 --frontend-type wib2 --thread-pinning-file /nfs/sw/dunedaq/dunedaq-v3.1.0/configurations/thread_pinning_files/cpupin-np04-srv-028.json --hsi-trigger-type-passthrough --enable-dqm --host-dqm np04-srv-001 --dqm-cmap HDCB --dqm-impl cern np04_coldbox_daq_4ms 
+```
+
+Options
+```
+--host-ru np04-srv-028 
+--host-df np04-srv-001 
+--host-dfo np04-srv-001  # (dataflow.host_dfo)
+--host-hsi np04-srv-001  # (hsi.host_hsi)
+--host-trigger np04-srv-001  # (trigger.host_trigger)
+--op-env np04_coldbox  # (boot.op_env, or --op-env)
+-o /data1 
+--opmon-impl cern 
+--ers-impl cern 
+-n 10 
+-b 260000 
+-a 2144 
+--clock-speed-hz 62500000 
+-f 
+--region-id 0 # (Deprecated)
+--frontend-type wib2 
+--thread-pinning-file /nfs/sw/dunedaq/dunedaq-v3.1.0/configurations/thread_pinning_files/cpupin-np04-srv-028.json # (readout.thread_pinning_file)
+--hsi-trigger-type-passthrough  # (trigger.hsi_trigger_type_passthrough)
+--enable-dqm # (dqm.enable_dqm, or --enable-dqm)
+--host-dqm np04-srv-001 # (dqm.host_dqm)
+--dqm-cmap HDCB # (dqm.dqm_cmap)
+--dqm-impl cern # (dqm.dqm_impl)
+```
+
+Configuration file
+```JSON
+{
+"readout": {
+  "use_felix": true,
+  "clock_speed_hz": 62500000,
+  "thread_pinning_file": "/nfs/sw/dunedaq/dunedaq-v3.1.0/configurations/thread_pinning_files/cpupin-np04-srv-028.json"
+},
+"trigger": {
+  "trigger_window_after_ticks": 2144,
+  "trigger_window_before_ticks": 260000,
+  "hsi_trigger_type_passthrough": true,
+  "host_trigger": "np04-srv-001"
+},
+"dataflow": {
+  "host_dfo": "np04-srv-001",
+  "apps": [{
+    "app_name": "dataflow0",
+    "host_df": "np04-srv-001",
+    "output_paths": ["/data1"]
+  }]
+},
+"hsi": {
+  "host_hsi": "np04-srv-001"
+},
+"dqm": {
+  "enable_dqm": true,
+  "host_dqm": "np04-srv-001",
+  "dqm_cmap": "HDCB",
+  "dqm_impl": "cern"_
+},
+"boot": {
+  "ers_impl": "cern",
+  "opmon_impl": "cern",
+  "op_env": "np04_coldbox"
+}
+}
+```
+
+HardwareMap.txt:
+```
+# DRO_SourceID DetLink DetSlot DetCrate DetID DRO_Host DRO_Card DRO_SLR DRO_Link 
+0 0 0 0 3 np04-srv-028 0 0 0
+1 1 0 0 3 np04-srv-028 0 0 1
+2 0 1 0 3 np04-srv-028 0 0 2
+3 1 1 0 3 np04-srv-028 0 0 3
+4 0 2 0 3 np04-srv-028 0 0 4
+5 1 2 0 3 np04-srv-028 0 1 0
+6 0 3 0 3 np04-srv-028 0 1 1
+7 1 3 0 3 np04-srv-028 0 1 2
+8 0 4 0 3 np04-srv-028 0 1 3
+9 1 4 0 3 np04-srv-028 0 1 4
+```
