@@ -40,27 +40,27 @@ def get_dfo_app(DF_CONF : dict = {},
                 STOP_TIMEOUT: int = 10000,
                 HOST="localhost",
                 DEBUG=False):
-    
+
     modules = []
-    
-    df_app_configs = [dfo.app_config(connection_uid=f"trigger_decision_{dfc['source_id']}", 
-                                     thresholds=dfo.busy_thresholds(free=max(1, int(dfc['token_count']/2)),
-                                                                             busy=dfc['token_count'])) for dfc in DF_CONF.values()]
+
+    df_app_configs = [dfo.app_config(connection_uid=f"trigger_decision_{dfc.source_id}",
+                                     thresholds=dfo.busy_thresholds(free=max(1, int(dfc.token_count/2)),
+                                                                    busy=dfc.token_count)) for dfc in DF_CONF.values()]
     modules += [DAQModule(name = "dfo",
                           plugin = "DataFlowOrchestrator",
                           conf = dfo.ConfParams(dataflow_applications=df_app_configs,
                                                 stop_timeout=STOP_TIMEOUT))]
-    
+
     mgraph = ModuleGraph(modules)
     mgraph.add_endpoint("td_to_dfo", "dfo.td_connection", Direction.IN)
     mgraph.add_endpoint("triginh", "dfo.token_connection", Direction.IN)
     mgraph.add_endpoint("df_busy_signal", "dfo.busy_connection", Direction.OUT)
     for dfc in DF_CONF.values():
-        mgraph.add_endpoint(f"trigger_decision_{dfc['source_id']}", f"dfo.trigger_{dfc['source_id']}_connection", Direction.OUT)
+        mgraph.add_endpoint(f"trigger_decision_{dfc.source_id}", f"dfo.trigger_{dfc.source_id}_connection", Direction.OUT)
 
     dfo_app = App(modulegraph=mgraph, host=HOST, name='DFOApp')
-    
+
     if DEBUG:
         dfo_app.export("dfo_app.dot")
-    
+
     return dfo_app
