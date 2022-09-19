@@ -659,9 +659,9 @@ def generate_boot(
         )
     else:
         # ARGGGGG (MASSIVE WARNING SIGN HERE)
-        ruapps    = [app for app in system.apps if app.name[:2] == 'ru']
-        dfapps    = [app for app in system.apps if app.name[:2] == 'df']
-        otherapps = [app for app in system.apps if not app.name in ruapps + dfapps]
+        ruapps    = [app for app in system.apps.keys() if app[:2] == 'ru']
+        dfapps    = [app for app in system.apps.keys() if app[:2] == 'df']
+        otherapps = [app for app in system.apps.keys() if not app in ruapps + dfapps]
         boot_order = ruapps + dfapps + otherapps
 
         update_with_k8s_boot_data(
