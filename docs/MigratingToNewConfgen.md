@@ -144,7 +144,7 @@ Configuration file
   "enable_dqm": true,
   "host_dqm": "np04-srv-001",
   "dqm_cmap": "HDCB",
-  "dqm_impl": "cern"_
+  "dqm_impl": "cern"
 },
 "boot": {
   "ers_impl": "cern",
