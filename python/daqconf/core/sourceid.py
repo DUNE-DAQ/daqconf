@@ -74,6 +74,7 @@ class SourceIDBroker:
         if self.debug: console.log(f"Generating Detector_Readout Source IDs, tp_mode is {tp_mode}, dro_configs are {dro_configs}")
         fw_tp_ids = []
         for dro_config in dro_configs:
+            max_sid = -1
             slr_0 = False
             slr_1 = False
             for link in dro_config.links:
@@ -82,6 +83,8 @@ class SourceIDBroker:
                 else:
                     self.sourceid_map["Detector_Readout"][link.dro_source_id].append(link)
                 if tp_mode == TPGenMode.FWTPG:
+                    if max_sid < link.dro_source_id:
+                        max_sid = link.dro_source_id
                     if link.dro_slr == 0 and slr_0 == False: 
                         slr_0 = True
                         fw_tp_ids.append(FWTPID(dro_config.host, dro_config.card, 0))
@@ -91,7 +94,7 @@ class SourceIDBroker:
             if self.debug: console.log(f"found slr0: {slr_0}, found slr1: {slr_1}")
         if tp_mode == TPGenMode.FWTPG:
             for fw_tp_id in fw_tp_ids:
-                sid = self.get_next_source_id("Detector_Readout")
+                sid = self.get_next_source_id("Detector_Readout", max_sid)
                 if self.debug: console.log(f"Adding Detector_Readout SourceID {sid} for FW TP ID {fw_tp_id}")
                 self.register_source_id("Detector_Readout", sid, fw_tp_id)
 
