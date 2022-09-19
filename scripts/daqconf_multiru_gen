@@ -139,8 +139,8 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     # Get the list of RU processes
     dro_infos = hw_map_service.get_all_dro_info()
 
-    sourceid_broker.register_readout_source_ids(dro_infos)
     tp_mode = get_tpg_mode(readout.enable_firmware_tpg,readout.enable_software_tpg)
+    sourceid_broker.register_readout_source_ids(dro_infos, tp_mode)
     sourceid_broker.generate_trigger_source_ids(dro_infos, tp_mode)
     tp_infos = sourceid_broker.get_all_source_ids("Trigger")
 
