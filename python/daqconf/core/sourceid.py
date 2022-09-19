@@ -95,7 +95,6 @@ class SourceIDBroker:
                 if self.debug: console.log(f"Adding Detector_Readout SourceID {sid} for FW TP ID {fw_tp_id}")
                 self.register_source_id("Detector_Readout", sid, fw_tp_id)
 
-
     def generate_trigger_source_ids(self, dro_configs, tp_mode: TPGenMode):
         tc_info = TCInfo()
         ta_infos = {}

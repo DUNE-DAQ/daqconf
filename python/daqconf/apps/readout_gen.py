@@ -92,8 +92,6 @@ def get_readout_app(DRO_CONFIG=None,
                 fw_tp_id_map[fwconf] = fwsid
                 link_to_tp_sid_map[fwconf] = SOURCEID_BROKER.get_next_source_id("Trigger")
                 SOURCEID_BROKER.register_source_id("Trigger", link_to_tp_sid_map[fwconf], None)
-                
-
 
     # Hack on strings to be used for connection instances: will be solved when data_type is properly used.
 
@@ -122,6 +120,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                                                             source_id =  link_to_tp_sid_map[link.dro_source_id]),
                                                  rawdataprocessorconf = rconf.RawDataProcessorConf(source_id =  link_to_tp_sid_map[link.dro_source_id],
                                                                                                    enable_software_tpg = False,
+                                                                                                   fwtp_stitch_constant = 2048,
                                                                                                    channel_map_name=TPG_CHANNEL_MAP),
                                                  requesthandlerconf= rconf.RequestHandlerConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
                                                                                               pop_limit_pct = 0.8,
@@ -349,6 +348,7 @@ def get_readout_app(DRO_CONFIG=None,
         if tp_key_1 in link_to_tp_sid_map.keys():
             tp_sid_1 = link_to_tp_sid_map[tp_key_1]
             mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{tp_sid_1}", f"tp_datahandler_{tp_sid_1}.tpset_out",    Direction.OUT, topic=["TPSets"])
+
         for sid in link_to_tp_sid_map.values():
             mgraph.add_fragment_producer(id = sid, subsystem = "Trigger",
                                     requests_in   = f"tp_datahandler_{sid}.request_input",
