@@ -110,7 +110,7 @@ Options
 --thread-pinning-file /nfs/sw/dunedaq/dunedaq-v3.1.0/configurations/thread_pinning_files/cpupin-np04-srv-028.json # (readout.thread_pinning_file)
 --hsi-trigger-type-passthrough  # (trigger.hsi_trigger_type_passthrough)
 --enable-dqm # (dqm.enable_dqm, or --enable-dqm)
---host-dqm np04-srv-001 # (dqm.host_dqm)
+--host-dqm np04-srv-001 # (dqm.host_dqm (note that host_dqm is a list of allowed hosts for dqm processing)
 --dqm-cmap HDCB # (dqm.dqm_cmap)
 --dqm-impl cern # (dqm.dqm_impl)
 ```
@@ -142,7 +142,7 @@ Configuration file
 },
 "dqm": {
   "enable_dqm": true,
-  "host_dqm": "np04-srv-001",
+  "host_dqm": [ "np04-srv-001" ],
   "dqm_cmap": "HDCB",
   "dqm_impl": "cern"
 },
