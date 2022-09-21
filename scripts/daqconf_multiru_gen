@@ -2,7 +2,7 @@
 import click
 import math
 from rich.console import Console
-from os.path import exists
+from os.path import exists,abspath,dirname
 from daqconf.core.system import System
 from daqconf.core.metadata import write_metadata_file
 from daqconf.core.sourceid import SourceIDBroker, get_tpg_mode
@@ -224,8 +224,13 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 #    if debug:
 #        console.log(f"Output data written to \"{output_path}\"")
 
-#    if boot.use_k8s and output_path == '.':
-#        output_path = os.getcwd()
+    if boot.use_k8s:
+        for df_config in appconfig_df.values():
+            new_output_path = []
+            for op in df_config.output_paths:
+                new_output_path += [abspath(op)]
+            df_config.output_paths = new_output_path
+        readout.hardware_map_file = abspath(readout.hardware_map_file)
 
     max_expected_tr_sequences = 1
     for df_config in appconfig_df.values():
@@ -413,11 +418,19 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         )
         if boot.use_k8s:
             the_system.apps[app_name].mounted_dirs += [{
-                'name': 'raw-data',
+                'name': f'raw-data-{i}',
                 'physical_location': opath,
                 'in_pod_location': opath,
                 'read_only': False,
-            } for opath in df_config.output_paths]
+            } for i,opath in enumerate(set(df_config.output_paths))]
+            # doubling down on ugly hacking...
+            if dirname(readout.hardware_map_file) not in df_config.output_paths:
+                the_system.apps[app_name].mounted_dirs += [{
+                    'name': 'hardware_map',
+                    'physical_location': dirname(readout.hardware_map_file),
+                    'in_pod_location': dirname(readout.hardware_map_file),
+                    'read_only': True,
+                }]
 
 
         if dqm.enable_dqm:

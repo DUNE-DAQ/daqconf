@@ -1,0 +1,10 @@
+{
+    "boot": {
+        "base_command_port": 4405,
+        "opmon_impl": "cern",
+        "ers_impl": "cern",
+        "image": "np04docker.cern.ch/dunedaq-local/plasorak:N22-09-20",
+        "use_k8s": true,
+        "op_env": "plasorak-test"
+    }
+}
