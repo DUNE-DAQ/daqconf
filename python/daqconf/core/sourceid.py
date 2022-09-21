@@ -13,6 +13,7 @@ from detchannelmaps._daq_detchannelmaps_py import *
 
 TAID = namedtuple('TAID', ['detector', 'crate'])
 FWTPID = namedtuple('FWTPID', ['host', 'card', 'slr'])
+FWTPOUTID = namedtuple('FWTPOUTID', ['host', 'card', 'fwtpid'])
 
 class TPGenMode(Enum):
     DISABLED = 1
@@ -92,11 +93,18 @@ class SourceIDBroker:
                         slr_1 = True
                         fw_tp_ids.append(FWTPID(dro_config.host, dro_config.card, 1))
             if self.debug: console.log(f"found slr0: {slr_0}, found slr1: {slr_1}")
+        fwsid = []
         if tp_mode == TPGenMode.FWTPG:
             for fw_tp_id in fw_tp_ids:
                 sid = self.get_next_source_id("Detector_Readout", max_sid)
+                fwsid.append(sid)
                 if self.debug: console.log(f"Adding Detector_Readout SourceID {sid} for FW TP ID {fw_tp_id}")
                 self.register_source_id("Detector_Readout", sid, fw_tp_id)
+            for i in range(len(fwsid)):
+                sid = self.get_next_source_id("Detector_Readout", max_sid)
+                tp_out_id = FWTPOUTID(fw_tp_ids[i].host, fw_tp_ids[i].card, fwsid[i])
+                if self.debug: console.log(f"Adding Detector_Readout SourceID {sid} for FW TP OUT ID {tp_out_id}")
+                self.register_source_id("Detector_Readout", sid, tp_out_id)
 
     def generate_trigger_source_ids(self, dro_configs, tp_mode: TPGenMode):
         tc_info = TCInfo()

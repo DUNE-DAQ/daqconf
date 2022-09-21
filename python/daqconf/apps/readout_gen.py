@@ -35,7 +35,7 @@ from os import path
 
 import json
 from daqconf.core.conf_utils import Direction, Queue
-from daqconf.core.sourceid import TPInfo, SourceIDBroker, FWTPID
+from daqconf.core.sourceid import TPInfo, SourceIDBroker, FWTPID, FWTPOUTID
 from daqconf.core.daqmodule import DAQModule
 from daqconf.core.app import App,ModuleGraph
 
@@ -86,6 +86,7 @@ def get_readout_app(DRO_CONFIG=None,
 
     link_to_tp_sid_map = {}
     fw_tp_id_map = {}
+    fw_tp_out_id_map = {}
 
     if SOFTWARE_TPG_ENABLED:
         for link in DRO_CONFIG.links:
@@ -98,8 +99,12 @@ def get_readout_app(DRO_CONFIG=None,
                 fw_tp_id_map[fwconf] = fwsid
                 link_to_tp_sid_map[fwconf] = SOURCEID_BROKER.get_next_source_id("Trigger")
                 SOURCEID_BROKER.register_source_id("Trigger", link_to_tp_sid_map[fwconf], None)
+            if isinstance(fwconf, FWTPOUTID) and fwconf.host == DRO_CONFIG.host and fwconf.card == DRO_CONFIG.card:
+                if DEBUG: print(f"SSB fw tp out id: {fwconf}")
+                fw_tp_out_id_map[fwconf] = fwsid
 
-    if DEBUG: print(f"SSB fwsid_map: {fw_tp_id_map}")
+    if DEBUG: print(f"SSB fw_tp source ID map: {fw_tp_id_map}")
+    if DEBUG: print(f"SSB fw_tp_out source ID map: {fw_tp_out_id_map}")
 
     # Hack on strings to be used for connection instances: will be solved when data_type is properly used.
 
@@ -126,7 +131,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                                                          source_id = link_to_tp_sid_map[link.dro_source_id]),
                                                  latencybufferconf = rconf.LatencyBufferConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
                                                                                             source_id =  link_to_tp_sid_map[link.dro_source_id]),
-                                                 rawdataprocessorconf = rconf.RawDataProcessorConf(source_id =  link_to_tp_sid_map[link.dro_source_id],
+                                                 rawdataprocessorconf = rconf.RawDataProcessorConf(source_id = link_to_tp_sid_map[link.dro_source_id],
                                                                                                    enable_software_tpg = False,
                                                                                                    fwtp_stitch_constant = 2048,
                                                                                                    channel_map_name=TPG_CHANNEL_MAP),
@@ -140,47 +145,51 @@ def get_readout_app(DRO_CONFIG=None,
                                                                                               request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                               enable_raw_recording = False)))]
     if FIRMWARE_TPG_ENABLED:
+        assert(len(fw_tp_out_id_map) <= 2)
         assert(len(fw_tp_id_map) <= 2)
-        for sid in fw_tp_id_map.values():
-            queues += [Queue(f"tp_datahandler_{sid}.errored_frames", 'errored_frame_consumer.input_queue', "errored_frames_q")]
-            queues += [Queue(f"tp_datahandler_{sid}.tp_out",f"tp_out_datahandler_{sid}.raw_input",f"sw_tp_link_{sid}",100000 )]                
-            modules += [DAQModule(name = f"tp_out_datahandler_{sid}",
+        for tp, tp_out in zip(fw_tp_id_map.values(), fw_tp_out_id_map.values()):
+            # for sid in fw_tp_out_id_map.values():
+            queues += [Queue(f"tp_datahandler_{tp}.tp_out",f"tp_out_datahandler_{tp_out}.raw_input",f"sw_tp_link_{tp_out}",100000 )]                
+            modules += [DAQModule(name = f"tp_out_datahandler_{tp_out}",
                                plugin = "DataLinkHandler",
                                conf = rconf.Conf(readoutmodelconf = rconf.ReadoutModelConf(source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
-                                                                                         source_id = sid),
+                                                                                         source_id = tp_out),
                                                  latencybufferconf = rconf.LatencyBufferConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
-                                                                                            source_id = sid),
-                                                 rawdataprocessorconf = rconf.RawDataProcessorConf(source_id =  sid,
+                                                                                            source_id = tp_out),
+                                                 rawdataprocessorconf = rconf.RawDataProcessorConf(source_id =  tp_out,
                                                                                                    enable_software_tpg = False,
+                                                                                                   fwtp_stitch_constant = 2048,
                                                                                                    channel_map_name=TPG_CHANNEL_MAP),
                                                  requesthandlerconf= rconf.RequestHandlerConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
                                                                                               pop_limit_pct = 0.8,
                                                                                               pop_size_pct = 0.1,
-                                                                                              source_id = sid,
+                                                                                              source_id = tp_out,
                                                                                               det_id = 1,
                                                                                               stream_buffer_size = 100 if FRONTEND_TYPE=='pacman' else 8388608,
                                                                                               request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                               enable_raw_recording = False)))]
-
-            modules += [DAQModule(name = f"tp_datahandler_{sid}",
+            # for sid in fw_tp_id_map.values():
+            queues += [Queue(f"tp_datahandler_{tp}.errored_frames", 'errored_frame_consumer.input_queue', "errored_frames_q")]
+            modules += [DAQModule(name = f"tp_datahandler_{tp}",
                                   plugin = "DataLinkHandler", 
                                   conf = rconf.Conf(
                                       readoutmodelconf= rconf.ReadoutModelConf(
                                           source_queue_timeout_ms= QUEUE_POP_WAIT_MS,
                                           # fake_trigger_flag=0, # default
-                                          source_id = sid,
+                                          source_id = tp,
                                           timesync_connection_name = f"timesync_{RUIDX}",
                                           timesync_topic_name = "Timesync",
                                       ),
                                       latencybufferconf= rconf.LatencyBufferConf(
                                           latency_buffer_alignment_size = 4096,
                                           latency_buffer_size = LATENCY_BUFFER_SIZE,
-                                          source_id = sid,
+                                          source_id = tp,
                                       ),
                                       rawdataprocessorconf= rconf.RawDataProcessorConf(
-                                          source_id = sid,
+                                          source_id = tp,
                                           enable_software_tpg = False,
                                           enable_firmware_tpg = True,
+                                          fwtp_stitch_constant = 2048,
                                           channel_map_name = TPG_CHANNEL_MAP,
                                           emulator_mode = EMULATOR_MODE,
                                           error_counter_threshold=100,
@@ -191,9 +200,9 @@ def get_readout_app(DRO_CONFIG=None,
                                           latency_buffer_size = LATENCY_BUFFER_SIZE,
                                           pop_limit_pct = 0.8,
                                           pop_size_pct = 0.1,
-                                          source_id = sid,
+                                          source_id = tp,
                                           det_id = DRO_CONFIG.links[0].det_id,
-                                          output_file = path.join(RAW_RECORDING_OUTPUT_DIR, f"output_tp_{RUIDX}_{sid}.out"),
+                                          output_file = path.join(RAW_RECORDING_OUTPUT_DIR, f"output_tp_{RUIDX}_{tp}.out"),
                                           stream_buffer_size = 8388608,
                                           request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                           enable_raw_recording = RAW_RECORDING_ENABLED,
@@ -387,10 +396,11 @@ def get_readout_app(DRO_CONFIG=None,
                                     requests_in   = f"tp_datahandler_{sid}.request_input",
                                     fragments_out = f"tp_datahandler_{sid}.fragment_queue", is_mlt_producer = READOUT_SENDS_TP_FRAGMENTS)
             mgraph.add_endpoint(f"timesync_{sid}", f"tp_datahandler_{sid}.timesync_output",    Direction.OUT, ["Timesync"])
-            mgraph.add_endpoint(f"timesync_tp_out_{sid}", f"tp_out_datahandler_{sid}.timesync_output",    Direction.OUT, ["Timesync"])
+        for sid in fw_tp_out_id_map.values():
             mgraph.add_fragment_producer(id = sid, subsystem = "Trigger",
                                     requests_in   = f"tp_out_datahandler_{sid}.request_input",
                                     fragments_out = f"tp_out_datahandler_{sid}.fragment_queue", is_mlt_producer = READOUT_SENDS_TP_FRAGMENTS)
+            mgraph.add_endpoint(f"timesync_tp_out_{sid}", f"tp_out_datahandler_{sid}.timesync_output",    Direction.OUT, ["Timesync"])
 
 
 
