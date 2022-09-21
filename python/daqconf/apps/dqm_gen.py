@@ -32,25 +32,30 @@ QUEUE_POP_WAIT_MS = 100
 # local clock speed Hz
 # CLOCK_SPEED_HZ = 50000000;
 
-def get_dqm_app( DATA_RATE_SLOWDOWN_FACTOR=1,
-                 CLOCK_SPEED_HZ=50000000,
-                 DQMIDX=0,
-                 KAFKA_ADDRESS='',
-                 CMAP='HD',
-                 RAW_PARAMS=[60, 50],
-                 RMS_PARAMS=[10, 1000],
-                 STD_PARAMS=[10, 1000],
-                 FOURIER_CHANNEL_PARAMS=[600, 100],
-                 FOURIER_PLANE_PARAMS=[60, 1000],
-                 LINKS=[],
-                 HOST="localhost",
-                 MODE="readout",
-                 DF_RATE=10,
-                 DF_ALGS='raw std fourier_plane',
-                 DF_TIME_WINDOW=0,
-                 FRONTEND_TYPE='wib',
-                 DEBUG=False,
-                 ):
+def get_dqm_app(DQM_IMPL='',
+                DATA_RATE_SLOWDOWN_FACTOR=1,
+                CLOCK_SPEED_HZ=50000000,
+                DQMIDX=0,
+                KAFKA_ADDRESS='',
+                KAFKA_TOPIC='',
+                CMAP='HD',
+                RAW_PARAMS=[60, 50],
+                RMS_PARAMS=[10, 1000],
+                STD_PARAMS=[10, 1000],
+                FOURIER_CHANNEL_PARAMS=[600, 100],
+                FOURIER_PLANE_PARAMS=[60, 1000],
+                LINKS=[],
+                HOST="localhost",
+                MODE="readout",
+                DF_RATE=10,
+                DF_ALGS='raw std fourier_plane',
+                DF_TIME_WINDOW=0,
+                FRONTEND_TYPE='wib',
+                DEBUG=False,
+                ):
+
+    if DQM_IMPL == 'cern':
+        KAFKA_ADDRESS = "monkafka.cern.ch:30092"
 
     modules = []
 
