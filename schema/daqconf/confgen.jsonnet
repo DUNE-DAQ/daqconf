@@ -141,6 +141,7 @@ local cs = {
     s.field('fourier_plane_params', self.dqm_params, default=[600, 1000], doc="Parameters that control the data sent for the summed fourier transform plot"),
     s.field('df_rate', self.count, default=10, doc='How many seconds between requests to DF for Trigger Records'),
     s.field('df_algs', self.string, default='raw std fourier_plane', doc='Algorithms to be run on Trigger Records from DF (use quotes)'),
+    s.field('max_num_frames', self.count, default=32768, doc='Maximum number of frames to use in the algorithms'),
     s.field('kafka_address', self.string, default='', doc='kafka address used to send messages'),
     s.field('kafka_topic', self.string, default='DQM', doc='kafka topic used to send messages'),
   ]),
