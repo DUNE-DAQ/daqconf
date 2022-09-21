@@ -51,6 +51,8 @@
     "latency_buffer_size": 499968,
     "enable_software_tpg": false,
     "enable_firmware_tpg": false,
+    "firmawre_hit_threshold": 20,
+    "dtp_connections_file": "${DTPCONTROLS_SHARE}/config/dtp_connections.xml",
     "enable_raw_recording": false,
     "raw_recording_output_dir": ".",
     "use_fake_data_producers": false,

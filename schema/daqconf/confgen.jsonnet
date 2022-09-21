@@ -80,6 +80,8 @@ local cs = {
     s.field( "latency_buffer_size", self.count, default=499968, doc="Size of the latency buffers (in number of elements)"),
     s.field( "enable_software_tpg", self.flag, default=false, doc="Enable software TPG"),
     s.field( "enable_firmware_tpg", self.flag, default=false, doc="Enable firmware TPG"),
+    s.field( "dtp_connections_file", self.path, default="${DTPCONTROLS_SHARE}/config/dtp_connections.xml", doc="DTP connections file"),
+    s.field( "firmware_hit_threshold", self.count, default=20, doc="firmware hitfinder threshold"),
     s.field( "enable_raw_recording", self.flag, default=false, doc="Add queues and modules necessary for the record command"),
     s.field( "raw_recording_output_dir", self.path, default='.', doc="Output directory where recorded data is written to. Data for each link is written to a separate file"),
     s.field( "use_fake_data_producers", self.flag, default=false, doc="Use fake data producers that respond with empty fragments immediately instead of (fake) cards and DLHs"),
