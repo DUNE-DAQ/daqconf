@@ -12,6 +12,7 @@ def write_metadata_file(json_dir, generator, config_file):
 
     # Backwards compatibility
     if isinstance(json_dir, str):
+        from pathlib import Path
         json_dir = Path(json_dir)
 
     with open(join(json_dir / f"{generator}.info"), 'w') as f:
