@@ -135,7 +135,4 @@ def get_hsi_app(RUN_NUMBER = 333,
     
     hsi_app = App(modulegraph=mgraph, host=HOST, name="HSIApp")
     
-    if DEBUG:
-        hsi_app.export("hsi_app.dot")
-
     return hsi_app
