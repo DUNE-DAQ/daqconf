@@ -450,8 +450,5 @@ def get_readout_app(DRO_CONFIG=None,
                                                 is_mlt_producer = READOUT_SENDS_TP_FRAGMENTS)
 
     readout_app = App(mgraph, host=HOST)
-    if DEBUG:
-        readout_app.export("readout_app.dot")
-
     return readout_app
 
