@@ -2,7 +2,8 @@
 import click
 import math
 from rich.console import Console
-from os.path import exists
+from os.path import exists,abspath,dirname
+from pathlib import Path
 from daqconf.core.system import System
 from daqconf.core.metadata import write_metadata_file
 from daqconf.core.sourceid import SourceIDBroker, get_tpg_mode
@@ -32,8 +33,14 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.argument('json_dir', type=click.Path())
 def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor, enable_dqm, op_env, debug, json_dir):
 
-    if exists(json_dir):
-        raise RuntimeError(f"Directory {json_dir} already exists")
+    output_dir = Path(json_dir)
+    if output_dir.exists():
+        raise RuntimeError(f"Directory {output_dir} already exists")
+
+
+    debug_dir = output_dir / 'debug'
+    if debug:
+        debug_dir.mkdir(parents=True)
 
     config_data = config[0]
     config_file = config[1]
@@ -79,7 +86,9 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         readout.hardware_map_file = hardware_map_file
     if data_rate_slowdown_factor != 0:
         readout.data_rate_slowdown_factor = data_rate_slowdown_factor
-    dqm.enable_dqm |= enable_dqm
+    dqm.enable_dqm = enable_dqm
+    if dqm.impl == 'pocket':
+        dqm.kafka_address = boot.pocket_url + ":30092"
     if op_env != '':
         boot.op_env = op_env
 
@@ -144,8 +153,8 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     # Get the list of RU processes
     dro_infos = hw_map_service.get_all_dro_info()
 
-    sourceid_broker.register_readout_source_ids(dro_infos)
     tp_mode = get_tpg_mode(readout.enable_firmware_tpg,readout.enable_software_tpg)
+    sourceid_broker.register_readout_source_ids(dro_infos, tp_mode)
     sourceid_broker.generate_trigger_source_ids(dro_infos, tp_mode)
     tp_infos = sourceid_broker.get_all_source_ids("Trigger")
 
@@ -190,7 +199,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 #            region_id_temp.append(reg)
 #        region_id = tuple(region_id_temp)
 
-    if hsi.use_hsi_hw and not hsi_device_name:
+    if hsi.use_hsi_hw and not hsi.hsi_device_name:
         raise Exception("If --use-hsi-hw flag is set to true, --hsi-device-name must be specified!")
 
     if timing.control_timing_partition and not timing.timing_partition_master_device_name:
@@ -201,8 +210,6 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
     if boot.use_k8s and not boot.image:
         raise Exception("You need to provide an --image if running with k8s")
-
-    dqm_kafka_address = "monkafka.cern.ch:30092" if dqm.dqm_impl == 'cern' else boot.pocket_url + ":30092" if dqm.dqm_impl == 'pocket' else ''
 
 #    host_id_dict = {}
 #    ru_configs = []
@@ -229,8 +236,13 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 #    if debug:
 #        console.log(f"Output data written to \"{output_path}\"")
 
-#    if boot.use_k8s and output_path == '.':
-#        output_path = os.getcwd()
+    if boot.use_k8s:
+        for df_config in appconfig_df.values():
+            new_output_path = []
+            for op in df_config.output_paths:
+                new_output_path += [abspath(op)]
+            df_config.output_paths = new_output_path
+        readout.hardware_map_file = abspath(readout.hardware_map_file)
 
     max_expected_tr_sequences = 1
     for df_config in appconfig_df.values():
@@ -359,6 +371,8 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             RAW_RECORDING_OUTPUT_DIR = readout.raw_recording_output_dir,
             SOFTWARE_TPG_ENABLED = readout.enable_software_tpg,
             FIRMWARE_TPG_ENABLED = readout.enable_firmware_tpg,
+            DTP_CONNECTIONS_FILE= readout.dtp_connections_file,
+            FIRMWARE_HIT_THRESHOLD= readout.firmware_hit_threshold,
             TPG_CHANNEL_MAP = trigger.tpg_channel_map,
             USE_FAKE_DATA_PRODUCERS = readout.use_fake_data_producers,
             LATENCY_BUFFER_SIZE=readout.latency_buffer_size,
@@ -371,6 +385,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             BASE_SOURCE_IP=readout.base_source_ip,
             DESTINATION_IP=readout.destination_ip,
             DEBUG=debug)
+
         if boot.use_k8s:
             if readout.use_felix:
                 the_system.apps[ru_name].resources = {
@@ -386,15 +401,19 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             dqm_app_names.append(dqm_name)
             dqm_links = [link.dro_source_id for link in dro_config.links]
             the_system.apps[dqm_name] = get_dqm_app(
-                DATA_RATE_SLOWDOWN_FACTOR = readout.data_rate_slowdown_factor,
-                CLOCK_SPEED_HZ = readout.clock_speed_hz,
+                DQM_IMPL=dqm.impl,
+                DATA_RATE_SLOWDOWN_FACTOR=readout.data_rate_slowdown_factor,
+                CLOCK_SPEED_HZ=readout.clock_speed_hz,
+                MAX_NUM_FRAMES=dqm.max_num_frames,
                 DQMIDX = dro_idx,
-                DQM_KAFKA_ADDRESS=dqm_kafka_address,
-                DQM_CMAP=dqm.dqm_cmap,
-                DQM_RAWDISPLAY_PARAMS=dqm.dqm_rawdisplay_params,
-                DQM_MEANRMS_PARAMS=dqm.dqm_meanrms_params,
-                DQM_FOURIER_PARAMS=dqm.dqm_fourier_params,
-                DQM_FOURIERSUM_PARAMS=dqm.dqm_fouriersum_params,
+                KAFKA_ADDRESS=dqm.kafka_address,
+                KAFKA_TOPIC=dqm.kafka_topic,
+                CMAP=dqm.cmap,
+                RAW_PARAMS=dqm.raw_params,
+                RMS_PARAMS=dqm.rms_params,
+                STD_PARAMS=dqm.std_params,
+                FOURIER_CHANNEL_PARAMS=dqm.fourier_channel_params,
+                FOURIER_PLANE_PARAMS=dqm.fourier_plane_params,
                 LINKS=dqm_links,
                 HOST=dqm.host_dqm[dro_idx % len(dqm.host_dqm)],
                 DEBUG=debug)
@@ -423,11 +442,19 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         )
         if boot.use_k8s:
             the_system.apps[app_name].mounted_dirs += [{
-                'name': 'raw-data',
-                'physical_location': df_config.output_paths,
-                'in_pod_location': df_config.output_paths,
+                'name': f'raw-data-{i}',
+                'physical_location': opath,
+                'in_pod_location': opath,
                 'read_only': False,
-            }]
+            } for i,opath in enumerate(set(df_config.output_paths))]
+            # doubling down on ugly hacking...
+            if dirname(readout.hardware_map_file) not in df_config.output_paths:
+                the_system.apps[app_name].mounted_dirs += [{
+                    'name': 'hardware_map',
+                    'physical_location': dirname(readout.hardware_map_file),
+                    'in_pod_location': dirname(readout.hardware_map_file),
+                    'read_only': True,
+                }]
 
 
         if dqm.enable_dqm:
@@ -435,20 +462,24 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             dqm_df_app_names.append(dqm_name)
             dqm_links = [link.dro_source_id for link in dro_config.links for dro_config in dro_infos]
             the_system.apps[dqm_name] = get_dqm_app(
+                DQM_IMPL=dqm.impl,
                 DATA_RATE_SLOWDOWN_FACTOR = readout.data_rate_slowdown_factor,
                 CLOCK_SPEED_HZ = readout.clock_speed_hz,
+                MAX_NUM_FRAMES=dqm.max_num_frames,
                 DQMIDX = dfidx,
-                DQM_KAFKA_ADDRESS=dqm_kafka_address,
-                DQM_CMAP=dqm.dqm_cmap,
-                DQM_RAWDISPLAY_PARAMS=[0, 0],
-                DQM_MEANRMS_PARAMS=[0, 0],
-                DQM_FOURIER_PARAMS=[0, 0],
-                DQM_FOURIERSUM_PARAMS=[0, 0],
+                KAFKA_ADDRESS=dqm.kafka_address,
+                KAFKA_TOPIC=dqm.kafka_topic,
+                CMAP=dqm.cmap,
+                RAW_PARAMS=[0, 0],
+                RMS_PARAMS=[0, 0],
+                STD_PARAMS=[0, 0],
+                FOURIER_CHANNEL_PARAMS=[0, 0],
+                FOURIER_PLANE_PARAMS=[0, 0],
                 LINKS=dqm_links,
                 HOST=dqm.host_dqm[idx%len(dqm.host_dqm)],
                 MODE='df',
-                DF_RATE=dqm.dqm_df_rate * len(host_df),
-                DF_ALGS=dqm.dqm_df_algs,
+                DF_RATE=dqm.df_rate * len(host_df),
+                DF_ALGS=dqm.df_algs,
                 DF_TIME_WINDOW=trigger.trigger_window_before_ticks + trigger.trigger_window_after_ticks,
                 FRONTEND_TYPE='',
                 DEBUG=debug)
@@ -508,7 +539,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     from daqconf.core.fragment_producers import  connect_all_fragment_producers, set_mlt_links, remove_mlt_link
 
     if debug:
-        the_system.export("system_no_frag_prod_connection.dot")
+        the_system.export(debug_dir / "system_no_frag_prod_connection.dot")
     connect_all_fragment_producers(the_system, verbose=debug)
 
     # console.log("After connecting fragment producers, trigger mgraph:", the_system.apps['trigger'].modulegraph)
@@ -543,7 +574,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     # END HACK
 
     if debug:
-        the_system.export("system.dot")
+        the_system.export(debug_dir / "system.dot")
 
     ####################################################################
     # Application command data generation
@@ -601,12 +632,15 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         }
 
 
-    write_json_files(app_command_datas, system_command_datas, json_dir, verbose=debug)
+    write_json_files(app_command_datas, system_command_datas, output_dir, verbose=debug)
 
-    console.log(f"MDAapp config generated in {json_dir}")
+    console.log(f"MDAapp config generated in {output_dir}")
 
+    write_metadata_file(output_dir, "daqconf_multiru_gen", config_file)
 
-    write_metadata_file(json_dir, "daqconf_multiru_gen", config_file)
+    if debug:
+        for name in the_system.apps:
+            the_system.apps[name].export(debug_dir / f"{name}.dot")
 
 if __name__ == '__main__':
     try:
