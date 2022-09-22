@@ -59,7 +59,4 @@ def get_tprtc_app(MASTER_DEVICE_NAME="",
 
     tprtc_app = App(modulegraph=mgraph, host=HOST, name="TPRTCApp")
      
-    if DEBUG:
-        tprtc_app.export("tprtc_app.dot")
-
     return tprtc_app

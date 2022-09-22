@@ -116,7 +116,4 @@ def get_dataflow_app(HOSTIDX=0,
 
     df_app = App(modulegraph=mgraph, host=HOST)
 
-    if DEBUG:
-        df_app.export("dataflow_app.dot")
-
     return df_app
