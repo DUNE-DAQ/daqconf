@@ -554,7 +554,10 @@ def update_with_k8s_boot_data(
 
     boot_data.update({"apps": apps_desc})
     boot_data.update({"order": boot_order})
-    boot_data['exec']['daq_application_k8s']['cmd'] = ['/dunedaq/run/app-entrypoint.sh']
+    if 'rte_script' in boot_data:
+        boot_data['exec']['daq_application_k8s']['cmd'] = ['daq_application']
+    else:
+        boot_data['exec']['daq_application_k8s']['cmd'] = ['/dunedaq/run/app-entrypoint.sh']
     boot_data["exec"]["daq_application_k8s"]["image"] = image
 
 
@@ -818,6 +821,6 @@ def get_rte_script():
         script = f'/cvmfs/dunedaq.opensciencegrid.org/spack-releases/{ver}/daq_app_rte.sh'
 
     if not exists(script):
-        raise RuntimeError('Couldn\'t understand where to find the rte script')
+        raise RuntimeError(f'Couldn\'t understand where to find the rte script tentative: {script}')
 
     return script
