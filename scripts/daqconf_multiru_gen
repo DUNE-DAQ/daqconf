@@ -83,7 +83,9 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         readout.hardware_map_file = hardware_map_file
     if data_rate_slowdown_factor != 0:
         readout.data_rate_slowdown_factor = data_rate_slowdown_factor
-    dqm.enable_dqm |= enable_dqm
+    dqm.enable_dqm = enable_dqm
+    if dqm.impl == 'pocket':
+        dqm.kafka_address = boot.pocket_url + ":30092"
     if op_env != '':
         boot.op_env = op_env
 
@@ -203,8 +205,6 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
     if boot.use_k8s and not boot.image:
         raise Exception("You need to provide an --image if running with k8s")
-
-    dqm_kafka_address = "monkafka.cern.ch:30092" if dqm.dqm_impl == 'cern' else boot.pocket_url + ":30092" if dqm.dqm_impl == 'pocket' else ''
 
 #    host_id_dict = {}
 #    ru_configs = []
@@ -391,15 +391,19 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             dqm_app_names.append(dqm_name)
             dqm_links = [link.dro_source_id for link in dro_config.links]
             the_system.apps[dqm_name] = get_dqm_app(
-                DATA_RATE_SLOWDOWN_FACTOR = readout.data_rate_slowdown_factor,
-                CLOCK_SPEED_HZ = readout.clock_speed_hz,
+                DQM_IMPL=dqm.impl,
+                DATA_RATE_SLOWDOWN_FACTOR=readout.data_rate_slowdown_factor,
+                CLOCK_SPEED_HZ=readout.clock_speed_hz,
+                MAX_NUM_FRAMES=dqm.max_num_frames,
                 DQMIDX = dro_idx,
-                DQM_KAFKA_ADDRESS=dqm_kafka_address,
-                DQM_CMAP=dqm.dqm_cmap,
-                DQM_RAWDISPLAY_PARAMS=dqm.dqm_rawdisplay_params,
-                DQM_MEANRMS_PARAMS=dqm.dqm_meanrms_params,
-                DQM_FOURIER_PARAMS=dqm.dqm_fourier_params,
-                DQM_FOURIERSUM_PARAMS=dqm.dqm_fouriersum_params,
+                KAFKA_ADDRESS=dqm.kafka_address,
+                KAFKA_TOPIC=dqm.kafka_topic,
+                CMAP=dqm.cmap,
+                RAW_PARAMS=dqm.raw_params,
+                RMS_PARAMS=dqm.rms_params,
+                STD_PARAMS=dqm.std_params,
+                FOURIER_CHANNEL_PARAMS=dqm.fourier_channel_params,
+                FOURIER_PLANE_PARAMS=dqm.fourier_plane_params,
                 LINKS=dqm_links,
                 HOST=dqm.host_dqm[dro_idx % len(dqm.host_dqm)],
                 DEBUG=debug)
@@ -448,20 +452,24 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             dqm_df_app_names.append(dqm_name)
             dqm_links = [link.dro_source_id for link in dro_config.links for dro_config in dro_infos]
             the_system.apps[dqm_name] = get_dqm_app(
+                DQM_IMPL=dqm.impl,
                 DATA_RATE_SLOWDOWN_FACTOR = readout.data_rate_slowdown_factor,
                 CLOCK_SPEED_HZ = readout.clock_speed_hz,
+                MAX_NUM_FRAMES=dqm.max_num_frames,
                 DQMIDX = dfidx,
-                DQM_KAFKA_ADDRESS=dqm_kafka_address,
-                DQM_CMAP=dqm.dqm_cmap,
-                DQM_RAWDISPLAY_PARAMS=[0, 0],
-                DQM_MEANRMS_PARAMS=[0, 0],
-                DQM_FOURIER_PARAMS=[0, 0],
-                DQM_FOURIERSUM_PARAMS=[0, 0],
+                KAFKA_ADDRESS=dqm.kafka_address,
+                KAFKA_TOPIC=dqm.kafka_topic,
+                CMAP=dqm.cmap,
+                RAW_PARAMS=[0, 0],
+                RMS_PARAMS=[0, 0],
+                STD_PARAMS=[0, 0],
+                FOURIER_CHANNEL_PARAMS=[0, 0],
+                FOURIER_PLANE_PARAMS=[0, 0],
                 LINKS=dqm_links,
                 HOST=dqm.host_dqm[idx%len(dqm.host_dqm)],
                 MODE='df',
-                DF_RATE=dqm.dqm_df_rate * len(host_df),
-                DF_ALGS=dqm.dqm_df_algs,
+                DF_RATE=dqm.df_rate * len(host_df),
+                DF_ALGS=dqm.df_algs,
                 DF_TIME_WINDOW=trigger.trigger_window_before_ticks + trigger.trigger_window_after_ticks,
                 FRONTEND_TYPE='',
                 DEBUG=debug)
