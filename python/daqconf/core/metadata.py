@@ -8,7 +8,14 @@ console = Console()
 
 def write_metadata_file(json_dir, generator, config_file):
     console.log("Generating metadata file")
-    with open(join(json_dir, f"{generator}.info"), 'w') as f:
+
+
+    # Backwards compatibility
+    if isinstance(json_dir, str):
+        from pathlib import Path
+        json_dir = Path(json_dir)
+
+    with open(join(json_dir / f"{generator}.info"), 'w') as f:
         daqconf_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
 
         # build info file is one directory up from the main script (daqconf vs. daqconf/bin)

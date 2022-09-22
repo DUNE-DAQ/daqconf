@@ -351,8 +351,5 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
 
     trigger_app = App(modulegraph=mgraph, host=HOST, name='TriggerApp')
     
-    if DEBUG:
-        trigger_app.export("trigger_app.dot")
-
     return trigger_app
 

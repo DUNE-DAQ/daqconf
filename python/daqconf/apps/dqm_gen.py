@@ -111,7 +111,4 @@ def get_dqm_app(DQM_IMPL='',
     
     dqm_app = App(mgraph, host=HOST)
 
-    if DEBUG:
-        dqm_app.export("dqm_app.dot")
-
     return dqm_app

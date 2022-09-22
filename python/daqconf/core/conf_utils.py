@@ -2,8 +2,9 @@
 from dunedaq.env import get_moo_model_path
 import moo.io
 moo.io.default_load_path = get_moo_model_path()
+
 import urllib
-from os.path import exists, join
+from pathlib import Path
 from rich.console import Console
 from copy import deepcopy
 from collections import namedtuple, defaultdict
@@ -659,9 +660,9 @@ def generate_boot(
         )
     else:
         # ARGGGGG (MASSIVE WARNING SIGN HERE)
-        ruapps    = [app for app in system.apps if app.name[:2] == 'ru']
-        dfapps    = [app for app in system.apps if app.name[:2] == 'df']
-        otherapps = [app for app in system.apps if not app.name in ruapps + dfapps]
+        ruapps    = [app for app in system.apps.keys() if app[:2] == 'ru']
+        dfapps    = [app for app in system.apps.keys() if app[:2] == 'df']
+        otherapps = [app for app in system.apps.keys() if not app in ruapps + dfapps]
         boot_order = ruapps + dfapps + otherapps
 
         update_with_k8s_boot_data(
@@ -709,10 +710,15 @@ cmd_set = ["init", "conf"]
 
 def make_app_json(app_name, app_command_data, data_dir, verbose=False):
     """Make the json files for a single application"""
+
+    # Backwards compatibility
+    if isinstance(data_dir, str):
+        data_dir = Path(data_dir)
+
     if verbose:
         console.log(f"make_app_json for app {app_name}")
     for c in cmd_set:
-        with open(f'{join(data_dir, app_name)}_{c}.json', 'w') as f:
+        with open(data_dir / f'{app_name}_{c}.json', 'w') as f:
             json.dump(app_command_data[c].pod(), f, indent=4, sort_keys=True)
 
 def make_system_command_datas(daqconf, the_system, forced_deps=[], verbose=False):
@@ -752,13 +758,14 @@ def write_json_files(app_command_datas, system_command_datas, json_dir, verbose=
     """Write the per-application and whole-system command data as json files in `json_dir`
     """
 
+    # Backwards compatibility
+    if isinstance(json_dir, str):
+        json_dir = Path(json_dir)
+    
     console.rule("JSON file creation")
 
-    if exists(json_dir):
-        raise RuntimeError(f"Directory {json_dir} already exists")
-
-    data_dir = join(json_dir, 'data')
-    os.makedirs(data_dir)
+    data_dir = json_dir / 'data'
+    data_dir.mkdir(parents=True)
 
     # Apps
     for app_name, command_data in app_command_datas.items():
@@ -766,7 +773,7 @@ def write_json_files(app_command_datas, system_command_datas, json_dir, verbose=
 
     # System commands
     for cmd, cfg in system_command_datas.items():
-        with open(join(json_dir, f'{cmd}.json'), 'w') as f:
+        with open(json_dir / f'{cmd}.json', 'w') as f:
             json.dump(cfg, f, indent=4, sort_keys=True)
 
     console.log(f"System configuration generated in directory '{json_dir}'")

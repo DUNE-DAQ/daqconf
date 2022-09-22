@@ -80,7 +80,8 @@ def get_fake_hsi_app(RUN_NUMBER=333,
     modules += [DAQModule(name = f"hsi_datahandler",
                         plugin = "HSIDataLinkHandler",
                         conf = rconf.Conf(readoutmodelconf = rconf.ReadoutModelConf(source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
-                                                                                     source_id=HSI_SOURCE_ID),
+                                                                                    source_id=HSI_SOURCE_ID,
+                                                                                    send_partial_fragment_if_available = True),
                                              latencybufferconf = rconf.LatencyBufferConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
                                                                                         source_id=HSI_SOURCE_ID),
                                              rawdataprocessorconf = rconf.RawDataProcessorConf(source_id=HSI_SOURCE_ID),
@@ -90,6 +91,7 @@ def get_fake_hsi_app(RUN_NUMBER=333,
                                                                                           source_id=HSI_SOURCE_ID,
                                                                                           # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                           request_timeout_ms = DATA_REQUEST_TIMEOUT,
+                                                                                          warn_about_empty_buffer = False,
                                                                                           enable_raw_recording = False)
                                              ))]
     
@@ -113,8 +115,5 @@ def get_fake_hsi_app(RUN_NUMBER=333,
     mgraph.add_endpoint(None, None, Direction.IN, ["Timesync"])
     fake_hsi_app = App(modulegraph=mgraph, host=HOST, name="FakeHSIApp")
     
-    if DEBUG:
-        fake_hsi_app.export("fake_hsi_app.dot")
-
     return fake_hsi_app
 
