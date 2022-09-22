@@ -3,6 +3,7 @@ import click
 import math
 from rich.console import Console
 from os.path import exists,abspath,dirname
+from pathlib import Path
 from daqconf.core.system import System
 from daqconf.core.metadata import write_metadata_file
 from daqconf.core.sourceid import SourceIDBroker, get_tpg_mode
@@ -32,8 +33,14 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.argument('json_dir', type=click.Path())
 def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor, enable_dqm, op_env, debug, json_dir):
 
-    if exists(json_dir):
-        raise RuntimeError(f"Directory {json_dir} already exists")
+    output_dir = Path(json_dir)
+    if output_dir.exists():
+        raise RuntimeError(f"Directory {output_dir} already exists")
+
+
+    debug_dir = output_dir / 'debug'
+    if debug:
+        debug_dir.mkdir(parents=True)
 
     config_data = config[0]
     config_file = config[1]
@@ -368,6 +375,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             SOURCEID_BROKER = sourceid_broker,
             READOUT_SENDS_TP_FRAGMENTS = readout.readout_sends_tp_fragments,
             DEBUG=debug)
+
         if boot.use_k8s:
             if readout.use_felix:
                 the_system.apps[ru_name].resources = {
@@ -509,7 +517,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     from daqconf.core.fragment_producers import  connect_all_fragment_producers, set_mlt_links, remove_mlt_link
 
     if debug:
-        the_system.export("system_no_frag_prod_connection.dot")
+        the_system.export(debug_dir / "system_no_frag_prod_connection.dot")
     connect_all_fragment_producers(the_system, verbose=debug)
 
     # console.log("After connecting fragment producers, trigger mgraph:", the_system.apps['trigger'].modulegraph)
@@ -544,7 +552,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     # END HACK
 
     if debug:
-        the_system.export("system.dot")
+        the_system.export(debug_dir / "system.dot")
 
     ####################################################################
     # Application command data generation
@@ -602,12 +610,15 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         }
 
 
-    write_json_files(app_command_datas, system_command_datas, json_dir, verbose=debug)
+    write_json_files(app_command_datas, system_command_datas, output_dir, verbose=debug)
 
-    console.log(f"MDAapp config generated in {json_dir}")
+    console.log(f"MDAapp config generated in {output_dir}")
 
+    write_metadata_file(output_dir, "daqconf_multiru_gen", config_file)
 
-    write_metadata_file(json_dir, "daqconf_multiru_gen", config_file)
+    if debug:
+        for name in the_system.apps:
+            the_system.apps[name].export(debug_dir / f"{name}.dot")
 
 if __name__ == '__main__':
     try:

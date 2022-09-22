@@ -78,7 +78,4 @@ def get_tpwriter_app(
 
     tpw_app = App(modulegraph=mgraph, host=HOST)
 
-    if DEBUG:
-        tpw_app.export("tpwriter_app.dot")
-
     return tpw_app
