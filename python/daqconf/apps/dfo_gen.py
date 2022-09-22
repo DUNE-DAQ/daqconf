@@ -60,7 +60,4 @@ def get_dfo_app(DF_CONF : dict = {},
 
     dfo_app = App(modulegraph=mgraph, host=HOST, name='DFOApp')
 
-    if DEBUG:
-        dfo_app.export("dfo_app.dot")
-
     return dfo_app
