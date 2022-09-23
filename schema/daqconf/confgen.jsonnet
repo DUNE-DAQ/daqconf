@@ -86,6 +86,11 @@ local cs = {
     s.field( "raw_recording_output_dir", self.path, default='.', doc="Output directory where recorded data is written to. Data for each link is written to a separate file"),
     s.field( "use_fake_data_producers", self.flag, default=false, doc="Use fake data producers that respond with empty fragments immediately instead of (fake) cards and DLHs"),
     s.field( "readout_sends_tp_fragments",self.flag, default=false, doc="Send TP Fragments from Readout to Dataflow (via enabling TP Fragment links in MLT)"),
+    s.field( "enable_dpdk_reader", self.flag, default=false, doc="Enable sending frames using DPDK"),
+    s.field( "host_dpdk_reader", self.hosts, default=['np04-srv-022'], doc="Which host to use to receive frames"),
+    s.field( "eal_args", self.string, default='-l 0-1 -n 3 -- -m [0:1].0 -j', doc='Args passed to the EAL in DPDK'),
+    s.field( "base_source_ip", self.string, default='10.73.139.', doc='First part of the IP of the source'),
+    s.field( "destination_ip", self.string, default='10.73.139.17', doc='IP of the destination'),
   ]),
 
   trigger_algo_config: s.record("trigger_algo_config", [
@@ -148,6 +153,12 @@ local cs = {
     s.field('kafka_topic', self.string, default='DQM', doc='kafka topic used to send messages'),
   ]),
 
+  dpdk_sender: s.record("dpdk_sender", [
+      s.field( "enable_dpdk_sender", self.flag, default=false, doc="Enable sending frames using DPDK"),
+      s.field( "host_dpdk_sender", self.hosts, default=['np04-srv-021'], doc="Which host to use to send frames"),
+      s.field( "eal_args", self.string, default='-l 0-1 -n 3 -- -m [0:1].0 -j', doc='Args passed to the EAL in DPDK'),
+  ]),
+
   daqconf_multiru_gen: s.record('daqconf_multiru_gen', [
     s.field('boot',     self.boot,    default=self.boot,      doc='Boot parameters'),
     s.field('dataflow', self.dataflow, default=self.dataflow, doc='Dataflow paramaters'),
@@ -156,7 +167,9 @@ local cs = {
     s.field('readout',  self.readout,  default=self.readout,  doc='Readout parameters'),
     s.field('timing',   self.timing,   default=self.timing,   doc='Timing parameters'),
     s.field('trigger',  self.trigger,  default=self.trigger,  doc='Trigger parameters'),
+    s.field('dpdk_sender', self.dpdk_sender, default=self.dpdk_sender, doc='DPDK sender parameters'),
   ]),
+
 };
 
 // Output a topologically sorted array.

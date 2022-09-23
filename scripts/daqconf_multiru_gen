@@ -76,6 +76,9 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     dqm = confgen.dqm(**config_data.dqm)
     if debug: console.log(f"dqm configuration object: {dqm.pod()}")
 
+    dpdk_sender = confgen.dpdk_sender(**config_data.dpdk_sender)
+    if debug: console.log(f"dpdk_sender configuration object: {dpdk_sender.pod()}")
+
     # Update with command-line options
     if base_command_port != -1:
        boot.base_command_port = base_command_port
@@ -106,6 +109,8 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     from daqconf.apps.fake_hsi_gen import get_fake_hsi_app
     console.log("Loading timing partition controller config generator")
     from daqconf.apps.tprtc_gen import get_tprtc_app
+    console.log("Loading DPDK sender config generator")
+    from daqconf.apps.dpdk_sender_gen import get_dpdk_sender_app
     if trigger.enable_tpset_writing:
         console.log("Loading TPWriter config generator")
         from daqconf.apps.tpwriter_gen import get_tpwriter_app
@@ -374,6 +379,11 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             DATA_REQUEST_TIMEOUT=readout_data_request_timeout,
             SOURCEID_BROKER = sourceid_broker,
             READOUT_SENDS_TP_FRAGMENTS = readout.readout_sends_tp_fragments,
+            ENABLE_DPDK_SENDER=dpdk_sender.enable_dpdk_sender,
+            ENABLE_DPDK_READER=readout.enable_dpdk_reader,
+            EAL_ARGS=readout.eal_args,
+            BASE_SOURCE_IP=readout.base_source_ip,
+            DESTINATION_IP=readout.destination_ip,
             DEBUG=debug)
 
         if boot.use_k8s:
@@ -505,6 +515,11 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
     all_apps_except_ru = []
     all_apps_except_ru_and_df = []
+
+    if dpdk_sender.enable_dpdk_sender:
+        the_system.apps["dpdk_sender"] = get_dpdk_sender_app(
+            HOST=dpdk_sender.host_dpdk_sender[0],
+        )
 
     for name,app in the_system.apps.items():
         if app.name=="__app":
