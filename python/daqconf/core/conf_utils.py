@@ -527,6 +527,7 @@ def update_with_ssh_boot_data (
     })
 
 
+
 def update_with_k8s_boot_data(
         boot_data: dict,
         apps: list,
@@ -553,7 +554,10 @@ def update_with_k8s_boot_data(
 
     boot_data.update({"apps": apps_desc})
     boot_data.update({"order": boot_order})
-    boot_data['exec']['daq_application_k8s']['cmd'] = ['/dunedaq/run/app-entrypoint.sh']
+    if 'rte_script' in boot_data:
+        boot_data['exec']['daq_application_k8s']['cmd'] = ['daq_application']
+    else:
+        boot_data['exec']['daq_application_k8s']['cmd'] = ['/dunedaq/run/app-entrypoint.sh']
     boot_data["exec"]["daq_application_k8s"]["image"] = image
 
 
@@ -649,7 +653,8 @@ def generate_boot(
     if conf.disable_trace:
         del boot["exec"][daq_app_exec_name]["env"]["TRACE_FILE"]
 
-    # boot["exec"][daq_app_exec_name]["env"].update(extra_env_vars)
+    if release_or_dev() == 'rel':
+        boot['rte_script'] = get_rte_script()
 
     if not conf.use_k8s:
         update_with_ssh_boot_data(
@@ -777,3 +782,46 @@ def write_json_files(app_command_datas, system_command_datas, json_dir, verbose=
             json.dump(cfg, f, indent=4, sort_keys=True)
 
     console.log(f"System configuration generated in directory '{json_dir}'")
+
+
+def get_version():
+    from os import getenv
+    version = getenv("DUNE_DAQ_BASE_RELEASE")
+    if not version:
+        raise RuntimeError('Utils: dunedaq version not in the variable env DUNE_DAQ_BASE_RELEASE! Exit nanorc and\nexport DUNE_DAQ_BASE_RELEASE=dunedaq-vX.XX.XX\n')
+    return version
+
+def nightly_or_release(version):
+    from re import match
+    if   match('^N[0-9]{2}-[0-9]{2}-[0-9]{2}$'              , version): return 'nightly' # N22-04-15
+    elif match('^N[A-Z][0-9]{2}-[0-9]{2}-[0-9]{2}$'         , version): return 'nightly' # NT22-04-15
+    elif match('^dunedaq-v[0-9]*.[0-9]*.[0-9]*'             , version): return 'rel'     # normal releases (dunedaq-v3.1.1)
+    elif match('^dunedaq-v[0-9]*.[0-9]*.[0-9]*-[a-zA-Z0-9]*', version): return 'rel'     # weird releases (dunedaq-v3.1.1-rc1)
+
+def release_or_dev():
+    from os import getenv
+    plugins_path = getenv("CET_PLUGIN_PATH").split(':') # if one of the plugin aint in cvmfs, it's a work area
+    for plugin_path in plugins_path:
+        if '/cvmfs/' not in plugin_path:
+            console.log('Using a development area')
+            return 'dev'
+    console.log('Using a release')
+    return 'rel'
+
+def get_rte_script():
+    from os.path import exists
+
+    ver = get_version()
+    reldev = release_or_dev()
+    nightrel = nightly_or_release(ver)
+    script = '/junk/junk/junk'
+
+    if nightrel == 'nightly':
+        script = f'/cvmfs/dunedaq-development.opensciencegrid.org/spack-nightly/{ver}/daq_app_rte.sh'
+    elif nightrel == 'rel':
+        script = f'/cvmfs/dunedaq.opensciencegrid.org/spack-releases/{ver}/daq_app_rte.sh'
+
+    if not exists(script):
+        raise RuntimeError(f'Couldn\'t understand where to find the rte script tentative: {script}')
+
+    return script

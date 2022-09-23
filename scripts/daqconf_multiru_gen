@@ -141,6 +141,19 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             sourceid_broker.register_source_id("TRBuilder", appconfig_df[dfapp].source_id, None)
             host_df += [appconfig.host_df]
 
+
+    if boot.use_k8s:
+        console.log(f'Using k8s')
+        trigger.tpset_output_path = abspath(trigger.tpset_output_path)
+        for df_app in appconfig_df.values():
+            new_output_path = []
+            for op in df_app.output_paths:
+                new_output_path += [abspath(op)]
+            df_app.output_paths = new_output_path
+        readout.hardware_map_file = abspath(readout.hardware_map_file)
+        readout.data_file = abspath(readout.data_file)
+        print(readout.data_file)
+
     console.log(f"Generating configs for hosts trigger={trigger.host_trigger} DFO={dataflow.host_dfo} dataflow={host_df} hsi={hsi.host_hsi} dqm={dqm.host_dqm}")
 
     the_system = System(first_port=timing.port_timing+1)
@@ -236,13 +249,6 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 #    if debug:
 #        console.log(f"Output data written to \"{output_path}\"")
 
-    if boot.use_k8s:
-        for df_config in appconfig_df.values():
-            new_output_path = []
-            for op in df_config.output_paths:
-                new_output_path += [abspath(op)]
-            df_config.output_paths = new_output_path
-        readout.hardware_map_file = abspath(readout.hardware_map_file)
 
     max_expected_tr_sequences = 1
     for df_config in appconfig_df.values():
@@ -392,6 +398,14 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
                     "felix.cern/flx0-data": "1", # requesting FLX0
                     "memory": "32Gi" # yes bro
                 }
+            # TODO: HACK, can't do that any other way now, please give me a nice asset manager
+            the_system.apps[ru_name].mounted_dirs += [{
+                'name': 'frames-bin',
+                'physical_location': dirname(readout.data_file),
+                'in_pod_location':   dirname(readout.data_file),
+                'read_only': True,
+            }]
+
 
         if debug:
             console.log(f"{ru_name} app: {the_system.apps[ru_name]}")
@@ -450,7 +464,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             # doubling down on ugly hacking...
             if dirname(readout.hardware_map_file) not in df_config.output_paths:
                 the_system.apps[app_name].mounted_dirs += [{
-                    'name': 'hardware_map',
+                    'name': 'hardware-map',
                     'physical_location': dirname(readout.hardware_map_file),
                     'in_pod_location': dirname(readout.hardware_map_file),
                     'read_only': True,
