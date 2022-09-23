@@ -793,9 +793,9 @@ def get_version():
 
 def nightly_or_release(version):
     from re import match
-    if   match( 'N[0-9]{2}-[0-9]{2}-[0-9]{2}', version): return 'nightly'
-    elif match('NT[0-9]{2}-[0-9]{2}-[0-9]{2}', version): return 'nightly'
-    elif match('dunedaq-v[0-9].[0-9].[0-9].*', version): return 'rel'
+    if   match('N[0-9]{2}-[0-9]{2}-[0-9]{2}'     , version): return 'nightly'
+    elif match('N{A-Z}[0-9]{2}-[0-9]{2}-[0-9]{2}', version): return 'nightly'
+    elif match('dunedaq-v[0-9].[0-9].[0-9].*'    , version): return 'rel'
 
 def release_or_dev():
     from os import getenv
