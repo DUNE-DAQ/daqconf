@@ -793,9 +793,10 @@ def get_version():
 
 def nightly_or_release(version):
     from re import match
-    if   match('N[0-9]{2}-[0-9]{2}-[0-9]{2}'     , version): return 'nightly'
-    elif match('N{A-Z}[0-9]{2}-[0-9]{2}-[0-9]{2}', version): return 'nightly'
-    elif match('dunedaq-v[0-9].[0-9].[0-9].*'    , version): return 'rel'
+    if   match('^N[0-9]{2}-[0-9]{2}-[0-9]{2}$'              , version): return 'nightly' # N22-04-15
+    elif match('^N[A-Z][0-9]{2}-[0-9]{2}-[0-9]{2}$'         , version): return 'nightly' # NT22-04-15
+    elif match('^dunedaq-v[0-9]*.[0-9]*.[0-9]*'             , version): return 'rel'     # normal releases (dunedaq-v3.1.1)
+    elif match('^dunedaq-v[0-9]*.[0-9]*.[0-9]*-[a-zA-Z0-9]*', version): return 'rel'     # weird releases (dunedaq-v3.1.1-rc1)
 
 def release_or_dev():
     from os import getenv
