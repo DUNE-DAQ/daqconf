@@ -398,12 +398,10 @@ def get_readout_app(DRO_CONFIG=None,
                     lid += 1
                     last_ip += 1
                 offset += NUMBER_OF_LINKS_PER_GROUP
-                rxcores.append(nrc.LCore(lcore_id=group+1, rx_qs=qlist))
 
             modules += [DAQModule(name="nic_reader", plugin="NICReceiver",
                                 conf=nrc.Conf(eal_arg_list=EAL_ARGS,
                                                 dest_ip=DESTINATION_IP,
-                                                rx_cores=rxcores,
                                                 ip_sources=links),
                 )]
 
