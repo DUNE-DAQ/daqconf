@@ -379,6 +379,26 @@ def get_readout_app(DRO_CONFIG=None,
                                                     pattern="",
                                                     threshold=FIRMWARE_HIT_THRESHOLD,
                                                     masks=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]) )]
+            fake_source = "fake_source"
+            card_reader = "FakeCardReader"
+            conf = sec.Conf(link_confs = [sec.LinkConfiguration(source_id=link.dro_source_id,
+                                                                slowdown=DATA_RATE_SLOWDOWN_FACTOR,
+                                                                queue_name=f"output_{link.dro_source_id}",
+                                                                data_filename = DATA_FILE,
+                                                                emu_frame_error_rate=0) for link in DRO_CONFIG.links],
+                            # input_limit=10485100, # default
+                            queue_timeout_ms = QUEUE_POP_WAIT_MS)
+
+            if FRONTEND_TYPE=='pacman':
+                fake_source = "pacman_source"
+                card_reader = "PacmanCardReader"
+                conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=link.dro_source_id)
+                                                for link in DRO_CONFIG.links],
+                                zmq_receiver_timeout = 10000)
+            modules += [DAQModule(name = fake_source,
+                                plugin = card_reader,
+                                conf = conf)]
+            queues += [Queue(f"{fake_source}.output_{link.dro_source_id}",f"datahandler_{link.dro_source_id}.raw_input",f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
         elif ENABLE_DPDK_READER:
             NUMBER_OF_GROUPS = 1
             NUMBER_OF_LINKS_PER_GROUP = 1
@@ -409,27 +429,6 @@ def get_readout_app(DRO_CONFIG=None,
                              f"datahandler_{link.dro_source_id}.raw_input",
                              f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
 
-    else:
-        fake_source = "fake_source"
-        card_reader = "FakeCardReader"
-        conf = sec.Conf(link_confs = [sec.LinkConfiguration(source_id=link.dro_source_id,
-                                                            slowdown=DATA_RATE_SLOWDOWN_FACTOR,
-                                                            queue_name=f"output_{link.dro_source_id}",
-                                                            data_filename = DATA_FILE,
-                                                            emu_frame_error_rate=0) for link in DRO_CONFIG.links],
-                        # input_limit=10485100, # default
-                        queue_timeout_ms = QUEUE_POP_WAIT_MS)
-
-        if FRONTEND_TYPE=='pacman':
-            fake_source = "pacman_source"
-            card_reader = "PacmanCardReader"
-            conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=link.dro_source_id)
-                                            for link in DRO_CONFIG.links],
-                            zmq_receiver_timeout = 10000)
-        modules += [DAQModule(name = fake_source,
-                            plugin = card_reader,
-                            conf = conf)]
-        queues += [Queue(f"{fake_source}.output_{link.dro_source_id}",f"datahandler_{link.dro_source_id}.raw_input",f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
 
 
 

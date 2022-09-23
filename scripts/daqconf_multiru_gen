@@ -516,9 +516,10 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     all_apps_except_ru = []
     all_apps_except_ru_and_df = []
 
-    the_system.apps["dpdk_sender"] = get_dpdk_sender_app(
-        HOST=dpdk_sender.host_dpdk_sender[0],
-    )
+    if dpdk_sender.enable_dpdk_sender:
+        the_system.apps["dpdk_sender"] = get_dpdk_sender_app(
+            HOST=dpdk_sender.host_dpdk_sender[0],
+        )
 
     for name,app in the_system.apps.items():
         if app.name=="__app":
