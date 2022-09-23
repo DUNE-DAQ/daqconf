@@ -78,7 +78,8 @@
     "ProtoDUNESP1ChannelMap": null,
     "mlt_buffer_timeout": 100,
     "mlt_send_timed_out_tds": false,
-    "mlt_max_td_length_ms": 1000
+    "mlt_max_td_length_ms": 1000,
+    "mlt_ignore_tc": []
   },
   "dataflow": {
     "host_dfo": "localhost",
