@@ -15,6 +15,7 @@ moo.otypes.load_types('readoutlibs/sourceemulatorconfig.jsonnet')
 moo.otypes.load_types('readoutlibs/readoutconfig.jsonnet')
 moo.otypes.load_types('lbrulibs/pacmancardreader.jsonnet')
 moo.otypes.load_types('dfmodules/fakedataprod.jsonnet')
+moo.otypes.load_types("dpdklibs/nicreader.jsonnet")
 
 
 # Import new types
@@ -29,6 +30,7 @@ import dunedaq.readoutlibs.readoutconfig as rconf
 import dunedaq.lbrulibs.pacmancardreader as pcr
 # import dunedaq.dfmodules.triggerrecordbuilder as trb
 import dunedaq.dfmodules.fakedataprod as fdp
+import dunedaq.dpdklibs.nicreader as nrc
 
 from appfwk.utils import acmd, mcmd, mrccmd, mspec
 from os import path
@@ -66,42 +68,16 @@ def get_readout_app(DRO_CONFIG=None,
                     HOST="localhost",
                     SOURCEID_BROKER : SourceIDBroker = None,
                     READOUT_SENDS_TP_FRAGMENTS=False,
+                    ENABLE_DPDK_SENDER=False,
+                    ENABLE_DPDK_READER=False,
+                    EAL_ARGS='-l 0-1 -n 3 -- -m [0:1].0 -j',
+                    BASE_SOURCE_IP="10.73.139.",
+                    DESTINATION_IP="10.73.139.17",
                     DEBUG=False):
     """Generate the json configuration for the readout process"""
-    cmd_data = {}
-    
-    RATE_KHZ = CLOCK_SPEED_HZ / (25 * 12 * DATA_RATE_SLOWDOWN_FACTOR * 1000)
     
     if DRO_CONFIG is None:
         raise RuntimeError(f"ERROR: DRO_CONFIG is None!")
-
-    
-    if DEBUG: print(f"ReadoutApp.__init__ with host={DRO_CONFIG.host} and {len(DRO_CONFIG.links)} links enabled")
-
-    modules = []
-    queues = []
-
-    host = DRO_CONFIG.host.replace("-","_")
-    RUIDX = f"{host}_{DRO_CONFIG.card}"
-
-    link_to_tp_sid_map = {}
-    fw_tp_id_map = {}
-    fw_tp_out_id_map = {}
-
-    if SOFTWARE_TPG_ENABLED:
-        for link in DRO_CONFIG.links:
-            link_to_tp_sid_map[link.dro_source_id] = SOURCEID_BROKER.get_next_source_id("Trigger")
-            SOURCEID_BROKER.register_source_id("Trigger", link_to_tp_sid_map[link.dro_source_id], None)
-    if FIRMWARE_TPG_ENABLED:
-        for fwsid,fwconf in SOURCEID_BROKER.get_all_source_ids("Detector_Readout").items():
-            if isinstance(fwconf, FWTPID) and fwconf.host == DRO_CONFIG.host and fwconf.card == DRO_CONFIG.card:
-                if DEBUG: print(f"SSB fwsid: {fwsid}")
-                fw_tp_id_map[fwconf] = fwsid
-                link_to_tp_sid_map[fwconf] = SOURCEID_BROKER.get_next_source_id("Trigger")
-                SOURCEID_BROKER.register_source_id("Trigger", link_to_tp_sid_map[fwconf], None)
-            if isinstance(fwconf, FWTPOUTID) and fwconf.host == DRO_CONFIG.host and fwconf.card == DRO_CONFIG.card:
-                if DEBUG: print(f"SSB fw tp out id: {fwconf}")
-                fw_tp_out_id_map[fwconf] = fwsid
 
     if DEBUG: print(f"SSB fw_tp source ID map: {fw_tp_id_map}")
     if DEBUG: print(f"SSB fw_tp_out source ID map: {fw_tp_out_id_map}")
@@ -128,6 +104,54 @@ def get_readout_app(DRO_CONFIG=None,
 
     if DEBUG: print(f'FRONTENT_TYPE={FRONTEND_TYPE}')
 
+    # For raw recording to work the size of the LB has to be a multiple of 4096 bytes so that gives
+    # us the following problem:
+    # number_of_elements * element_size = 4096 * M,  where M is an arbitrary integer,
+    # so only a value of number_elements that satisfies the equation above is valid.
+    if FRONTEND_TYPE == 'tde':
+        # number_of_elements = 4096 is always a solution by construction and
+        # the total size happens to be quite close to the one when using WIB
+        # as the frontend type
+        LATENCY_BUFFER_SIZE = 4096
+
+    if (ENABLE_DPDK_SENDER or ENABLE_DPDK_READER) and FRONTEND_TYPE != 'tde':
+        raise RuntimeError(f'DPDK is only supported when using the frontend type TDE, current frontend type is {FRONTEND_TYPE}')
+    if ENABLE_DPDK_SENDER and not ENABLE_DPDK_READER:
+        raise RuntimeError('The DPDK sender can not be enabled and the DPDK reader disabled')
+
+    cmd_data = {}
+
+    RATE_KHZ = CLOCK_SPEED_HZ / (25 * 12 * DATA_RATE_SLOWDOWN_FACTOR * 1000)
+    
+    if DEBUG: print(f"ReadoutApp.__init__ with host={DRO_CONFIG.host} and {len(DRO_CONFIG.links)} links enabled")
+
+    if DEBUG: print(f'FRONTENT_TYPE={FRONTEND_TYPE}')
+
+    modules = []
+    queues = []
+
+    host = DRO_CONFIG.host.replace("-","_")
+    RUIDX = f"{host}_{DRO_CONFIG.card}"
+
+    link_to_tp_sid_map = {}
+    fw_tp_id_map = {}
+    fw_tp_out_id_map = {}
+
+    if SOFTWARE_TPG_ENABLED:
+        for link in DRO_CONFIG.links:
+            link_to_tp_sid_map[link.dro_source_id] = SOURCEID_BROKER.get_next_source_id("Trigger")
+            SOURCEID_BROKER.register_source_id("Trigger", link_to_tp_sid_map[link.dro_source_id], None)
+    if FIRMWARE_TPG_ENABLED:
+        for fwsid,fwconf in SOURCEID_BROKER.get_all_source_ids("Detector_Readout").items():
+            if isinstance(fwconf, FWTPID) and fwconf.host == DRO_CONFIG.host and fwconf.card == DRO_CONFIG.card:
+                if DEBUG: print(f"SSB fwsid: {fwsid}")
+                fw_tp_id_map[fwconf] = fwsid
+                link_to_tp_sid_map[fwconf] = SOURCEID_BROKER.get_next_source_id("Trigger")
+                SOURCEID_BROKER.register_source_id("Trigger", link_to_tp_sid_map[fwconf], None)
+            if isinstance(fwconf, FWTPOUTID) and fwconf.host == DRO_CONFIG.host and fwconf.card == DRO_CONFIG.card:
+                if DEBUG: print(f"SSB fw tp out id: {fwconf}")
+                fw_tp_out_id_map[fwconf] = fwsid
+
     if SOFTWARE_TPG_ENABLED:
         for link in DRO_CONFIG.links:
             modules += [DAQModule(name = f"tp_datahandler_{link_to_tp_sid_map[link.dro_source_id]}",
@@ -138,7 +162,6 @@ def get_readout_app(DRO_CONFIG=None,
                                                                                             source_id =  link_to_tp_sid_map[link.dro_source_id]),
                                                  rawdataprocessorconf = rconf.RawDataProcessorConf(source_id = link_to_tp_sid_map[link.dro_source_id],
                                                                                                    enable_software_tpg = False,
-                                                                                                   fwtp_stitch_constant = 2048,
                                                                                                    channel_map_name=TPG_CHANNEL_MAP),
                                                  requesthandlerconf= rconf.RequestHandlerConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
                                                                                               pop_limit_pct = 0.8,
@@ -163,7 +186,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                                                             source_id = tp_out),
                                                  rawdataprocessorconf = rconf.RawDataProcessorConf(source_id =  tp_out,
                                                                                                    enable_software_tpg = False,
-                                                                                                   fwtp_stitch_constant = 2048,
+                                                                                                   fwtp_fake_timestamp = False,
                                                                                                    channel_map_name=TPG_CHANNEL_MAP),
                                                  requesthandlerconf= rconf.RequestHandlerConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
                                                                                               pop_limit_pct = 0.8,
@@ -194,7 +217,7 @@ def get_readout_app(DRO_CONFIG=None,
                                           source_id = tp,
                                           enable_software_tpg = False,
                                           enable_firmware_tpg = True,
-                                          fwtp_stitch_constant = 2048,
+                                          fwtp_fake_timestamp = False,
                                           channel_map_name = TPG_CHANNEL_MAP,
                                           emulator_mode = EMULATOR_MODE,
                                           error_counter_threshold=100,
@@ -331,7 +354,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                      dma_memory_size_gb = 4,
                                                      numa_id = 0,
                                                      links_enabled = link_1))]
-            
+        elif not ENABLE_DPDK_READER:
             # DTPController - only required if FW TPs enabled
             if FIRMWARE_TPG_ENABLED:
                 if len(link_0) > 0:
@@ -356,8 +379,6 @@ def get_readout_app(DRO_CONFIG=None,
                                                     pattern="",
                                                     threshold=FIRMWARE_HIT_THRESHOLD,
                                                     masks=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]) )]
-
-        else:
             fake_source = "fake_source"
             card_reader = "FakeCardReader"
             conf = sec.Conf(link_confs = [sec.LinkConfiguration(source_id=link.dro_source_id,
@@ -367,17 +388,50 @@ def get_readout_app(DRO_CONFIG=None,
                                                                 emu_frame_error_rate=0) for link in DRO_CONFIG.links],
                             # input_limit=10485100, # default
                             queue_timeout_ms = QUEUE_POP_WAIT_MS)
-            
+
             if FRONTEND_TYPE=='pacman':
                 fake_source = "pacman_source"
                 card_reader = "PacmanCardReader"
                 conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=link.dro_source_id)
-                                               for link in DRO_CONFIG.links],
+                                                for link in DRO_CONFIG.links],
                                 zmq_receiver_timeout = 10000)
             modules += [DAQModule(name = fake_source,
-                               plugin = card_reader,
-                               conf = conf)]
+                                plugin = card_reader,
+                                conf = conf)]
             queues += [Queue(f"{fake_source}.output_{link.dro_source_id}",f"datahandler_{link.dro_source_id}.raw_input",f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
+        elif ENABLE_DPDK_READER:
+            NUMBER_OF_GROUPS = 1
+            NUMBER_OF_LINKS_PER_GROUP = 1
+
+            number_of_dlh = NUMBER_OF_GROUPS
+
+            links = []
+            rxcores = []
+            lid = 0
+            last_ip = 100
+            for group in range(NUMBER_OF_GROUPS):
+                offset= 0
+                qlist = []
+                for src in range(NUMBER_OF_LINKS_PER_GROUP):
+                    links.append(nrc.Link(id=lid, ip=BASE_SOURCE_IP+str(last_ip), rx_q=lid, lcore=group+1))
+                    qlist.append(lid)
+                    lid += 1
+                    last_ip += 1
+                offset += NUMBER_OF_LINKS_PER_GROUP
+
+            modules += [DAQModule(name="nic_reader", plugin="NICReceiver",
+                                conf=nrc.Conf(eal_arg_list=EAL_ARGS,
+                                                dest_ip=DESTINATION_IP,
+                                                ip_sources=links),
+                )]
+
+            queues += [Queue(f"nic_reader.output_{link.dro_source_id}",
+                             f"datahandler_{link.dro_source_id}.raw_input",
+                             f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
+
+
+
+
 
     # modules += [
     #     DAQModule(name = "fragment_sender",
@@ -448,6 +502,11 @@ def get_readout_app(DRO_CONFIG=None,
                                              requests_in   = f"tp_datahandler_{link_to_tp_sid_map[link.dro_source_id]}.request_input",
                                              fragments_out = f"tp_datahandler_{link_to_tp_sid_map[link.dro_source_id]}.fragment_queue",
                                                 is_mlt_producer = READOUT_SENDS_TP_FRAGMENTS)
+    # if ENABLE_DPDK_READER:
+    #     for link in DRO_CONFIG.links:
+    #         mgraph.connect_modules(f"datahandler_{link.dro_source_id}.timesync_output", "timesync_consumer.input_queue", "timesync_q")
+    #         mgraph.connect_modules(f"datahandler_{idx}.fragment_queue", "fragment_consumer.input_queue", "data_fragments_q", 100)
+
 
     readout_app = App(mgraph, host=HOST)
     return readout_app

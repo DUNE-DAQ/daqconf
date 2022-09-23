@@ -32,24 +32,31 @@ QUEUE_POP_WAIT_MS = 100
 # local clock speed Hz
 # CLOCK_SPEED_HZ = 50000000;
 
-def get_dqm_app( DATA_RATE_SLOWDOWN_FACTOR=1,
-                 CLOCK_SPEED_HZ=50000000,
-                 DQMIDX=0,
-                 DQM_KAFKA_ADDRESS='',
-                 DQM_CMAP='HD',
-                 DQM_RAWDISPLAY_PARAMS=[60, 50],
-                 DQM_MEANRMS_PARAMS=[10, 100],
-                 DQM_FOURIER_PARAMS=[600, 100],
-                 DQM_FOURIERSUM_PARAMS=[60, 1000],
-                 LINKS=[],
-                 HOST="localhost",
-                 MODE="readout",
-                 DF_RATE=10,
-                 DF_ALGS='hist mean_rms fourier_sum',
-                 DF_TIME_WINDOW=0,
-                 FRONTEND_TYPE='wib',
-                 DEBUG=False,
-                 ):
+def get_dqm_app(DQM_IMPL='',
+                DATA_RATE_SLOWDOWN_FACTOR=1,
+                CLOCK_SPEED_HZ=50000000,
+                DQMIDX=0,
+                MAX_NUM_FRAMES=32768,
+                KAFKA_ADDRESS='',
+                KAFKA_TOPIC='',
+                CMAP='HD',
+                RAW_PARAMS=[60, 50],
+                RMS_PARAMS=[10, 1000],
+                STD_PARAMS=[10, 1000],
+                FOURIER_CHANNEL_PARAMS=[600, 100],
+                FOURIER_PLANE_PARAMS=[60, 1000],
+                LINKS=[],
+                HOST="localhost",
+                MODE="readout",
+                DF_RATE=10,
+                DF_ALGS='raw std fourier_plane',
+                DF_TIME_WINDOW=0,
+                FRONTEND_TYPE='wib',
+                DEBUG=False,
+                ):
+
+    if DQM_IMPL == 'cern':
+        KAFKA_ADDRESS = "monkafka.cern.ch:30092"
 
     modules = []
 
@@ -64,24 +71,18 @@ def get_dqm_app( DATA_RATE_SLOWDOWN_FACTOR=1,
                                 map=trb.mapsourceidconnections([])
                             ))]
 
-    # Algorithms to run for TRs coming from DF
-    algs = DF_ALGS.split(' ')
-
-    algs_bitfield = 0
-    for i, name in enumerate(['hist', 'mean_rms', 'fourier', 'fourier_sum']):
-        if name in algs:
-            algs_bitfield |= 1<<i
-
     modules += [DAQModule(name='dqmprocessor',
                           plugin='DQMProcessor',
                           conf=dqmprocessor.Conf(
-                              channel_map=DQM_CMAP, # 'HD' for horizontal drift (PD1), PD2HD or 'VD' for vertical drift
+                              channel_map=CMAP, # 'HD' for horizontal drift (PD1), PD2HD or 'VD' for vertical drift
                               mode=MODE,
-                              hist=dqmprocessor.StandardDQM(**{'how_often' : DQM_RAWDISPLAY_PARAMS[0], 'num_frames' : DQM_RAWDISPLAY_PARAMS[1]}),
-                              mean_rms=dqmprocessor.StandardDQM(**{'how_often' : DQM_MEANRMS_PARAMS[0], 'num_frames' : DQM_MEANRMS_PARAMS[1]}),
-                              fourier=dqmprocessor.StandardDQM(**{'how_often' : DQM_FOURIER_PARAMS[0], 'num_frames' : DQM_FOURIER_PARAMS[1]}),
-                              fourier_sum=dqmprocessor.StandardDQM(**{'how_often' : DQM_FOURIERSUM_PARAMS[0], 'num_frames' : DQM_FOURIERSUM_PARAMS[1]}),
-                              kafka_address=DQM_KAFKA_ADDRESS,
+                              raw=dqmprocessor.StandardDQM(**{'how_often' : RAW_PARAMS[0], 'num_frames' : RAW_PARAMS[1]}),
+                              rms=dqmprocessor.StandardDQM(**{'how_often' : RMS_PARAMS[0], 'num_frames' : RMS_PARAMS[1]}),
+                              std=dqmprocessor.StandardDQM(**{'how_often' : STD_PARAMS[0], 'num_frames' : STD_PARAMS[1]}),
+                              fourier_channel=dqmprocessor.StandardDQM(**{'how_often' : FOURIER_CHANNEL_PARAMS[0], 'num_frames' : FOURIER_CHANNEL_PARAMS[1]}),
+                              fourier_plane=dqmprocessor.StandardDQM(**{'how_often' : FOURIER_PLANE_PARAMS[0], 'num_frames' : FOURIER_PLANE_PARAMS[1]}),
+                              kafka_address=KAFKA_ADDRESS,
+                              kafka_topic=KAFKA_TOPIC,
                               link_idx=LINKS,
                               clock_frequency=CLOCK_SPEED_HZ,
                               timesync_topic_name = f"Timesync",
@@ -90,8 +91,9 @@ def get_dqm_app( DATA_RATE_SLOWDOWN_FACTOR=1,
                               readout_window_offset=10**7 / DATA_RATE_SLOWDOWN_FACTOR, # 10^7 works fine for WIBs with no slowdown
                               df_seconds=DF_RATE if MODE == 'df' else 0,
                               df_offset=DF_RATE * DQMIDX if MODE == 'df' else 0,
-                              df_algs=algs_bitfield,
+                              df_algs=DF_ALGS,
                               df_num_frames=DF_TIME_WINDOW / 25,
+                              max_num_frames=MAX_NUM_FRAMES,
                               frontend_type=FRONTEND_TYPE,
                           )
                           )

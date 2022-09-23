@@ -86,6 +86,11 @@ local cs = {
     s.field( "raw_recording_output_dir", self.path, default='.', doc="Output directory where recorded data is written to. Data for each link is written to a separate file"),
     s.field( "use_fake_data_producers", self.flag, default=false, doc="Use fake data producers that respond with empty fragments immediately instead of (fake) cards and DLHs"),
     s.field( "readout_sends_tp_fragments",self.flag, default=false, doc="Send TP Fragments from Readout to Dataflow (via enabling TP Fragment links in MLT)"),
+    s.field( "enable_dpdk_reader", self.flag, default=false, doc="Enable sending frames using DPDK"),
+    s.field( "host_dpdk_reader", self.hosts, default=['np04-srv-022'], doc="Which host to use to receive frames"),
+    s.field( "eal_args", self.string, default='-l 0-1 -n 3 -- -m [0:1].0 -j', doc='Args passed to the EAL in DPDK'),
+    s.field( "base_source_ip", self.string, default='10.73.139.', doc='First part of the IP of the source'),
+    s.field( "destination_ip", self.string, default='10.73.139.17', doc='IP of the destination'),
   ]),
 
   trigger_algo_config: s.record("trigger_algo_config", [
@@ -132,16 +137,26 @@ local cs = {
   ]),
 
   dqm: s.record("dqm", [
-    s.field( "enable_dqm", self.flag, default=false, doc="Enable Data Quality Monitoring"),
-    s.field( "dqm_impl", self.monitoring_dest, default='local', doc="DQM destination (Kafka used for cern and pocket)"),
-    s.field( "dqm_cmap", self.dqm_channel_map, default='HD', doc="Which channel map to use for DQM"),
-    s.field( "host_dqm", self.hosts, default=['localhost'], doc='Host(s) to run the DQM app on'),
-    s.field( "dqm_rawdisplay_params", self.dqm_params, default=[60, 50], doc="Parameters that control the data sent for the raw display plot"),
-    s.field( "dqm_meanrms_params", self.dqm_params, default=[10, 100], doc="Parameters that control the data sent for the mean/rms plot"),
-    s.field( "dqm_fourier_params", self.dqm_params, default=[0, 0], doc="Parameters that control the data sent for the fourier transform plot"),
-    s.field( "dqm_fouriersum_params", self.dqm_params, default=[600, 1000], doc="Parameters that control the data sent for the summed fourier transform plot"),
-    s.field( "dqm_df_rate", self.count, default=10, doc='How many seconds between requests to DF for Trigger Records'),
-    s.field( "dqm_df_algs", self.string, default='hist mean_rms fourier_sum', doc='Algorithms to be run on Trigger Records from DF (use quotes)'),
+    s.field('enable_dqm', self.flag, default=false, doc="Enable Data Quality Monitoring"),
+    s.field('impl', self.monitoring_dest, default='local', doc="DQM destination (Kafka used for cern and pocket)"),
+    s.field('cmap', self.dqm_channel_map, default='HD', doc="Which channel map to use for DQM"),
+    s.field('host_dqm', self.hosts, default=['localhost'], doc='Host(s) to run the DQM app on'),
+    s.field('raw_params', self.dqm_params, default=[60, 50], doc="Parameters that control the data sent for the raw display plot"),
+    s.field('std_params', self.dqm_params, default=[10, 1000], doc="Parameters that control the data sent for the mean/rms plot"),
+    s.field('rms_params', self.dqm_params, default=[0, 1000], doc="Parameters that control the data sent for the mean/rms plot"),
+    s.field('fourier_channel_params', self.dqm_params, default=[0, 0], doc="Parameters that control the data sent for the fourier transform plot"),
+    s.field('fourier_plane_params', self.dqm_params, default=[600, 1000], doc="Parameters that control the data sent for the summed fourier transform plot"),
+    s.field('df_rate', self.count, default=10, doc='How many seconds between requests to DF for Trigger Records'),
+    s.field('df_algs', self.string, default='raw std fourier_plane', doc='Algorithms to be run on Trigger Records from DF (use quotes)'),
+    s.field('max_num_frames', self.count, default=32768, doc='Maximum number of frames to use in the algorithms'),
+    s.field('kafka_address', self.string, default='', doc='kafka address used to send messages'),
+    s.field('kafka_topic', self.string, default='DQM', doc='kafka topic used to send messages'),
+  ]),
+
+  dpdk_sender: s.record("dpdk_sender", [
+      s.field( "enable_dpdk_sender", self.flag, default=false, doc="Enable sending frames using DPDK"),
+      s.field( "host_dpdk_sender", self.hosts, default=['np04-srv-021'], doc="Which host to use to send frames"),
+      s.field( "eal_args", self.string, default='-l 0-1 -n 3 -- -m [0:1].0 -j', doc='Args passed to the EAL in DPDK'),
   ]),
 
   daqconf_multiru_gen: s.record('daqconf_multiru_gen', [
@@ -152,7 +167,9 @@ local cs = {
     s.field('readout',  self.readout,  default=self.readout,  doc='Readout parameters'),
     s.field('timing',   self.timing,   default=self.timing,   doc='Timing parameters'),
     s.field('trigger',  self.trigger,  default=self.trigger,  doc='Trigger parameters'),
+    s.field('dpdk_sender', self.dpdk_sender, default=self.dpdk_sender, doc='DPDK sender parameters'),
   ]),
+
 };
 
 // Output a topologically sorted array.
