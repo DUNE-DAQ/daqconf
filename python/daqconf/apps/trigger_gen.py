@@ -90,7 +90,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                     MLT_BUFFER_TIMEOUT: int = 100,
                     MLT_SEND_TIMED_OUT_TDS: bool = False,
                     MLT_MAX_TD_LENGTH_MS: int = 1000,
-                    MLT_IGNORE_TC: dict = {},
+                    MLT_IGNORE_TC: list = [],
 
                     USE_CHANNEL_FILTER: bool = True,
 
