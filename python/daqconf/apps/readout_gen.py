@@ -104,7 +104,7 @@ def get_readout_app(DRO_CONFIG=None,
     elif FRONTEND_TYPE== "NDLAr_MPD":
         FRONTEND_TYPE = "mpd"
         FAKEDATA_FRAGMENT_TYPE = "MPD"
-
+        
     if DEBUG: print(f'FRONTENT_TYPE={FRONTEND_TYPE}')
 
     # For raw recording to work the size of the LB has to be a multiple of 4096 bytes so that gives
@@ -398,6 +398,14 @@ def get_readout_app(DRO_CONFIG=None,
                 conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=link.dro_source_id)
                                                 for link in DRO_CONFIG.links],
                                 zmq_receiver_timeout = 10000)
+
+            if FRONTEND_TYPE=='mpd':
+                fake_source = "mpd_source"
+                card_reader = "PacmanCardReader" # Should be generic for all NDLAR 
+                conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=link.dro_source_id)
+                                                for link in DRO_CONFIG.links],
+                                zmq_receiver_timeout = 10000)
+
             modules += [DAQModule(name = fake_source,
                                 plugin = card_reader,
                                 conf = conf)]
