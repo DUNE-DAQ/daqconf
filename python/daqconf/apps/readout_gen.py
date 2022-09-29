@@ -74,7 +74,7 @@ def get_readout_app(DRO_CONFIG=None,
                     BASE_SOURCE_IP="10.73.139.",
                     DESTINATION_IP="10.73.139.17",
                     FRONTEND_TYPE='wib',
-                    FAKEDATA_FRAGMENT_TYPE='wib',
+                    FAKEDATA_FRAGMENT_TYPE='ProtoWIB',
                     DEBUG=False):
     """Generate the json configuration for the readout process"""
     
