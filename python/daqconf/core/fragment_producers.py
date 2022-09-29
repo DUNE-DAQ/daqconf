@@ -33,10 +33,13 @@ def set_mlt_links(the_system, mlt_app_name="trigger", verbose=False):
     "mlt".
     """
     mlt_links = []
+    added_link_info = []
     for producer in the_system.get_fragment_producers():
-        if producer.is_mlt_producer:
-            source_id = producer.source_id
-            mlt_links.append( mlt.SourceID(subsystem=ensure_subsystem_string(source_id.subsystem), element=source_id.id) )
+        source_id = producer.source_id
+        link = mlt.SourceID(subsystem=ensure_subsystem_string(source_id.subsystem), element=source_id.id)
+        if producer.is_mlt_producer and (link.subsystem, link.element) not in added_link_info:
+            mlt_links.append(link)
+            added_link_info.append((link.subsystem, link.element))
     if verbose:
         console.log(f"Adding {len(mlt_links)} links to mlt.links: {mlt_links}")
     mgraph = the_system.apps[mlt_app_name].modulegraph
