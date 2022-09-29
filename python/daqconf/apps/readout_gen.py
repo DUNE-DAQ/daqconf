@@ -73,8 +73,6 @@ def get_readout_app(DRO_CONFIG=None,
                     EAL_ARGS='-l 0-1 -n 3 -- -m [0:1].0 -j',
                     BASE_SOURCE_IP="10.73.139.",
                     DESTINATION_IP="10.73.139.17",
-                    FRONTEND_TYPE='wib',
-                    FAKEDATA_FRAGMENT_TYPE='ProtoWIB',
                     DEBUG=False):
     """Generate the json configuration for the readout process"""
     
@@ -84,6 +82,25 @@ def get_readout_app(DRO_CONFIG=None,
     if DEBUG: print(f"SSB fw_tp source ID map: {fw_tp_id_map}")
     if DEBUG: print(f"SSB fw_tp_out source ID map: {fw_tp_out_id_map}")
 
+    # Hack on strings to be used for connection instances: will be solved when data_type is properly used.
+
+    FAKEDATA_FRAGMENT_TYPE = "Unknown"
+    FRONTEND_TYPE = DetID.subdetector_to_string(DetID.Subdetector(DRO_CONFIG.links[0].det_id))
+    if ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 50000000):
+        FRONTEND_TYPE = "wib"
+        FAKEDATA_FRAGMENT_TYPE = "ProtoWIB"
+    elif ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 62500000):
+        FRONTEND_TYPE = "wib2"
+        FAKEDATA_FRAGMENT_TYPE = "WIB"
+    elif FRONTEND_TYPE== "HD_PDS" or FRONTEND_TYPE== "VD_Cathode_PDS" or FRONTEND_TYPE=="VD_Membrane_PDS":
+        FRONTEND_TYPE = "pds_list"
+        FAKEDATA_FRAGMENT_TYPE = "DAPHNE"
+    elif FRONTEND_TYPE== "VD_Top_TPC":
+        FRONTEND_TYPE = "tde"
+        FAKEDATA_FRAGMENT_TYPE = "TDE_AMC"
+    elif FRONTEND_TYPE== "ND_LAr":
+        FRONTEND_TYPE = "pacman"
+        FAKEDATA_FRAGMENT_TYPE = "PACMAN"
 
     if DEBUG: print(f'FRONTENT_TYPE={FRONTEND_TYPE}')
 
