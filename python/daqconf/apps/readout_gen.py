@@ -79,9 +79,6 @@ def get_readout_app(DRO_CONFIG=None,
     if DRO_CONFIG is None:
         raise RuntimeError(f"ERROR: DRO_CONFIG is None!")
 
-    if DEBUG: print(f"SSB fw_tp source ID map: {fw_tp_id_map}")
-    if DEBUG: print(f"SSB fw_tp_out source ID map: {fw_tp_out_id_map}")
-
     # Hack on strings to be used for connection instances: will be solved when data_type is properly used.
 
     FAKEDATA_FRAGMENT_TYPE = "Unknown"
@@ -151,6 +148,9 @@ def get_readout_app(DRO_CONFIG=None,
             if isinstance(fwconf, FWTPOUTID) and fwconf.host == DRO_CONFIG.host and fwconf.card == DRO_CONFIG.card:
                 if DEBUG: print(f"SSB fw tp out id: {fwconf}")
                 fw_tp_out_id_map[fwconf] = fwsid
+
+    if DEBUG: print(f"SSB fw_tp source ID map: {fw_tp_id_map}")
+    if DEBUG: print(f"SSB fw_tp_out source ID map: {fw_tp_out_id_map}")
 
     if SOFTWARE_TPG_ENABLED:
         for link in DRO_CONFIG.links:
