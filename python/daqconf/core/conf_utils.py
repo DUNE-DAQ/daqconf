@@ -394,6 +394,9 @@ def make_app_command_data(system, app, appkey, verbose=False, use_k8s=False):
     and actually making the command data objects for nanorc.
 
     """
+    if '_' in appkey:
+        raise RuntimeError(f'Application "{appkey}" is invalid, it shouldn\'t contain the character "_". Change its name.')
+
 
     if verbose:
         console.log(f"Making app command data for {app.name}")

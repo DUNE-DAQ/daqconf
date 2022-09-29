@@ -411,7 +411,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             console.log(f"{ru_name} app: {the_system.apps[ru_name]}")
 
         if dqm.enable_dqm:
-            dqm_name = "dqm_" + ru_name
+            dqm_name = "dqm" + ru_name
             dqm_app_names.append(dqm_name)
             dqm_links = [link.dro_source_id for link in dro_config.links]
             the_system.apps[dqm_name] = get_dqm_app(
@@ -472,7 +472,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
 
         if dqm.enable_dqm:
-            dqm_name = f"dqm_df{dfidx}"
+            dqm_name = f"dqmdf{dfidx}"
             dqm_df_app_names.append(dqm_name)
             dqm_links = [link.dro_source_id for link in dro_config.links for dro_config in dro_infos]
             the_system.apps[dqm_name] = get_dqm_app(
