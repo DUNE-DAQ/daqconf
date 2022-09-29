@@ -249,6 +249,25 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 #    if debug:
 #        console.log(f"Output data written to \"{output_path}\"")
 
+    # Hack on strings to be used for connection instances: will be solved when data_type is properly used.
+
+    fakedata_fragment_type = "Unknown"
+    frontend_type = DetID.subdetector_to_string(DetID.Subdetector(DRO_CONFIG.links[0].det_id))
+    if ((frontend_type== "HD_TPC" or frontend_type== "VD_Bottom_TPC") and readout.clock_speed_hz == 50000000):
+        frontend_type = "wib"
+        fakedata_fragment_type = "ProtoWIB"
+    elif ((frontend_type== "HD_TPC" or frontend_type== "VD_Bottom_TPC") and readout.clock_speed_hz == 62500000):
+        frontend_type = "wib2"
+        fakedata_fragment_type = "WIB"
+    elif frontend_type== "HD_PDS" or frontend_type== "VD_Cathode_PDS" or frontend_type=="VD_Membrane_PDS":
+        frontend_type = "pds_list"
+        fakedata_fragment_type = "DAPHNE"
+    elif frontend_type== "VD_Top_TPC":
+        frontend_type = "tde"
+        fakedata_fragment_type = "TDE_AMC"
+    elif frontend_type== "ND_LAr":
+        frontend_type = "pacman"
+        fakedata_fragment_type = "PACMAN"
 
     max_expected_tr_sequences = 1
     for df_config in appconfig_df.values():
@@ -390,6 +409,8 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             EAL_ARGS=readout.eal_args,
             BASE_SOURCE_IP=readout.base_source_ip,
             DESTINATION_IP=readout.destination_ip,
+            FRONTEND_TYPE=frontend_type,
+            FAKEDATA_FRAGMENT_TYPE=fakedata_fragment_type,
             DEBUG=debug)
 
         if boot.use_k8s:
@@ -430,6 +451,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
                 FOURIER_PLANE_PARAMS=dqm.fourier_plane_params,
                 LINKS=dqm_links,
                 HOST=dqm.host_dqm[dro_idx % len(dqm.host_dqm)],
+                FRONTEND_TYPE=frontend_type,
                 DEBUG=debug)
 
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
@@ -495,7 +517,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
                 DF_RATE=dqm.df_rate * len(host_df),
                 DF_ALGS=dqm.df_algs,
                 DF_TIME_WINDOW=trigger.trigger_window_before_ticks + trigger.trigger_window_after_ticks,
-                FRONTEND_TYPE='',
+                FRONTEND_TYPE=frontend_type,
                 DEBUG=debug)
 
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
