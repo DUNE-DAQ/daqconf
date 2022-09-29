@@ -86,7 +86,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         readout.hardware_map_file = hardware_map_file
     if data_rate_slowdown_factor != 0:
         readout.data_rate_slowdown_factor = data_rate_slowdown_factor
-    dqm.enable_dqm = enable_dqm
+    dqm.enable_dqm |= enable_dqm
     if dqm.impl == 'pocket':
         dqm.kafka_address = boot.pocket_url + ":30092"
     if op_env != '':
