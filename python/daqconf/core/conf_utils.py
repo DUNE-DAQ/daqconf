@@ -394,6 +394,9 @@ def make_app_command_data(system, app, appkey, verbose=False, use_k8s=False):
     and actually making the command data objects for nanorc.
 
     """
+    if '_' in appkey:
+        raise RuntimeError(f'Application "{appkey}" is invalid, it shouldn\'t contain the character "_". Change its name.')
+
 
     if verbose:
         console.log(f"Making app command data for {app.name}")
@@ -766,7 +769,7 @@ def write_json_files(app_command_datas, system_command_datas, json_dir, verbose=
     # Backwards compatibility
     if isinstance(json_dir, str):
         json_dir = Path(json_dir)
-    
+
     console.rule("JSON file creation")
 
     data_dir = json_dir / 'data'
