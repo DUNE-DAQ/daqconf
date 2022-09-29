@@ -135,47 +135,29 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
                                  internal_name = "request_receiver.input", 
                                  inout = Direction.IN)
                                
-    df_apps = [ (name,app) for (name,app) in the_system.apps.items() if name.startswith("dataflow") ]
+    trb_apps = [ (name,app) for (name,app) in the_system.apps.items() if "TriggerRecordBuilder" in [n.plugin for n in app.modulegraph.module_list()] ]
     # Connect fragment sender output to TRB in DF app (via FragmentReceiver)
     fragment_endpoint_name = "{app_name}.fragments"
 
-    for df_name, df_app in df_apps:
-        fragment_connection_name = f"fragments_to_{df_name}"
+    for trb_app_name, trb_app_conf in trb_apps:
+        fragment_connection_name = f"fragments_to_{trb_app_name}"
         app.modulegraph.add_endpoint(fragment_connection_name, None, Direction.OUT)
-        df_mgraph = df_app.modulegraph
-        df_mgraph.add_endpoint(fragment_connection_name, "trb.data_fragment_all", Direction.IN, toposort=True)            
-        df_mgraph.add_endpoint(request_connection_name, f"trb.request_output_{app_name}", Direction.OUT)
+        df_mgraph = trb_app_conf.modulegraph
+        trb_module_name = [n.name for n in df_mgraph.module_list() if n.plugin == "TriggerRecordBuilder"][0]
+        df_mgraph.add_endpoint(fragment_connection_name, f"{trb_module_name}.data_fragment_all", Direction.IN, toposort=True)            
+        df_mgraph.add_endpoint(request_connection_name, f"{trb_module_name}.request_output_{app_name}", Direction.OUT)
 
         # Add the new source_id-to-connections map to the
         # TriggerRecordBuilder.
-        old_trb_conf = df_mgraph.get_module("trb").conf
+        old_trb_conf = df_mgraph.get_module(trb_module_name).conf
         new_trb_map = old_trb_conf.map + trb_source_id_to_connection
-        df_mgraph.reset_module_conf("trb", trb.ConfParams(general_queue_timeout=old_trb_conf.general_queue_timeout,
+        df_mgraph.reset_module_conf(trb_module_name, trb.ConfParams(general_queue_timeout=old_trb_conf.general_queue_timeout,
                                                                source_id = old_trb_conf.source_id,
                                                           reply_connection_name = fragment_connection_name,
                                                           max_time_window = old_trb_conf.max_time_window,
                                                           trigger_record_timeout_ms = old_trb_conf.trigger_record_timeout_ms,
                                                           map=trb.mapsourceidconnections(new_trb_map)))
                           
-    dqm_apps = [ (name,app) for (name,app) in the_system.apps.items() if re.match("dqm_ru.*\d+", name) ]
-
-    for dqm_name, dqm_app in dqm_apps:
-        fragment_connection_name = f"fragments_to_{dqm_name}"
-        app.modulegraph.add_endpoint(fragment_connection_name, None, Direction.OUT)
-        dqm_mgraph = dqm_app.modulegraph
-        dqm_mgraph.add_endpoint(fragment_connection_name, "trb_dqm.data_fragment_all", Direction.IN, toposort=True)            
-        dqm_mgraph.add_endpoint(request_connection_name, f"trb_dqm.request_output_{app_name}", Direction.OUT)
-
-        # Add the new source_id-to-connections map to the
-        # TriggerRecordBuilder.
-        old_trb_conf = dqm_mgraph.get_module("trb_dqm").conf
-        new_trb_map = old_trb_conf.map + trb_source_id_to_connection
-        dqm_mgraph.reset_module_conf("trb_dqm", trb.ConfParams(general_queue_timeout=old_trb_conf.general_queue_timeout,
-                                                               source_id = old_trb_conf.source_id,
-                                                          reply_connection_name = fragment_connection_name,
-                                                          max_time_window = old_trb_conf.max_time_window,
-                                                          trigger_record_timeout_ms = old_trb_conf.trigger_record_timeout_ms,
-                                                          map=trb.mapsourceidconnections(new_trb_map)))
 
 def connect_all_fragment_producers(the_system, dataflow_name="dataflow", verbose=False):
     """
