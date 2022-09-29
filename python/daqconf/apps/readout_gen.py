@@ -98,9 +98,12 @@ def get_readout_app(DRO_CONFIG=None,
     elif FRONTEND_TYPE== "VD_Top_TPC":
         FRONTEND_TYPE = "tde"
         FAKEDATA_FRAGMENT_TYPE = "TDE_AMC"
-    elif FRONTEND_TYPE== "ND_LAr":
+    elif FRONTEND_TYPE== "NDLAr_TPC":
         FRONTEND_TYPE = "pacman"
         FAKEDATA_FRAGMENT_TYPE = "PACMAN"
+    elif FRONTEND_TYPE== "NDLAr_MPD":
+        FRONTEND_TYPE = "mpd"
+        FAKEDATA_FRAGMENT_TYPE = "MPD"
 
     if DEBUG: print(f'FRONTENT_TYPE={FRONTEND_TYPE}')
 
