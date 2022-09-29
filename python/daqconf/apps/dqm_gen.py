@@ -27,6 +27,8 @@ from daqconf.core.conf_utils import Direction
 from daqconf.core.daqmodule import DAQModule
 from daqconf.core.app import App,ModuleGraph
 
+from detdataformats._daq_detdataformats_py import *
+
 # Time to wait on pop()
 QUEUE_POP_WAIT_MS = 100
 # local clock speed Hz
