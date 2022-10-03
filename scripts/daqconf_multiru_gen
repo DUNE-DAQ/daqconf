@@ -514,7 +514,6 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             CLOCK_SPEED_HZ = readout.clock_speed_hz,
             HARDWARE_MAP_FILE=readout.hardware_map_file,
             SOURCE_IDX=dfidx,
-            FIRMWARE_TPG_ENABLED=readout.enable_firmware_tpg,
             HOST=trigger.host_tpw,
             DEBUG=debug)
         if boot.use_k8s: ## TODO schema
