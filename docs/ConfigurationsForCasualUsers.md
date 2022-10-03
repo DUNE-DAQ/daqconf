@@ -15,7 +15,7 @@ The config_gen files under `python/daqconf/` directory were developed to work wi
 
 Here is an example command line which uses the provided JSON file that has all of the default values populated (so it is equivalent to running without any options at all!):
 
-`daqconf_multiru_gen --config daqconf/scripts/daqconf_full_config.json daq_fake00`
+`daqconf_multiru_gen --config daqconf/config/daqconf_full_config.json daq_fake00`
 
 The created configurations will be called `daq_fakeNN` and there will be a `daq_fakeNN` directory created containing the produced configuration to be used with  _nanorc_.
 The configurations can be run interactively with `nanorc daq_fakeNN <partition_name>` from the `<work_dir>`.
