@@ -20,6 +20,17 @@ local cs = {
   tpg_channel_map: s.enum(     "TPGChannelMap", ["VDColdboxChannelMap", "ProtoDUNESP1ChannelMap", "PD2HDChannelMap", "HDColdboxChannelMap"]),
   dqm_channel_map: s.enum(     "DQMChannelMap", ['HD', 'VD', 'PD2HD', 'HDCB']),
   dqm_params:      s.sequence( "DQMParams",     self.count, doc="Parameters for DQM (fixme)"),
+  
+  numa_exception:  s.record( "NUMAException", [
+    s.field( "host", self.host, default='localhost', doc="Host of exception"),
+    s.field( "card", self.count, default=0, doc="Card ID of exception"),
+    s.field( "numa_id", self.count, default=0, doc="NUMA ID of exception"),
+  ], doc="Exception to the default NUMA ID for FELIX cards"),
+  numa_exceptions: s.sequence( "NUMAExceptions", self.numa_exception, doc="Exceptions to the default NUMA ID"),
+  numa_config: s.record("numa_config", [
+    s.field( "default_id", self.count, default=0, doc="Default NUMA ID for FELIX cards"),
+    s.field( "exceptions", self.numa_exceptions, default=[], doc="Exceptions to the default NUMA ID"),
+  ]),
 
   boot: s.record("boot", [
     s.field( "base_command_port", self.port, default=3333, doc="Base port of application command endpoints"),
@@ -91,6 +102,7 @@ local cs = {
     s.field( "eal_args", self.string, default='-l 0-1 -n 3 -- -m [0:1].0 -j', doc='Args passed to the EAL in DPDK'),
     s.field( "base_source_ip", self.string, default='10.73.139.', doc='First part of the IP of the source'),
     s.field( "destination_ip", self.string, default='10.73.139.17', doc='IP of the destination'),
+    s.field( "numa_config", self.numa_config, default=self.numa_config, doc='Configuration of FELIX NUMA IDs'),
   ]),
 
   trigger_algo_config: s.record("trigger_algo_config", [

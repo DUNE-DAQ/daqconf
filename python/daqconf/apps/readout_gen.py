@@ -73,6 +73,7 @@ def get_readout_app(DRO_CONFIG=None,
                     EAL_ARGS='-l 0-1 -n 3 -- -m [0:1].0 -j',
                     BASE_SOURCE_IP="10.73.139.",
                     DESTINATION_IP="10.73.139.17",
+                    NUMA_ID=0
                     DEBUG=False):
     """Generate the json configuration for the readout process"""
     
@@ -340,7 +341,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                  chunk_trailer_size = 32,
                                                  dma_block_size_kb = 4,
                                                  dma_memory_size_gb = 4,
-                                                 numa_id = 0,
+                                                 numa_id = NUMA_ID,
                                                  links_enabled = link_0))]
             
             if len(link_1) > 0:
@@ -352,7 +353,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                      chunk_trailer_size = 32,
                                                      dma_block_size_kb = 4,
                                                      dma_memory_size_gb = 4,
-                                                     numa_id = 0,
+                                                     numa_id = NUMA_ID,
                                                      links_enabled = link_1))]
         elif not ENABLE_DPDK_READER:
             # DTPController - only required if FW TPs enabled
