@@ -2,7 +2,7 @@ The intention of this page is to provide a few simple configurations that new or
 
 After you have successfully followed the steps described in [Instructions for casual or first-time users](InstructionsForCasualUsers.md), we will focus now on a few variations to the default configuration used in those instructions.
 
-First, a reminder to set up your working software environment and downloaded the fake input data file
+First, a reminder to set up your working software environment and download the fake input data file
 1. `cd <work_dir>`
 2. `source ./dbt-env.sh`
 4. `dbt-workarea-env`
@@ -10,12 +10,12 @@ First, a reminder to set up your working software environment and downloaded the
 
 Next we generate some sample system configurations and use _[nanorc](https://dune-daq-sw.readthedocs.io/en/latest/packages/nanorc/)_ to run a demo system with them.
 
-The tools to generate these configurations consist of a single Python script that generates DAQ system configurations with different characteristics based on the configuration file given to the script. This script is daqconf/scripts/daqconf_multiru_gen. It uses schema/daqconf/confgen.jsonnet to define the format for configuration JSON files.
-The config_gen files under `python/daqconf/` directory were developed to work with _nanorc_ package, which itself can be seen as a basic Finite State Machine that sends commands and drives the DAQ system.
+The tools to generate these configurations consist of a single Python script that generates DAQ system configurations with different characteristics based on the configuration file given to the script. This script is `daqconf/scripts/daqconf_multiru_gen`. It uses `daqconf/schema/daqconf/confgen.jsonnet` to define the format for configuration JSON files.
+The configuration generation files under the `daqconf/python/daqconf/apps` directory were developed to work with the _nanorc_ package, which itself can be seen as a basic Finite State Machine that sends commands and drives the DAQ system.
 
-Here is an example command line which uses the provided JSON file that has all of the default values populated (so it is equivalent to running without any options at all!):
+Here is an example command line which uses the provided JSON file that has all of the default values populated (so it is equivalent to running without any options at all!). It assumes you also have a hardware map file in your directory available, e.g. [this basic example](https://raw.githubusercontent.com/DUNE-DAQ/daq-systemtest/develop/config/default_system_HardwareMap.txt).
 
-`daqconf_multiru_gen --config daqconf/config/daqconf_full_config.json daq_fake00`
+`daqconf_multiru_gen --hardware-map-file <your hardware map file> --config daqconf/config/daqconf_full_config.json daq_fake00`
 
 The created configurations will be called `daq_fakeNN` and there will be a `daq_fakeNN` directory created containing the produced configuration to be used with  _nanorc_.
 The configurations can be run interactively with `nanorc daq_fakeNN <partition_name>` from the `<work_dir>`.
