@@ -73,7 +73,7 @@ def get_readout_app(DRO_CONFIG=None,
                     EAL_ARGS='-l 0-1 -n 3 -- -m [0:1].0 -j',
                     BASE_SOURCE_IP="10.73.139.",
                     DESTINATION_IP="10.73.139.17",
-                    NUMA_ID=0
+                    NUMA_ID=0,
                     DEBUG=False):
     """Generate the json configuration for the readout process"""
     
