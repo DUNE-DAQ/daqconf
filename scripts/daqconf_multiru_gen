@@ -562,13 +562,6 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
     set_mlt_links(the_system, "trigger", verbose=debug)
 
-    if readout.readout_sends_tp_fragments is False:
-        # remove fragment producers assigned to the mlt (in what use case would we want to do this?)
-        mlt_links=the_system.apps["trigger"].modulegraph.get_module("mlt").conf.links
-        for link in mlt_links:
-            if link["subsystem"] == "Trigger" and link["element"] != 0:
-                remove_mlt_link(the_system, link)
-
     mlt_links=the_system.apps["trigger"].modulegraph.get_module("mlt").conf.links
     if debug:
         console.log(f"After set_mlt_links, mlt_links is {mlt_links}")
