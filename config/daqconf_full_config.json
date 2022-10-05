@@ -79,7 +79,11 @@
     "host_dpdk_reader": [ "np04-srv-022" ],
     "eal_args": "-l 0-1 -n 3 -- -m [0:1].0 -j",
     "base_source_ip": "10.73.139.",
-    "destination_ip": "10.73.139.17"
+    "destination_ip": "10.73.139.17",
+    "numa_config": {
+      "default_id": 0,
+      "exceptions": []
+    }
   },
   "timing": {
     "timing_partition_name": "timing",

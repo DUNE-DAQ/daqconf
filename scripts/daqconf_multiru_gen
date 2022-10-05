@@ -366,6 +366,12 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         host=dro_config.host.replace("-","")
         ru_name = f"ru{host}{dro_config.card}"
         ru_app_names.append(ru_name)
+
+        numa_id = readout.numa_config['default_id']
+        for ex in readout.numa_config['exceptions']:
+            if ex['host'] == dro_config.host and ex['card'] == dro_config.card:
+                numa_id = ex['numa_id']
+
         the_system.apps[ru_name] = get_readout_app(
             HOST=dro_config.host,
             DRO_CONFIG=dro_config,
@@ -391,6 +397,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             EAL_ARGS=readout.eal_args,
             BASE_SOURCE_IP=readout.base_source_ip,
             DESTINATION_IP=readout.destination_ip,
+            NUMA_ID = numa_id,
             DEBUG=debug)
 
         if boot.use_k8s:
