@@ -72,6 +72,8 @@ def get_dqm_app(DQM_IMPL='',
     if DQM_IMPL == 'cern':
         KAFKA_ADDRESS = "monkafka.cern.ch:30092"
 
+    TICKS = {'wib': 25, 'wib2': 32}
+
     modules = []
 
     if MODE == 'readout':
@@ -106,7 +108,7 @@ def get_dqm_app(DQM_IMPL='',
                               df_seconds=DF_RATE if MODE == 'df' else 0,
                               df_offset=DF_RATE * DQMIDX if MODE == 'df' else 0,
                               df_algs=DF_ALGS,
-                              df_num_frames=DF_TIME_WINDOW / 25,
+                              df_num_frames=DF_TIME_WINDOW / TICKS[FRONTEND_TYPE],
                               max_num_frames=MAX_NUM_FRAMES,
                               frontend_type=FRONTEND_TYPE,
                           )
