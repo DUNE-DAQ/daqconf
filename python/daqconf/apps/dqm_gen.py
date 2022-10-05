@@ -108,7 +108,7 @@ def get_dqm_app(DQM_IMPL='',
                               df_seconds=DF_RATE if MODE == 'df' else 0,
                               df_offset=DF_RATE * DQMIDX if MODE == 'df' else 0,
                               df_algs=DF_ALGS,
-                              df_num_frames=DF_TIME_WINDOW / TICKS[FRONTEND_TYPE],
+                              df_num_frames=DF_TIME_WINDOW / (TICKS[FRONTEND_TYPE] if FRONTEND_TYPE in TICKS else 25),
                               max_num_frames=MAX_NUM_FRAMES,
                               frontend_type=FRONTEND_TYPE,
                           )
