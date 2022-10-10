@@ -73,14 +73,12 @@ def get_readout_app(DRO_CONFIG=None,
                     EAL_ARGS='-l 0-1 -n 3 -- -m [0:1].0 -j',
                     BASE_SOURCE_IP="10.73.139.",
                     DESTINATION_IP="10.73.139.17",
+                    NUMA_ID=0,
                     DEBUG=False):
     """Generate the json configuration for the readout process"""
     
     if DRO_CONFIG is None:
         raise RuntimeError(f"ERROR: DRO_CONFIG is None!")
-
-    if DEBUG: print(f"SSB fw_tp source ID map: {fw_tp_id_map}")
-    if DEBUG: print(f"SSB fw_tp_out source ID map: {fw_tp_out_id_map}")
 
     # Hack on strings to be used for connection instances: will be solved when data_type is properly used.
 
@@ -151,6 +149,9 @@ def get_readout_app(DRO_CONFIG=None,
             if isinstance(fwconf, FWTPOUTID) and fwconf.host == DRO_CONFIG.host and fwconf.card == DRO_CONFIG.card:
                 if DEBUG: print(f"SSB fw tp out id: {fwconf}")
                 fw_tp_out_id_map[fwconf] = fwsid
+
+        if DEBUG: print(f"SSB fw_tp source ID map: {fw_tp_id_map}")
+        if DEBUG: print(f"SSB fw_tp_out source ID map: {fw_tp_out_id_map}")
 
     if SOFTWARE_TPG_ENABLED:
         for link in DRO_CONFIG.links:
@@ -340,7 +341,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                  chunk_trailer_size = 32,
                                                  dma_block_size_kb = 4,
                                                  dma_memory_size_gb = 4,
-                                                 numa_id = 0,
+                                                 numa_id = NUMA_ID,
                                                  links_enabled = link_0))]
             
             if len(link_1) > 0:
@@ -352,9 +353,9 @@ def get_readout_app(DRO_CONFIG=None,
                                                      chunk_trailer_size = 32,
                                                      dma_block_size_kb = 4,
                                                      dma_memory_size_gb = 4,
-                                                     numa_id = 0,
+                                                     numa_id = NUMA_ID,
                                                      links_enabled = link_1))]
-        elif not ENABLE_DPDK_READER:
+        if not ENABLE_DPDK_READER:
             # DTPController - only required if FW TPs enabled
             if FIRMWARE_TPG_ENABLED:
                 if len(link_0) > 0:
@@ -379,27 +380,27 @@ def get_readout_app(DRO_CONFIG=None,
                                                     pattern="",
                                                     threshold=FIRMWARE_HIT_THRESHOLD,
                                                     masks=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]) )]
-            fake_source = "fake_source"
-            card_reader = "FakeCardReader"
-            conf = sec.Conf(link_confs = [sec.LinkConfiguration(source_id=link.dro_source_id,
-                                                                slowdown=DATA_RATE_SLOWDOWN_FACTOR,
-                                                                queue_name=f"output_{link.dro_source_id}",
-                                                                data_filename = DATA_FILE,
-                                                                emu_frame_error_rate=0) for link in DRO_CONFIG.links],
-                            # input_limit=10485100, # default
-                            queue_timeout_ms = QUEUE_POP_WAIT_MS)
+            if not FLX_INPUT:
+                fake_source = "fake_source"
+                card_reader = "FakeCardReader"
+                conf = sec.Conf(link_confs = [sec.LinkConfiguration(source_id=link.dro_source_id,
+                                                                    slowdown=DATA_RATE_SLOWDOWN_FACTOR,
+                                                                    queue_name=f"output_{link.dro_source_id}",
+                                                                    data_filename = DATA_FILE,
+                                                                    emu_frame_error_rate=0) for link in DRO_CONFIG.links],
+                                                                    queue_timeout_ms = QUEUE_POP_WAIT_MS)
+                if FRONTEND_TYPE=='pacman':
+                    fake_source = "pacman_source"
+                    card_reader = "PacmanCardReader"
+                    conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=link.dro_source_id)
+                                                 for link in DRO_CONFIG.links],
+                                  zmq_receiver_timeout = 10000)
+                modules += [DAQModule(name = fake_source,
+                                      plugin = card_reader,
+                                      conf = conf)]
+                queues += [Queue(f"{fake_source}.output_{link.dro_source_id}",f"datahandler_{link.dro_source_id}.raw_input",f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
 
-            if FRONTEND_TYPE=='pacman':
-                fake_source = "pacman_source"
-                card_reader = "PacmanCardReader"
-                conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=link.dro_source_id)
-                                                for link in DRO_CONFIG.links],
-                                zmq_receiver_timeout = 10000)
-            modules += [DAQModule(name = fake_source,
-                                plugin = card_reader,
-                                conf = conf)]
-            queues += [Queue(f"{fake_source}.output_{link.dro_source_id}",f"datahandler_{link.dro_source_id}.raw_input",f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
-        elif ENABLE_DPDK_READER:
+        else:
             NUMBER_OF_GROUPS = 1
             NUMBER_OF_LINKS_PER_GROUP = 1
 
@@ -428,11 +429,7 @@ def get_readout_app(DRO_CONFIG=None,
             queues += [Queue(f"nic_reader.output_{link.dro_source_id}",
                              f"datahandler_{link.dro_source_id}.raw_input",
                              f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
-
-
-
-
-
+                  
     # modules += [
     #     DAQModule(name = "fragment_sender",
     #                    plugin = "FragmentSender",
