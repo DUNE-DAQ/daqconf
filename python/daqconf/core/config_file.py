@@ -20,24 +20,47 @@ moo.io.default_load_path = get_moo_model_path()
 import moo.otypes
 import moo.oschema
 
-def _strict_recursive_update(dico1, dico2):
-    for k, v in dico2.items():
-        if not k in dico1:
-            raise RuntimeError(f'\'{k}\' key is unknown, available keys are: {list(dico1.keys())}')
-
-        if isinstance(v, dict):
-            if v != {}:
-                try:
-                    dico1[k] = _strict_recursive_update(dico1.get(k, {}), v)
-                except Exception as e:
-                    raise RuntimeError(f'Couldn\'t update the dictionary of keys: {list(dico1.keys())} with dictionary \'{k}\'\nError: {e}')
-            else:
+def _strict_recursive_validate(schemed_object, dico2, confgen):
+    try:
+        schemed_object.update(dico2)
+    except Exception as e:
+        raise RuntimeError(f'Couldn\'t update the dictionary of keys: {schemed_object.field_names()} with dictionary \'{k}\'\nError: {e}')
+    #print(f"\nrecursive_validate: schemed_object type is {type(schemed_object)}")
+    if isinstance(dico2,dict):
+        for k, v in dico2.items():
+            if not k in schemed_object.field_names:
+                raise RuntimeError(f'\'{k}\' key is unknown, available keys are: {schemed_object.field_names}')
+            #print(f"processing {k=}")
+            try:
+                key=f"{schemed_object.fields[k]['item']}".rsplit('.',1)[1]
+                obj=eval(f"confgen.{key}(v)")
+            except Exception as e:
+                raise RuntimeError(f'Couldn\'t update the dictionary of keys: {schemed_object.field_names()} with dictionary \'{k}\'\nError: {e}')
+            if isinstance(v,dict):
+                for k1,v1 in v.items():
+                    if isinstance(v1,dict) or isinstance(v1, list):
+                        key=f"{obj.fields[k1]['item']}".rsplit('.',1)[1]
+                        try:
+                            #print(f"confgen.{key}(v1) {confgen=} type:{type(confgen)}")
+                            obj1=eval(f"confgen.{key}(v1)")
+                        except Exception as e:
+                            raise RuntimeError(f'Couldn\'t update the dictionary of keys: {obj.field_names()} with dictionary \'{k}\'\nError: {e}')
+                        _strict_recursive_validate(obj1, v1, confgen)
+    elif isinstance(dico2, list):
+        cgclass=repr(schemed_object).split('[')[1].rstrip(']>').rsplit(".",1)[1]
+        for v in dico2:
+            #print(f"confgen.{cgclass}(v)  {v=}")
+            obj=eval(f"confgen.{cgclass}(v)")
+            if not hasattr(obj,'field_names'):
                 continue
-        else:
-            dico1[k] = v
-    return dico1
+            for k, v1 in v.items():
+                if not k in obj.field_names:
+                    raise RuntimeError(f'\'{k}\' key is unknown, available keys are: {obj.field_names}')
+            obj.update(v)
+            _strict_recursive_validate(obj, v, confgen)
 
-def parse_json(filename, schemed_object):
+
+def parse_json(filename, schemed_object, confgen):
     console.log(f"Parsing config json file {filename}")
 
     with open(filename, 'r') as f:
@@ -46,7 +69,7 @@ def parse_json(filename, schemed_object):
             try:
                 new_parameters = json.load(f)
                 # Validate the heck out of this but that doesn't change the object itself (ARG)
-                _strict_recursive_update(schemed_object.pod(), new_parameters)
+                _strict_recursive_validate(schemed_object, new_parameters,confgen)
                 # now its validated, update the object with moo
                 schemed_object.update(new_parameters)
             except Exception as e:
@@ -103,7 +126,7 @@ def parse_json(filename, schemed_object):
 
 
 
-def parse_config_file(filename, configurer_conf):
+def parse_config_file(filename, configurer_conf, confgen):
     from os.path import exists, splitext
 
     if filename is None:
@@ -114,7 +137,7 @@ def parse_config_file(filename, configurer_conf):
     if exists(filename):
         _, extension = splitext(filename)
         if  ".json" == extension:
-            return parse_json(filename, configurer_conf), filename
+            return parse_json(filename, configurer_conf, confgen), filename
         elif ".ini" == extension:
             raise RuntimeError(f'.ini configuration are not supported anymore, convert it to json')
             # return parse_ini(filename, configurer_conf), filename
@@ -148,7 +171,7 @@ def generate_cli_from_schema(schema_file, schema_object_name, *args): ## doh
         extra_schemas = [getattr(config_module, obj)() for obj in args]
 
         def configure(ctx, param, filename):
-            return parse_config_file(filename, schema_object())
+            return parse_config_file(filename, schema_object(), config_module)
 
         import click
 
