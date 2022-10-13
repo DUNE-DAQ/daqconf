@@ -144,6 +144,11 @@ def get_readout_app(DRO_CONFIG=None,
     fw_tp_out_id_map = {}
 
     if SOFTWARE_TPG_ENABLED:
+        if FRONTEND_TYPE == 'pacman' or FRONTEND_TYPE == 'mpd':
+            print('ERROR: Cannot configure Software TPG for pacman or mpd data')
+            exit()
+
+    if SOFTWARE_TPG_ENABLED:
         for link in DRO_CONFIG.links:
             link_to_tp_sid_map[link.dro_source_id] = SOURCEID_BROKER.get_next_source_id("Trigger")
             SOURCEID_BROKER.register_source_id("Trigger", link_to_tp_sid_map[link.dro_source_id], None)
