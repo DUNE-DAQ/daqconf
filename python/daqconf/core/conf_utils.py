@@ -656,7 +656,7 @@ def generate_boot(
     if conf.disable_trace:
         del boot["exec"][daq_app_exec_name]["env"]["TRACE_FILE"]
 
-    if release_or_dev() == 'rel':
+    if (release_or_dev() == 'rel') or (conf.always_RTE_script):
         boot['rte_script'] = get_rte_script()
 
     if not conf.use_k8s:
