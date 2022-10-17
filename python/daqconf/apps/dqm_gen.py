@@ -27,6 +27,8 @@ from daqconf.core.conf_utils import Direction
 from daqconf.core.daqmodule import DAQModule
 from daqconf.core.app import App,ModuleGraph
 
+from detdataformats._daq_detdataformats_py import *
+
 # Time to wait on pop()
 QUEUE_POP_WAIT_MS = 100
 # local clock speed Hz
@@ -51,12 +53,26 @@ def get_dqm_app(DQM_IMPL='',
                 DF_RATE=10,
                 DF_ALGS='raw std fourier_plane',
                 DF_TIME_WINDOW=0,
-                FRONTEND_TYPE='wib',
+                DRO_CONFIG=None,
                 DEBUG=False,
                 ):
 
+    FRONTEND_TYPE = DetID.subdetector_to_string(DetID.Subdetector(DRO_CONFIG.links[0].det_id))
+    if ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 50000000):
+        FRONTEND_TYPE = "wib"
+    elif ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 62500000):
+        FRONTEND_TYPE = "wib2"
+    elif FRONTEND_TYPE== "HD_PDS" or FRONTEND_TYPE== "VD_Cathode_PDS" or FRONTEND_TYPE=="VD_Membrane_PDS":
+        FRONTEND_TYPE = "pds_list"
+    elif FRONTEND_TYPE== "VD_Top_TPC":
+        FRONTEND_TYPE = "tde"
+    elif FRONTEND_TYPE== "ND_LAr":
+        FRONTEND_TYPE = "pacman"
+
     if DQM_IMPL == 'cern':
         KAFKA_ADDRESS = "monkafka.cern.ch:30092"
+
+    TICKS = {'wib': 25, 'wib2': 32}
 
     modules = []
 
@@ -92,7 +108,7 @@ def get_dqm_app(DQM_IMPL='',
                               df_seconds=DF_RATE if MODE == 'df' else 0,
                               df_offset=DF_RATE * DQMIDX if MODE == 'df' else 0,
                               df_algs=DF_ALGS,
-                              df_num_frames=DF_TIME_WINDOW / 25,
+                              df_num_frames=DF_TIME_WINDOW / (TICKS[FRONTEND_TYPE] if FRONTEND_TYPE in TICKS else 25),
                               max_num_frames=MAX_NUM_FRAMES,
                               frontend_type=FRONTEND_TYPE,
                           )
