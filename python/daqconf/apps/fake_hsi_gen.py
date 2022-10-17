@@ -72,8 +72,7 @@ def get_fake_hsi_app(RUN_NUMBER=333,
                                               mean_signal_multiplicity=MEAN_SIGNAL_MULTIPLICITY,
                                               signal_emulation_mode=SIGNAL_EMULATION_MODE,
                                               enabled_signals=ENABLED_SIGNALS,
-                                              hsievent_connection_name="hsievents",
-                                              timesync_topic="Timesync"),
+                                              hsievent_connection_name="hsievents"),
                          extra_commands = {"start": startpars})]
     
     

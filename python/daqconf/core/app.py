@@ -178,12 +178,12 @@ class ModuleGraph:
                 return True
         return False
 
-    def add_endpoint(self, external_name, internal_name, inout, topic=[], toposort=False):
+    def add_endpoint(self, external_name, internal_name, inout, is_pubsub=False, toposort=False):
         if not self.has_endpoint(external_name, internal_name):
-            self.endpoints += [Endpoint(external_name, internal_name, inout, topic=topic, toposort=toposort)]
+            self.endpoints += [Endpoint(external_name, internal_name, inout, is_pubsub=is_pubsub, toposort=toposort)]
 
-    def add_external_connection(self, external_name, internal_name, inout, host, port, topic=[]):
-        self.external_connections += [ExternalConnection(external_name, internal_name, inout, host, port, topic)]
+    def add_external_connection(self, external_name, internal_name, inout, host, port, is_pubsub=False):
+        self.external_connections += [ExternalConnection(external_name, internal_name, inout, host, port, is_pubsub)]
 
     def connect_modules(self, push_addr, pop_addr, queue_name = "", size_hint = 10, toposort = True):
         queue_start = push_addr.split(".")

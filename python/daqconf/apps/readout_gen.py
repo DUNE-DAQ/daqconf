@@ -207,7 +207,6 @@ def get_readout_app(DRO_CONFIG=None,
                                           # fake_trigger_flag=0, # default
                                           source_id = tp,
                                           timesync_connection_name = f"timesync_{RUIDX}",
-                                          timesync_topic_name = "Timesync",
                                       ),
                                       latencybufferconf= rconf.LatencyBufferConf(
                                           latency_buffer_alignment_size = 4096,
@@ -222,8 +221,7 @@ def get_readout_app(DRO_CONFIG=None,
                                           channel_map_name = TPG_CHANNEL_MAP,
                                           emulator_mode = EMULATOR_MODE,
                                           error_counter_threshold=100,
-                                          error_reset_freq=10000,
-                                          tpset_topic="TPSets"
+                                          error_reset_freq=10000
                                       ),
                                       requesthandlerconf= rconf.RequestHandlerConf(
                                           latency_buffer_size = LATENCY_BUFFER_SIZE,
@@ -255,7 +253,6 @@ def get_readout_app(DRO_CONFIG=None,
                                   frame_size = 464 if CLOCK_SPEED_HZ == 50000000 else 472, # WIB1 only if clock is WIB1 clock, otherwise WIB2
                                   response_delay = 0,
                                   fragment_type = FAKEDATA_FRAGMENT_TYPE,
-                                  timesync_topic_name = "Timesync",
                                   ))]
         else:
             if SOFTWARE_TPG_ENABLED:
@@ -265,10 +262,6 @@ def get_readout_app(DRO_CONFIG=None,
             if FRONTEND_TYPE == 'wib':
                 queues += [Queue(f"datahandler_{link.dro_source_id}.errored_frames", 'errored_frame_consumer.input_queue', "errored_frames_q")]
 
-            if SOFTWARE_TPG_ENABLED: 
-                tpset_topic = "TPSets"
-            else:
-                tpset_topic = "None"
             modules += [DAQModule(name = f"datahandler_{link.dro_source_id}",
                                   plugin = "DataLinkHandler", 
                                   conf = rconf.Conf(
@@ -277,7 +270,6 @@ def get_readout_app(DRO_CONFIG=None,
                                           # fake_trigger_flag=0, # default
                                           source_id =  link.dro_source_id,
                                           timesync_connection_name = f"timesync_{RUIDX}",
-                                          timesync_topic_name = "Timesync",
                                       ),
                                       latencybufferconf= rconf.LatencyBufferConf(
                                           latency_buffer_alignment_size = 4096,
@@ -291,7 +283,6 @@ def get_readout_app(DRO_CONFIG=None,
                                           emulator_mode = EMULATOR_MODE,
                                           error_counter_threshold=100,
                                           error_reset_freq=10000,
-                                          tpset_topic=tpset_topic,
                                           tpset_sourceid=link_to_tp_sid_map[link.dro_source_id] if SOFTWARE_TPG_ENABLED else 0
                                       ),
                                       requesthandlerconf= rconf.RequestHandlerConf(
