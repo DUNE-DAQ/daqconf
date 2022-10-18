@@ -178,7 +178,7 @@ def get_readout_app(DRO_CONFIG=None,
         assert(len(fw_tp_id_map) <= 2)
         for tp, tp_out in zip(fw_tp_id_map.values(), fw_tp_out_id_map.values()):
             # for sid in fw_tp_out_id_map.values():
-            queues += [Queue(f"tp_datahandler_{tp}.tp_out",f"tp_out_datahandler_{tp_out}.raw_input", "TPSet",f"sw_tp_link_{tp_out}",100000 )]                
+            queues += [Queue(f"tp_datahandler_{tp}.tp_out",f"tp_out_datahandler_{tp_out}.raw_input", "TriggerPrimitive",f"sw_tp_link_{tp_out}",100000 )]                
             modules += [DAQModule(name = f"tp_out_datahandler_{tp_out}",
                                plugin = "DataLinkHandler",
                                conf = rconf.Conf(readoutmodelconf = rconf.ReadoutModelConf(source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
@@ -256,7 +256,7 @@ def get_readout_app(DRO_CONFIG=None,
                                   ))]
         else:
             if SOFTWARE_TPG_ENABLED:
-                queues += [Queue(f"datahandler_{link.dro_source_id}.tp_out",f"tp_datahandler_{link_to_tp_sid_map[link.dro_source_id]}.raw_input","TPSet",f"sw_tp_link_{link.dro_source_id}",100000 )]                
+                queues += [Queue(f"datahandler_{link.dro_source_id}.tp_out",f"tp_datahandler_{link_to_tp_sid_map[link.dro_source_id]}.raw_input","TriggerPrimitive",f"sw_tp_link_{link.dro_source_id}",100000 )]                
 
             #? why only create errored frames for wib, should this also be created for wib2 or other FE's?
             if FRONTEND_TYPE == 'wib':
