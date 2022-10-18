@@ -656,8 +656,18 @@ def generate_boot(
     if conf.disable_trace:
         del boot["exec"][daq_app_exec_name]["env"]["TRACE_FILE"]
 
-    if (release_or_dev() == 'rel') or (conf.always_RTE_script):
-        boot['rte_script'] = get_rte_script()
+    match conf.RTE_script_settings:
+        case 0:
+            if (release_or_dev() == 'rel'):
+                boot['rte_script'] = get_rte_script()
+
+        case 1:
+            boot['rte_script'] = get_rte_script()
+
+        case 2:
+            pass
+
+    
 
     if not conf.use_k8s:
         update_with_ssh_boot_data(
