@@ -102,17 +102,17 @@ def get_dataflow_app(HOSTIDX=0,
 
     mgraph=ModuleGraph(modules)
 
-    mgraph.add_endpoint(f"trigger_decision_{HOSTIDX}", "trb.trigger_decision_input", Direction.IN)
+    mgraph.add_endpoint(f"trigger_decision_{HOSTIDX}", "trb.trigger_decision_input", "TriggerDecision", Direction.IN)
 
     queue_size_based_on_number_of_sequences = max(10, int(MAX_EXPECTED_TR_SEQUENCES * TOKEN_COUNT * 1.1))
     for i in range(len(OUTPUT_PATHS)):
-        mgraph.connect_modules("trb.trigger_record_output", f"datawriter_{i}.trigger_record_input", "trigger_records",
+        mgraph.connect_modules("trb.trigger_record_output", f"datawriter_{i}.trigger_record_input","TriggerRecord", "trigger_records",
                                queue_size_based_on_number_of_sequences)
-        mgraph.add_endpoint("triginh", f"datawriter_{i}.token_output", Direction.OUT, toposort=True)
+        mgraph.add_endpoint("triginh", f"datawriter_{i}.token_output", "TriggerDecisionToken", Direction.OUT, toposort=True)
 
     if HAS_DQM:
-        mgraph.add_endpoint(f"trmon_dqm2df_{HOSTIDX}", "trb.mon_connection", Direction.IN)
-        mgraph.add_endpoint(f"tr_df2dqm_{HOSTIDX}", None, Direction.OUT)
+        mgraph.add_endpoint(f"trmon_dqm2df_{HOSTIDX}", "trb.mon_connection", "TRMonRequest", Direction.IN)
+        mgraph.add_endpoint(f"tr_df2dqm_{HOSTIDX}", None, "TriggerRecord", Direction.OUT)
 
     df_app = App(modulegraph=mgraph, host=HOST)
 

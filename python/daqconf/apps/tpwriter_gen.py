@@ -74,7 +74,7 @@ def get_tpwriter_app(
 
     mgraph=ModuleGraph(modules)
 
-    mgraph.add_endpoint("TPSets", f"tpswriter.tpset_source", Direction.IN, topic=["TPSets"])
+    mgraph.add_endpoint("TPSets", f"tpswriter.tpset_source", "TPSet", Direction.IN, is_pubsub=True)
 
     tpw_app = App(modulegraph=mgraph, host=HOST)
 

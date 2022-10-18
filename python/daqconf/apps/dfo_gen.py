@@ -52,11 +52,11 @@ def get_dfo_app(DF_CONF : dict = {},
                                                 stop_timeout=STOP_TIMEOUT))]
 
     mgraph = ModuleGraph(modules)
-    mgraph.add_endpoint("td_to_dfo", "dfo.td_connection", Direction.IN)
-    mgraph.add_endpoint("triginh", "dfo.token_connection", Direction.IN)
-    mgraph.add_endpoint("df_busy_signal", "dfo.busy_connection", Direction.OUT)
+    mgraph.add_endpoint("td_to_dfo", "dfo.td_connection", "TriggerDecision", Direction.IN)
+    mgraph.add_endpoint("triginh", "dfo.token_connection", "TriggerDecisionToken", Direction.IN)
+    mgraph.add_endpoint("df_busy_signal", "dfo.busy_connection", "TriggerInhibit", Direction.OUT)
     for dfc in DF_CONF.values():
-        mgraph.add_endpoint(f"trigger_decision_{dfc.source_id}", f"dfo.trigger_{dfc.source_id}_connection", Direction.OUT)
+        mgraph.add_endpoint(f"trigger_decision_{dfc.source_id}", f"dfo.trigger_{dfc.source_id}_connection", "TriggerDecision", Direction.OUT)
 
     dfo_app = App(modulegraph=mgraph, host=HOST, name='DFOApp')
 

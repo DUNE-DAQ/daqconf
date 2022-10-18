@@ -127,12 +127,13 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         # long as it matches what's in the map above), so we just set
         # the endpoint name and queue instance name to the same thing
         queue_inst = f"data_request_q_for_{source_id_raw_str(producer.source_id)}"
-        app.modulegraph.connect_modules(f"request_receiver.data_request_{source_id_raw_str(producer.source_id)}", producer.requests_in, queue_inst)
+        app.modulegraph.connect_modules(f"request_receiver.data_request_{source_id_raw_str(producer.source_id)}", producer.requests_in, "DataRequest", queue_inst)
 
                                
     # Connect request receiver to TRB output in DF app
     app.modulegraph.add_endpoint(request_connection_name,
                                  internal_name = "request_receiver.input", 
+                                 data_type = "DataRequest",
                                  inout = Direction.IN)
                                
     trb_apps = [ (name,app) for (name,app) in the_system.apps.items() if "TriggerRecordBuilder" in [n.plugin for n in app.modulegraph.module_list()] ]
@@ -141,11 +142,11 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
 
     for trb_app_name, trb_app_conf in trb_apps:
         fragment_connection_name = f"fragments_to_{trb_app_name}"
-        app.modulegraph.add_endpoint(fragment_connection_name, None, Direction.OUT)
+        app.modulegraph.add_endpoint(fragment_connection_name, None, "Fragment", Direction.OUT)
         df_mgraph = trb_app_conf.modulegraph
         trb_module_name = [n.name for n in df_mgraph.module_list() if n.plugin == "TriggerRecordBuilder"][0]
-        df_mgraph.add_endpoint(fragment_connection_name, f"{trb_module_name}.data_fragment_all", Direction.IN, toposort=True)            
-        df_mgraph.add_endpoint(request_connection_name, f"{trb_module_name}.request_output_{app_name}", Direction.OUT)
+        df_mgraph.add_endpoint(fragment_connection_name, f"{trb_module_name}.data_fragment_all", "Fragment", Direction.IN, toposort=True)            
+        df_mgraph.add_endpoint(request_connection_name, f"{trb_module_name}.request_output_{app_name}", "DataRequest", Direction.OUT)
 
         # Add the new source_id-to-connections map to the
         # TriggerRecordBuilder.

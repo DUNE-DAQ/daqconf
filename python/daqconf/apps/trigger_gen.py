@@ -282,43 +282,43 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
     mgraph = ModuleGraph(modules)
 
     if USE_HSI_INPUT:
-        mgraph.connect_modules("ttcm.output",         "tctee_ttcm.input",             "ttcm_input", size_hint=1000)
-        mgraph.connect_modules("tctee_ttcm.output1",  "mlt.trigger_candidate_source", "tcs_to_mlt", size_hint=1000)
-        mgraph.connect_modules("tctee_ttcm.output2",  "tc_buf.tc_source",             "tcs_to_buf", size_hint=1000)
+        mgraph.connect_modules("ttcm.output",         "tctee_ttcm.input",             "TriggerCandidate", "ttcm_input", size_hint=1000)
+        mgraph.connect_modules("tctee_ttcm.output1",  "mlt.trigger_candidate_source", "TriggerCandidate","tcs_to_mlt", size_hint=1000)
+        mgraph.connect_modules("tctee_ttcm.output2",  "tc_buf.tc_source",             "TriggerCandidate","tcs_to_buf", size_hint=1000)
 
     if len(TP_SOURCE_IDS) > 0:
-        mgraph.connect_modules("tazipper.output", "tcm.input", size_hint=1000)
+        mgraph.connect_modules("tazipper.output", "tcm.input", "TriggerActivity", size_hint=1000)
 
         for tp_sid,tp_conf in TP_SOURCE_IDS.items():
             link_id = f'tplink{tp_sid}'
 
             if USE_CHANNEL_FILTER:
-                mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', size_hint=1000)
+                mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', "TPSet", size_hint=1000)
 
-            mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'heartbeatmaker_{link_id}.tpset_source', size_hint=1000)
-            mgraph.connect_modules(f'tpsettee_{link_id}.output2', f'buf_{link_id}.tpset_source', size_hint=1000)
+            mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'heartbeatmaker_{link_id}.tpset_source', "TPSet", size_hint=1000)
+            mgraph.connect_modules(f'tpsettee_{link_id}.output2', f'buf_{link_id}.tpset_source',"TPSet", size_hint=1000)
 
-            mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{tp_conf.region_id}.input", f"{tp_conf.region_id}_tpset_q", size_hint=1000)
+            mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{tp_conf.region_id}.input","TPSet", f"{tp_conf.region_id}_tpset_q", size_hint=1000)
 
         for region_id in TA_SOURCE_IDS.keys():
             mgraph.connect_modules(f'zip_{region_id}.output', f'tam_{region_id}.input', size_hint=1000)
         # Use connect_modules to connect up the Tees to the buffers/MLT,
         # as manually adding Queues doesn't give the desired behaviour
-        mgraph.connect_modules("tcm.output",          "tctee_chain.input",            "chain_input", size_hint=1000)
-        mgraph.connect_modules("tctee_chain.output1", "mlt.trigger_candidate_source", "tcs_to_mlt",  size_hint=1000)
-        mgraph.connect_modules("tctee_chain.output2", "tc_buf.tc_source",             "tcs_to_buf",  size_hint=1000)
+        mgraph.connect_modules("tcm.output",          "tctee_chain.input",           "TriggerCandidate", "chain_input", size_hint=1000)
+        mgraph.connect_modules("tctee_chain.output1", "mlt.trigger_candidate_source","TriggerCandidate", "tcs_to_mlt",  size_hint=1000)
+        mgraph.connect_modules("tctee_chain.output2", "tc_buf.tc_source",             "TriggerCandidate","tcs_to_buf",  size_hint=1000)
 
 
         for region_id in TA_SOURCE_IDS.keys():
-            mgraph.connect_modules(f'tam_{region_id}.output',              f'tasettee_region_{region_id}.input',      size_hint=1000)
-            mgraph.connect_modules(f'tasettee_region_{region_id}.output1', f'tazipper.input', "tas_to_tazipper",      size_hint=1000)
-            mgraph.connect_modules(f'tasettee_region_{region_id}.output2', f'ta_buf_region_{region_id}.taset_source', size_hint=1000)
+            mgraph.connect_modules(f'tam_{region_id}.output',              f'tasettee_region_{region_id}.input',     "TriggerActivity", size_hint=1000)
+            mgraph.connect_modules(f'tasettee_region_{region_id}.output1', f'tazipper.input', "tas_to_tazipper",     "TriggerActivity", size_hint=1000)
+            mgraph.connect_modules(f'tasettee_region_{region_id}.output2', f'ta_buf_region_{region_id}.taset_source',"TriggerActivity", size_hint=1000)
 
     if USE_HSI_INPUT:
-        mgraph.add_endpoint("hsievents", None, Direction.IN)
+        mgraph.add_endpoint("hsievents", None, "HSIEvent", Direction.IN)
         
-    mgraph.add_endpoint("td_to_dfo", None, Direction.OUT, toposort=True)
-    mgraph.add_endpoint("df_busy_signal", None, Direction.IN)
+    mgraph.add_endpoint("td_to_dfo", None, "TriggerDecision", Direction.OUT, toposort=True)
+    mgraph.add_endpoint("df_busy_signal", None, "TriggerInhibit", Direction.IN)
 
     mgraph.add_fragment_producer(id=TC_SOURCE_ID["source_id"], subsystem="Trigger",
                                  requests_in="tc_buf.data_request_source",
@@ -333,9 +333,9 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                 buf_name=f'buf_{link_id2}'
 
                 if USE_CHANNEL_FILTER:
-                    mgraph.add_endpoint(f"tpsets_{link_id1}_sub", f"channelfilter_{link_id2}.tpset_source", Direction.IN, topic=["TPSets"])
+                    mgraph.add_endpoint(f"tpsets_{link_id1}_sub", f"channelfilter_{link_id2}.tpset_source", "TPSet", Direction.IN, is_pubsub=True)
                 else:
-                    mgraph.add_endpoint(f"tpsets_{link_id1}_sub", f'tpsettee_{link_id2}.input',             Direction.IN, topic=["TPSets"])
+                    mgraph.add_endpoint(f"tpsets_{link_id1}_sub", f'tpsettee_{link_id2}.input', "TPSet",            Direction.IN, is_pubsub=True)
                     
 
                 mgraph.add_fragment_producer(id=tp_sid, subsystem="Trigger",

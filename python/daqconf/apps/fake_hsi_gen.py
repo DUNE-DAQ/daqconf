@@ -94,24 +94,17 @@ def get_fake_hsi_app(RUN_NUMBER=333,
                                                                                           enable_raw_recording = False)
                                              ))]
     
-    queues = [Queue(f"fhsig.output",f"hsi_datahandler.raw_input",f'hsi_link_0', 100000)]
+    queues = [Queue(f"fhsig.output",f"hsi_datahandler.raw_input","HSIFrame", f'hsi_link_0', 100000)]
 
     mgraph = ModuleGraph(modules, queues=queues)
     
     mgraph.add_fragment_producer(id = HSI_SOURCE_ID, subsystem = "HW_Signals_Interface",
                                          requests_in   = f"hsi_datahandler.request_input",
                                          fragments_out = f"hsi_datahandler.fragment_queue")
-    mgraph.add_endpoint(f"timesync_hsi", f"hsi_datahandler.timesync_output",    Direction.OUT, ["Timesync"], toposort=False)
+    mgraph.add_endpoint(f"timesync_hsi", f"hsi_datahandler.timesync_output","TimeSync", Direction.OUT, is_pubsub=True, toposort=False)
 
-    # P. Rodrigues 2022-02-15 We don't make endpoints for the
-    # timesync connection because they are handled by some
-    # special-case magic in NetworkManager, which holds a map
-    # of topics to connections, and looks up all the
-    # connections for a given topic.
-    #
-    # mgraph.add_endpoint("time_sync", None, Direction.IN)
-    mgraph.add_endpoint("hsievents", None, Direction.OUT)
-    mgraph.add_endpoint(None, None, Direction.IN, ["Timesync"])
+    mgraph.add_endpoint("hsievents", None, "HSIEvent", Direction.OUT)
+    mgraph.add_endpoint(None, None, data_type="TimeSync", inout=Direction.IN, is_pubsub=True)
     fake_hsi_app = App(modulegraph=mgraph, host=HOST, name="FakeHSIApp")
     
     return fake_hsi_app

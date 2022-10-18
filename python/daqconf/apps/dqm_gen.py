@@ -116,13 +116,13 @@ def get_dqm_app(DQM_IMPL='',
 
     mgraph = ModuleGraph(modules)
 
-    mgraph.add_endpoint("timesync_{DQMIDX}", None, Direction.IN, ["Timesync"])
+    mgraph.add_endpoint("timesync_{DQMIDX}", None, "Timesync", Direction.IN, is_pubsub=True)
     if MODE == 'readout':
-        mgraph.connect_modules("dqmprocessor.trigger_decision_input_queue", "trb_dqm.trigger_decision_input", 'trigger_decision_q_dqm')
-        mgraph.connect_modules('trb_dqm.trigger_record_output', 'dqmprocessor.trigger_record_dqm_processor', 'trigger_record_q_dqm', toposort=False)  
+        mgraph.connect_modules("dqmprocessor.trigger_decision_input_queue", "trb_dqm.trigger_decision_input", "TriggerDecision", 'trigger_decision_q_dqm')
+        mgraph.connect_modules('trb_dqm.trigger_record_output', 'dqmprocessor.trigger_record_dqm_processor', "TriggerRecord", 'trigger_record_q_dqm', toposort=False)  
     else:
-        mgraph.add_endpoint(f'trmon_dqm2df_{DQMIDX}', None, Direction.OUT)
-        mgraph.add_endpoint(f"tr_df2dqm_{DQMIDX}", None, Direction.IN, toposort=True)
+        mgraph.add_endpoint(f'trmon_dqm2df_{DQMIDX}', None, "TRMonRequest", Direction.OUT)
+        mgraph.add_endpoint(f"tr_df2dqm_{DQMIDX}", None, "TriggerRecord", Direction.IN, toposort=True)
     
     dqm_app = App(mgraph, host=HOST)
 
