@@ -363,9 +363,9 @@ def make_system_connections(the_system, verbose=False, use_k8s=False):
                 publisher_uids[endpoint["app"]] += [endpoint['endpoint'].external_name]
 
         if len(subscribers) == 0:
-            raise ValueError(f"Topic {topic} has no subscribers!")
+            raise ValueError(f"Data Type {topic} has no subscribers!")
         if len(publishers) == 0:
-            raise ValueError(f"Topic {topic} has no publishers!")
+            raise ValueError(f"Data Type {topic} has no publishers!")
 
         for publisher in publishers:
             publisher_connections = [c.id['uid'] for c in the_system.connections[publisher]]

@@ -116,7 +116,7 @@ def get_dqm_app(DQM_IMPL='',
 
     mgraph = ModuleGraph(modules)
 
-    mgraph.add_endpoint("timesync_{DQMIDX}", None, "Timesync", Direction.IN, is_pubsub=True)
+    mgraph.add_endpoint("timesync_{DQMIDX}", None, "TimeSync", Direction.IN, is_pubsub=True)
     if MODE == 'readout':
         mgraph.connect_modules("dqmprocessor.trigger_decision_input_queue", "trb_dqm.trigger_decision_input", "TriggerDecision", 'trigger_decision_q_dqm')
         mgraph.connect_modules('trb_dqm.trigger_record_output', 'dqmprocessor.trigger_record_dqm_processor', "TriggerRecord", 'trigger_record_q_dqm', toposort=False)  
