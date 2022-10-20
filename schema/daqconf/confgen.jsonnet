@@ -3,13 +3,14 @@
 
 local moo = import "moo.jsonnet";
 local s = moo.oschema.schema("dunedaq.daqconf.confgen");
-
+local nc = moo.oschema.numeric_constraints;
 // A temporary schema construction context.
 local cs = {
   port:            s.number(   "Port", "i4", doc="A TCP/IP port number"),
   freq:            s.number(   "Frequency", "u4", doc="A frequency"),
   rate:            s.number(   "Rate", "f8", doc="A rate as a double"),
   count:           s.number(   "count", "i8", doc="A count of things"),
+  three_choice:    s.number(   "threechoice", "i8", nc(minimum=0, exclusiveMaximum=3), doc="A choice between 0, 1, or 2"),
   flag:            s.boolean(  "Flag", doc="Parameter that can be used to enable or disable functionality"),
   monitoring_dest: s.enum(     "MonitoringDest", ["local", "cern", "pocket"]),
   path:            s.string(   "Path", doc="Location on a filesystem"),
@@ -42,7 +43,7 @@ local cs = {
     s.field( "use_k8s", self.flag, default=false, doc="Whether to use k8s"),
     s.field( "op_env", self.string, default='swtest', doc="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files"),
     s.field( "data_request_timeout_ms", self.count, default=1000, doc="The baseline data request timeout that will be used by modules in the Readout and Trigger subsystems (i.e. any module that produces data fragments). Downstream timeouts, such as the trigger-record-building timeout, are derived from this."),
-    s.field( "RTE_script_settings", self.count, default=0, doc="0 - Use an RTE script iff not in a dev environment, 1 - Always use RTE, 2 - never use RTE"),
+    s.field( "RTE_script_settings", self.three_choice, default=0, doc="0 - Use an RTE script iff not in a dev environment, 1 - Always use RTE, 2 - never use RTE"),
   ]),
 
   timing: s.record("timing", [
