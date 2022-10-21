@@ -222,7 +222,7 @@ def make_external_connection(the_system, endpoint_name, data_type, app_name, hos
             new_address = replace_localhost_ip(address)
             the_system.connections[app_name] += [conn.Connection(id=conn_id, connection_type='kPubSub', uri=new_address)]
 
-def make_network_connection(the_system, endpoint_name, data_type, in_apps, out_apps, verbose, use_k8s=False):
+def make_network_connection(the_system, endpoint_name, data_type, in_apps, out_apps, verbose, use_k8s=False, use_connectivity_service=True):
     if verbose:
         console.log(f"Connection {endpoint_name}, Network")
     if len(in_apps) > 1:
@@ -233,10 +233,11 @@ def make_network_connection(the_system, endpoint_name, data_type, in_apps, out_a
     address_sender = f'tcp://{{{in_apps[0]}}}:{port}' if not use_k8s else f'tcp://{in_apps[0]}:{port}'
     conn_id = conn.ConnectionId(uid=endpoint_name, data_type=data_type)
     the_system.connections[in_apps[0]] += [conn.Connection(id=conn_id, connection_type="kSendRecv", uri=address_receiver)]
-    for app in set(out_apps):
-        the_system.connections[app] += [conn.Connection(id=conn_id, connection_type="kSendRecv", uri=address_sender)]
+    if not use_connectivity_service:
+        for app in set(out_apps):
+            the_system.connections[app] += [conn.Connection(id=conn_id, connection_type="kSendRecv", uri=address_sender)]
 
-def make_system_connections(the_system, verbose=False, use_k8s=False):
+def make_system_connections(the_system, verbose=False, use_k8s=False, use_connectivity_service=True):
     """Given a system with defined apps and endpoints, create the
     set of connections that satisfy the endpoints.
 
@@ -329,10 +330,10 @@ def make_system_connections(the_system, verbose=False, use_k8s=False):
                         make_queue_connection(the_system,in_app, f"{in_app}.{endpoint_name}", data_type, [in_app], [in_app], size, verbose)
 
             if paired_exactly == False:
-                make_network_connection(the_system, endpoint_name, data_type, in_apps, out_apps, verbose, use_k8s=use_k8s)
+                make_network_connection(the_system, endpoint_name, data_type, in_apps, out_apps, verbose, use_k8s=use_k8s, use_connectivity_service=use_connectivity_service)
 
         else:
-            make_network_connection(the_system, endpoint_name, data_type, in_apps, out_apps, verbose, use_k8s=use_k8s)
+            make_network_connection(the_system, endpoint_name, data_type, in_apps, out_apps, verbose, use_k8s=use_k8s, use_connectivity_service=use_connectivity_service)
 
     pubsub_connectionids = {}
     for topic, endpoints in topic_map.items():
@@ -374,14 +375,15 @@ def make_system_connections(the_system, verbose=False, use_k8s=False):
                     conn_copy = cp.deepcopy(pubsub_connectionids[connid])
                     conn_copy.uri = replace_localhost_ip(conn_copy.uri)
                     the_system.connections[publisher] += [conn_copy]
-        for subscriber in subscribers:
-            subscriber_connections = [c.id['uid'] for c in the_system.connections[subscriber]]
-            for connid in topic_connectionuids:
-                if connid not in subscriber_connections:
-                    conn_copy = cp.deepcopy(pubsub_connectionids[connid])
-                    the_system.connections[subscriber] += [conn_copy]
+        if not use_connectivity_service:
+            for subscriber in subscribers:
+                subscriber_connections = [c.id['uid'] for c in the_system.connections[subscriber]]
+                for connid in topic_connectionuids:
+                    if connid not in subscriber_connections:
+                        conn_copy = cp.deepcopy(pubsub_connectionids[connid])
+                        the_system.connections[subscriber] += [conn_copy]
 
-def make_app_command_data(system, app, appkey, verbose=False, use_k8s=False):
+def make_app_command_data(system, app, appkey, verbose=False, use_k8s=False, use_connectivity_service=True):
     """Given an App instance, create the 'command data' suitable for
     feeding to nanorc. The needed queues are inferred from from
     connections between modules, as are the start and stop order of the
@@ -403,7 +405,7 @@ def make_app_command_data(system, app, appkey, verbose=False, use_k8s=False):
     command_data = {}
 
     if len(system.connections) == 0 and len(system.queues) == 0:
-        make_system_connections(system, verbose, use_k8s=use_k8s)
+        make_system_connections(system, verbose, use_k8s=use_k8s, use_connectivity_service=use_connectivity_service)
 
     module_deps = make_module_deps(app, system.connections[appkey], verbose)
     if verbose:
@@ -449,7 +451,7 @@ def make_app_command_data(system, app, appkey, verbose=False, use_k8s=False):
     # Fill in the "standard" command entries in the command_data structure
     command_data['init'] = appfwk.Init(modules=mod_specs,
                                        connections=system.connections[appkey],
-                                       queues=system.queues[appkey])
+                                       queues=system.queues[appkey], use_connectivity_service=use_connectivity_service)
 
     # TODO: Conf ordering
     command_data['conf'] = acmd([
