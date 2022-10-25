@@ -83,6 +83,7 @@ def get_readout_app(DRO_CONFIG=None,
     # Hack on strings to be used for connection instances: will be solved when data_type is properly used.
 
     FAKEDATA_FRAGMENT_TYPE = "Unknown"
+    QUEUE_FRAGMENT_TYPE="WIBFrame"
     FRONTEND_TYPE = DetID.subdetector_to_string(DetID.Subdetector(DRO_CONFIG.links[0].det_id))
     if ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 50000000):
         FRONTEND_TYPE = "wib"
@@ -93,12 +94,15 @@ def get_readout_app(DRO_CONFIG=None,
     elif FRONTEND_TYPE== "HD_PDS" or FRONTEND_TYPE== "VD_Cathode_PDS" or FRONTEND_TYPE=="VD_Membrane_PDS":
         FRONTEND_TYPE = "pds_list"
         FAKEDATA_FRAGMENT_TYPE = "DAPHNE"
+        QUEUE_FRAGMENT_TYPE = "PDSFrame"
     elif FRONTEND_TYPE== "VD_Top_TPC":
         FRONTEND_TYPE = "tde"
         FAKEDATA_FRAGMENT_TYPE = "TDE_AMC"
+        QUEUE_FRAGMENT_TYPE = "TDEData"
     elif FRONTEND_TYPE== "ND_LAr":
         FRONTEND_TYPE = "pacman"
         FAKEDATA_FRAGMENT_TYPE = "PACMAN"
+        QUEUE_FRAGMENT_TYPE = "PACMAN"
 
     if DEBUG: print(f'FRONTENT_TYPE={FRONTEND_TYPE}')
 
@@ -312,9 +316,9 @@ def get_readout_app(DRO_CONFIG=None,
                     link_1.append(link.dro_link)
                     sid_1.append(link.dro_source_id)
             for idx in sid_0:
-                queues += [Queue(f'flxcard_0.output_{idx}',f"datahandler_{idx}.raw_input","WIBFrame", f'{FRONTEND_TYPE}_link_{idx}', 100000 )]
+                queues += [Queue(f'flxcard_0.output_{idx}',f"datahandler_{idx}.raw_input",QUEUE_FRAGMENT_TYPE, f'{FRONTEND_TYPE}_link_{idx}', 100000 )]
             for idx in sid_1:
-                queues += [Queue(f'flxcard_1.output_{idx}',f"datahandler_{idx}.raw_input","WIBFrame", f'{FRONTEND_TYPE}_link_{idx}', 100000 )]
+                queues += [Queue(f'flxcard_1.output_{idx}',f"datahandler_{idx}.raw_input",QUEUE_FRAGMENT_TYPE, f'{FRONTEND_TYPE}_link_{idx}', 100000 )]
             if FIRMWARE_TPG_ENABLED:
                 link_0.append(5)
                 fw_tp_sid = fw_tp_id_map[FWTPID(DRO_CONFIG.host, DRO_CONFIG.card, 0)]
@@ -389,7 +393,7 @@ def get_readout_app(DRO_CONFIG=None,
                 modules += [DAQModule(name = fake_source,
                                       plugin = card_reader,
                                       conf = conf)]
-                queues += [Queue(f"{fake_source}.output_{link.dro_source_id}",f"datahandler_{link.dro_source_id}.raw_input","WIBFrame", f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
+                queues += [Queue(f"{fake_source}.output_{link.dro_source_id}",f"datahandler_{link.dro_source_id}.raw_input",QUEUE_FRAGMENT_TYPE, f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
 
         else:
             NUMBER_OF_GROUPS = 1
@@ -418,7 +422,7 @@ def get_readout_app(DRO_CONFIG=None,
                 )]
 
             queues += [Queue(f"nic_reader.output_{link.dro_source_id}",
-                             f"datahandler_{link.dro_source_id}.raw_input", "WIBFrame",
+                             f"datahandler_{link.dro_source_id}.raw_input", QUEUE_FRAGMENT_TYPE,
                              f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
                   
     # modules += [
