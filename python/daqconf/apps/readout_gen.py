@@ -332,6 +332,9 @@ def get_readout_app(DRO_CONFIG=None,
                     link_1.append(5)
                     fw_tp_sid = fw_tp_id_map[FWTPID(DRO_CONFIG.host, DRO_CONFIG.card, 1)]
                     queues += [Queue(f'flxcard_1.output_{fw_tp_sid}',f"tp_datahandler_{fw_tp_sid}.raw_input",f'raw_tp_link_{fw_tp_sid}', 100000 )]
+            
+            link_0.sort()
+            link_1.sort()
 
             modules += [DAQModule(name = 'flxcard_0',
                                plugin = 'FelixCardReader',
@@ -342,7 +345,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                  dma_block_size_kb = 4,
                                                  dma_memory_size_gb = 4,
                                                  numa_id = NUMA_ID,
-                                                 links_enabled = link_0.sort()))]
+                                                 links_enabled = link_0))]
             
             if len(link_1) > 0:
                 modules += [DAQModule(name = "flxcard_1",
@@ -354,7 +357,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                      dma_block_size_kb = 4,
                                                      dma_memory_size_gb = 4,
                                                      numa_id = NUMA_ID,
-                                                     links_enabled = link_1.sort()))]
+                                                     links_enabled = link_1))]
         if not ENABLE_DPDK_READER:
             # DTPController - only required if FW TPs enabled
             if FIRMWARE_TPG_ENABLED:
