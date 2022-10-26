@@ -342,7 +342,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                  dma_block_size_kb = 4,
                                                  dma_memory_size_gb = 4,
                                                  numa_id = NUMA_ID,
-                                                 links_enabled = link_0))]
+                                                 links_enabled = link_0.sort()))]
             
             if len(link_1) > 0:
                 modules += [DAQModule(name = "flxcard_1",
@@ -354,7 +354,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                      dma_block_size_kb = 4,
                                                      dma_memory_size_gb = 4,
                                                      numa_id = NUMA_ID,
-                                                     links_enabled = link_1))]
+                                                     links_enabled = link_1.sort()))]
         if not ENABLE_DPDK_READER:
             # DTPController - only required if FW TPs enabled
             if FIRMWARE_TPG_ENABLED:
