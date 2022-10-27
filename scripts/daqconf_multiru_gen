@@ -661,6 +661,14 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     console.log(f"MDAapp config generated in {output_dir}")
 
     write_metadata_file(output_dir, "daqconf_multiru_gen", config_file)
+    import json
+    hwmap_file = open(readout.hardware_map_file, 'r')
+    hwmap_data = hwmap_file.read()
+    with open(output_dir/'hwmap.json', 'w') as f :
+        json.dump({
+            '__to_read_(rm_backslashes)': f"python -c \"import json,sys;print(json.load(open(sys.argv[1]))['hwmap'])\" {output_dir}/hwmap.json",
+            'hwmap': hwmap_data
+        }, f, indent=2)
 
     if debug:
         for name in the_system.apps:
