@@ -634,9 +634,12 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     forced_deps.append(['trigger','hsi'])
 
     def control_to_data_network(control_hostname:str) -> str:
-        if 'something' in control_hostname:
+        ## whatever is appropriate here...
+        if control_hostname == 'localhost':
+            return 'localhost'
+        elif 'np04-srv' in control_hostname:
             return control_hostname+'_dc1'
-        else
+        else:
             return control_hostname+'_100G'
 
     system_command_datas = make_system_command_datas(

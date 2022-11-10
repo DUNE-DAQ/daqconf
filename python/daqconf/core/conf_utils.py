@@ -748,7 +748,7 @@ def make_app_json(app_name, app_command_data, data_dir, verbose=False):
         with open(data_dir / f'{app_name}_{c}.json', 'w') as f:
             json.dump(app_command_data[c].pod(), f, indent=4, sort_keys=True)
 
-def make_system_command_datas(daqconf:dict the_system, forced_deps=[], verbose:bool=False, control_to_data_network:Callable[[str],str]=None) -> dict:
+def make_system_command_datas(daqconf:dict, the_system, forced_deps=[], verbose:bool=False, control_to_data_network:Callable[[str],str]=None) -> dict:
     """Generate the dictionary of commands and their data for the entire system"""
 
     # if the_system.app_start_order is None:
