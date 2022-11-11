@@ -640,14 +640,19 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     )
 
 
-    if readout.thread_pinning_file != "" and exists(readout.thread_pinning_file):
+    if readout.thread_pinning_file != "":
+        import os
+        resolved_thread_pinning_file = os.path.abspath(os.path.expanduser(os.path.expandvars(readout.thread_pinning_file)))
+        if not exists(resolved_thread_pinning_file):
+            raise RuntimeError(f'Cannot find the file {readout.thread_pinning_file} ({resolved_thread_pinning_file})')
+    
         system_command_datas['boot']['scripts'] = {
             "thread_pinning": {
                 "cmd": [
                     "readout-affinity.py --pinfile ${DUNEDAQ_THREAD_PIN_FILE}"
                 ],
                 "env": {
-                    "DUNEDAQ_THREAD_PIN_FILE": readout.thread_pinning_file,
+                    "DUNEDAQ_THREAD_PIN_FILE": resolved_thread_pinning_file,
                     "LD_LIBRARY_PATH": "getenv",
                     "PATH": "getenv"
                 }
@@ -660,6 +665,14 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     console.log(f"MDAapp config generated in {output_dir}")
 
     write_metadata_file(output_dir, "daqconf_multiru_gen", config_file)
+    import json
+    hwmap_file = open(readout.hardware_map_file, 'r')
+    hwmap_data = hwmap_file.read()
+    with open(output_dir/'hwmap.json', 'w') as f :
+        json.dump({
+            '__to_read_(rm_backslashes)': f"python -c \"import json,sys;print(json.load(open(sys.argv[1]))['hwmap'])\" {output_dir}/hwmap.json",
+            'hwmap': hwmap_data
+        }, f, indent=2)
 
     if debug:
         for name in the_system.apps:
