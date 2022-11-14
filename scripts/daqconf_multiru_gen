@@ -373,13 +373,10 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         card_override = -1
         for ex in readout.numa_config['exceptions']:
             if ex['host'] == dro_config.host and ex['card'] == dro_config.card:
-                console.log(f"Applying overrides for host {ex['host']}, card {ex['card']}")
                 numa_id = ex['numa_id']
                 latency_numa = ex['latency_buffer_numa_aware']
                 latency_preallocate = ex['latency_buffer_preallocation']
                 card_override = ex['felix_card_id']
-
-        console.log(f"Readout app {dro_config.host}{dro_config.card}, NUMA node {numa_id}, latency_numa {latency_numa}, latency_preallocate {latency_preallocate}, card_override {card_override}")
 
         the_system.apps[ru_name] = get_readout_app(
             HOST=dro_config.host,
