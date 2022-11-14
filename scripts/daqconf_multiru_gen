@@ -373,8 +373,8 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
                 numa_id = ex['numa_id']
 
         the_system.apps[ru_name] = get_readout_app(
-            HOST=dro_config.host,
-            DRO_CONFIG=dro_config,
+            HOST = dro_config.host,
+            DRO_CONFIG = dro_config,
             EMULATOR_MODE = readout.emulator_mode,
             DATA_RATE_SLOWDOWN_FACTOR = readout.data_rate_slowdown_factor,
             DATA_FILE = readout.data_file,
@@ -384,21 +384,22 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             RAW_RECORDING_OUTPUT_DIR = readout.raw_recording_output_dir,
             SOFTWARE_TPG_ENABLED = readout.enable_software_tpg,
             FIRMWARE_TPG_ENABLED = readout.enable_firmware_tpg,
-            DTP_CONNECTIONS_FILE= readout.dtp_connections_file,
-            FIRMWARE_HIT_THRESHOLD= readout.firmware_hit_threshold,
+            DTP_CONNECTIONS_FILE = readout.dtp_connections_file,
+            FIRMWARE_HIT_THRESHOLD = readout.firmware_hit_threshold,
             TPG_CHANNEL_MAP = trigger.tpg_channel_map,
             USE_FAKE_DATA_PRODUCERS = readout.use_fake_data_producers,
-            LATENCY_BUFFER_SIZE=readout.latency_buffer_size,
-            DATA_REQUEST_TIMEOUT=readout_data_request_timeout,
+            LATENCY_BUFFER_SIZE = readout.latency_buffer_size,
+            DATA_REQUEST_TIMEOUT = readout_data_request_timeout,
             SOURCEID_BROKER = sourceid_broker,
             READOUT_SENDS_TP_FRAGMENTS = readout.readout_sends_tp_fragments,
-            ENABLE_DPDK_SENDER=dpdk_sender.enable_dpdk_sender,
-            ENABLE_DPDK_READER=readout.enable_dpdk_reader,
-            EAL_ARGS=readout.eal_args,
-            BASE_SOURCE_IP=readout.base_source_ip,
-            DESTINATION_IP=readout.destination_ip,
+            ENABLE_DPDK_SENDER = dpdk_sender.enable_dpdk_sender,
+            ENABLE_DPDK_READER = readout.enable_dpdk_reader,
+            EAL_ARGS = readout.eal_args,
+            BASE_SOURCE_IP = readout.base_source_ip,
+            DESTINATION_IP = readout.destination_ip,
             NUMA_ID = numa_id,
-            DEBUG=debug)
+            ETHERNET_READOUT = readout.ethernet_readout,
+            DEBUG = debug)
 
         if boot.use_k8s:
             if readout.use_felix:

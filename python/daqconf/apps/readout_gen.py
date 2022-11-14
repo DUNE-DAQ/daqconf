@@ -74,6 +74,7 @@ def get_readout_app(DRO_CONFIG=None,
                     BASE_SOURCE_IP="10.73.139.",
                     DESTINATION_IP="10.73.139.17",
                     NUMA_ID=0,
+                    ETHERNET_READOUT=False,
                     DEBUG=False):
     """Generate the json configuration for the readout process"""
     
@@ -358,7 +359,6 @@ def get_readout_app(DRO_CONFIG=None,
                                                      dma_memory_size_gb = 4,
                                                      numa_id = NUMA_ID,
                                                      links_enabled = link_1))]
-        if not ENABLE_DPDK_READER:
             # DTPController - only required if FW TPs enabled
             if FIRMWARE_TPG_ENABLED:
                 if len(link_0) > 0:
@@ -383,27 +383,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                     pattern="",
                                                     threshold=FIRMWARE_HIT_THRESHOLD,
                                                     masks=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]) )]
-            if not FLX_INPUT:
-                fake_source = "fake_source"
-                card_reader = "FakeCardReader"
-                conf = sec.Conf(link_confs = [sec.LinkConfiguration(source_id=link.dro_source_id,
-                                                                    slowdown=DATA_RATE_SLOWDOWN_FACTOR,
-                                                                    queue_name=f"output_{link.dro_source_id}",
-                                                                    data_filename = DATA_FILE,
-                                                                    emu_frame_error_rate=0) for link in DRO_CONFIG.links],
-                                                                    queue_timeout_ms = QUEUE_POP_WAIT_MS)
-                if FRONTEND_TYPE=='pacman':
-                    fake_source = "pacman_source"
-                    card_reader = "PacmanCardReader"
-                    conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=link.dro_source_id)
-                                                 for link in DRO_CONFIG.links],
-                                  zmq_receiver_timeout = 10000)
-                modules += [DAQModule(name = fake_source,
-                                      plugin = card_reader,
-                                      conf = conf)]
-                queues += [Queue(f"{fake_source}.output_{link.dro_source_id}",f"datahandler_{link.dro_source_id}.raw_input",f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
-
-        else:
+        elif ENABLE_DPDK_READER:
             NUMBER_OF_GROUPS = 1
             NUMBER_OF_LINKS_PER_GROUP = 1
 
@@ -432,12 +412,37 @@ def get_readout_app(DRO_CONFIG=None,
             queues += [Queue(f"nic_reader.output_{link.dro_source_id}",
                              f"datahandler_{link.dro_source_id}.raw_input",
                              f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
-                  
-    # modules += [
-    #     DAQModule(name = "fragment_sender",
-    #                    plugin = "FragmentSender",
-    #                    conf = None)]
-                        
+        elif ETHERNET_READOUT:
+            # some ethernet magic???
+            # we'll need a nicreciever to control the flow of data from the ehternet card to the datalinkhandlers
+            modules += [DAQModule(name="nic_reader", plugin="NICReceiver", conf=nrc.Conf(eal_arg_list=EAL_ARGS))] # what parameters should we pass to nrc.Conf?
+
+            # create a datalinkhandler per source ID in the hardware map
+            queues += [Queue(f"nic_reader.output_{link.dro_source_id}",
+                             f"datahandler_{link.dro_source_id}.raw_input",
+                             f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
+
+        else:
+            if not FLX_INPUT:
+                fake_source = "fake_source"
+                card_reader = "FakeCardReader"
+                conf = sec.Conf(link_confs = [sec.LinkConfiguration(source_id=link.dro_source_id,
+                                                                    slowdown=DATA_RATE_SLOWDOWN_FACTOR,
+                                                                    queue_name=f"output_{link.dro_source_id}",
+                                                                    data_filename = DATA_FILE,
+                                                                    emu_frame_error_rate=0) for link in DRO_CONFIG.links],
+                                                                    queue_timeout_ms = QUEUE_POP_WAIT_MS)
+                if FRONTEND_TYPE=='pacman':
+                    fake_source = "pacman_source"
+                    card_reader = "PacmanCardReader"
+                    conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=link.dro_source_id)
+                                                 for link in DRO_CONFIG.links],
+                                  zmq_receiver_timeout = 10000)
+                modules += [DAQModule(name = fake_source,
+                                      plugin = card_reader,
+                                      conf = conf)]
+                queues += [Queue(f"{fake_source}.output_{link.dro_source_id}",f"datahandler_{link.dro_source_id}.raw_input",f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
+
     mgraph = ModuleGraph(modules, queues=queues)
 
     if FIRMWARE_TPG_ENABLED:

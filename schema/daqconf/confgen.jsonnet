@@ -105,6 +105,7 @@ local cs = {
     s.field( "base_source_ip", self.string, default='10.73.139.', doc='First part of the IP of the source'),
     s.field( "destination_ip", self.string, default='10.73.139.17', doc='IP of the destination'),
     s.field( "numa_config", self.numa_config, default=self.numa_config, doc='Configuration of FELIX NUMA IDs'),
+    s.field( "ethernet_readout", self.flag, default=false, doc='Enable ethernet based readout of the front end electronics (in place of FELIX)')
   ]),
 
   trigger_algo_config: s.record("trigger_algo_config", [
