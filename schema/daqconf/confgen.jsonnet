@@ -25,10 +25,15 @@ local cs = {
     s.field( "host", self.host, default='localhost', doc="Host of exception"),
     s.field( "card", self.count, default=0, doc="Card ID of exception"),
     s.field( "numa_id", self.count, default=0, doc="NUMA ID of exception"),
+    s.field( "felix_card_id", self.count, default=-1, doc="CARD ID override, -1 indicates no override"),
+    s.field( "latency_buffer_numa_aware", self.flag, default=false, doc="Enable NUMA-aware mode for the Latency Buffer"),
+    s.field( "latency_buffer_preallocation", self.flag, default=false, doc="Enable Latency Buffer preallocation"),
   ], doc="Exception to the default NUMA ID for FELIX cards"),
   numa_exceptions: s.sequence( "NUMAExceptions", self.numa_exception, doc="Exceptions to the default NUMA ID"),
   numa_config: s.record("numa_config", [
     s.field( "default_id", self.count, default=0, doc="Default NUMA ID for FELIX cards"),
+    s.field( "default_latency_numa_aware", self.flag, default=false, doc="Default for Latency Buffer NUMA awareness"),
+    s.field( "default_latency_preallocation", self.flag, default=false, doc="Default for Latency Buffer Preallocation"),
     s.field( "exceptions", self.numa_exceptions, default=[], doc="Exceptions to the default NUMA ID"),
   ]),
 
