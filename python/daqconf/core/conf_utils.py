@@ -11,6 +11,7 @@ from collections import namedtuple, defaultdict
 import json
 import os
 from enum import Enum
+from typing import Callable
 from graphviz import Digraph
 import networkx as nx
 import moo.otypes
@@ -501,11 +502,23 @@ def make_unique_name(base, module_list):
 
     return f"{base}_{suffix}"
 
+
+def data_network_translation(hosts:dict, control_to_data_network:Callable[[str],str]=None) -> dict:
+    hosts_data = {}
+    if not control_to_data_network:
+        hosts_data = cp.deepcopy(hosts)
+    else:
+        for app, hostname in hosts.items():
+            hosts_data[app] = control_to_data_network(hostname)
+    return hosts_data
+
 def update_with_ssh_boot_data (
         boot_data:dict,
         apps: list,
         base_command_port: int=3333,
-        verbose=False):
+        verbose=False,
+        control_to_data_network = None
+):
     """
     Update boot_data to create the final the boot.json file
     """
@@ -523,10 +536,10 @@ def update_with_ssh_boot_data (
         current_port+=1
         hosts[name] = app.host
 
-
     boot_data.update({
         "apps": apps_desc,
-        "hosts": hosts,
+        "hosts-ctrl": hosts,
+        'hosts-data': data_network_translation(hosts, control_to_data_network)
     })
 
 
@@ -537,10 +550,13 @@ def update_with_k8s_boot_data(
         image: str,
         boot_order: list,
         base_command_port: int=3333,
-        verbose=False):
+        verbose=False,
+        control_to_data_network = None):
     """
     Generate the dictionary that will become the boot.json file
     """
+    if control_to_data_network:
+        raise RuntimeError('Don\'t know how to use data network with k8s!!')
 
     apps_desc = {}
     for name, app in apps.items():
@@ -567,7 +583,8 @@ def update_with_k8s_boot_data(
 def generate_boot(
         conf,
         system,
-        verbose=False) -> dict:
+        verbose=False,
+        control_to_data_network = None) -> dict:
     """
     Generate the dictionary that will become the boot.json file
     """
@@ -675,6 +692,7 @@ def generate_boot(
             apps = system.apps,
             base_command_port = conf.base_command_port,
             verbose = verbose,
+            control_to_data_network = control_to_data_network,
         )
     else:
         # ARGGGGG (MASSIVE WARNING SIGN HERE)
@@ -690,6 +708,7 @@ def generate_boot(
             image = conf.image,
             base_command_port = conf.base_command_port,
             verbose = verbose,
+            control_to_data_network = control_to_data_network,
         )
     return boot
 
@@ -739,7 +758,7 @@ def make_app_json(app_name, app_command_data, data_dir, verbose=False):
         with open(data_dir / f'{app_name}_{c}.json', 'w') as f:
             json.dump(app_command_data[c].pod(), f, indent=4, sort_keys=True)
 
-def make_system_command_datas(daqconf, the_system, forced_deps=[], verbose=False):
+def make_system_command_datas(daqconf:dict, the_system, forced_deps=[], verbose:bool=False, control_to_data_network:Callable[[str],str]=None) -> dict:
     """Generate the dictionary of commands and their data for the entire system"""
 
     # if the_system.app_start_order is None:
@@ -768,6 +787,7 @@ def make_system_command_datas(daqconf, the_system, forced_deps=[], verbose=False
         conf = daqconf,
         system = the_system,
         verbose = verbose,
+        control_to_data_network=control_to_data_network
     )
 
     return system_command_datas
