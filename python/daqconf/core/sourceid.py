@@ -168,7 +168,7 @@ def get_tpg_mode(enable_fw_tpg, enable_software_tpg):
 
 def source_id_raw_str(source_id: SourceID):
     """Get a string representation of a SourceID suitable for using in queue names"""
-    return f"sourceid{SourceID.subsystem_to_string(source_id.subsystem)}_{source_id.id}"
+    return source_id.to_string()
 
 def ensure_subsystem_string(subsystem):
     if isinstance(subsystem, str):

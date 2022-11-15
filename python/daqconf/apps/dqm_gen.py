@@ -54,6 +54,7 @@ def get_dqm_app(DQM_IMPL='',
                 DF_ALGS='raw std fourier_plane',
                 DF_TIME_WINDOW=0,
                 DRO_CONFIG=None,
+                APP_NAME="dqm",
                 DEBUG=False,
                 ):
 
@@ -80,11 +81,11 @@ def get_dqm_app(DQM_IMPL='',
 
         modules += [DAQModule(name='trb_dqm',
                             plugin='TriggerRecordBuilder',
-                            conf=trb.ConfParams(# This needs to be done in connect_fragment_producers
+                            conf=trb.ConfParams(
                                 general_queue_timeout=QUEUE_POP_WAIT_MS,
                                 source_id = DQMIDX,
-                                max_time_window=0,
-                                map=trb.mapsourceidconnections([])
+                                reply_connection_name = "",
+                                max_time_window=0
                             ))]
 
     modules += [DAQModule(name='dqmprocessor',

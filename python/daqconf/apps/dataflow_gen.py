@@ -13,26 +13,17 @@ moo.otypes.load_types('appfwk/app.jsonnet')
 moo.otypes.load_types('dfmodules/triggerrecordbuilder.jsonnet')
 moo.otypes.load_types('dfmodules/datawriter.jsonnet')
 moo.otypes.load_types('dfmodules/hdf5datastore.jsonnet')
-moo.otypes.load_types('dfmodules/fragmentreceiver.jsonnet')
-moo.otypes.load_types('dfmodules/triggerdecisionreceiver.jsonnet')
 
 
 # Import new types
-import dunedaq.cmdlib.cmd as basecmd # AddressedCmd,
-import dunedaq.rcif.cmd as rccmd # AddressedCmd,
-import dunedaq.appfwk.cmd as cmd # AddressedCmd,
-import dunedaq.appfwk.app as app # AddressedCmd,
 import dunedaq.dfmodules.triggerrecordbuilder as trb
 import dunedaq.dfmodules.datawriter as dw
 import dunedaq.hdf5libs.hdf5filelayout as h5fl
 import dunedaq.dfmodules.hdf5datastore as hdf5ds
-import dunedaq.dfmodules.fragmentreceiver as frcv
-import dunedaq.dfmodules.triggerdecisionreceiver as tdrcv
 
-from appfwk.utils import acmd, mcmd, mrccmd, mspec
 from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
-from daqconf.core.conf_utils import Direction, data_request_endpoint_name
+from daqconf.core.conf_utils import Direction
 
 # Time to wait on pop()
 QUEUE_POP_WAIT_MS = 100
@@ -41,7 +32,6 @@ def get_dataflow_app(HOSTIDX=0,
                      OUTPUT_PATHS=["."],
                      APP_NAME="dataflow0",
                      OPERATIONAL_ENVIRONMENT="swtest",
-                     TPC_REGION_NAME_PREFIX="APA",
                      MAX_FILE_SIZE=4*1024*1024*1024,
                      MAX_TRIGGER_RECORD_WINDOW=0,
                      MAX_EXPECTED_TR_SEQUENCES=1,
@@ -56,16 +46,17 @@ def get_dataflow_app(HOSTIDX=0,
 
     modules = []
 
+    if DEBUG: print(f"dataflow{HOSTIDX}: Adding TRB instance")
     modules += [DAQModule(name = 'trb',
                           plugin = 'TriggerRecordBuilder',
                           conf = trb.ConfParams(general_queue_timeout=QUEUE_POP_WAIT_MS,
                                                 reply_connection_name = "",
                                                 max_time_window=MAX_TRIGGER_RECORD_WINDOW,
                                                 source_id = HOSTIDX,
-                                                trigger_record_timeout_ms=TRB_TIMEOUT,
-                                                map=trb.mapsourceidconnections([])))] # We patch this up in connect_fragment_producers
+                                                trigger_record_timeout_ms=TRB_TIMEOUT))]
                       
-    for i in range(len(OUTPUT_PATHS)):                      
+    for i in range(len(OUTPUT_PATHS)):     
+        if DEBUG: print(f"dataflow{HOSTIDX}: Adding datawriter{i} instance")                 
         modules += [DAQModule(name = f'datawriter_{i}',
                        plugin = 'DataWriter',
                        conf = dw.ConfParams(decision_connection=f"trigger_decision_{HOSTIDX}",
