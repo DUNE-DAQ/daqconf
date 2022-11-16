@@ -20,6 +20,7 @@ local cs = {
   tpg_channel_map: s.enum(     "TPGChannelMap", ["VDColdboxChannelMap", "ProtoDUNESP1ChannelMap", "PD2HDChannelMap", "HDColdboxChannelMap"]),
   dqm_channel_map: s.enum(     "DQMChannelMap", ['HD', 'VD', 'PD2HD', 'HDCB']),
   dqm_params:      s.sequence( "DQMParams",     self.count, doc="Parameters for DQM (fixme)"),
+  tc_types:        s.sequence( "TCTypes",       self.count, doc="List of TC types"),
   
   numa_exception:  s.record( "NUMAException", [
     s.field( "host", self.host, default='localhost', doc="Host of exception"),
@@ -137,7 +138,8 @@ local cs = {
     s.field( "tpg_channel_map", self.tpg_channel_map, default="ProtoDUNESP1ChannelMap", doc="Channel map for software TPG"),
     s.field( "mlt_buffer_timeout", self.count, default=100, doc="Timeout (buffer) to wait for new overlapping TCs before sending TD"),
     s.field( "mlt_send_timed_out_tds", self.flag, default=false, doc="Option to drop TD if TC comes out of timeout window"),
-    s.field( "mlt_max_td_length_ms",self.count, default=1000, doc="Maximum allowed time length [ms] for a readout window of a single TD"),
+    s.field( "mlt_max_td_length_ms", self.count, default=1000, doc="Maximum allowed time length [ms] for a readout window of a single TD"),
+    s.field( "mlt_ignore_tc", self.tc_types, default=[], doc="Optional list of TC types to be ignored in MLT"),
   ]),
 
   dataflowapp: s.record("dataflowapp",[
