@@ -142,7 +142,6 @@ local cs = {
 
   dataflowapp: s.record("dataflowapp",[
     s.field("app_name", self.string, default="dataflow0"),
-    s.field( "token_count",self.count, default=10, doc="Number of tokens this dataflow app gives to DFO. Former -c"),
     s.field( "output_paths",self.paths, default=['.'], doc="Location(s) for the dataflow app to write data. Former -o"),
     s.field( "host_df", self.host, default='localhost'),
     s.field( "max_file_size",self.count, default=4*1024*1024*1024, doc="The size threshold when raw data files are closed (in bytes)"),
@@ -154,6 +153,7 @@ local cs = {
   dataflow: s.record("dataflow", [
     s.field( "host_dfo", self.host, default='localhost', doc="Sets the host for the DFO app"),
     s.field("apps", self.dataflowapps, default=[], doc="Configuration for the dataflow apps (see dataflowapp for options)"),
+    s.field( "token_count",self.count, default=10, doc="Number of tokens the dataflow apps give to the DFO. Former -c"),
   ]),
 
   dqm: s.record("dqm", [

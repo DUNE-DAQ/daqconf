@@ -36,19 +36,20 @@ def make_moo_record(conf_dict,name,path='temptypes'):
     moo.otypes.make_type(schema='record', fields=fields, name=name, path=path)
 
 #===============================================================================
-def get_dfo_app(DF_CONF : dict = {},
+def get_dfo_app(FREE_COUNT=1,
+                BUSY_COUNT=2,
+                DF_CONF : dict = {},
                 STOP_TIMEOUT: int = 10000,
                 HOST="localhost",
                 DEBUG=False):
 
     modules = []
-
-    df_app_configs = [dfo.app_config(connection_uid=f"trigger_decision_{dfc.source_id}",
-                                     thresholds=dfo.busy_thresholds(free=max(1, int(dfc.token_count/2)),
-                                                                    busy=dfc.token_count)) for dfc in DF_CONF.values()]
+    
     modules += [DAQModule(name = "dfo",
                           plugin = "DataFlowOrchestrator",
-                          conf = dfo.ConfParams(dataflow_applications=df_app_configs,
+                          conf = dfo.ConfParams(
+                                     thresholds=dfo.busy_thresholds(free=FREE_COUNT,
+                                                                    busy=BUSY_COUNT),
                                                 stop_timeout=STOP_TIMEOUT))]
 
     mgraph = ModuleGraph(modules)

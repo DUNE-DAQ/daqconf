@@ -354,6 +354,8 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         DEBUG=debug)
 
     the_system.apps['dfo'] = get_dfo_app(
+        FREE_COUNT = max(1, dataflow.token_count / 2),
+        BUSY_COUNT = dataflow.token_count,
         DF_CONF = appconfig_df,
         STOP_TIMEOUT = dfo_stop_timeout,
         HOST=dataflow.host_dfo,
@@ -465,7 +467,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             MAX_FILE_SIZE = df_config.max_file_size,
             MAX_TRIGGER_RECORD_WINDOW = df_config.max_trigger_record_window,
             MAX_EXPECTED_TR_SEQUENCES = max_expected_tr_sequences,
-            TOKEN_COUNT = df_config.token_count,
+            TOKEN_COUNT = dataflow.token_count,
             TRB_TIMEOUT = trigger_record_building_timeout,
             HOST=df_config.host_df,
             HAS_DQM=dqm.enable_dqm,
