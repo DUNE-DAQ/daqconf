@@ -631,7 +631,7 @@ def generate_boot(
                 "TRACE_FILE": "getenv:/tmp/trace_buffer_{APP_HOST}_{DUNEDAQ_PARTITION}",
                 "CMD_FAC": "rest://localhost:{APP_PORT}",
                 "CONNECTION_SERVER": conf.connectivity_service_host,
-                "CONNECTION_PORT": conf.connectivity_service_port,
+                "CONNECTION_PORT": f"{conf.connectivity_service_port}",
                 "INFO_SVC": info_svc_uri,
             },
             "cmd":"daq_application",
