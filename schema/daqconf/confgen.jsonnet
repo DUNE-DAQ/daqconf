@@ -26,10 +26,15 @@ local cs = {
     s.field( "host", self.host, default='localhost', doc="Host of exception"),
     s.field( "card", self.count, default=0, doc="Card ID of exception"),
     s.field( "numa_id", self.count, default=0, doc="NUMA ID of exception"),
+    s.field( "felix_card_id", self.count, default=-1, doc="CARD ID override, -1 indicates no override"),
+    s.field( "latency_buffer_numa_aware", self.flag, default=false, doc="Enable NUMA-aware mode for the Latency Buffer"),
+    s.field( "latency_buffer_preallocation", self.flag, default=false, doc="Enable Latency Buffer preallocation"),
   ], doc="Exception to the default NUMA ID for FELIX cards"),
   numa_exceptions: s.sequence( "NUMAExceptions", self.numa_exception, doc="Exceptions to the default NUMA ID"),
   numa_config: s.record("numa_config", [
     s.field( "default_id", self.count, default=0, doc="Default NUMA ID for FELIX cards"),
+    s.field( "default_latency_numa_aware", self.flag, default=false, doc="Default for Latency Buffer NUMA awareness"),
+    s.field( "default_latency_preallocation", self.flag, default=false, doc="Default for Latency Buffer Preallocation"),
     s.field( "exceptions", self.numa_exceptions, default=[], doc="Exceptions to the default NUMA ID"),
   ]),
 
@@ -140,6 +145,7 @@ local cs = {
     s.field( "output_paths",self.paths, default=['.'], doc="Location(s) for the dataflow app to write data. Former -o"),
     s.field( "host_df", self.host, default='localhost'),
     s.field( "max_file_size",self.count, default=4*1024*1024*1024, doc="The size threshold when raw data files are closed (in bytes)"),
+    s.field( "data_store_mode", self.string, default="all-per-file", doc="all-per-file or one-event-per-file"),
     s.field( "max_trigger_record_window",self.count, default=0, doc="The maximum size for the window of data that will included in a single TriggerRecord (in ticks). Readout windows that are longer than this size will result in TriggerRecords being split into a sequence of TRs. A zero value for this parameter means no splitting."),
 
   ], doc="Element of the dataflow.apps array"),
