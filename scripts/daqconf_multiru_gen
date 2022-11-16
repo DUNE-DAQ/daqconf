@@ -483,7 +483,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         if dqm.enable_dqm:
             dqm_name = f"dqmdf{dfidx}"
             dqm_df_app_names.append(dqm_name)
-            dqm_links = [link.dro_source_id for link in dro_config.links for dro_config in dro_infos]
+            dqm_links = [link.dro_source_id for dro_config in dro_infos for link in dro_config.links]
             the_system.apps[dqm_name] = get_dqm_app(
                 DQM_IMPL=dqm.impl,
                 DATA_RATE_SLOWDOWN_FACTOR = readout.data_rate_slowdown_factor,
