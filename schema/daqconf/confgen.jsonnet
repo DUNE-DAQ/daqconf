@@ -116,6 +116,12 @@ local cs = {
     s.field("window_length", self.count, default=10000),
     s.field("adjacency_threshold", self.count, default=6),
     s.field("adj_tolerance", self.count, default=4),
+    s.field("trigger_on_adc", self.flag, default=false),
+    s.field("trigger_on_n_channels", self.flag, default=false),
+    s.field("trigger_on_adjacency", self.flag, default=true),
+    s.field("adc_threshold", self.count, default=10000),
+    s.field("n_channels_threshold", self.count, default=8),
+    s.field("print_tp_info", self.flag, default=false),
   ]),
 
   trigger: s.record("trigger",[
