@@ -403,7 +403,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         if boot.use_k8s:
             if readout.use_felix:
                 the_system.apps[ru_name].resources = {
-                    "felix.cern/flx0-data": "1", # requesting FLX0
+                    f"felix.cern/flx{dro_config.card}-data": "1", # requesting FLX0
                     "memory": "32Gi" # yes bro
                 }
             # TODO: HACK, can't do that any other way now, please give me a nice asset manager
