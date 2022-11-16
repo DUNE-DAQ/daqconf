@@ -65,6 +65,7 @@ def get_readout_app(DRO_CONFIG=None,
                     USE_FAKE_DATA_PRODUCERS=False,
                     LATENCY_BUFFER_SIZE=499968,
                     DATA_REQUEST_TIMEOUT=1000,
+                    FRAGMENT_SEND_TIMEOUT=10,
                     HOST="localhost",
                     SOURCEID_BROKER : SourceIDBroker = None,
                     READOUT_SENDS_TP_FRAGMENTS=False,
@@ -175,6 +176,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                                                               # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                               stream_buffer_size = 100 if FRONTEND_TYPE=='pacman' else 8388608,
                                                                                               request_timeout_ms = DATA_REQUEST_TIMEOUT,
+                                                                                              fragment_send_timeout_ms = FRAGMENT_SEND_TIMEOUT,
                                                                                               enable_raw_recording = False)))]
     if FIRMWARE_TPG_ENABLED:
         assert(len(fw_tp_out_id_map) <= 2)
@@ -199,6 +201,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                                                               det_id = 1,
                                                                                               stream_buffer_size = 100 if FRONTEND_TYPE=='pacman' else 8388608,
                                                                                               request_timeout_ms = DATA_REQUEST_TIMEOUT,
+                                                                                              fragment_send_timeout_ms = FRAGMENT_SEND_TIMEOUT,
                                                                                               enable_raw_recording = False)))]
             # for sid in fw_tp_id_map.values():
             queues += [Queue(f"tp_datahandler_{tp}.errored_frames", 'errored_frame_consumer.input_queue', "errored_frames_q")]
@@ -237,6 +240,7 @@ def get_readout_app(DRO_CONFIG=None,
                                           output_file = path.join(RAW_RECORDING_OUTPUT_DIR, f"output_tp_{RUIDX}_{tp}.out"),
                                           stream_buffer_size = 8388608,
                                           request_timeout_ms = DATA_REQUEST_TIMEOUT,
+                                          fragment_send_timeout_ms = FRAGMENT_SEND_TIMEOUT,
                                           enable_raw_recording = RAW_RECORDING_ENABLED,
                                       )))]
 
@@ -310,6 +314,7 @@ def get_readout_app(DRO_CONFIG=None,
                                           output_file = path.join(RAW_RECORDING_OUTPUT_DIR, f"output_{RUIDX}_{link.dro_source_id}.out"),
                                           stream_buffer_size = 8388608,
                                           request_timeout_ms = DATA_REQUEST_TIMEOUT,
+                                          fragment_send_timeout_ms = FRAGMENT_SEND_TIMEOUT,
                                           enable_raw_recording = RAW_RECORDING_ENABLED,
                                       )))]
 
