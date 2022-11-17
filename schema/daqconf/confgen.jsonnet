@@ -44,7 +44,7 @@ local cs = {
     s.field( "opmon_impl", self.monitoring_dest, default='local', doc="Info collector service implementation to use"),
     s.field( "ers_impl", self.monitoring_dest, default='local', doc="ERS destination (Kafka used for cern and pocket)"),
     s.field( "pocket_url", self.host, default='127.0.0.1', doc="URL for connecting to Pocket services"),
-    s.field( "image", self.string, default="", doc="Which docker image to use"),
+    s.field( "image", self.string, default="dunedaq/c8-minimal", doc="Which docker image to use"),
     s.field( "use_k8s", self.flag, default=false, doc="Whether to use k8s"),
     s.field( "op_env", self.string, default='swtest', doc="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files"),
     s.field( "data_request_timeout_ms", self.count, default=1000, doc="The baseline data request timeout that will be used by modules in the Readout and Trigger subsystems (i.e. any module that produces data fragments). Downstream timeouts, such as the trigger-record-building timeout, are derived from this."),
