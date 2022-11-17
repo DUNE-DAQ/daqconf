@@ -418,7 +418,7 @@ def get_readout_app(DRO_CONFIG=None,
             # modules += [DAQModule(name="nic_reader", plugin="NICReceiver", conf=nrc.Conf(eal_arg_list=EAL_ARGS))] # what parameters should we pass to nrc.Conf?
 
             # create a datalinkhandler per source ID in the hardware map
-            queues += [Queue(f"nic_reader.output_{link.dro_source_id}",
+            queues += [Queue(f"eth_reader.output_{link.dro_source_id}",
                              f"datahandler_{link.dro_source_id}.raw_input",
                              f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
 
