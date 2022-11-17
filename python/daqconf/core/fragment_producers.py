@@ -9,8 +9,6 @@ import moo.otypes
 import re
 
 moo.otypes.load_types('trigger/moduleleveltrigger.jsonnet')
-moo.otypes.load_types('dfmodules/fragmentreceiver.jsonnet')
-moo.otypes.load_types('dfmodules/requestreceiver.jsonnet')
 moo.otypes.load_types('dfmodules/triggerrecordbuilder.jsonnet')
 
 import dunedaq.trigger.moduleleveltrigger as mlt

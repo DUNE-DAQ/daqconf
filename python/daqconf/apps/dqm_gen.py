@@ -9,7 +9,6 @@ moo.otypes.load_types('rcif/cmd.jsonnet')
 moo.otypes.load_types('appfwk/cmd.jsonnet')
 moo.otypes.load_types('appfwk/app.jsonnet')
 moo.otypes.load_types('dfmodules/triggerrecordbuilder.jsonnet')
-moo.otypes.load_types('dfmodules/fragmentreceiver.jsonnet')
 moo.otypes.load_types('dqm/dqmprocessor.jsonnet')
 
 # Import new types
@@ -18,7 +17,6 @@ import dunedaq.rcif.cmd as rccmd # AddressedCmd,
 import dunedaq.appfwk.cmd as cmd # AddressedCmd,
 import dunedaq.appfwk.app as app # AddressedCmd,
 import dunedaq.dfmodules.triggerrecordbuilder as trb
-import dunedaq.dfmodules.fragmentreceiver as frcv
 import dunedaq.dqm.dqmprocessor as dqmprocessor
 
 from appfwk.utils import acmd, mcmd, mrccmd, mspec
