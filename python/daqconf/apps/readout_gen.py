@@ -415,7 +415,7 @@ def get_readout_app(DRO_CONFIG=None,
         elif ETHERNET_READOUT:
             # some ethernet magic???
             # we'll need a nicreciever to control the flow of data from the ehternet card to the datalinkhandlers
-            modules += [DAQModule(name="nic_reader", plugin="NICReceiver", conf=nrc.Conf(eal_arg_list=EAL_ARGS))] # what parameters should we pass to nrc.Conf?
+            # modules += [DAQModule(name="nic_reader", plugin="NICReceiver", conf=nrc.Conf(eal_arg_list=EAL_ARGS))] # what parameters should we pass to nrc.Conf?
 
             # create a datalinkhandler per source ID in the hardware map
             queues += [Queue(f"nic_reader.output_{link.dro_source_id}",
