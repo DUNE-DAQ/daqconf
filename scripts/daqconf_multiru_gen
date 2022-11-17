@@ -368,9 +368,15 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         ru_app_names.append(ru_name)
 
         numa_id = readout.numa_config['default_id']
+        latency_numa = readout.numa_config['default_latency_numa_aware']
+        latency_preallocate = readout.numa_config['default_latency_preallocation']
+        card_override = -1
         for ex in readout.numa_config['exceptions']:
             if ex['host'] == dro_config.host and ex['card'] == dro_config.card:
                 numa_id = ex['numa_id']
+                latency_numa = ex['latency_buffer_numa_aware']
+                latency_preallocate = ex['latency_buffer_preallocation']
+                card_override = ex['felix_card_id']
 
         the_system.apps[ru_name] = get_readout_app(
             HOST=dro_config.host,
@@ -390,6 +396,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             USE_FAKE_DATA_PRODUCERS = readout.use_fake_data_producers,
             LATENCY_BUFFER_SIZE=readout.latency_buffer_size,
             DATA_REQUEST_TIMEOUT=readout_data_request_timeout,
+            FRAGMENT_SEND_TIMEOUT=readout.fragment_send_timeout_ms,
             SOURCEID_BROKER = sourceid_broker,
             READOUT_SENDS_TP_FRAGMENTS = readout.readout_sends_tp_fragments,
             ENABLE_DPDK_SENDER=dpdk_sender.enable_dpdk_sender,
@@ -398,12 +405,16 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             BASE_SOURCE_IP=readout.base_source_ip,
             DESTINATION_IP=readout.destination_ip,
             NUMA_ID = numa_id,
+            LATENCY_BUFFER_NUMA_AWARE = latency_numa,
+            LATENCY_BUFFER_ALLOCATION_MODE = latency_preallocate,
+            CARD_ID_OVERRIDE = card_override,
             DEBUG=debug)
 
         if boot.use_k8s:
             if readout.use_felix:
+                c = card_override if card_override != -1 else dro_config.card
                 the_system.apps[ru_name].resources = {
-                    "felix.cern/flx0-data": "1", # requesting FLX0
+                    f"felix.cern/flx{c}-data": "1", # requesting FLX{c}
                     "memory": "32Gi" # yes bro
                 }
             # TODO: HACK, can't do that any other way now, please give me a nice asset manager
@@ -453,6 +464,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             OUTPUT_PATHS = df_config.output_paths,
             APP_NAME=app_name,
             OPERATIONAL_ENVIRONMENT = boot.op_env,
+            DATA_STORE_MODE=df_config.data_store_mode,
             MAX_FILE_SIZE = df_config.max_file_size,
             MAX_TRIGGER_RECORD_WINDOW = df_config.max_trigger_record_window,
             MAX_EXPECTED_TR_SEQUENCES = max_expected_tr_sequences,
