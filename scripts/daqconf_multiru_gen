@@ -8,8 +8,8 @@ from daqconf.core.system import System
 from daqconf.core.metadata import write_metadata_file
 from daqconf.core.sourceid import SourceIDBroker, get_tpg_mode
 from daqconf.core.config_file import generate_cli_from_schema
-from detchannelmaps._daq_detchannelmaps_py import HardwareMapService
-from detdataformats._daq_detdataformats_py import *
+from detchannelmaps import HardwareMapService
+from detdataformats import *
 
 console = Console()
 
@@ -359,7 +359,6 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         HOST=dataflow.host_dfo,
         DEBUG=debug)
 
-
     ru_app_names=[]
     dqm_app_names = []
     for dro_idx,dro_config in enumerate(dro_infos):
@@ -398,7 +397,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             BASE_SOURCE_IP = readout.base_source_ip,
             DESTINATION_IP = readout.destination_ip,
             NUMA_ID = numa_id,
-            ETHERNET_READOUT = readout.ethernet_readout,
+            DEIMOS_READOUT = readout.deimos_readout,
             DEBUG = debug)
 
         if boot.use_k8s:
@@ -613,7 +612,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     ##################################################################################
 
     # Make boot.json config
-    from daqconf.core.conf_utils import make_system_command_datas,generate_boot, write_json_files
+    from daqconf.core.conf_utils import make_system_command_datas, generate_boot, write_json_files
 
     # HACK: Make sure RUs start after trigger
     forced_deps = []

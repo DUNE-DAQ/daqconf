@@ -609,6 +609,7 @@ def generate_boot(
                 "DETCHANNELMAPS_SHARE": "getenv",
                 "DUNEDAQ_SHARE_PATH": "getenv",
                 "TIMING_SHARE": "getenv",
+                "DEIMOSLIBS_SHARE": "getenv",
                 "LD_LIBRARY_PATH": "getenv",
                 "PATH": "getenv",
                 "TRACE_FILE": "getenv:/tmp/trace_buffer_{APP_HOST}_{DUNEDAQ_PARTITION}",
@@ -650,6 +651,9 @@ def generate_boot(
         "exec": daq_app_specs
     }
 
+    console.log('-'*99)
+    console.log(daq_app_specs)
+    console.log('-'*99)
     if use_kafka:
         boot["env"]["DUNEDAQ_ERS_STREAM_LIBS"] = "erskafka"
 

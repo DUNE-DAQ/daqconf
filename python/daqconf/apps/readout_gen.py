@@ -16,7 +16,10 @@ moo.otypes.load_types('readoutlibs/readoutconfig.jsonnet')
 moo.otypes.load_types('lbrulibs/pacmancardreader.jsonnet')
 moo.otypes.load_types('dfmodules/fakedataprod.jsonnet')
 moo.otypes.load_types("dpdklibs/nicreader.jsonnet")
-
+# Deimos
+moo.otypes.load_types('deimoslibs/udpcardreader.jsonnet')
+moo.otypes.load_types('deimoslibs/dmaparams.jsonnet')
+moo.otypes.load_types('deimoslibs/udpparams.jsonnet')
 
 # Import new types
 import dunedaq.cmdlib.cmd as basecmd # AddressedCmd,
@@ -31,6 +34,10 @@ import dunedaq.lbrulibs.pacmancardreader as pcr
 # import dunedaq.dfmodules.triggerrecordbuilder as trb
 import dunedaq.dfmodules.fakedataprod as fdp
 import dunedaq.dpdklibs.nicreader as nrc
+# Deimos
+import dunedaq.deimoslibs.udpcardreader as udpcr
+import dunedaq.deimoslibs.dmaparams as dma
+import dunedaq.deimoslibs.udpparams as udp
 
 from appfwk.utils import acmd, mcmd, mrccmd, mspec
 from os import path
@@ -41,7 +48,7 @@ from daqconf.core.sourceid import TPInfo, SourceIDBroker, FWTPID, FWTPOUTID
 from daqconf.core.daqmodule import DAQModule
 from daqconf.core.app import App,ModuleGraph
 
-from detdataformats._daq_detdataformats_py import *
+from detdataformats import *
 
 # Time to wait on pop()
 QUEUE_POP_WAIT_MS = 10 # This affects stop time, as each link will wait this long before stop
@@ -74,10 +81,13 @@ def get_readout_app(DRO_CONFIG=None,
                     BASE_SOURCE_IP="10.73.139.",
                     DESTINATION_IP="10.73.139.17",
                     NUMA_ID=0,
-                    ETHERNET_READOUT=False,
+                    DEIMOS_READOUT=False,
                     DEBUG=False):
     """Generate the json configuration for the readout process"""
     
+    print(
+      f"AAAA 00{DEIMOS_READOUT}"
+    )
     if DRO_CONFIG is None:
         raise RuntimeError(f"ERROR: DRO_CONFIG is None!")
 
@@ -307,7 +317,7 @@ def get_readout_app(DRO_CONFIG=None,
                                           enable_raw_recording = RAW_RECORDING_ENABLED,
                                       )))]
 
-                    
+
     if not USE_FAKE_DATA_PRODUCERS:
         if FLX_INPUT:
             link_0 = []
@@ -412,13 +422,25 @@ def get_readout_app(DRO_CONFIG=None,
             queues += [Queue(f"nic_reader.output_{link.dro_source_id}",
                              f"datahandler_{link.dro_source_id}.raw_input",
                              f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
-        elif ETHERNET_READOUT:
-            # some ethernet magic???
-            # we'll need a nicreciever to control the flow of data from the ehternet card to the datalinkhandlers
-            modules += [DAQModule(name="nic_reader", plugin="NICReceiver", conf=nrc.Conf(eal_arg_list=EAL_ARGS))] # what parameters should we pass to nrc.Conf?
+        elif DEIMOS_READOUT:
+
+            # in TDE legacy mode the firmware generates up to 64 routes, but only 48 should be populated
+            route_map = []
+            route_map += list(range( 0, 12))+[99]*4;
+            route_map += list(range(16, 28))+[99]*4;
+            route_map += list(range(32, 44))+[99]*4;
+            route_map += list(range(48, 60))+[99]*4;
+
+            conf = udpcr.Conf()
+            conf.udp_io = udp.UDPIOConf()
+            conf.dma_pool = dma.CMEMPoolCfg()
+            conf.dma_rx_eng = dma.RXEngineConfig(route_map=route_map)
+
+
+            modules += [DAQModule(name="kharon_reader", plugin="UDPCardReader", conf=conf)] # what parameters should we pass to nrc.Conf?
 
             # create a datalinkhandler per source ID in the hardware map
-            queues += [Queue(f"nic_reader.output_{link.dro_source_id}",
+            queues += [Queue(f"kharon_reader.output_{link.dro_source_id}",
                              f"datahandler_{link.dro_source_id}.raw_input",
                              f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
 
