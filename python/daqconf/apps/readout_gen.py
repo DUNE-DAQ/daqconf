@@ -441,6 +441,7 @@ def get_readout_app(DRO_CONFIG=None,
 
             # create a datalinkhandler per source ID in the hardware map
             queues += [Queue(f"kharon_reader.output_{link.dro_source_id}",
+
                              f"datahandler_{link.dro_source_id}.raw_input",
                              f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
 
