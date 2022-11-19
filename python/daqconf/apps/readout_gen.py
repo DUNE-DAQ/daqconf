@@ -17,7 +17,7 @@ moo.otypes.load_types('lbrulibs/pacmancardreader.jsonnet')
 moo.otypes.load_types('dfmodules/fakedataprod.jsonnet')
 moo.otypes.load_types("dpdklibs/nicreader.jsonnet")
 # Deimos
-moo.otypes.load_types('deimoslibs/udpcardreader.jsonnet')
+moo.otypes.load_types('deimoslibs/kharoncardreader.jsonnet')
 moo.otypes.load_types('deimoslibs/dmaparams.jsonnet')
 moo.otypes.load_types('deimoslibs/udpparams.jsonnet')
 
@@ -35,7 +35,7 @@ import dunedaq.lbrulibs.pacmancardreader as pcr
 import dunedaq.dfmodules.fakedataprod as fdp
 import dunedaq.dpdklibs.nicreader as nrc
 # Deimos
-import dunedaq.deimoslibs.udpcardreader as udpcr
+import dunedaq.deimoslibs.kharoncardreader as khcr
 import dunedaq.deimoslibs.dmaparams as dma
 import dunedaq.deimoslibs.udpparams as udp
 
@@ -431,13 +431,13 @@ def get_readout_app(DRO_CONFIG=None,
             route_map += list(range(32, 44))+[99]*4;
             route_map += list(range(48, 60))+[99]*4;
 
-            conf = udpcr.Conf()
+            conf = khcr.Conf()
             conf.udp_io = udp.UDPIOConf()
             conf.dma_pool = dma.CMEMPoolCfg()
             conf.dma_rx_eng = dma.RXEngineConfig(route_map=route_map)
 
 
-            modules += [DAQModule(name="kharon_reader", plugin="UDPCardReader", conf=conf)] # what parameters should we pass to nrc.Conf?
+            modules += [DAQModule(name="kharon_reader", plugin="KharonCardReader", conf=conf)] # what parameters should we pass to nrc.Conf?
 
             # create a datalinkhandler per source ID in the hardware map
             queues += [Queue(f"kharon_reader.output_{link.dro_source_id}",
