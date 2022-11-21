@@ -394,6 +394,9 @@ def make_app_command_data(system, app, appkey, verbose=False, use_k8s=False):
     and actually making the command data objects for nanorc.
 
     """
+    if '_' in appkey:
+        raise RuntimeError(f'Application "{appkey}" is invalid, it shouldn\'t contain the character "_". Change its name.')
+
 
     if verbose:
         console.log(f"Making app command data for {app.name}")
@@ -653,8 +656,18 @@ def generate_boot(
     if conf.disable_trace:
         del boot["exec"][daq_app_exec_name]["env"]["TRACE_FILE"]
 
-    if release_or_dev() == 'rel':
-        boot['rte_script'] = get_rte_script()
+    match conf.RTE_script_settings:
+        case 0:
+            if (release_or_dev() == 'rel'):
+                boot['rte_script'] = get_rte_script()
+
+        case 1:
+            boot['rte_script'] = get_rte_script()
+
+        case 2:
+            pass
+
+    
 
     if not conf.use_k8s:
         update_with_ssh_boot_data(
@@ -766,7 +779,7 @@ def write_json_files(app_command_datas, system_command_datas, json_dir, verbose=
     # Backwards compatibility
     if isinstance(json_dir, str):
         json_dir = Path(json_dir)
-    
+
     console.rule("JSON file creation")
 
     data_dir = json_dir / 'data'
@@ -791,37 +804,34 @@ def get_version():
         raise RuntimeError('Utils: dunedaq version not in the variable env DUNE_DAQ_BASE_RELEASE! Exit nanorc and\nexport DUNE_DAQ_BASE_RELEASE=dunedaq-vX.XX.XX\n')
     return version
 
-def nightly_or_release(version):
-    from re import match
-    if   match('^N[0-9]{2}-[0-9]{2}-[0-9]{2}$'              , version): return 'nightly' # N22-04-15
-    elif match('^N[A-Z][0-9]{2}-[0-9]{2}-[0-9]{2}$'         , version): return 'nightly' # NT22-04-15
-    elif match('^dunedaq-v[0-9]*.[0-9]*.[0-9]*'             , version): return 'rel'     # normal releases (dunedaq-v3.1.1)
-    elif match('^dunedaq-v[0-9]*.[0-9]*.[0-9]*-[a-zA-Z0-9]*', version): return 'rel'     # weird releases (dunedaq-v3.1.1-rc1)
+def get_releases_dir():
+    from os import getenv
+    releases_dir = getenv("SPACK_RELEASES_DIR")
+    if not releases_dir:
+        raise RuntimeError('Utils: cannot get env SPACK_RELEASES_DIR! Exit nanorc and\nrun dbt-workarea-env or dbt-setup-release.')
+    return releases_dir
 
 def release_or_dev():
     from os import getenv
-    plugins_path = getenv("CET_PLUGIN_PATH").split(':') # if one of the plugin aint in cvmfs, it's a work area
-    for plugin_path in plugins_path:
-        if '/cvmfs/' not in plugin_path:
-            console.log('Using a development area')
-            return 'dev'
-    console.log('Using a release')
+    is_release = getenv("DBT_SETUP_RELEASE_SCRIPT_SOURCED")
+    if is_release:
+        console.log('Using a release')
+        return 'rel'
+    is_devenv = getenv("DBT_WORKAREA_ENV_SCRIPT_SOURCED")
+    if is_devenv:
+        console.log('Using a development area')
+        return 'dev'
     return 'rel'
 
 def get_rte_script():
-    from os.path import exists
+    from os import path
 
     ver = get_version()
-    reldev = release_or_dev()
-    nightrel = nightly_or_release(ver)
-    script = '/junk/junk/junk'
+    releases_dir = get_releases_dir()
 
-    if nightrel == 'nightly':
-        script = f'/cvmfs/dunedaq-development.opensciencegrid.org/spack-nightly/{ver}/daq_app_rte.sh'
-    elif nightrel == 'rel':
-        script = f'/cvmfs/dunedaq.opensciencegrid.org/spack-releases/{ver}/daq_app_rte.sh'
+    script = path.join(releases_dir, ver, 'daq_app_rte.sh')
 
-    if not exists(script):
+    if not path.exists(script):
         raise RuntimeError(f'Couldn\'t understand where to find the rte script tentative: {script}')
 
     return script

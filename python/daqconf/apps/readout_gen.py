@@ -65,6 +65,7 @@ def get_readout_app(DRO_CONFIG=None,
                     USE_FAKE_DATA_PRODUCERS=False,
                     LATENCY_BUFFER_SIZE=499968,
                     DATA_REQUEST_TIMEOUT=1000,
+                    FRAGMENT_SEND_TIMEOUT=10,
                     HOST="localhost",
                     SOURCEID_BROKER : SourceIDBroker = None,
                     READOUT_SENDS_TP_FRAGMENTS=False,
@@ -73,14 +74,15 @@ def get_readout_app(DRO_CONFIG=None,
                     EAL_ARGS='-l 0-1 -n 3 -- -m [0:1].0 -j',
                     BASE_SOURCE_IP="10.73.139.",
                     DESTINATION_IP="10.73.139.17",
+                    NUMA_ID=0,
+                    LATENCY_BUFFER_NUMA_AWARE = False,
+                    LATENCY_BUFFER_ALLOCATION_MODE = False,
+                    CARD_ID_OVERRIDE = -1,
                     DEBUG=False):
     """Generate the json configuration for the readout process"""
     
     if DRO_CONFIG is None:
         raise RuntimeError(f"ERROR: DRO_CONFIG is None!")
-
-    if DEBUG: print(f"SSB fw_tp source ID map: {fw_tp_id_map}")
-    if DEBUG: print(f"SSB fw_tp_out source ID map: {fw_tp_out_id_map}")
 
     # Hack on strings to be used for connection instances: will be solved when data_type is properly used.
 
@@ -163,6 +165,9 @@ def get_readout_app(DRO_CONFIG=None,
                 if DEBUG: print(f"SSB fw tp out id: {fwconf}")
                 fw_tp_out_id_map[fwconf] = fwsid
 
+        if DEBUG: print(f"SSB fw_tp source ID map: {fw_tp_id_map}")
+        if DEBUG: print(f"SSB fw_tp_out source ID map: {fw_tp_out_id_map}")
+
     if SOFTWARE_TPG_ENABLED:
         for link in DRO_CONFIG.links:
             modules += [DAQModule(name = f"tp_datahandler_{link_to_tp_sid_map[link.dro_source_id]}",
@@ -182,6 +187,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                                                               # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                               stream_buffer_size = 100 if FRONTEND_TYPE=='pacman' else 8388608,
                                                                                               request_timeout_ms = DATA_REQUEST_TIMEOUT,
+                                                                                              fragment_send_timeout_ms = FRAGMENT_SEND_TIMEOUT,
                                                                                               enable_raw_recording = False)))]
     if FIRMWARE_TPG_ENABLED:
         assert(len(fw_tp_out_id_map) <= 2)
@@ -194,7 +200,11 @@ def get_readout_app(DRO_CONFIG=None,
                                conf = rconf.Conf(readoutmodelconf = rconf.ReadoutModelConf(source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
                                                                                          source_id = tp_out),
                                                  latencybufferconf = rconf.LatencyBufferConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
-                                                                                            source_id = tp_out),
+                                                                                             latency_buffer_numa_aware = LATENCY_BUFFER_NUMA_AWARE,
+                                                                                             latency_buffer_numa_node = NUMA_ID,
+                                                                                             latency_buffer_preallocation = LATENCY_BUFFER_ALLOCATION_MODE,
+                                                                                             latency_buffer_intrinsic_allocator = LATENCY_BUFFER_ALLOCATION_MODE,
+                                                                                             source_id = tp_out),
                                                  rawdataprocessorconf = rconf.RawDataProcessorConf(source_id =  tp_out,
                                                                                                    enable_software_tpg = False,
                                                                                                    fwtp_fake_timestamp = False,
@@ -206,6 +216,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                                                               det_id = 1,
                                                                                               stream_buffer_size = 100 if FRONTEND_TYPE=='pacman' else 8388608,
                                                                                               request_timeout_ms = DATA_REQUEST_TIMEOUT,
+                                                                                              fragment_send_timeout_ms = FRAGMENT_SEND_TIMEOUT,
                                                                                               enable_raw_recording = False)))]
             # for sid in fw_tp_id_map.values():
             queues += [Queue(f"tp_datahandler_{tp}.errored_frames", 'errored_frame_consumer.input_queue', "errored_frames_q")]
@@ -222,6 +233,10 @@ def get_readout_app(DRO_CONFIG=None,
                                       latencybufferconf= rconf.LatencyBufferConf(
                                           latency_buffer_alignment_size = 4096,
                                           latency_buffer_size = LATENCY_BUFFER_SIZE,
+                                          latency_buffer_numa_aware = LATENCY_BUFFER_NUMA_AWARE,
+                                          latency_buffer_numa_node = NUMA_ID,
+                                          latency_buffer_preallocation = LATENCY_BUFFER_ALLOCATION_MODE,
+                                          latency_buffer_intrinsic_allocator = LATENCY_BUFFER_ALLOCATION_MODE,
                                           source_id = tp,
                                       ),
                                       rawdataprocessorconf= rconf.RawDataProcessorConf(
@@ -244,6 +259,7 @@ def get_readout_app(DRO_CONFIG=None,
                                           output_file = path.join(RAW_RECORDING_OUTPUT_DIR, f"output_tp_{RUIDX}_{tp}.out"),
                                           stream_buffer_size = 8388608,
                                           request_timeout_ms = DATA_REQUEST_TIMEOUT,
+                                          fragment_send_timeout_ms = FRAGMENT_SEND_TIMEOUT,
                                           enable_raw_recording = RAW_RECORDING_ENABLED,
                                       )))]
 
@@ -293,6 +309,10 @@ def get_readout_app(DRO_CONFIG=None,
                                           latency_buffer_alignment_size = 4096,
                                           latency_buffer_size = LATENCY_BUFFER_SIZE,
                                           source_id =  link.dro_source_id,
+                                          latency_buffer_numa_aware = LATENCY_BUFFER_NUMA_AWARE,
+                                          latency_buffer_numa_node = NUMA_ID,
+                                          latency_buffer_preallocation = LATENCY_BUFFER_ALLOCATION_MODE,
+                                          latency_buffer_intrinsic_allocator = LATENCY_BUFFER_ALLOCATION_MODE,
                                       ),
                                       rawdataprocessorconf= rconf.RawDataProcessorConf(
                                           source_id =  link.dro_source_id,
@@ -313,6 +333,7 @@ def get_readout_app(DRO_CONFIG=None,
                                           output_file = path.join(RAW_RECORDING_OUTPUT_DIR, f"output_{RUIDX}_{link.dro_source_id}.out"),
                                           stream_buffer_size = 8388608,
                                           request_timeout_ms = DATA_REQUEST_TIMEOUT,
+                                          fragment_send_timeout_ms = FRAGMENT_SEND_TIMEOUT,
                                           enable_raw_recording = RAW_RECORDING_ENABLED,
                                       )))]
 
@@ -342,30 +363,33 @@ def get_readout_app(DRO_CONFIG=None,
                     link_1.append(5)
                     fw_tp_sid = fw_tp_id_map[FWTPID(DRO_CONFIG.host, DRO_CONFIG.card, 1)]
                     queues += [Queue(f'flxcard_1.output_{fw_tp_sid}',f"tp_datahandler_{fw_tp_sid}.raw_input",f'raw_tp_link_{fw_tp_sid}', 100000 )]
+            
+            link_0.sort()
+            link_1.sort()
 
             modules += [DAQModule(name = 'flxcard_0',
                                plugin = 'FelixCardReader',
-                               conf = flxcr.Conf(card_id = DRO_CONFIG.links[0].dro_card,
+                               conf = flxcr.Conf(card_id = DRO_CONFIG.links[0].dro_card if CARD_ID_OVERRIDE == -1 else CARD_ID_OVERRIDE,
                                                  logical_unit = 0,
                                                  dma_id = 0,
                                                  chunk_trailer_size = 32,
                                                  dma_block_size_kb = 4,
                                                  dma_memory_size_gb = 4,
-                                                 numa_id = 0,
+                                                 numa_id = NUMA_ID,
                                                  links_enabled = link_0))]
             
             if len(link_1) > 0:
                 modules += [DAQModule(name = "flxcard_1",
                                    plugin = "FelixCardReader",
-                                   conf = flxcr.Conf(card_id = DRO_CONFIG.links[0].dro_card,
+                                   conf = flxcr.Conf(card_id = DRO_CONFIG.links[0].dro_card if CARD_ID_OVERRIDE == -1 else CARD_ID_OVERRIDE,
                                                      logical_unit = 1,
                                                      dma_id = 0,
                                                      chunk_trailer_size = 32,
                                                      dma_block_size_kb = 4,
                                                      dma_memory_size_gb = 4,
-                                                     numa_id = 0,
+                                                     numa_id = NUMA_ID,
                                                      links_enabled = link_1))]
-        elif not ENABLE_DPDK_READER:
+        if not ENABLE_DPDK_READER:
             # DTPController - only required if FW TPs enabled
             if FIRMWARE_TPG_ENABLED:
                 if len(link_0) > 0:
@@ -373,7 +397,7 @@ def get_readout_app(DRO_CONFIG=None,
                                 name = 'dtpctrl_0',
                                 plugin = 'DTPController',
                                 conf = dtpctrl.Conf(connections_file=path.expandvars(DTP_CONNECTIONS_FILE),
-                                                    device="flx-0-p2-hf",
+                                                    device=f"flx-{2*DRO_CONFIG.links[0].dro_card}-p2-hf",
                                                     uhal_log_level="notice",
                                                     source="ext",
                                                     pattern="",
@@ -384,41 +408,42 @@ def get_readout_app(DRO_CONFIG=None,
                                 name = 'dtpctrl_1',
                                 plugin = 'DTPController',
                                 conf = dtpctrl.Conf(connections_file=path.expandvars(DTP_CONNECTIONS_FILE),
-                                                    device="flx-1-p2-hf",
+                                                    device=f"flx-{(2*DRO_CONFIG.links[0].dro_card) + 1}-p2-hf",
                                                     uhal_log_level="notice",
                                                     source="ext",
                                                     pattern="",
                                                     threshold=FIRMWARE_HIT_THRESHOLD,
                                                     masks=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]) )]
-            fake_source = "fake_source"
-            card_reader = "FakeCardReader"
-            conf = sec.Conf(link_confs = [sec.LinkConfiguration(source_id=link.dro_source_id,
-                                                                slowdown=DATA_RATE_SLOWDOWN_FACTOR,
-                                                                queue_name=f"output_{link.dro_source_id}",
-                                                                data_filename = DATA_FILE,
-                                                                emu_frame_error_rate=0) for link in DRO_CONFIG.links],
-                            # input_limit=10485100, # default
-                            queue_timeout_ms = QUEUE_POP_WAIT_MS)
 
-            if FRONTEND_TYPE=='pacman':
-                fake_source = "pacman_source"
-                card_reader = "PacmanCardReader"
-                conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=link.dro_source_id)
-                                                for link in DRO_CONFIG.links],
-                                zmq_receiver_timeout = 10000)
+            if not FLX_INPUT:
+                fake_source = "fake_source"
+                card_reader = "FakeCardReader"
+                conf = sec.Conf(link_confs = [sec.LinkConfiguration(source_id=link.dro_source_id,
+                                                                    slowdown=DATA_RATE_SLOWDOWN_FACTOR,
+                                                                    queue_name=f"output_{link.dro_source_id}",
+                                                                    data_filename = DATA_FILE,
+                                                                    emu_frame_error_rate=0) for link in DRO_CONFIG.links],
+                                                                    queue_timeout_ms = QUEUE_POP_WAIT_MS)
+                if FRONTEND_TYPE=='pacman':
+                    fake_source = "pacman_source"
+                    card_reader = "PacmanCardReader"
+                    conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=link.dro_source_id)
+                                                 for link in DRO_CONFIG.links],
+                                  zmq_receiver_timeout = 10000)
+                if FRONTEND_TYPE=='mpd':
+                    fake_source = "mpd_source"
+                    card_reader = "PacmanCardReader" # Should be generic for all NDLAR 
+                    conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=link.dro_source_id)
+                                                  for link in DRO_CONFIG.links],
+                                    zmq_receiver_timeout = 10000)
 
-            if FRONTEND_TYPE=='mpd':
-                fake_source = "mpd_source"
-                card_reader = "PacmanCardReader" # Should be generic for all NDLAR 
-                conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=link.dro_source_id)
-                                                for link in DRO_CONFIG.links],
-                                zmq_receiver_timeout = 10000)
+                modules += [DAQModule(name = fake_source,
+                                      plugin = card_reader,
+                                      conf = conf)]
+                queues += [Queue(f"{fake_source}.output_{link.dro_source_id}",f"datahandler_{link.dro_source_id}.raw_input",f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
 
-            modules += [DAQModule(name = fake_source,
-                                plugin = card_reader,
-                                conf = conf)]
-            queues += [Queue(f"{fake_source}.output_{link.dro_source_id}",f"datahandler_{link.dro_source_id}.raw_input",f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
-        elif ENABLE_DPDK_READER:
+        else:
+
             NUMBER_OF_GROUPS = 1
             NUMBER_OF_LINKS_PER_GROUP = 1
 
@@ -447,11 +472,7 @@ def get_readout_app(DRO_CONFIG=None,
             queues += [Queue(f"nic_reader.output_{link.dro_source_id}",
                              f"datahandler_{link.dro_source_id}.raw_input",
                              f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
-
-
-
-
-
+                  
     # modules += [
     #     DAQModule(name = "fragment_sender",
     #                    plugin = "FragmentSender",

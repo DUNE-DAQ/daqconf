@@ -9,6 +9,7 @@ from daqconf.core.metadata import write_metadata_file
 from daqconf.core.sourceid import SourceIDBroker, get_tpg_mode
 from daqconf.core.config_file import generate_cli_from_schema
 from detchannelmaps._daq_detchannelmaps_py import HardwareMapService
+from detdataformats._daq_detdataformats_py import *
 
 console = Console()
 
@@ -86,7 +87,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         readout.hardware_map_file = hardware_map_file
     if data_rate_slowdown_factor != 0:
         readout.data_rate_slowdown_factor = data_rate_slowdown_factor
-    dqm.enable_dqm = enable_dqm
+    dqm.enable_dqm |= enable_dqm
     if dqm.impl == 'pocket':
         dqm.kafka_address = boot.pocket_url + ":30092"
     if op_env != '':
@@ -365,6 +366,18 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         host=dro_config.host.replace("-","")
         ru_name = f"ru{host}{dro_config.card}"
         ru_app_names.append(ru_name)
+
+        numa_id = readout.numa_config['default_id']
+        latency_numa = readout.numa_config['default_latency_numa_aware']
+        latency_preallocate = readout.numa_config['default_latency_preallocation']
+        card_override = -1
+        for ex in readout.numa_config['exceptions']:
+            if ex['host'] == dro_config.host and ex['card'] == dro_config.card:
+                numa_id = ex['numa_id']
+                latency_numa = ex['latency_buffer_numa_aware']
+                latency_preallocate = ex['latency_buffer_preallocation']
+                card_override = ex['felix_card_id']
+
         the_system.apps[ru_name] = get_readout_app(
             HOST=dro_config.host,
             DRO_CONFIG=dro_config,
@@ -383,6 +396,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             USE_FAKE_DATA_PRODUCERS = readout.use_fake_data_producers,
             LATENCY_BUFFER_SIZE=readout.latency_buffer_size,
             DATA_REQUEST_TIMEOUT=readout_data_request_timeout,
+            FRAGMENT_SEND_TIMEOUT=readout.fragment_send_timeout_ms,
             SOURCEID_BROKER = sourceid_broker,
             READOUT_SENDS_TP_FRAGMENTS = readout.readout_sends_tp_fragments,
             ENABLE_DPDK_SENDER=dpdk_sender.enable_dpdk_sender,
@@ -390,12 +404,17 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             EAL_ARGS=readout.eal_args,
             BASE_SOURCE_IP=readout.base_source_ip,
             DESTINATION_IP=readout.destination_ip,
+            NUMA_ID = numa_id,
+            LATENCY_BUFFER_NUMA_AWARE = latency_numa,
+            LATENCY_BUFFER_ALLOCATION_MODE = latency_preallocate,
+            CARD_ID_OVERRIDE = card_override,
             DEBUG=debug)
 
         if boot.use_k8s:
             if readout.use_felix:
+                c = card_override if card_override != -1 else dro_config.card
                 the_system.apps[ru_name].resources = {
-                    "felix.cern/flx0-data": "1", # requesting FLX0
+                    f"felix.cern/flx{c}-data": "1", # requesting FLX{c}
                     "memory": "32Gi" # yes bro
                 }
             # TODO: HACK, can't do that any other way now, please give me a nice asset manager
@@ -411,7 +430,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             console.log(f"{ru_name} app: {the_system.apps[ru_name]}")
 
         if dqm.enable_dqm:
-            dqm_name = "dqm_" + ru_name
+            dqm_name = "dqm" + ru_name
             dqm_app_names.append(dqm_name)
             dqm_links = [link.dro_source_id for link in dro_config.links]
             the_system.apps[dqm_name] = get_dqm_app(
@@ -430,6 +449,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
                 FOURIER_PLANE_PARAMS=dqm.fourier_plane_params,
                 LINKS=dqm_links,
                 HOST=dqm.host_dqm[dro_idx % len(dqm.host_dqm)],
+                DRO_CONFIG=dro_config,
                 DEBUG=debug)
 
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
@@ -444,6 +464,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             OUTPUT_PATHS = df_config.output_paths,
             APP_NAME=app_name,
             OPERATIONAL_ENVIRONMENT = boot.op_env,
+            DATA_STORE_MODE=df_config.data_store_mode,
             MAX_FILE_SIZE = df_config.max_file_size,
             MAX_TRIGGER_RECORD_WINDOW = df_config.max_trigger_record_window,
             MAX_EXPECTED_TR_SEQUENCES = max_expected_tr_sequences,
@@ -472,9 +493,9 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
 
         if dqm.enable_dqm:
-            dqm_name = f"dqm_df{dfidx}"
+            dqm_name = f"dqmdf{dfidx}"
             dqm_df_app_names.append(dqm_name)
-            dqm_links = [link.dro_source_id for link in dro_config.links for dro_config in dro_infos]
+            dqm_links = [link.dro_source_id for dro_config in dro_infos for link in dro_config.links]
             the_system.apps[dqm_name] = get_dqm_app(
                 DQM_IMPL=dqm.impl,
                 DATA_RATE_SLOWDOWN_FACTOR = readout.data_rate_slowdown_factor,
@@ -495,7 +516,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
                 DF_RATE=dqm.df_rate * len(host_df),
                 DF_ALGS=dqm.df_algs,
                 DF_TIME_WINDOW=trigger.trigger_window_before_ticks + trigger.trigger_window_after_ticks,
-                FRONTEND_TYPE='',
+                DRO_CONFIG=dro_config, # This is coming from the readout loop
                 DEBUG=debug)
 
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
@@ -514,7 +535,6 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             CLOCK_SPEED_HZ = readout.clock_speed_hz,
             HARDWARE_MAP_FILE=readout.hardware_map_file,
             SOURCE_IDX=dfidx,
-            FIRMWARE_TPG_ENABLED=readout.enable_firmware_tpg,
             HOST=trigger.host_tpw,
             DEBUG=debug)
         if boot.use_k8s: ## TODO schema
@@ -632,14 +652,19 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     )
 
 
-    if readout.thread_pinning_file != "" and exists(readout.thread_pinning_file):
+    if readout.thread_pinning_file != "":
+        import os
+        resolved_thread_pinning_file = os.path.abspath(os.path.expanduser(os.path.expandvars(readout.thread_pinning_file)))
+        if not exists(resolved_thread_pinning_file):
+            raise RuntimeError(f'Cannot find the file {readout.thread_pinning_file} ({resolved_thread_pinning_file})')
+    
         system_command_datas['boot']['scripts'] = {
             "thread_pinning": {
                 "cmd": [
                     "readout-affinity.py --pinfile ${DUNEDAQ_THREAD_PIN_FILE}"
                 ],
                 "env": {
-                    "DUNEDAQ_THREAD_PIN_FILE": readout.thread_pinning_file,
+                    "DUNEDAQ_THREAD_PIN_FILE": resolved_thread_pinning_file,
                     "LD_LIBRARY_PATH": "getenv",
                     "PATH": "getenv"
                 }
@@ -652,6 +677,14 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     console.log(f"MDAapp config generated in {output_dir}")
 
     write_metadata_file(output_dir, "daqconf_multiru_gen", config_file)
+    import json
+    hwmap_file = open(readout.hardware_map_file, 'r')
+    hwmap_data = hwmap_file.read()
+    with open(output_dir/'hwmap.json', 'w') as f :
+        json.dump({
+            '__to_read_(rm_backslashes)': f"python -c \"import json,sys;print(json.load(open(sys.argv[1]))['hwmap'])\" {output_dir}/hwmap.json",
+            'hwmap': hwmap_data
+        }, f, indent=2)
 
     if debug:
         for name in the_system.apps:
