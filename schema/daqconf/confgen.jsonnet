@@ -112,7 +112,8 @@ local cs = {
   ]),
 
   trigger_algo_config: s.record("trigger_algo_config", [
-    s.field("prescale", self.count, default=1),
+    s.field("prescale", self.count, default=100),
+    s.field("hma_prescale", self.count, default=1),
     s.field("window_length", self.count, default=10000),
     s.field("adjacency_threshold", self.count, default=6),
     s.field("adj_tolerance", self.count, default=4),
