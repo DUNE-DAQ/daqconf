@@ -96,7 +96,7 @@ def get_readout_app(DRO_CONFIG=None,
         FRONTEND_TYPE = "wib2"
         FAKEDATA_FRAGMENT_TYPE = "WIB"
     elif FRONTEND_TYPE== "HD_PDS" or FRONTEND_TYPE== "VD_Cathode_PDS" or FRONTEND_TYPE=="VD_Membrane_PDS":
-        FRONTEND_TYPE = "pds_list"
+        FRONTEND_TYPE = "pds_stream"
         FAKEDATA_FRAGMENT_TYPE = "DAPHNE"
         QUEUE_FRAGMENT_TYPE = "PDSFrame"
     elif FRONTEND_TYPE== "VD_Top_TPC":

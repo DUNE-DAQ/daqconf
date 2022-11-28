@@ -43,7 +43,8 @@ def set_mlt_links(the_system, mlt_app_name="trigger", verbose=False):
                                                    hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough,
 						   buffer_timeout=old_mlt_conf.buffer_timeout,
                                                    td_out_of_timeout=old_mlt_conf.td_out_of_timeout,
-                                                   td_readout_limit=old_mlt_conf.td_readout_limit))
+                                                   td_readout_limit=old_mlt_conf.td_readout_limit,
+                                                   ignore_tc=old_mlt_conf.ignore_tc))
 
 def remove_mlt_link(the_system, source_id, mlt_app_name="trigger"):
     """
@@ -61,7 +62,8 @@ def remove_mlt_link(the_system, source_id, mlt_app_name="trigger"):
                                                    hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough,
                                                    buffer_timeout=old_mlt_conf.buffer_timeout,
 					       	   td_out_of_timeout=old_mlt_conf.td_out_of_timeout,
-                                                   td_readout_limit=old_mlt_conf.td_readout_limit))
+                                                   td_readout_limit=old_mlt_conf.td_readout_limit,
+                                                   ignore_tc=old_mlt_conf.ignore_tc))
     
 def connect_fragment_producers(app_name, the_system, verbose=False):
     """Connect the data request and fragment sending queues from all of
