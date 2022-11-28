@@ -645,12 +645,18 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
     def control_to_data_network(control_hostname:str) -> str:
         ## whatever is appropriate here...
-        if control_hostname == 'localhost':
-            return 'localhost'
-        elif 'np04-srv' in control_hostname:
-            return control_hostname+'_dc1'
+        if 'pd-tbed-sh' in control_hostname:
+            return control_hostname+'-100g'
+        elif 'pc-tbed-tpu' in control_hostname:
+            return control_hostname+'-dc1'
+        elif control_hostname == 'np04-srv-018':
+            return control_hostname+'-100g'
+        elif control_hostname == 'np04-srv-021':
+            return control_hostname+'-100g'
+        elif control_hostname == 'np04-srv-022':
+            return control_hostname+'-100g'
         else:
-            return control_hostname+'_100G'
+            return control_hostname
 
     system_command_datas = make_system_command_datas(
         boot,
