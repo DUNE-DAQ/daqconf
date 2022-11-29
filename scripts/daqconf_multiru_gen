@@ -163,6 +163,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     # The ru apps are determined by the combinations of hostname and card_id, the SourceID determines the
     # DLH (with physical slr+link information), the detId acts as system_type allows to infer the frontend_type
     hw_map_service = HardwareMapService(readout.hardware_map_file)
+    serialized_hw_map = hw_map_service.get_serialized_hardware_map()
 
     # Get the list of RU processes
     dro_infos = hw_map_service.get_all_dro_info()
@@ -472,7 +473,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             TRB_TIMEOUT = trigger_record_building_timeout,
             HOST=df_config.host_df,
             HAS_DQM=dqm.enable_dqm,
-            HARDWARE_MAP_FILE=readout.hardware_map_file,
+            HARDWARE_MAP=serialized_hw_map,
             DEBUG=debug
         )
         if boot.use_k8s:
@@ -482,14 +483,6 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
                 'in_pod_location': opath,
                 'read_only': False,
             } for i,opath in enumerate(set(df_config.output_paths))]
-            # doubling down on ugly hacking...
-            if dirname(readout.hardware_map_file) not in df_config.output_paths:
-                the_system.apps[app_name].mounted_dirs += [{
-                    'name': 'hardware-map',
-                    'physical_location': dirname(readout.hardware_map_file),
-                    'in_pod_location': dirname(readout.hardware_map_file),
-                    'read_only': True,
-                }]
 
 
         if dqm.enable_dqm:
@@ -533,7 +526,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             MAX_FILE_SIZE = trigger.tpset_output_file_size,
             DATA_RATE_SLOWDOWN_FACTOR = readout.data_rate_slowdown_factor,
             CLOCK_SPEED_HZ = readout.clock_speed_hz,
-            HARDWARE_MAP_FILE=readout.hardware_map_file,
+            HARDWARE_MAP=serialized_hw_map,
             SOURCE_IDX=dfidx,
             HOST=trigger.host_tpw,
             DEBUG=debug)
