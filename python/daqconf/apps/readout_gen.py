@@ -65,6 +65,7 @@ def get_readout_app(DRO_CONFIG=None,
                     USE_FAKE_DATA_PRODUCERS=False,
                     LATENCY_BUFFER_SIZE=499968,
                     DATA_REQUEST_TIMEOUT=1000,
+                    FRAGMENT_SEND_TIMEOUT=10,
                     HOST="localhost",
                     SOURCEID_BROKER : SourceIDBroker = None,
                     READOUT_SENDS_TP_FRAGMENTS=False,
@@ -94,7 +95,7 @@ def get_readout_app(DRO_CONFIG=None,
         FRONTEND_TYPE = "wib2"
         FAKEDATA_FRAGMENT_TYPE = "WIB"
     elif FRONTEND_TYPE== "HD_PDS" or FRONTEND_TYPE== "VD_Cathode_PDS" or FRONTEND_TYPE=="VD_Membrane_PDS":
-        FRONTEND_TYPE = "pds_list"
+        FRONTEND_TYPE = "pds_stream"
         FAKEDATA_FRAGMENT_TYPE = "DAPHNE"
     elif FRONTEND_TYPE== "VD_Top_TPC":
         FRONTEND_TYPE = "tde"
@@ -175,6 +176,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                                                               # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                               stream_buffer_size = 100 if FRONTEND_TYPE=='pacman' else 8388608,
                                                                                               request_timeout_ms = DATA_REQUEST_TIMEOUT,
+                                                                                              fragment_send_timeout_ms = FRAGMENT_SEND_TIMEOUT,
                                                                                               enable_raw_recording = False)))]
     if FIRMWARE_TPG_ENABLED:
         assert(len(fw_tp_out_id_map) <= 2)
@@ -187,7 +189,11 @@ def get_readout_app(DRO_CONFIG=None,
                                conf = rconf.Conf(readoutmodelconf = rconf.ReadoutModelConf(source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
                                                                                          source_id = tp_out),
                                                  latencybufferconf = rconf.LatencyBufferConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
-                                                                                            source_id = tp_out),
+                                                                                             latency_buffer_numa_aware = LATENCY_BUFFER_NUMA_AWARE,
+                                                                                             latency_buffer_numa_node = NUMA_ID,
+                                                                                             latency_buffer_preallocation = LATENCY_BUFFER_ALLOCATION_MODE,
+                                                                                             latency_buffer_intrinsic_allocator = LATENCY_BUFFER_ALLOCATION_MODE,
+                                                                                             source_id = tp_out),
                                                  rawdataprocessorconf = rconf.RawDataProcessorConf(source_id =  tp_out,
                                                                                                    enable_software_tpg = False,
                                                                                                    fwtp_fake_timestamp = False,
@@ -199,6 +205,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                                                               det_id = 1,
                                                                                               stream_buffer_size = 100 if FRONTEND_TYPE=='pacman' else 8388608,
                                                                                               request_timeout_ms = DATA_REQUEST_TIMEOUT,
+                                                                                              fragment_send_timeout_ms = FRAGMENT_SEND_TIMEOUT,
                                                                                               enable_raw_recording = False)))]
             # for sid in fw_tp_id_map.values():
             queues += [Queue(f"tp_datahandler_{tp}.errored_frames", 'errored_frame_consumer.input_queue', "errored_frames_q")]
@@ -215,6 +222,10 @@ def get_readout_app(DRO_CONFIG=None,
                                       latencybufferconf= rconf.LatencyBufferConf(
                                           latency_buffer_alignment_size = 4096,
                                           latency_buffer_size = LATENCY_BUFFER_SIZE,
+                                          latency_buffer_numa_aware = LATENCY_BUFFER_NUMA_AWARE,
+                                          latency_buffer_numa_node = NUMA_ID,
+                                          latency_buffer_preallocation = LATENCY_BUFFER_ALLOCATION_MODE,
+                                          latency_buffer_intrinsic_allocator = LATENCY_BUFFER_ALLOCATION_MODE,
                                           source_id = tp,
                                       ),
                                       rawdataprocessorconf= rconf.RawDataProcessorConf(
@@ -237,6 +248,7 @@ def get_readout_app(DRO_CONFIG=None,
                                           output_file = path.join(RAW_RECORDING_OUTPUT_DIR, f"output_tp_{RUIDX}_{tp}.out"),
                                           stream_buffer_size = 8388608,
                                           request_timeout_ms = DATA_REQUEST_TIMEOUT,
+                                          fragment_send_timeout_ms = FRAGMENT_SEND_TIMEOUT,
                                           enable_raw_recording = RAW_RECORDING_ENABLED,
                                       )))]
 
@@ -310,6 +322,7 @@ def get_readout_app(DRO_CONFIG=None,
                                           output_file = path.join(RAW_RECORDING_OUTPUT_DIR, f"output_{RUIDX}_{link.dro_source_id}.out"),
                                           stream_buffer_size = 8388608,
                                           request_timeout_ms = DATA_REQUEST_TIMEOUT,
+                                          fragment_send_timeout_ms = FRAGMENT_SEND_TIMEOUT,
                                           enable_raw_recording = RAW_RECORDING_ENABLED,
                                       )))]
 
@@ -373,7 +386,7 @@ def get_readout_app(DRO_CONFIG=None,
                                 name = 'dtpctrl_0',
                                 plugin = 'DTPController',
                                 conf = dtpctrl.Conf(connections_file=path.expandvars(DTP_CONNECTIONS_FILE),
-                                                    device="flx-0-p2-hf",
+                                                    device=f"flx-{2*DRO_CONFIG.links[0].dro_card}-p2-hf",
                                                     uhal_log_level="notice",
                                                     source="ext",
                                                     pattern="",
@@ -384,7 +397,7 @@ def get_readout_app(DRO_CONFIG=None,
                                 name = 'dtpctrl_1',
                                 plugin = 'DTPController',
                                 conf = dtpctrl.Conf(connections_file=path.expandvars(DTP_CONNECTIONS_FILE),
-                                                    device="flx-1-p2-hf",
+                                                    device=f"flx-{(2*DRO_CONFIG.links[0].dro_card) + 1}-p2-hf",
                                                     uhal_log_level="notice",
                                                     source="ext",
                                                     pattern="",

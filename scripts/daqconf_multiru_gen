@@ -348,6 +348,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 	MLT_BUFFER_TIMEOUT = trigger.mlt_buffer_timeout,
         MLT_MAX_TD_LENGTH_MS = trigger.mlt_max_td_length_ms,
         MLT_SEND_TIMED_OUT_TDS = trigger.mlt_send_timed_out_tds,
+        MLT_IGNORE_TC = trigger.mlt_ignore_tc,
         CHANNEL_MAP_NAME = trigger.tpg_channel_map,
         DATA_REQUEST_TIMEOUT=trigger_data_request_timeout,
         HOST=trigger.host_trigger,
@@ -396,6 +397,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             USE_FAKE_DATA_PRODUCERS = readout.use_fake_data_producers,
             LATENCY_BUFFER_SIZE=readout.latency_buffer_size,
             DATA_REQUEST_TIMEOUT=readout_data_request_timeout,
+            FRAGMENT_SEND_TIMEOUT=readout.fragment_send_timeout_ms,
             SOURCEID_BROKER = sourceid_broker,
             READOUT_SENDS_TP_FRAGMENTS = readout.readout_sends_tp_fragments,
             ENABLE_DPDK_SENDER=dpdk_sender.enable_dpdk_sender,
@@ -411,8 +413,9 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
         if boot.use_k8s:
             if readout.use_felix:
+                c = card_override if card_override != -1 else dro_config.card
                 the_system.apps[ru_name].resources = {
-                    "felix.cern/flx0-data": "1", # requesting FLX0
+                    f"felix.cern/flx{c}-data": "1", # requesting FLX{c}
                     "memory": "32Gi" # yes bro
                 }
             # TODO: HACK, can't do that any other way now, please give me a nice asset manager
@@ -462,6 +465,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             OUTPUT_PATHS = df_config.output_paths,
             APP_NAME=app_name,
             OPERATIONAL_ENVIRONMENT = boot.op_env,
+            DATA_STORE_MODE=df_config.data_store_mode,
             MAX_FILE_SIZE = df_config.max_file_size,
             MAX_TRIGGER_RECORD_WINDOW = df_config.max_trigger_record_window,
             MAX_EXPECTED_TR_SEQUENCES = max_expected_tr_sequences,
@@ -492,7 +496,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         if dqm.enable_dqm:
             dqm_name = f"dqmdf{dfidx}"
             dqm_df_app_names.append(dqm_name)
-            dqm_links = [link.dro_source_id for link in dro_config.links for dro_config in dro_infos]
+            dqm_links = [link.dro_source_id for dro_config in dro_infos for link in dro_config.links]
             the_system.apps[dqm_name] = get_dqm_app(
                 DQM_IMPL=dqm.impl,
                 DATA_RATE_SLOWDOWN_FACTOR = readout.data_rate_slowdown_factor,

@@ -3,13 +3,14 @@
 
 local moo = import "moo.jsonnet";
 local s = moo.oschema.schema("dunedaq.daqconf.confgen");
-
+local nc = moo.oschema.numeric_constraints;
 // A temporary schema construction context.
 local cs = {
   port:            s.number(   "Port", "i4", doc="A TCP/IP port number"),
   freq:            s.number(   "Frequency", "u4", doc="A frequency"),
   rate:            s.number(   "Rate", "f8", doc="A rate as a double"),
   count:           s.number(   "count", "i8", doc="A count of things"),
+  three_choice:    s.number(   "threechoice", "i8", nc(minimum=0, exclusiveMaximum=3), doc="A choice between 0, 1, or 2"),
   flag:            s.boolean(  "Flag", doc="Parameter that can be used to enable or disable functionality"),
   monitoring_dest: s.enum(     "MonitoringDest", ["local", "cern", "pocket"]),
   path:            s.string(   "Path", doc="Location on a filesystem"),
@@ -20,6 +21,7 @@ local cs = {
   tpg_channel_map: s.enum(     "TPGChannelMap", ["VDColdboxChannelMap", "ProtoDUNESP1ChannelMap", "PD2HDChannelMap", "HDColdboxChannelMap"]),
   dqm_channel_map: s.enum(     "DQMChannelMap", ['HD', 'VD', 'PD2HD', 'HDCB']),
   dqm_params:      s.sequence( "DQMParams",     self.count, doc="Parameters for DQM (fixme)"),
+  tc_types:        s.sequence( "TCTypes",       self.count, doc="List of TC types"),
   
   numa_exception:  s.record( "NUMAException", [
     s.field( "host", self.host, default='localhost', doc="Host of exception"),
@@ -43,10 +45,11 @@ local cs = {
     s.field( "opmon_impl", self.monitoring_dest, default='local', doc="Info collector service implementation to use"),
     s.field( "ers_impl", self.monitoring_dest, default='local', doc="ERS destination (Kafka used for cern and pocket)"),
     s.field( "pocket_url", self.host, default='127.0.0.1', doc="URL for connecting to Pocket services"),
-    s.field( "image", self.string, default="", doc="Which docker image to use"),
+    s.field( "image", self.string, default="dunedaq/c8-minimal", doc="Which docker image to use"),
     s.field( "use_k8s", self.flag, default=false, doc="Whether to use k8s"),
     s.field( "op_env", self.string, default='swtest', doc="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files"),
     s.field( "data_request_timeout_ms", self.count, default=1000, doc="The baseline data request timeout that will be used by modules in the Readout and Trigger subsystems (i.e. any module that produces data fragments). Downstream timeouts, such as the trigger-record-building timeout, are derived from this."),
+    s.field( "RTE_script_settings", self.three_choice, default=0, doc="0 - Use an RTE script iff not in a dev environment, 1 - Always use RTE, 2 - never use RTE"),
   ]),
 
   timing: s.record("timing", [
@@ -94,6 +97,7 @@ local cs = {
     s.field( "data_file", self.path, default='./frames.bin', doc="File containing data frames to be replayed by the fake cards. Former -d"),
     s.field( "use_felix", self.flag, default=false, doc="Use real felix cards instead of fake ones. Former -f"),
     s.field( "latency_buffer_size", self.count, default=499968, doc="Size of the latency buffers (in number of elements)"),
+    s.field( "fragment_send_timeout_ms", self.count, default=10, doc="The send timeout that will be used in the readout modules when sending fragments downstream (i.e. to the TRB)."),
     s.field( "enable_software_tpg", self.flag, default=false, doc="Enable software TPG"),
     s.field( "enable_firmware_tpg", self.flag, default=false, doc="Enable firmware TPG"),
     s.field( "dtp_connections_file", self.path, default="${DTPCONTROLS_SHARE}/config/dtp_connections.xml", doc="DTP connections file"),
@@ -112,6 +116,15 @@ local cs = {
 
   trigger_algo_config: s.record("trigger_algo_config", [
     s.field("prescale", self.count, default=100),
+    s.field("window_length", self.count, default=10000),
+    s.field("adjacency_threshold", self.count, default=6),
+    s.field("adj_tolerance", self.count, default=4),
+    s.field("trigger_on_adc", self.flag, default=false),
+    s.field("trigger_on_n_channels", self.flag, default=false),
+    s.field("trigger_on_adjacency", self.flag, default=true),
+    s.field("adc_threshold", self.count, default=10000),
+    s.field("n_channels_threshold", self.count, default=8),
+    s.field("print_tp_info", self.flag, default=false),
   ]),
 
   trigger: s.record("trigger",[
@@ -134,7 +147,8 @@ local cs = {
     s.field( "tpg_channel_map", self.tpg_channel_map, default="ProtoDUNESP1ChannelMap", doc="Channel map for software TPG"),
     s.field( "mlt_buffer_timeout", self.count, default=100, doc="Timeout (buffer) to wait for new overlapping TCs before sending TD"),
     s.field( "mlt_send_timed_out_tds", self.flag, default=false, doc="Option to drop TD if TC comes out of timeout window"),
-    s.field( "mlt_max_td_length_ms",self.count, default=1000, doc="Maximum allowed time length [ms] for a readout window of a single TD"),
+    s.field( "mlt_max_td_length_ms", self.count, default=1000, doc="Maximum allowed time length [ms] for a readout window of a single TD"),
+    s.field( "mlt_ignore_tc", self.tc_types, default=[], doc="Optional list of TC types to be ignored in MLT"),
   ]),
 
   dataflowapp: s.record("dataflowapp",[
@@ -143,6 +157,7 @@ local cs = {
     s.field( "output_paths",self.paths, default=['.'], doc="Location(s) for the dataflow app to write data. Former -o"),
     s.field( "host_df", self.host, default='localhost'),
     s.field( "max_file_size",self.count, default=4*1024*1024*1024, doc="The size threshold when raw data files are closed (in bytes)"),
+    s.field( "data_store_mode", self.string, default="all-per-file", doc="all-per-file or one-event-per-file"),
     s.field( "max_trigger_record_window",self.count, default=0, doc="The maximum size for the window of data that will included in a single TriggerRecord (in ticks). Readout windows that are longer than this size will result in TriggerRecords being split into a sequence of TRs. A zero value for this parameter means no splitting."),
 
   ], doc="Element of the dataflow.apps array"),
