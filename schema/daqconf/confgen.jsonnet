@@ -21,6 +21,7 @@ local cs = {
   tpg_channel_map: s.enum(     "TPGChannelMap", ["VDColdboxChannelMap", "ProtoDUNESP1ChannelMap", "PD2HDChannelMap", "HDColdboxChannelMap"]),
   dqm_channel_map: s.enum(     "DQMChannelMap", ['HD', 'VD', 'PD2HD', 'HDCB']),
   dqm_params:      s.sequence( "DQMParams",     self.count, doc="Parameters for DQM (fixme)"),
+  tc_types:        s.sequence( "TCTypes",       self.count, doc="List of TC types"),
   
   numa_exception:  s.record( "NUMAException", [
     s.field( "host", self.host, default='localhost', doc="Host of exception"),
@@ -48,6 +49,9 @@ local cs = {
     s.field( "use_k8s", self.flag, default=false, doc="Whether to use k8s"),
     s.field( "op_env", self.string, default='swtest', doc="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files"),
     s.field( "data_request_timeout_ms", self.count, default=1000, doc="The baseline data request timeout that will be used by modules in the Readout and Trigger subsystems (i.e. any module that produces data fragments). Downstream timeouts, such as the trigger-record-building timeout, are derived from this."),
+    s.field( "use_connectivity_service", self.flag, default=false, doc="Whether to use the ConnectivityService to manage connections"),
+    s.field("connectivity_service_host", self.host, default='127.0.0.1', doc="Hostname for the ConnectivityService"),
+    s.field("connectivity_service_port", self.port, default=5000, doc="Port for the ConnectivityService"),
     s.field( "RTE_script_settings", self.three_choice, default=0, doc="0 - Use an RTE script iff not in a dev environment, 1 - Always use RTE, 2 - never use RTE"),
   ]),
 
@@ -115,6 +119,15 @@ local cs = {
 
   trigger_algo_config: s.record("trigger_algo_config", [
     s.field("prescale", self.count, default=100),
+    s.field("window_length", self.count, default=10000),
+    s.field("adjacency_threshold", self.count, default=6),
+    s.field("adj_tolerance", self.count, default=4),
+    s.field("trigger_on_adc", self.flag, default=false),
+    s.field("trigger_on_n_channels", self.flag, default=false),
+    s.field("trigger_on_adjacency", self.flag, default=true),
+    s.field("adc_threshold", self.count, default=10000),
+    s.field("n_channels_threshold", self.count, default=8),
+    s.field("print_tp_info", self.flag, default=false),
   ]),
 
   trigger: s.record("trigger",[
@@ -137,12 +150,12 @@ local cs = {
     s.field( "tpg_channel_map", self.tpg_channel_map, default="ProtoDUNESP1ChannelMap", doc="Channel map for software TPG"),
     s.field( "mlt_buffer_timeout", self.count, default=100, doc="Timeout (buffer) to wait for new overlapping TCs before sending TD"),
     s.field( "mlt_send_timed_out_tds", self.flag, default=false, doc="Option to drop TD if TC comes out of timeout window"),
-    s.field( "mlt_max_td_length_ms",self.count, default=1000, doc="Maximum allowed time length [ms] for a readout window of a single TD"),
+    s.field( "mlt_max_td_length_ms", self.count, default=1000, doc="Maximum allowed time length [ms] for a readout window of a single TD"),
+    s.field( "mlt_ignore_tc", self.tc_types, default=[], doc="Optional list of TC types to be ignored in MLT"),
   ]),
 
   dataflowapp: s.record("dataflowapp",[
     s.field("app_name", self.string, default="dataflow0"),
-    s.field( "token_count",self.count, default=10, doc="Number of tokens this dataflow app gives to DFO. Former -c"),
     s.field( "output_paths",self.paths, default=['.'], doc="Location(s) for the dataflow app to write data. Former -o"),
     s.field( "host_df", self.host, default='localhost'),
     s.field( "max_file_size",self.count, default=4*1024*1024*1024, doc="The size threshold when raw data files are closed (in bytes)"),
@@ -155,6 +168,7 @@ local cs = {
   dataflow: s.record("dataflow", [
     s.field( "host_dfo", self.host, default='localhost', doc="Sets the host for the DFO app"),
     s.field("apps", self.dataflowapps, default=[], doc="Configuration for the dataflow apps (see dataflowapp for options)"),
+    s.field( "token_count",self.count, default=10, doc="Number of tokens the dataflow apps give to the DFO. Former -c"),
   ]),
 
   dqm: s.record("dqm", [

@@ -116,7 +116,8 @@
     "tpg_channel_map": "ProtoDUNESP1ChannelMap",
     "mlt_buffer_timeout": 100,
     "mlt_send_timed_out_tds": false,
-    "mlt_max_td_length_ms": 1000
+    "mlt_max_td_length_ms": 1000,
+    "mlt_ignore_tc": []
   },
   "dpdk_sender": {
     "enable_dpdk_sender": false,
