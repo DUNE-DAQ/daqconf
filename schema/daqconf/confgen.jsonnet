@@ -134,6 +134,8 @@ local cs = {
     s.field( "host_trigger", self.host, default='localhost', doc='Host to run the trigger app on'),
     s.field( "host_tpw", self.host, default='localhost', doc='Host to run the TPWriter app on'),
     # trigger options
+    s.field( "completeness_tolerance", self.count, default=1, doc="Maximum number of inactive queues we will tolerate."),
+    s.field( "tolerate_incompleteness", self.flag, default=false, doc="Flag to tell trigger to tolerate inactive queues."),
     s.field( "ttcm_s1", self.count,default=1, doc="Timing trigger candidate maker accepted HSI signal ID 1"),
     s.field( "ttcm_s2", self.count, default=2, doc="Timing trigger candidate maker accepted HSI signal ID 2"),
     s.field( "trigger_activity_plugin", self.string, default='TriggerActivityMakerPrescalePlugin', doc="Trigger activity algorithm plugin"),
