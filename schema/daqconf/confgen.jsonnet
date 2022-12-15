@@ -9,8 +9,8 @@ local cs = {
   port:            s.number(   "Port", "i4", doc="A TCP/IP port number"),
   freq:            s.number(   "Frequency", "u4", doc="A frequency"),
   rate:            s.number(   "Rate", "f8", doc="A rate as a double"),
-  count:           s.number(   "count", "i8", doc="A count of things"),
-  three_choice:    s.number(   "threechoice", "i8", nc(minimum=0, exclusiveMaximum=3), doc="A choice between 0, 1, or 2"),
+  count:           s.number(   "Count", "i8", doc="A count of things"),
+  three_choice:    s.number(   "ThreeChoice", "i8", nc(minimum=0, exclusiveMaximum=3), doc="A choice between 0, 1, or 2"),
   flag:            s.boolean(  "Flag", doc="Parameter that can be used to enable or disable functionality"),
   monitoring_dest: s.enum(     "MonitoringDest", ["local", "cern", "pocket"]),
   path:            s.string(   "Path", doc="Location on a filesystem"),
@@ -22,8 +22,8 @@ local cs = {
   dqm_channel_map: s.enum(     "DQMChannelMap", ['HD', 'VD', 'PD2HD', 'HDCB']),
   dqm_params:      s.sequence( "DQMParams",     self.count, doc="Parameters for DQM (fixme)"),
   tc_types:        s.sequence( "TCTypes",       self.count, doc="List of TC types"),
-  
-  numa_exception:  s.record( "NUMAException", [
+
+  numa_exception:  s.record("NUMAException", [
     s.field( "host", self.host, default='localhost', doc="Host of exception"),
     s.field( "card", self.count, default=0, doc="Card ID of exception"),
     s.field( "numa_id", self.count, default=0, doc="NUMA ID of exception"),
@@ -31,15 +31,15 @@ local cs = {
     s.field( "latency_buffer_numa_aware", self.flag, default=false, doc="Enable NUMA-aware mode for the Latency Buffer"),
     s.field( "latency_buffer_preallocation", self.flag, default=false, doc="Enable Latency Buffer preallocation"),
   ], doc="Exception to the default NUMA ID for FELIX cards"),
-  numa_exceptions: s.sequence( "NUMAExceptions", self.numa_exception, doc="Exceptions to the default NUMA ID"),
-  numa_config: s.record("numa_config", [
+  numa_exceptions: s.sequence("NUMAExceptions", self.numa_exception, doc="Exceptions to the default NUMA ID"),
+  numa_config: s.record("NUMAConfig", [
     s.field( "default_id", self.count, default=0, doc="Default NUMA ID for FELIX cards"),
     s.field( "default_latency_numa_aware", self.flag, default=false, doc="Default for Latency Buffer NUMA awareness"),
     s.field( "default_latency_preallocation", self.flag, default=false, doc="Default for Latency Buffer Preallocation"),
     s.field( "exceptions", self.numa_exceptions, default=[], doc="Exceptions to the default NUMA ID"),
   ]),
 
-  boot: s.record("boot", [
+  boot: s.record("Boot", [
     s.field( "base_command_port", self.port, default=3333, doc="Base port of application command endpoints"),
     s.field( "disable_trace", self.flag, false, doc="Do not enable TRACE (default TRACE_FILE is /tmp/trace_buffer_${HOSTNAME}_${USER})"),
     s.field( "opmon_impl", self.monitoring_dest, default='local', doc="Info collector service implementation to use"),
@@ -55,7 +55,7 @@ local cs = {
     s.field( "RTE_script_settings", self.three_choice, default=0, doc="0 - Use an RTE script iff not in a dev environment, 1 - Always use RTE, 2 - never use RTE"),
   ]),
 
-  timing: s.record("timing", [
+  timing: s.record("Timing", [
     s.field( "timing_partition_name", self.string, default="timing", doc="Name of the global partition to use, for ERS and OPMON and timing commands"),
     s.field( "host_timing", self.host, default='np04-srv-012.cern.ch', doc='Host to run the (global) timing hardware interface app on'),
     s.field( "port_timing", self.port, default=12345, doc='Port to host running the (global) timing hardware interface app on'),
@@ -69,7 +69,7 @@ local cs = {
     s.field( "timing_partition_spill_gate_enabled", self.flag, default=false, doc='Timing partition spill gate enabled'),
   ]),
 
-  hsi: s.record("hsi", [
+  hsi: s.record("HSI", [
     s.field( "host_hsi", self.host, default='localhost', doc='Host to run the HSI app on'),
     # hsi readout options
     s.field( "hsi_hw_connections_file", self.path, default="${TIMING_SHARE}/config/etc/connections.xml", doc='Real timing hardware only: path to hardware connections file'),
@@ -91,7 +91,7 @@ local cs = {
     s.field( "enabled_hsi_signals", self.count, default=1, doc='Fake HSI only: bit mask of enabled fake HSI signals'),
   ]),
 
-  readout: s.record("readout", [
+  readout: s.record("Readout", [
     s.field( "hardware_map_file", self.path, default='./HardwareMap.txt', doc="File containing detector hardware map for configuration to run"),
     s.field( "emulator_mode", self.flag, default=false, doc="If active, timestamps of data frames are overwritten when processed by the readout. This is necessary if the felix card does not set correct timestamps. Former -e"),
     s.field( "thread_pinning_file", self.path, default="", doc="A thread pinning configuration file that gets executed after conf."),
@@ -117,7 +117,7 @@ local cs = {
     s.field( "numa_config", self.numa_config, default=self.numa_config, doc='Configuration of FELIX NUMA IDs'),
   ]),
 
-  trigger_algo_config: s.record("trigger_algo_config", [
+  trigger_algo_config: s.record("TriggerAlgoConfig", [
     s.field("prescale", self.count, default=100),
     s.field("window_length", self.count, default=10000),
     s.field("adjacency_threshold", self.count, default=6),
@@ -130,7 +130,7 @@ local cs = {
     s.field("print_tp_info", self.flag, default=false),
   ]),
 
-  trigger: s.record("trigger",[
+  trigger: s.record("Trigger",[
     s.field( "trigger_rate_hz", self.rate, default=1.0, doc='Fake HSI only: rate at which fake HSIEvents are sent. 0 - disable HSIEvent generation. Former -t'),
     s.field( "trigger_window_before_ticks",self.count, default=1000, doc="Trigger window before marker. Former -b"),
     s.field( "trigger_window_after_ticks", self.count, default=1000, doc="Trigger window after marker. Former -a"),
@@ -154,7 +154,7 @@ local cs = {
     s.field( "mlt_ignore_tc", self.tc_types, default=[], doc="Optional list of TC types to be ignored in MLT"),
   ]),
 
-  dataflowapp: s.record("dataflowapp",[
+  dataflowapp: s.record("DataflowApp",[
     s.field("app_name", self.string, default="dataflow0"),
     s.field( "output_paths",self.paths, default=['.'], doc="Location(s) for the dataflow app to write data. Former -o"),
     s.field( "host_df", self.host, default='localhost'),
@@ -163,15 +163,15 @@ local cs = {
     s.field( "max_trigger_record_window",self.count, default=0, doc="The maximum size for the window of data that will included in a single TriggerRecord (in ticks). Readout windows that are longer than this size will result in TriggerRecords being split into a sequence of TRs. A zero value for this parameter means no splitting."),
 
   ], doc="Element of the dataflow.apps array"),
-  dataflowapps: s.sequence("dataflowapps", self.dataflowapp, doc="List of dataflowapp instances"),
+  dataflowapps: s.sequence("Dataflowapps", self.dataflowapp, doc="List of dataflowapp instances"),
 
-  dataflow: s.record("dataflow", [
+  dataflow: s.record("Dataflow", [
     s.field( "host_dfo", self.host, default='localhost', doc="Sets the host for the DFO app"),
     s.field("apps", self.dataflowapps, default=[], doc="Configuration for the dataflow apps (see dataflowapp for options)"),
     s.field( "token_count",self.count, default=10, doc="Number of tokens the dataflow apps give to the DFO. Former -c"),
   ]),
 
-  dqm: s.record("dqm", [
+  dqm: s.record("DQM", [
     s.field('enable_dqm', self.flag, default=false, doc="Enable Data Quality Monitoring"),
     s.field('impl', self.monitoring_dest, default='local', doc="DQM destination (Kafka used for cern and pocket)"),
     s.field('cmap', self.dqm_channel_map, default='HD', doc="Which channel map to use for DQM"),
@@ -188,13 +188,13 @@ local cs = {
     s.field('kafka_topic', self.string, default='DQM', doc='kafka topic used to send messages'),
   ]),
 
-  dpdk_sender: s.record("dpdk_sender", [
+  dpdk_sender: s.record("DPDKSender", [
       s.field( "enable_dpdk_sender", self.flag, default=false, doc="Enable sending frames using DPDK"),
       s.field( "host_dpdk_sender", self.hosts, default=['np04-srv-021'], doc="Which host to use to send frames"),
       s.field( "eal_args", self.string, default='-l 0-1 -n 3 -- -m [0:1].0 -j', doc='Args passed to the EAL in DPDK'),
   ]),
 
-  daqconf_multiru_gen: s.record('daqconf_multiru_gen', [
+  daqconf_multiru_gen: s.record('DAQConfMultiRuGen', [
     s.field('boot',     self.boot,    default=self.boot,      doc='Boot parameters'),
     s.field('dataflow', self.dataflow, default=self.dataflow, doc='Dataflow paramaters'),
     s.field('dqm',      self.dqm,      default=self.dqm,      doc='DQM parameters'),

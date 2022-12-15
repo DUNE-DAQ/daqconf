@@ -100,8 +100,9 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                     DEBUG=False):
     
     # Generate schema for the maker plugins on the fly in the temptypes module
-    make_moo_record(ACTIVITY_CONFIG , 'ActivityConf' , 'temptypes')
-    make_moo_record(CANDIDATE_CONFIG, 'CandidateConf', 'temptypes')
+    from daqconf.confgen.PySerdes import trigger_algo_config_to_json # PL: this thing wants plain old data...
+    make_moo_record(trigger_algo_config_to_json(ACTIVITY_CONFIG), 'ActivityConf' , 'temptypes')
+    make_moo_record(trigger_algo_config_to_json(CANDIDATE_CONFIG), 'CandidateConf', 'temptypes')
     import temptypes
 
     # How many clock ticks are there in a _wall clock_ second?

@@ -10,15 +10,15 @@ import random
 import string
 
 console = Console()
-# Set moo schema search path
-from dunedaq.env import get_moo_model_path
-import moo.io
-moo.io.default_load_path = get_moo_model_path()
+# # Set moo schema search path
+# from dunedaq.env import get_moo_model_path
+# import moo.io
+# moo.io.default_load_path = get_moo_model_path()
 
 
-# Load configuration types
-import moo.otypes
-import moo.oschema
+# # Load configuration types
+# import moo.otypes
+# import moo.oschema
 
 def _strict_recursive_update(dico1, dico2):
     for k, v in dico2.items():
@@ -140,28 +140,28 @@ def helptree(ost, prefix=''):
 
 def generate_cli_from_schema(schema_file, schema_object_name, *args): ## doh
     def add_decorator(function):
-        moo.otypes.load_types(schema_file)
-        import importlib
-        module_name = schema_file.replace('.jsonnet', '').replace('/', '.')
-        config_module = importlib.import_module(f'dunedaq.{module_name}')
-        schema_object = getattr(config_module, schema_object_name)
-        extra_schemas = [getattr(config_module, obj)() for obj in args]
+        # moo.otypes.load_types(schema_file)
+        # import importlib
+        # module_name = schema_file.replace('.jsonnet', '').replace('/', '.')
+        # config_module = importlib.import_module(f'dunedaq.{module_name}')
+        # schema_object = getattr(config_module, schema_object_name)
+        # extra_schemas = [getattr(config_module, obj)() for obj in args]
 
         def configure(ctx, param, filename):
-            return parse_config_file(filename, schema_object())
+            return filename#parse_config_file(filename, schema_object())
 
         import click
 
-        hlp = helptree(schema_object().ost)
-        for extra_schema in extra_schemas:
-            hlp+="\n\n\n"+helptree(extra_schema.ost)
+        # # hlp = helptree(schema_object().ost)
+        # for extra_schema in extra_schemas:
+        #     hlp+="\n\n\n"+helptree(extra_schema.ost)
 
         return click.option(
             '-c', '--config',
             type         = click.Path(dir_okay=False),
             default      = None,
             callback     = configure,
-            help         = hlp,
+            # help         = hlp,
             show_default = True,
         )(function)
     return add_decorator
