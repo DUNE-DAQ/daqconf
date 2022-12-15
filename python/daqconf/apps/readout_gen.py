@@ -300,6 +300,7 @@ def get_readout_app(DRO_CONFIG=None,
                                           # fake_trigger_flag=0, # default
                                           source_id =  link.dro_source_id,
                                           timesync_connection_name = f"timesync_{RUIDX}",
+                                          send_partial_fragment_if_available = (FRONTEND_TYPE == 'mpd')
                                       ),
                                       latencybufferconf= rconf.LatencyBufferConf(
                                           latency_buffer_alignment_size = 4096,
