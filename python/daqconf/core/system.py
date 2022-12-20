@@ -16,9 +16,10 @@ class System:
     """
 
     def __init__(self, apps=None, connections=None, app_start_order=None,
-                 first_port=12345):
+                 first_port=12345, queues=None):
         self.apps=apps if apps else dict()
         self.connections = connections if connections else dict()
+        self.queues = queues if queues else dict()
         self.app_start_order = app_start_order
         self._next_port = first_port
         self.digraph = None
@@ -26,6 +27,7 @@ class System:
     def __rich_repr__(self):
         yield "apps", self.apps
         yield "connections", self.connections
+        yield "queues", self.queues
         yield "app_connections", self.app_connections
         yield "app_start_order", self.app_start_order
 

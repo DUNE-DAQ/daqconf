@@ -9,13 +9,9 @@ import moo.otypes
 import re
 
 moo.otypes.load_types('trigger/moduleleveltrigger.jsonnet')
-moo.otypes.load_types('dfmodules/fragmentreceiver.jsonnet')
-moo.otypes.load_types('dfmodules/requestreceiver.jsonnet')
 moo.otypes.load_types('dfmodules/triggerrecordbuilder.jsonnet')
 
 import dunedaq.trigger.moduleleveltrigger as mlt
-import dunedaq.dfmodules.fragmentreceiver as frcv
-import dunedaq.dfmodules.requestreceiver as rrcv
 import dunedaq.dfmodules.triggerrecordbuilder as trb
 
 from daqconf.core.conf_utils import Direction
@@ -47,7 +43,8 @@ def set_mlt_links(the_system, mlt_app_name="trigger", verbose=False):
                                                    hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough,
 						   buffer_timeout=old_mlt_conf.buffer_timeout,
                                                    td_out_of_timeout=old_mlt_conf.td_out_of_timeout,
-                                                   td_readout_limit=old_mlt_conf.td_readout_limit))
+                                                   td_readout_limit=old_mlt_conf.td_readout_limit,
+                                                   ignore_tc=old_mlt_conf.ignore_tc))
 
 def remove_mlt_link(the_system, source_id, mlt_app_name="trigger"):
     """
@@ -65,7 +62,8 @@ def remove_mlt_link(the_system, source_id, mlt_app_name="trigger"):
                                                    hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough,
                                                    buffer_timeout=old_mlt_conf.buffer_timeout,
 					       	   td_out_of_timeout=old_mlt_conf.td_out_of_timeout,
-                                                   td_readout_limit=old_mlt_conf.td_readout_limit))
+                                                   td_readout_limit=old_mlt_conf.td_readout_limit,
+                                                   ignore_tc=old_mlt_conf.ignore_tc))
     
 def connect_fragment_producers(app_name, the_system, verbose=False):
     """Connect the data request and fragment sending queues from all of
@@ -91,72 +89,29 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
     # 1. Add it to the SourceID -> queue name map that is used in RequestReceiver
     # 2. Connect the relevant RequestReceiver output queue to the request input queue of the fragment producer
     # 3. Connect the fragment output queue of the producer module to the FragmentSender
-
-    request_connection_name = f"data_requests_for_{app_name}"
-
     
-    source_id_to_queue_inst = []
-    trb_source_id_to_connection = []
 
     for producer in producers.values():
-        source_id = producer.source_id
-        queue_inst = f"data_request_q_for_{source_id_raw_str(producer.source_id)}"
-        source_id_to_queue_inst.append(rrcv.sourceidinst(source_id = source_id.id,
-                                                  system  = ensure_subsystem_string(source_id.subsystem),
-                                                  connection_uid = queue_inst))
-        trb_source_id_to_connection.append(trb.sourceidinst(source_id = source_id.id,
-                                                     system  = ensure_subsystem_string(source_id.subsystem),
-                                                     connection_uid = request_connection_name))
-        
-        # Connect the fragment output queue to the fragment sender
-#        app.modulegraph.connect_modules(producer.fragments_out, "fragment_sender.input_queue")
-        
-    # Create request receiver
-
-    if verbose:
-        console.log(f"Creating request_receiver for {app_name} with source_id_to_queue_inst: {source_id_to_queue_inst}")
-    app.modulegraph.add_module("request_receiver",
-                               plugin = "RequestReceiver",
-                               conf = rrcv.ConfParams(map = source_id_to_queue_inst ))
-
-    
-    for producer in producers.values():
-        # It looks like RequestReceiver wants its endpoint names to
-        # start "data_request_" for the purposes of checking the queue
-        # type, but doesn't care what the queue instance name is (as
-        # long as it matches what's in the map above), so we just set
-        # the endpoint name and queue instance name to the same thing
-        queue_inst = f"data_request_q_for_{source_id_raw_str(producer.source_id)}"
-        app.modulegraph.connect_modules(f"request_receiver.data_request_{source_id_raw_str(producer.source_id)}", producer.requests_in, queue_inst)
-
-                               
-    # Connect request receiver to TRB output in DF app
-    app.modulegraph.add_endpoint(request_connection_name,
-                                 internal_name = "request_receiver.input", 
+        queue_inst = f"data_requests_for_{source_id_raw_str(producer.source_id)}"
+        # Connect request receiver to TRB output in DF app
+        app.modulegraph.add_endpoint(queue_inst,
+                                 internal_name = producer.requests_in, 
+                                 data_type = "DataRequest",
                                  inout = Direction.IN)
+        
+                               
                                
     trb_apps = [ (name,app) for (name,app) in the_system.apps.items() if "TriggerRecordBuilder" in [n.plugin for n in app.modulegraph.module_list()] ]
-    # Connect fragment sender output to TRB in DF app (via FragmentReceiver)
-    fragment_endpoint_name = "{app_name}.fragments"
 
     for trb_app_name, trb_app_conf in trb_apps:
         fragment_connection_name = f"fragments_to_{trb_app_name}"
-        app.modulegraph.add_endpoint(fragment_connection_name, None, Direction.OUT)
+        app.modulegraph.add_endpoint(fragment_connection_name, None, "Fragment", Direction.OUT)
         df_mgraph = trb_app_conf.modulegraph
         trb_module_name = [n.name for n in df_mgraph.module_list() if n.plugin == "TriggerRecordBuilder"][0]
-        df_mgraph.add_endpoint(fragment_connection_name, f"{trb_module_name}.data_fragment_all", Direction.IN, toposort=True)            
-        df_mgraph.add_endpoint(request_connection_name, f"{trb_module_name}.request_output_{app_name}", Direction.OUT)
-
-        # Add the new source_id-to-connections map to the
-        # TriggerRecordBuilder.
-        old_trb_conf = df_mgraph.get_module(trb_module_name).conf
-        new_trb_map = old_trb_conf.map + trb_source_id_to_connection
-        df_mgraph.reset_module_conf(trb_module_name, trb.ConfParams(general_queue_timeout=old_trb_conf.general_queue_timeout,
-                                                               source_id = old_trb_conf.source_id,
-                                                          reply_connection_name = fragment_connection_name,
-                                                          max_time_window = old_trb_conf.max_time_window,
-                                                          trigger_record_timeout_ms = old_trb_conf.trigger_record_timeout_ms,
-                                                          map=trb.mapsourceidconnections(new_trb_map)))
+        for producer in producers.values():
+            queue_inst = f"data_requests_for_{source_id_raw_str(producer.source_id)}"
+            df_mgraph.add_endpoint(queue_inst, f"{trb_module_name}.request_output_{source_id_raw_str(producer.source_id)}", "DataRequest", Direction.OUT)
+            
                           
 
 def connect_all_fragment_producers(the_system, dataflow_name="dataflow", verbose=False):
@@ -168,3 +123,20 @@ def connect_all_fragment_producers(the_system, dataflow_name="dataflow", verbose
         if name==dataflow_name:
             continue
         connect_fragment_producers(name, the_system, verbose)
+        
+    trb_apps = [ (name,app) for (name,app) in the_system.apps.items() if "TriggerRecordBuilder" in [n.plugin for n in app.modulegraph.module_list()] ]
+    
+    for trb_app_name, trb_app_conf in trb_apps:
+        fragment_connection_name = f"fragments_to_{trb_app_name}"
+        df_mgraph = trb_app_conf.modulegraph
+        trb_module_name = [n.name for n in df_mgraph.module_list() if n.plugin == "TriggerRecordBuilder"][0]
+        df_mgraph.add_endpoint(fragment_connection_name, f"{trb_module_name}.data_fragment_all", "Fragment", Direction.IN, toposort=True)
+
+        # Add the new source_id-to-connections map to the
+        # TriggerRecordBuilder.
+        old_trb_conf = df_mgraph.get_module(trb_module_name).conf
+        df_mgraph.reset_module_conf(trb_module_name, trb.ConfParams(general_queue_timeout=old_trb_conf.general_queue_timeout,
+                                                               source_id = old_trb_conf.source_id,
+                                                          reply_connection_name = fragment_connection_name,
+                                                          max_time_window = old_trb_conf.max_time_window,
+                                                          trigger_record_timeout_ms = old_trb_conf.trigger_record_timeout_ms))
