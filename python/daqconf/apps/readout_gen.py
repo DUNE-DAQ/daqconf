@@ -106,9 +106,11 @@ def get_readout_app(DRO_CONFIG=None,
     elif FRONTEND_TYPE== "NDLAr_TPC":
         FRONTEND_TYPE = "pacman"
         FAKEDATA_FRAGMENT_TYPE = "PACMAN"
+        QUEUE_FRAGMENT_TYPE = "PACMAN"
     elif FRONTEND_TYPE== "NDLAr_PDS":
         FRONTEND_TYPE = "mpd"
         FAKEDATA_FRAGMENT_TYPE = "MPD"
+        QUEUE_FRAGMENT_TYPE = "MPD"
         
     print(f' in readout gen FRONTENT_TYPE={FRONTEND_TYPE}')
 
