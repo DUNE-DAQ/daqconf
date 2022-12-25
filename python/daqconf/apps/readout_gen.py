@@ -300,6 +300,7 @@ def get_readout_app(DRO_CONFIG=None,
                                           # fake_trigger_flag=0, # default
                                           source_id =  link.dro_source_id,
                                           timesync_connection_name = f"timesync_{RUIDX}",
+                                          send_partial_fragment_if_available = (FRONTEND_TYPE == 'mpd')
                                       ),
                                       latencybufferconf= rconf.LatencyBufferConf(
                                           latency_buffer_alignment_size = 4096,
@@ -315,6 +316,7 @@ def get_readout_app(DRO_CONFIG=None,
                                           enable_software_tpg = SOFTWARE_TPG_ENABLED,
                                           channel_map_name = TPG_CHANNEL_MAP,
                                           emulator_mode = EMULATOR_MODE,
+                                          clock_speed_hz = (CLOCK_SPEED_HZ / DATA_RATE_SLOWDOWN_FACTOR),
                                           error_counter_threshold=100,
                                           error_reset_freq=10000,
                                           tpset_sourceid=link_to_tp_sid_map[link.dro_source_id] if SOFTWARE_TPG_ENABLED else 0
