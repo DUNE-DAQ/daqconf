@@ -36,7 +36,7 @@ from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Direction, Queue
 
 #===============================================================================
-def get_hsi_app(RUN_NUMBER = 333,
+def get_timing_hsi_app(RUN_NUMBER = 333,
                 CLOCK_SPEED_HZ: int = 50000000,
                 TRIGGER_RATE_HZ: int = 1,
                 CONTROL_HSI_HARDWARE = False,
