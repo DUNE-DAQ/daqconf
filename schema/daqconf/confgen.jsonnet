@@ -53,6 +53,7 @@ local cs = {
     s.field("connectivity_service_host", self.host, default='127.0.0.1', doc="Hostname for the ConnectivityService"),
     s.field("connectivity_service_port", self.port, default=5000, doc="Port for the ConnectivityService"),
     s.field( "RTE_script_settings", self.three_choice, default=0, doc="0 - Use an RTE script iff not in a dev environment, 1 - Always use RTE, 2 - never use RTE"),
+    s.field( "use_data_network", self.flag, default = false, doc="Whether to use the data network (Won't work with k8s)"),
   ]),
 
   timing: s.record("timing", [
