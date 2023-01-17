@@ -97,10 +97,10 @@ local cs = {
     # ctb options
     s.field( "use_ctb_hsi", self.flag, default=false, doc='Flag to control whether CTB HSI config is generated. Default is false'),
     s.field( "host_ctb_hsi", self.host, default='localhost', doc='Host to run the HSI app on'),
-    s.field("hlt_triggers", ctbmodule.Hlt_trigger_seq, [ctbmodule.Hlt_trigger]),
-    s.field("beam_llt_triggers", ctbmodule.Llt_mask_trigger_seq, [ctbmodule.Llt_mask_trigger]),
-    s.field("crt_llt_triggers", ctbmodule.Llt_count_trigger_seq, [ctbmodule.Llt_count_trigger]),
-    s.field("pds_llt_triggers", ctbmodule.Llt_count_trigger_seq, [ctbmodule.Llt_count_trigger]),
+    s.field("hlt_triggers", ctbmodule.Hlt_trigger_seq, []),
+    s.field("beam_llt_triggers", ctbmodule.Llt_mask_trigger_seq, []),
+    s.field("crt_llt_triggers", ctbmodule.Llt_count_trigger_seq, []),
+    s.field("pds_llt_triggers", ctbmodule.Llt_count_trigger_seq, []),
     s.field("fake_trig_1", ctbmodule.Randomtrigger, ctbmodule.Randomtrigger),
     s.field("fake_trig_2", ctbmodule.Randomtrigger, ctbmodule.Randomtrigger)
   ]),
