@@ -302,7 +302,9 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             HLT_LIST=ctb_hsi.hlt_triggers,
             BEAM_LLT_LIST=ctb_hsi.beam_llt_triggers,
             CRT_LLT_LIST=ctb_hsi.crt_llt_triggers,
-            PDS_LLT_LIST=ctb_hsi.pds_llt_triggers
+            PDS_LLT_LIST=ctb_hsi.pds_llt_triggers,
+            FAKE_TRIG_1=ctb_hsi.fake_trig_1,
+            FAKE_TRIG_2=ctb_hsi.fake_trig_2
             )
         if debug: console.log("ctb hsi cmd data:", the_system.apps["ctbhsi"])
         

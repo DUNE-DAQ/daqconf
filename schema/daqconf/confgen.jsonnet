@@ -100,7 +100,9 @@ local cs = {
     s.field("hlt_triggers", ctbmodule.Hlt_trigger_seq, [ctbmodule.Hlt_trigger]),
     s.field("beam_llt_triggers", ctbmodule.Llt_mask_trigger_seq, [ctbmodule.Llt_mask_trigger]),
     s.field("crt_llt_triggers", ctbmodule.Llt_count_trigger_seq, [ctbmodule.Llt_count_trigger]),
-    s.field("pds_llt_triggers", ctbmodule.Llt_count_trigger_seq, [ctbmodule.Llt_count_trigger])
+    s.field("pds_llt_triggers", ctbmodule.Llt_count_trigger_seq, [ctbmodule.Llt_count_trigger]),
+    s.field("fake_trig_1", ctbmodule.Randomtrigger, ctbmodule.Randomtrigger),
+    s.field("fake_trig_2", ctbmodule.Randomtrigger, ctbmodule.Randomtrigger)
   ]),
 
   readout: s.record("readout", [
