@@ -217,7 +217,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                 # tazipper.max_latency_ms, everything should be fine.
                 modules += [DAQModule(name = f'zip_{region_id}',
                                       plugin = 'TPZipper',
-                                              conf = tzip.ConfParams(cardinality=len(TP_SOURCE_IDS),
+                                              conf = tzip.ConfParams(cardinality=ta_conf["conf"].link_count,
                                                                      max_latency_ms=100,
                                                                      element_id=ta_conf["source_id"])),
                                     
