@@ -99,6 +99,10 @@ def get_readout_app(DRO_CONFIG=None,
     elif FRONTEND_TYPE== "ND_LAr":
         FRONTEND_TYPE = "pacman"
         FAKEDATA_FRAGMENT_TYPE = "PACMAN"
+    elif FRONTEND_TYPE== "NDGAr_TPC": #TOAD
+        FRONTEND_TYPE = "toad"
+        FAKEDATA_FRAGMENT_TYPE = "TOAD"
+        QUEUE_FRAGMENT_TYPE = "TOAD"
 
     if DEBUG: print(f'FRONTENT_TYPE={FRONTEND_TYPE}')
 
@@ -134,6 +138,11 @@ def get_readout_app(DRO_CONFIG=None,
     link_to_tp_sid_map = {}
     fw_tp_id_map = {}
     fw_tp_out_id_map = {}
+
+    if SOFTWARE_TPG_ENABLED:
+        if FRONTEND_TYPE == 'pacman' or FRONTEND_TYPE == 'toad':
+            print('ERROR: Cannot configure Software TPG for pacman or toad data')
+            exit()
 
     if SOFTWARE_TPG_ENABLED:
         for link in DRO_CONFIG.links:
@@ -278,6 +287,7 @@ def get_readout_app(DRO_CONFIG=None,
                                           source_id =  link.dro_source_id,
                                           timesync_connection_name = f"timesync_{RUIDX}",
                                           timesync_topic_name = "Timesync",
+					  send_partial_fragment_if_available = (FRONTEND_TYPE == 'toad') #TOAD
                                       ),
                                       latencybufferconf= rconf.LatencyBufferConf(
                                           latency_buffer_alignment_size = 4096,
@@ -395,6 +405,14 @@ def get_readout_app(DRO_CONFIG=None,
                     conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=link.dro_source_id)
                                                  for link in DRO_CONFIG.links],
                                   zmq_receiver_timeout = 10000)
+                if FRONTEND_TYPE=='toad': #TOAD
+                    fake_source = "toad_source"
+                    card_reader = "PacmanCardReader"
+                    conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=link.dro_source_id)
+                                                 for link in DRO_CONFIG.links],
+                                  zmq_receiver_timeout = 10000)
+
+
                 modules += [DAQModule(name = fake_source,
                                       plugin = card_reader,
                                       conf = conf)]
