@@ -49,7 +49,11 @@ local cs = {
     s.field( "use_k8s", self.flag, default=false, doc="Whether to use k8s"),
     s.field( "op_env", self.string, default='swtest', doc="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files"),
     s.field( "data_request_timeout_ms", self.count, default=1000, doc="The baseline data request timeout that will be used by modules in the Readout and Trigger subsystems (i.e. any module that produces data fragments). Downstream timeouts, such as the trigger-record-building timeout, are derived from this."),
+    s.field( "use_connectivity_service", self.flag, default=false, doc="Whether to use the ConnectivityService to manage connections"),
+    s.field("connectivity_service_host", self.host, default='127.0.0.1', doc="Hostname for the ConnectivityService"),
+    s.field("connectivity_service_port", self.port, default=5000, doc="Port for the ConnectivityService"),
     s.field( "RTE_script_settings", self.three_choice, default=0, doc="0 - Use an RTE script iff not in a dev environment, 1 - Always use RTE, 2 - never use RTE"),
+    s.field( "use_data_network", self.flag, default = false, doc="Whether to use the data network (Won't work with k8s)"),
   ]),
 
   timing: s.record("timing", [
@@ -153,7 +157,6 @@ local cs = {
 
   dataflowapp: s.record("dataflowapp",[
     s.field("app_name", self.string, default="dataflow0"),
-    s.field( "token_count",self.count, default=10, doc="Number of tokens this dataflow app gives to DFO. Former -c"),
     s.field( "output_paths",self.paths, default=['.'], doc="Location(s) for the dataflow app to write data. Former -o"),
     s.field( "host_df", self.host, default='localhost'),
     s.field( "max_file_size",self.count, default=4*1024*1024*1024, doc="The size threshold when raw data files are closed (in bytes)"),
@@ -166,6 +169,7 @@ local cs = {
   dataflow: s.record("dataflow", [
     s.field( "host_dfo", self.host, default='localhost', doc="Sets the host for the DFO app"),
     s.field("apps", self.dataflowapps, default=[], doc="Configuration for the dataflow apps (see dataflowapp for options)"),
+    s.field( "token_count",self.count, default=10, doc="Number of tokens the dataflow apps give to the DFO. Former -c"),
   ]),
 
   dqm: s.record("dqm", [

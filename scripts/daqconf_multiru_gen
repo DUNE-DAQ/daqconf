@@ -355,6 +355,8 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         DEBUG=debug)
 
     the_system.apps['dfo'] = get_dfo_app(
+        FREE_COUNT = max(1, dataflow.token_count / 2),
+        BUSY_COUNT = dataflow.token_count,
         DF_CONF = appconfig_df,
         STOP_TIMEOUT = dfo_stop_timeout,
         HOST=dataflow.host_dfo,
@@ -469,7 +471,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             MAX_FILE_SIZE = df_config.max_file_size,
             MAX_TRIGGER_RECORD_WINDOW = df_config.max_trigger_record_window,
             MAX_EXPECTED_TR_SEQUENCES = max_expected_tr_sequences,
-            TOKEN_COUNT = df_config.token_count,
+            TOKEN_COUNT = dataflow.token_count,
             TRB_TIMEOUT = trigger_record_building_timeout,
             HOST=df_config.host_df,
             HAS_DQM=dqm.enable_dqm,
@@ -536,7 +538,6 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             CLOCK_SPEED_HZ = readout.clock_speed_hz,
             HARDWARE_MAP_FILE=readout.hardware_map_file,
             SOURCE_IDX=dfidx,
-            FIRMWARE_TPG_ENABLED=readout.enable_firmware_tpg,
             HOST=trigger.host_tpw,
             DEBUG=debug)
         if boot.use_k8s: ## TODO schema
@@ -619,7 +620,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
     # Arrange per-app command data into the format used by util.write_json_files()
     app_command_datas = {
-        name : make_app_command_data(the_system, app,name, verbose=debug, use_k8s=boot.use_k8s)
+        name : make_app_command_data(the_system, app,name, verbose=debug, use_k8s=boot.use_k8s, use_connectivity_service=boot.use_connectivity_service)
         for name,app in the_system.apps.items()
     }
 
@@ -646,11 +647,32 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             forced_deps.append([dqm_name, 'dfo'])
     forced_deps.append(['trigger','hsi'])
 
+    def control_to_data_network(control_hostname:str) -> str:
+        ## whatever is appropriate here...
+        if 'pd-tbed-sh' in control_hostname:
+            return control_hostname+'-100g'
+        elif 'pc-tbed-tpu' in control_hostname:
+            return control_hostname+'-dc1'
+        elif control_hostname == 'np04-srv-018':
+            return control_hostname+'-100g'
+        elif control_hostname == 'np04-srv-021':
+            return control_hostname+'-100g'
+        elif control_hostname == 'np04-srv-022':
+            return control_hostname+'-100g'
+        else:
+            return control_hostname
+
+    if boot.use_data_network:
+        CDN = control_to_data_network
+    else:
+        CDN = None
+
     system_command_datas = make_system_command_datas(
         boot,
         the_system,
         forced_deps,
-        verbose=debug
+        verbose=debug,
+        control_to_data_network=CDN,
     )
 
 
