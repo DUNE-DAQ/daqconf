@@ -116,22 +116,22 @@ def get_hsi_app(RUN_NUMBER = 333,
                                 extra_commands = {"start": startpars}),
                         ] )
     
-    queues = [Queue(f"hsir.output",f"hsi_datahandler.raw_input",f'hsi_link_0', 100000)]
+    queues = [Queue(f"hsir.output",f"hsi_datahandler.raw_input", "HSIFrame", f'hsi_link_0', 100000)]
 
     mgraph = ModuleGraph(modules, queues=queues)
     
     mgraph.add_fragment_producer(id = HSI_SOURCE_ID, subsystem = "HW_Signals_Interface",
                                          requests_in   = f"hsi_datahandler.request_input",
                                          fragments_out = f"hsi_datahandler.fragment_queue")
-    mgraph.add_endpoint(f"timesync_hsi", f"hsi_datahandler.timesync_output",    Direction.OUT, ["Timesync"], toposort=False)
+    mgraph.add_endpoint(f"timesync_hsi", f"hsi_datahandler.timesync_output",  "TimeSync",  Direction.OUT, is_pubsub=True, toposort=False)
 
     
     if CONTROL_HSI_HARDWARE:
-        mgraph.add_external_connection("timing_cmds", "hsic.timing_cmds", Direction.OUT, TIMING_HOST, TIMING_PORT)
-        mgraph.add_external_connection("timing_device_info", None, Direction.IN, TIMING_HOST, TIMING_PORT+1, [HSI_DEVICE_NAME])
+        mgraph.add_external_connection("timing_cmds", "hsic.timing_cmds", "TimingHwCmd", Direction.OUT, TIMING_HOST, TIMING_PORT)
+        mgraph.add_external_connection("timing_device_info", None, "JSON", Direction.IN, TIMING_HOST, TIMING_PORT+1, [HSI_DEVICE_NAME])
 
-    mgraph.add_endpoint("hsievents", None,     Direction.OUT)
-    mgraph.add_endpoint(None, None, Direction.IN, ["Timesync"])
+    mgraph.add_endpoint("hsievents", None, "HSIEvent",    Direction.OUT)
+    mgraph.add_endpoint(None, None, "TimeSync", Direction.IN, is_pubsub=True)
     
     hsi_app = App(modulegraph=mgraph, host=HOST, name="HSIApp")
     
