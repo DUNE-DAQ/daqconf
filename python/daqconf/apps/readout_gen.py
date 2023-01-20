@@ -240,7 +240,6 @@ def get_readout_app(DRO_CONFIG=None,
                                           emulator_mode = EMULATOR_MODE,
                                           error_counter_threshold=100,
                                           error_reset_freq=10000,
-                                          tpset_topic="TPSets",
                                           tpset_sourceid=tp,
                                       ),
                                       requesthandlerconf= rconf.RequestHandlerConf(
