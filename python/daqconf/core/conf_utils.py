@@ -383,7 +383,7 @@ def make_system_connections(the_system, verbose=False, use_k8s=False, use_connec
                         conn_copy = cp.deepcopy(pubsub_connectionids[connid])
                         the_system.connections[subscriber] += [conn_copy]
 
-def make_app_command_data(system, app, appkey, verbose=False, use_k8s=False, use_connectivity_service=True):
+def make_app_command_data(system, app, appkey, verbose=False, use_k8s=False, use_connectivity_service=True, connectivity_service_interval=1000):
     """Given an App instance, create the 'command data' suitable for
     feeding to nanorc. The needed queues are inferred from from
     connections between modules, as are the start and stop order of the
@@ -451,7 +451,9 @@ def make_app_command_data(system, app, appkey, verbose=False, use_k8s=False, use
     # Fill in the "standard" command entries in the command_data structure
     command_data['init'] = appfwk.Init(modules=mod_specs,
                                        connections=system.connections[appkey],
-                                       queues=system.queues[appkey], use_connectivity_service=use_connectivity_service)
+                                       queues=system.queues[appkey], 
+                                       use_connectivity_service=use_connectivity_service,
+                                       connectivity_service_interval_ms=connectivity_service_interval)
 
     # TODO: Conf ordering
     command_data['conf'] = acmd([
