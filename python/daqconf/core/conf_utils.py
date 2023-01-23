@@ -205,7 +205,7 @@ def make_external_connection(the_system, endpoint_name, data_type, app_name, hos
     address = f"tcp://{host}:{port}"
 
     for connection in the_system.connections[app_name]:
-        if connection.uid == endpoint_name:
+        if connection.id == endpoint_name:
             console.log(f"Duplicate external connection {endpoint_name} detected! Not adding to configuration!")
             return
 
@@ -266,7 +266,7 @@ def make_system_connections(the_system, verbose=False, use_k8s=False, use_connec
       for queue in the_system.apps[app].modulegraph.queues:
             make_queue_connection(the_system, app, queue.name, queue.data_type, queue.push_modules, queue.pop_modules, queue.size, verbose)
       for external_conn in the_system.apps[app].modulegraph.external_connections:
-            make_external_connection(the_system, external_conn.external_name, conn.data_type, app, external_conn.host, external_conn.port, external_conn.topic, external_conn.direction, verbose)
+            make_external_connection(the_system, external_conn.external_name, external_conn.data_type, app, external_conn.host, external_conn.port, external_conn.is_pubsub, external_conn.direction, verbose)
             external_uids.add(external_conn.external_name)
       for endpoint in the_system.apps[app].modulegraph.endpoints:
         if not endpoint.is_pubsub:
