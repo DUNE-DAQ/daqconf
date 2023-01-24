@@ -99,10 +99,9 @@ def get_readout_app(DRO_CONFIG=None,
     elif FRONTEND_TYPE== "ND_LAr":
         FRONTEND_TYPE = "pacman"
         FAKEDATA_FRAGMENT_TYPE = "PACMAN"
-    elif FRONTEND_TYPE== "NDGAr_TPC": #TOAD
+    elif FRONTEND_TYPE== "ND_GAr": #TOAD
         FRONTEND_TYPE = "toad"
         FAKEDATA_FRAGMENT_TYPE = "TOAD"
-        QUEUE_FRAGMENT_TYPE = "TOAD"
 
     if DEBUG: print(f'FRONTENT_TYPE={FRONTEND_TYPE}')
 
