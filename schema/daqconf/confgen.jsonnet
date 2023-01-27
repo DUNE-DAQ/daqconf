@@ -22,6 +22,8 @@ local cs = {
   dqm_channel_map: s.enum(     "DQMChannelMap", ['HD', 'VD', 'PD2HD', 'HDCB']),
   dqm_params:      s.sequence( "DQMParams",     self.count, doc="Parameters for DQM (fixme)"),
   tc_types:        s.sequence( "TCTypes",       self.count, doc="List of TC types"),
+  tc_type:         s.number(   "TCType",        "i4", nc(minimum=0, maximum=9), doc="Number representing TC type. Currently ranging from 0 to 9"),
+  readout_time:    s.number(   "ROTime",        "i8", doc="A readout time in ticks"),
   
   numa_exception:  s.record( "NUMAException", [
     s.field( "host", self.host, default='localhost', doc="Host of exception"),
@@ -127,6 +129,70 @@ local cs = {
     s.field("print_tp_info", self.flag, default=false),
   ]),
 
+  c0_readout: s.record("c0_readout", [
+    s.field("candidate_type", self.tc_type,      default=0,     doc="The TC type, 0=Unknown"),
+    s.field("time_before",    self.readout_time, default=10000, doc="Time to readout before TC time [ticks]"),
+    s.field("time_after",     self.readout_time, default=20000, doc="Time to readout after TC time [ticks]"),
+  ]),
+  c1_readout: s.record("c1_readout", [
+    s.field("candidate_type", self.tc_type,      default=1,     doc="The TC type, 1=Timing"),
+    s.field("time_before",    self.readout_time, default=10000, doc="Time to readout before TC time [ticks]"),
+    s.field("time_after",     self.readout_time, default=20000, doc="Time to readout after TC time [ticks]"),
+  ]),
+  c2_readout: s.record("c2_readout", [
+    s.field("candidate_type", self.tc_type,      default=2,     doc="The TC type, 2=TPCLowE"),
+    s.field("time_before",    self.readout_time, default=10000, doc="Time to readout before TC time [ticks]"),
+    s.field("time_after",     self.readout_time, default=20000, doc="Time to readout after TC time [ticks]"),
+  ]),
+  c3_readout: s.record("c3_readout", [
+    s.field("candidate_type", self.tc_type,      default=3,     doc="The TC type, 3=Supernova"),
+    s.field("time_before",    self.readout_time, default=10000, doc="Time to readout before TC time [ticks]"),
+    s.field("time_after",     self.readout_time, default=20000, doc="Time to readout after TC time [ticks]"),
+  ]),
+  c4_readout: s.record("c4_readout", [
+    s.field("candidate_type", self.tc_type,      default=4,     doc="The TC type, 4=Random"),
+    s.field("time_before",    self.readout_time, default=10000, doc="Time to readout before TC time [ticks]"),
+    s.field("time_after",     self.readout_time, default=20000, doc="Time to readout after TC time [ticks]"),
+  ]),
+  c5_readout: s.record("c5_readout", [
+    s.field("candidate_type", self.tc_type,      default=5,     doc="The TC type, 5=Prescale"),
+    s.field("time_before",    self.readout_time, default=10000, doc="Time to readout before TC time [ticks]"),
+    s.field("time_after",     self.readout_time, default=20000, doc="Time to readout after TC time [ticks]"),
+  ]),
+  c6_readout: s.record("c6_readout", [
+    s.field("candidate_type", self.tc_type,      default=6,     doc="The TC type, 6=ADCSimpleWindow"),
+    s.field("time_before",    self.readout_time, default=10000, doc="Time to readout before TC time [ticks]"),
+    s.field("time_after",     self.readout_time, default=20000, doc="Time to readout after TC time [ticks]"),
+  ]),
+  c7_readout: s.record("c7_readout", [
+    s.field("candidate_type", self.tc_type,      default=7,     doc="The TC type, 7=HorizontalMuon"),
+    s.field("time_before",    self.readout_time, default=10000, doc="Time to readout before TC time [ticks]"),
+    s.field("time_after",     self.readout_time, default=20000, doc="Time to readout after TC time [ticks]"),
+  ]),
+  c8_readout: s.record("c8_readout", [
+    s.field("candidate_type", self.tc_type,      default=8,     doc="The TC type, 8=MichelElectron"),
+    s.field("time_before",    self.readout_time, default=10000, doc="Time to readout before TC time [ticks]"),
+    s.field("time_after",     self.readout_time, default=20000, doc="Time to readout after TC time [ticks]"),
+  ]),
+  c9_readout: s.record("c9_readout", [
+    s.field("candidate_type", self.tc_type,      default=9,     doc="The TC type, 9=LowEnergyEvent"),
+    s.field("time_before",    self.readout_time, default=10000, doc="Time to readout before TC time [ticks]"),
+    s.field("time_after",     self.readout_time, default=20000, doc="Time to readout after TC time [ticks]"),
+  ]),
+
+  tc_readout_map: s.record("tc_readout_map", [
+    s.field("c0", self.c0_readout, default=self.c0_readout, doc="TC readout for TC type 0"),
+    s.field("c1", self.c1_readout, default=self.c1_readout, doc="TC readout for TC type 1"),
+    s.field("c2", self.c2_readout, default=self.c2_readout, doc="TC readout for TC type 2"),
+    s.field("c3", self.c3_readout, default=self.c3_readout, doc="TC readout for TC type 3"),
+    s.field("c4", self.c4_readout, default=self.c4_readout, doc="TC readout for TC type 4"),
+    s.field("c5", self.c5_readout, default=self.c5_readout, doc="TC readout for TC type 5"),
+    s.field("c6", self.c6_readout, default=self.c6_readout, doc="TC readout for TC type 6"),
+    s.field("c7", self.c7_readout, default=self.c7_readout, doc="TC readout for TC type 7"),
+    s.field("c8", self.c8_readout, default=self.c8_readout, doc="TC readout for TC type 8"),
+    s.field("c9", self.c9_readout, default=self.c9_readout, doc="TC readout for TC type 9"),
+  ]),
+
   trigger: s.record("trigger",[
     s.field( "trigger_rate_hz", self.rate, default=1.0, doc='Fake HSI only: rate at which fake HSIEvents are sent. 0 - disable HSIEvent generation. Former -t'),
     s.field( "trigger_window_before_ticks",self.count, default=1000, doc="Trigger window before marker. Former -b"),
@@ -149,6 +215,7 @@ local cs = {
     s.field( "mlt_send_timed_out_tds", self.flag, default=false, doc="Option to drop TD if TC comes out of timeout window"),
     s.field( "mlt_max_td_length_ms", self.count, default=1000, doc="Maximum allowed time length [ms] for a readout window of a single TD"),
     s.field( "mlt_ignore_tc", self.tc_types, default=[], doc="Optional list of TC types to be ignored in MLT"),
+    s.field( "mlt_td_readout_map", self.tc_readout_map, default=self.tc_readout_map, doc="The readout windows assigned to TDs in MLT, based on TC type."),
   ]),
 
   dataflowapp: s.record("dataflowapp",[
