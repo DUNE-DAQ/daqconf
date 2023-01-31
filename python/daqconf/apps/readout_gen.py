@@ -144,11 +144,13 @@ def get_readout_app(DRO_CONFIG=None,
             link_to_tp_sid_map[link.dro_source_id] = SOURCEID_BROKER.get_next_source_id("Trigger")
             SOURCEID_BROKER.register_source_id("Trigger", link_to_tp_sid_map[link.dro_source_id], None)
     if FIRMWARE_TPG_ENABLED:
+        if DEBUG: print(f'FWTPG_VDCB_16link:: FIRMWARE_TPG_ENABLED -------------------------------------------------------: SOURCEID_BROKER.get_all_source_ids("Detector_Readout").items()={SOURCEID_BROKER.get_all_source_ids("Detector_Readout").items()}')
         for fwsid,fwconf in SOURCEID_BROKER.get_all_source_ids("Detector_Readout").items():
             if isinstance(fwconf, FWTPID) and fwconf.host == DRO_CONFIG.host and fwconf.card == DRO_CONFIG.card:
                 if DEBUG: print(f"SSB fwsid: {fwsid}")
                 fw_tp_id_map[fwconf] = fwsid
                 link_to_tp_sid_map[fwconf] = SOURCEID_BROKER.get_next_source_id("Trigger")
+                if DEBUG: print(f'FWTPG_VDCB_16link:: FIRMWARE_TPG_ENABLED Trigger: link_to_tp_sid_map[fwconf]={link_to_tp_sid_map[fwconf]}');
                 SOURCEID_BROKER.register_source_id("Trigger", link_to_tp_sid_map[fwconf], None)
             if isinstance(fwconf, FWTPOUTID) and fwconf.host == DRO_CONFIG.host and fwconf.card == DRO_CONFIG.card:
                 if DEBUG: print(f"SSB fw tp out id: {fwconf}")
@@ -179,9 +181,12 @@ def get_readout_app(DRO_CONFIG=None,
                                                                                               fragment_send_timeout_ms = FRAGMENT_SEND_TIMEOUT,
                                                                                               enable_raw_recording = False)))]
     if FIRMWARE_TPG_ENABLED:
-        assert(len(fw_tp_out_id_map) <= 2)
-        assert(len(fw_tp_id_map) <= 2)
+        assert(len(fw_tp_out_id_map) <= 4)
+        assert(len(fw_tp_id_map) <= 4)
+        if DEBUG: print(f'FWTPG_VDCB_16link:: FIRMWARE_TPG_ENABLED: len(fw_tp_id_map)={len(fw_tp_id_map)}, len(fw_tp_out_id_map)={len(fw_tp_out_id_map)}')
+        if DEBUG: print(f'FWTPG_VDCB_16link:: FIRMWARE_TPG_ENABLED: fw_tp_id_map.values()={fw_tp_id_map.values()}, fw_tp_out_id_map.values()={fw_tp_out_id_map.values()}')
         for tp, tp_out in zip(fw_tp_id_map.values(), fw_tp_out_id_map.values()):
+            if DEBUG: print(f'FWTPG_VDCB_16link:: FIRMWARE_TPG_ENABLED 1111111111111111111111111111111111111111111111111111111111111111: tp={tp}, tp_out={tp_out}')
             # for sid in fw_tp_out_id_map.values():
             queues += [Queue(f"tp_datahandler_{tp}.tp_out",f"tp_out_datahandler_{tp_out}.raw_input",f"sw_tp_link_{tp_out}",100000 )]                
             modules += [DAQModule(name = f"tp_out_datahandler_{tp_out}",
@@ -237,8 +242,7 @@ def get_readout_app(DRO_CONFIG=None,
                                           emulator_mode = EMULATOR_MODE,
                                           error_counter_threshold=100,
                                           error_reset_freq=10000,
-                                          tpset_topic="TPSets",
-                                          tpset_sourceid=tp,
+                                          tpset_topic="TPSets"
                                       ),
                                       requesthandlerconf= rconf.RequestHandlerConf(
                                           latency_buffer_size = LATENCY_BUFFER_SIZE,
@@ -260,7 +264,9 @@ def get_readout_app(DRO_CONFIG=None,
     # There are two flags to be checked so I think a for loop
     # is the closest way to the blocks that are being used here
     
+    if DEBUG: print(f'FWTPG_VDCB_16link:: FIRMWARE_TPG_ENABLED: DRO_CONFIG.links={DRO_CONFIG.links}')
     for link in DRO_CONFIG.links:
+        if DEBUG: print(f'FWTPG_VDCB_16link:: FIRMWARE_TPG_ENABLED 2222222222222222222222222222222222222222222222222222222222222222222222222: link={link}')
         if USE_FAKE_DATA_PRODUCERS:
             modules += [DAQModule(name = f"fakedataprod_{link.dro_source_id}",
                                   plugin='FakeDataProd',
@@ -332,30 +338,53 @@ def get_readout_app(DRO_CONFIG=None,
         if FLX_INPUT:
             link_0 = []
             link_1 = []
+            link_2 = []
+            link_3 = []
             sid_0 = []
             sid_1 = []
+            sid_2 = []
+            sid_3 = []
             for link in DRO_CONFIG.links:
+                if DEBUG: print(f'FWTPG_VDCB_16link:: link={link}, dro_slr={link.dro_slr}, dro_link={link.dro_link}, dro_source_id={link.dro_source_id}')
                 if link.dro_slr == 0:
-                    link_0.append(link.dro_link)
-                    sid_0.append(link.dro_source_id)
+                    if DEBUG: print(f'FWTPG_VDCB_16link:: append link_0 link.dro_link={link.dro_link}, link.dro_source_id={link.dro_source_id}')
+                    if len(link_0) < 3:
+                       link_0.append(link.dro_link)
+                       sid_0.append(link.dro_source_id)
+                    else:
+                       link_1.append(link.dro_link)
+                       sid_1.append(link.dro_source_id)
                 if link.dro_slr == 1:
-                    link_1.append(link.dro_link)
-                    sid_1.append(link.dro_source_id)
+                    if DEBUG: print(f'FWTPG_VDCB_16link:: append link_1 link.dro_link={link.dro_link}, link.dro_source_id={link.dro_source_id}')
+                    if len(link_2) < 3:
+                      link_2.append(link.dro_link)
+                      sid_2.append(link.dro_source_id)
+                    else:
+                      link_3.append(link.dro_link)
+                      sid_3.append(link.dro_source_id)
             for idx in sid_0:
                 queues += [Queue(f'flxcard_0.output_{idx}',f"datahandler_{idx}.raw_input",f'{FRONTEND_TYPE}_link_{idx}', 100000 )]
             for idx in sid_1:
                 queues += [Queue(f'flxcard_1.output_{idx}',f"datahandler_{idx}.raw_input",f'{FRONTEND_TYPE}_link_{idx}', 100000 )]
             if FIRMWARE_TPG_ENABLED:
-                link_0.append(5)
+                link_0.append(6)
+                link_1.append(7)
                 fw_tp_sid = fw_tp_id_map[FWTPID(DRO_CONFIG.host, DRO_CONFIG.card, 0)]
                 queues += [Queue(f'flxcard_0.output_{fw_tp_sid}',f"tp_datahandler_{fw_tp_sid}.raw_input",f'raw_tp_link_{fw_tp_sid}', 100000 )]
                 if len(link_1) > 0:
-                    link_1.append(5)
+                    link_2.append(6)
+                    link_3.append(7)
                     fw_tp_sid = fw_tp_id_map[FWTPID(DRO_CONFIG.host, DRO_CONFIG.card, 1)]
                     queues += [Queue(f'flxcard_1.output_{fw_tp_sid}',f"tp_datahandler_{fw_tp_sid}.raw_input",f'raw_tp_link_{fw_tp_sid}', 100000 )]
             
             link_0.sort()
             link_1.sort()
+            link_2.sort()
+            link_3.sort()
+            if DEBUG: print(f'FWTPG_VDCB_16link:: link_0={link_0}')
+            if DEBUG: print(f'FWTPG_VDCB_16link:: link_1={link_1}')
+            if DEBUG: print(f'FWTPG_VDCB_16link:: link_2={link_2}')
+            if DEBUG: print(f'FWTPG_VDCB_16link:: link_3={link_3}')
 
             modules += [DAQModule(name = 'flxcard_0',
                                plugin = 'FelixCardReader',
@@ -367,9 +396,20 @@ def get_readout_app(DRO_CONFIG=None,
                                                  dma_memory_size_gb = 4,
                                                  numa_id = NUMA_ID,
                                                  links_enabled = link_0))]
+            modules += [DAQModule(name = 'flxcard_1',
+                               plugin = 'FelixCardReader',
+                               conf = flxcr.Conf(card_id = DRO_CONFIG.links[0].dro_card if CARD_ID_OVERRIDE == -1 else CARD_ID_OVERRIDE,
+                                                 logical_unit = 0,
+                                                 dma_id = 0,
+                                                 chunk_trailer_size = 32,
+                                                 dma_block_size_kb = 4,
+                                                 dma_memory_size_gb = 4,
+                                                 numa_id = NUMA_ID,
+                                                 links_enabled = link_1))]
+ 
             
-            if len(link_1) > 0:
-                modules += [DAQModule(name = "flxcard_1",
+            if len(link_2) > 0:
+                modules += [DAQModule(name = "flxcard_2",
                                    plugin = "FelixCardReader",
                                    conf = flxcr.Conf(card_id = DRO_CONFIG.links[0].dro_card if CARD_ID_OVERRIDE == -1 else CARD_ID_OVERRIDE,
                                                      logical_unit = 1,
@@ -378,7 +418,19 @@ def get_readout_app(DRO_CONFIG=None,
                                                      dma_block_size_kb = 4,
                                                      dma_memory_size_gb = 4,
                                                      numa_id = NUMA_ID,
-                                                     links_enabled = link_1))]
+                                                     links_enabled = link_2))]
+                modules += [DAQModule(name = "flxcard_3",
+                                   plugin = "FelixCardReader",
+                                   conf = flxcr.Conf(card_id = DRO_CONFIG.links[0].dro_card if CARD_ID_OVERRIDE == -1 else CARD_ID_OVERRIDE,
+                                                     logical_unit = 1,
+                                                     dma_id = 0,
+                                                     chunk_trailer_size = 32,
+                                                     dma_block_size_kb = 4,
+                                                     dma_memory_size_gb = 4,
+                                                     numa_id = NUMA_ID,
+                                                     links_enabled = link_3))]
+
+
         if not ENABLE_DPDK_READER:
             # DTPController - only required if FW TPs enabled
             if FIRMWARE_TPG_ENABLED:
@@ -393,17 +445,41 @@ def get_readout_app(DRO_CONFIG=None,
                                                     pattern="",
                                                     threshold=FIRMWARE_HIT_THRESHOLD,
                                                     masks=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]) )]
-                if len(link_1) > 0:
+                    if DEBUG: print(f'FWTPG_VDCB_16link:: link_0 DAQModule flx device=flx-{2*DRO_CONFIG.links[0].dro_card}-p2-hf')
                     modules += [DAQModule(
                                 name = 'dtpctrl_1',
                                 plugin = 'DTPController',
                                 conf = dtpctrl.Conf(connections_file=path.expandvars(DTP_CONNECTIONS_FILE),
-                                                    device=f"flx-{(2*DRO_CONFIG.links[0].dro_card) + 1}-p2-hf",
+                                                    device=f"flx-{2*DRO_CONFIG.links[0].dro_card + 1}-p2-hf",
                                                     uhal_log_level="notice",
                                                     source="ext",
                                                     pattern="",
                                                     threshold=FIRMWARE_HIT_THRESHOLD,
                                                     masks=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]) )]
+                    if DEBUG: print(f'FWTPG_VDCB_16link:: link_0 DAQModule flx device=flx-{2*DRO_CONFIG.links[0].dro_card + 1}-p2-hf')
+                if len(link_2) > 0:
+                    modules += [DAQModule(
+                                name = 'dtpctrl_2',
+                                plugin = 'DTPController',
+                                conf = dtpctrl.Conf(connections_file=path.expandvars(DTP_CONNECTIONS_FILE),
+                                                    device=f"flx-{(2*DRO_CONFIG.links[0].dro_card) + 2}-p2-hf",
+                                                    uhal_log_level="notice",
+                                                    source="ext",
+                                                    pattern="",
+                                                    threshold=FIRMWARE_HIT_THRESHOLD,
+                                                    masks=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]) )]
+                    if DEBUG: print(f'FWTPG_VDCB_16link:: link_2 DAQModule flx device=flx-{2*DRO_CONFIG.links[0].dro_card + 2}-p2-hf')
+                    modules += [DAQModule(
+                                name = 'dtpctrl_3',
+                                plugin = 'DTPController',
+                                conf = dtpctrl.Conf(connections_file=path.expandvars(DTP_CONNECTIONS_FILE),
+                                                    device=f"flx-{(2*DRO_CONFIG.links[0].dro_card) + 3}-p2-hf",
+                                                    uhal_log_level="notice",
+                                                    source="ext",
+                                                    pattern="",
+                                                    threshold=FIRMWARE_HIT_THRESHOLD,
+                                                    masks=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]) )]
+                    if DEBUG: print(f'FWTPG_VDCB_16link:: link_1 DAQModule flx device=flx-{2*DRO_CONFIG.links[0].dro_card + 3}-p2-hf')
             if not FLX_INPUT:
                 fake_source = "fake_source"
                 card_reader = "FakeCardReader"
@@ -462,14 +538,19 @@ def get_readout_app(DRO_CONFIG=None,
     mgraph = ModuleGraph(modules, queues=queues)
 
     if FIRMWARE_TPG_ENABLED:
+        if DEBUG: print(f'FWTPG_VDCB_16link:: FIRMWARE_TPG_ENABLED: DRO_CONFIG.host={DRO_CONFIG.host}, DRO_CONFIG.card={DRO_CONFIG.card}')
         tp_key_0 = FWTPID(DRO_CONFIG.host, DRO_CONFIG.card, 0)
         tp_key_1 = FWTPID(DRO_CONFIG.host, DRO_CONFIG.card, 1)
+        if DEBUG: print(f'FWTPG_VDCB_16link:: FIRMWARE_TPG_ENABLED: tp_key_0={tp_key_0}, tp_key_1={tp_key_1}')
+        if DEBUG: print(f'FWTPG_VDCB_16link:: FIRMWARE_TPG_ENABLED: fw_tp_id_map.keys()={fw_tp_id_map.keys()}')
         if tp_key_0 in fw_tp_id_map.keys():
             tp_sid_0 = fw_tp_id_map[tp_key_0]
             mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{tp_sid_0}", f"tp_datahandler_{tp_sid_0}.tpset_out",    Direction.OUT, topic=["TPSets"])
+            if DEBUG: print(f'FWTPG_VDCB_16link:: FIRMWARE_TPG_ENABLED: RUIDX={RUIDX}, tp_key_0={tp_key_0}, tp_sid_0={tp_sid_0}')
         if tp_key_1 in fw_tp_id_map.keys():
             tp_sid_1 = fw_tp_id_map[tp_key_1]
             mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{tp_sid_1}", f"tp_datahandler_{tp_sid_1}.tpset_out",    Direction.OUT, topic=["TPSets"])
+            if DEBUG: print(f'FWTPG_VDCB_16link:: FIRMWARE_TPG_ENABLED: RUIDX={RUIDX}, tp_key_1={tp_key_1}, tp_sid_1={tp_sid_1}')
 
         for sid in fw_tp_id_map.values():
             mgraph.add_fragment_producer(id = sid, subsystem = "Trigger",
