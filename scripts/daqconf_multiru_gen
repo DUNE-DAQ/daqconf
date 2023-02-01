@@ -620,7 +620,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
     # Arrange per-app command data into the format used by util.write_json_files()
     app_command_datas = {
-        name : make_app_command_data(the_system, app,name, verbose=debug, use_k8s=boot.use_k8s, use_connectivity_service=boot.use_connectivity_service)
+        name : make_app_command_data(the_system, app,name, verbose=debug, use_k8s=boot.use_k8s, use_connectivity_service=boot.use_connectivity_service, connectivity_service_interval=boot.connectivity_service_interval)
         for name,app in the_system.apps.items()
     }
 
