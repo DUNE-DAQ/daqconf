@@ -103,10 +103,16 @@ def get_readout_app(DRO_CONFIG=None,
         FRONTEND_TYPE = "tde"
         FAKEDATA_FRAGMENT_TYPE = "TDE_AMC"
         QUEUE_FRAGMENT_TYPE = "TDEData"
-    elif FRONTEND_TYPE== "ND_LAr":
+    elif FRONTEND_TYPE== "NDLAr_TPC":
         FRONTEND_TYPE = "pacman"
         FAKEDATA_FRAGMENT_TYPE = "PACMAN"
         QUEUE_FRAGMENT_TYPE = "PACMAN"
+    elif FRONTEND_TYPE== "NDLAr_PDS":
+        FRONTEND_TYPE = "mpd"
+        FAKEDATA_FRAGMENT_TYPE = "MPD"
+        QUEUE_FRAGMENT_TYPE = "MPD"
+        
+    print(f' in readout gen FRONTENT_TYPE={FRONTEND_TYPE}')
 
     if DEBUG: print(f'FRONTENT_TYPE={FRONTEND_TYPE}')
 
@@ -142,6 +148,11 @@ def get_readout_app(DRO_CONFIG=None,
     link_to_tp_sid_map = {}
     fw_tp_id_map = {}
     fw_tp_out_id_map = {}
+
+    if SOFTWARE_TPG_ENABLED:
+        if FRONTEND_TYPE == 'pacman' or FRONTEND_TYPE == 'mpd':
+            print('ERROR: Cannot configure Software TPG for pacman or mpd data')
+            exit()
 
     if SOFTWARE_TPG_ENABLED:
         for link in DRO_CONFIG.links:
@@ -290,6 +301,7 @@ def get_readout_app(DRO_CONFIG=None,
                                           # fake_trigger_flag=0, # default
                                           source_id =  link.dro_source_id,
                                           timesync_connection_name = f"timesync_{RUIDX}",
+                                          send_partial_fragment_if_available = (FRONTEND_TYPE == 'mpd')
                                       ),
                                       latencybufferconf= rconf.LatencyBufferConf(
                                           latency_buffer_alignment_size = 4096,
@@ -305,6 +317,7 @@ def get_readout_app(DRO_CONFIG=None,
                                           enable_software_tpg = SOFTWARE_TPG_ENABLED,
                                           channel_map_name = TPG_CHANNEL_MAP,
                                           emulator_mode = EMULATOR_MODE,
+                                          clock_speed_hz = (CLOCK_SPEED_HZ / DATA_RATE_SLOWDOWN_FACTOR),
                                           error_counter_threshold=100,
                                           error_reset_freq=10000,
                                           tpset_sourceid=link_to_tp_sid_map[link.dro_source_id] if SOFTWARE_TPG_ENABLED else 0
@@ -399,6 +412,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                     pattern="",
                                                     threshold=FIRMWARE_HIT_THRESHOLD,
                                                     masks=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]) )]
+
             if not FLX_INPUT:
                 fake_source = "fake_source"
                 card_reader = "FakeCardReader"
@@ -414,12 +428,20 @@ def get_readout_app(DRO_CONFIG=None,
                     conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=link.dro_source_id)
                                                  for link in DRO_CONFIG.links],
                                   zmq_receiver_timeout = 10000)
+                if FRONTEND_TYPE=='mpd':
+                    fake_source = "mpd_source"
+                    card_reader = "PacmanCardReader" # Should be generic for all NDLAR 
+                    conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=link.dro_source_id)
+                                                  for link in DRO_CONFIG.links],
+                                    zmq_receiver_timeout = 10000)
+
                 modules += [DAQModule(name = fake_source,
                                       plugin = card_reader,
                                       conf = conf)]
                 queues += [Queue(f"{fake_source}.output_{link.dro_source_id}",f"datahandler_{link.dro_source_id}.raw_input",QUEUE_FRAGMENT_TYPE, f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
 
         else:
+
             NUMBER_OF_GROUPS = 1
             NUMBER_OF_LINKS_PER_GROUP = 1
 
