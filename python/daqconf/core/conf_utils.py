@@ -712,6 +712,43 @@ def generate_boot(
             verbose = verbose,
             control_to_data_network = control_to_data_network,
         )
+
+    if conf.start_connectivity_service:
+        if conf.use_k8s:
+            raise RuntimeError(
+                'Starting connectivity service only supported with ssh.\n')
+        consvc={
+            "connectionservice": {
+                "exec": "consvc_ssh",
+                "host": "connectionservice",
+                "port": conf.connectivity_service_port
+            }
+        }
+        consvc_exec={
+            "consvc_ssh": {
+                "args": [
+                    "--bind=0.0.0.0:{APP_PORT}",
+                    "--workers=1",
+                    "--worker-class=gthread",
+                    f"--threads={conf.connectivity_service_threads}",
+                    "--timeout=0",
+                    "--pid={APP_NAME}.pid",
+                    "connection-service.connection-flask:app"
+                ],
+                "cmd": "gunicorn",
+                "env": {
+                    "CONNECTION_FLASK_DEBUG": "getenv:2",
+                    "PATH": "getenv",
+                    "PYTHONPATH": "getenv"
+                }
+            }
+        }
+        if not "services" in boot:
+            boot["services"]={}
+        boot["services"].update(consvc)
+        boot["exec"].update(consvc_exec)
+        boot["hosts-ctrl"].update({"connectionservice":
+                                   conf.connectivity_service_host})
     return boot
 
 

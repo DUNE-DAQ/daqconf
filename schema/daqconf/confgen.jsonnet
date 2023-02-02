@@ -50,6 +50,8 @@ local cs = {
     s.field( "op_env", self.string, default='swtest', doc="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files"),
     s.field( "data_request_timeout_ms", self.count, default=1000, doc="The baseline data request timeout that will be used by modules in the Readout and Trigger subsystems (i.e. any module that produces data fragments). Downstream timeouts, such as the trigger-record-building timeout, are derived from this."),
     s.field( "use_connectivity_service", self.flag, default=false, doc="Whether to use the ConnectivityService to manage connections"),
+    s.field( "start_connectivity_service", self.flag, default=false, doc="Whether to use the ConnectivityService to manage connections"),
+    s.field( "connectivity_service_threads", self.count, default=2, doc="Number of threads for the gunicorn server that serves connection info"),
     s.field("connectivity_service_host", self.host, default='127.0.0.1', doc="Hostname for the ConnectivityService"),
     s.field("connectivity_service_port", self.port, default=5000, doc="Port for the ConnectivityService"),
     s.field( "RTE_script_settings", self.three_choice, default=0, doc="0 - Use an RTE script iff not in a dev environment, 1 - Always use RTE, 2 - never use RTE"),
