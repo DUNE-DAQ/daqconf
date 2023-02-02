@@ -179,8 +179,8 @@ def get_readout_app(DRO_CONFIG=None,
                                                                                               fragment_send_timeout_ms = FRAGMENT_SEND_TIMEOUT,
                                                                                               enable_raw_recording = False)))]
     if FIRMWARE_TPG_ENABLED:
-        assert(len(fw_tp_out_id_map) <= 2)
-        assert(len(fw_tp_id_map) <= 2)
+        assert(len(fw_tp_out_id_map) <= 4)
+        assert(len(fw_tp_id_map) <= 4)
         for tp, tp_out in zip(fw_tp_id_map.values(), fw_tp_out_id_map.values()):
             # for sid in fw_tp_out_id_map.values():
             queues += [Queue(f"tp_datahandler_{tp}.tp_out",f"tp_out_datahandler_{tp_out}.raw_input",f"sw_tp_link_{tp_out}",100000 )]                
@@ -346,13 +346,15 @@ def get_readout_app(DRO_CONFIG=None,
             for idx in sid_1:
                 queues += [Queue(f'flxcard_1.output_{idx}',f"datahandler_{idx}.raw_input",f'{FRONTEND_TYPE}_link_{idx}', 100000 )]
             if FIRMWARE_TPG_ENABLED:
-                link_0.append(5)
-                fw_tp_sid = fw_tp_id_map[FWTPID(DRO_CONFIG.host, DRO_CONFIG.card, 0)]
-                queues += [Queue(f'flxcard_0.output_{fw_tp_sid}',f"tp_datahandler_{fw_tp_sid}.raw_input",f'raw_tp_link_{fw_tp_sid}', 100000 )]
+                for i in range(2):
+                    link_0.append(6 + i)
+                    fw_tp_sid = fw_tp_id_map[FWTPID(DRO_CONFIG.host, DRO_CONFIG.card, i)]
+                    queues += [Queue(f'flxcard_0.output_{fw_tp_sid}',f"tp_datahandler_{fw_tp_sid}.raw_input",f'raw_tp_link_{fw_tp_sid}', 100000 )]
                 if len(link_1) > 0:
-                    link_1.append(5)
-                    fw_tp_sid = fw_tp_id_map[FWTPID(DRO_CONFIG.host, DRO_CONFIG.card, 1)]
-                    queues += [Queue(f'flxcard_1.output_{fw_tp_sid}',f"tp_datahandler_{fw_tp_sid}.raw_input",f'raw_tp_link_{fw_tp_sid}', 100000 )]
+                    for i in range(2):
+                        link_1.append(6 + i)
+                        fw_tp_sid = fw_tp_id_map[FWTPID(DRO_CONFIG.host, DRO_CONFIG.card, 2 + i)]
+                        queues += [Queue(f'flxcard_1.output_{fw_tp_sid}',f"tp_datahandler_{fw_tp_sid}.raw_input",f'raw_tp_link_{fw_tp_sid}', 100000 )]
             
             link_0.sort()
             link_1.sort()
@@ -462,14 +464,20 @@ def get_readout_app(DRO_CONFIG=None,
     mgraph = ModuleGraph(modules, queues=queues)
 
     if FIRMWARE_TPG_ENABLED:
-        tp_key_0 = FWTPID(DRO_CONFIG.host, DRO_CONFIG.card, 0)
-        tp_key_1 = FWTPID(DRO_CONFIG.host, DRO_CONFIG.card, 1)
-        if tp_key_0 in fw_tp_id_map.keys():
-            tp_sid_0 = fw_tp_id_map[tp_key_0]
-            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{tp_sid_0}", f"tp_datahandler_{tp_sid_0}.tpset_out",    Direction.OUT, topic=["TPSets"])
-        if tp_key_1 in fw_tp_id_map.keys():
-            tp_sid_1 = fw_tp_id_map[tp_key_1]
-            mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{tp_sid_1}", f"tp_datahandler_{tp_sid_1}.tpset_out",    Direction.OUT, topic=["TPSets"])
+        tp_keys = [FWTPID(DRO_CONFIG.host, DRO_CONFIG.card, i) for i in range(4)]
+
+        tp_sids = []
+        for tp_key in tp_keys:
+            if tp_key in fw_tp_id_map.keys():
+                tp_sid = fw_tp_id_map[tp_key]
+                mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{tp_sid}", f"tp_datahandler_{tp_sid}.tpset_out",    Direction.OUT, topic=["TPSets"])
+
+        #* if tp_key_0 in fw_tp_id_map.keys():
+        #*     tp_sid_0 = fw_tp_id_map[tp_key_0]
+        #*     mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{tp_sid_0}", f"tp_datahandler_{tp_sid_0}.tpset_out",    Direction.OUT, topic=["TPSets"])
+        #* if tp_key_1 in fw_tp_id_map.keys():
+        #*     tp_sid_1 = fw_tp_id_map[tp_key_1]
+        #*     mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{tp_sid_1}", f"tp_datahandler_{tp_sid_1}.tpset_out",    Direction.OUT, topic=["TPSets"])
 
         for sid in fw_tp_id_map.values():
             mgraph.add_fragment_producer(id = sid, subsystem = "Trigger",

@@ -89,9 +89,11 @@ class SourceIDBroker:
                     if link.dro_slr == 0 and slr_0 == False: 
                         slr_0 = True
                         fw_tp_ids.append(FWTPID(dro_config.host, dro_config.card, 0))
+                        fw_tp_ids.append(FWTPID(dro_config.host, dro_config.card, 1))
                     if link.dro_slr == 1 and slr_1 == False: 
                         slr_1 = True
-                        fw_tp_ids.append(FWTPID(dro_config.host, dro_config.card, 1))
+                        fw_tp_ids.append(FWTPID(dro_config.host, dro_config.card, 2))
+                        fw_tp_ids.append(FWTPID(dro_config.host, dro_config.card, 3))
             if self.debug: console.log(f"found slr0: {slr_0}, found slr1: {slr_1}")
         fwsid = []
         if tp_mode == TPGenMode.FWTPG:
