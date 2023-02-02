@@ -36,7 +36,7 @@ from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Direction, Queue
 
 #===============================================================================
-def get_hsi_app(RUN_NUMBER = 333,
+def get_timing_hsi_app(RUN_NUMBER = 333,
                 CLOCK_SPEED_HZ: int = 50000000,
                 TRIGGER_RATE_HZ: int = 1,
                 CONTROL_HSI_HARDWARE = False,
@@ -123,7 +123,7 @@ def get_hsi_app(RUN_NUMBER = 333,
     mgraph.add_fragment_producer(id = HSI_SOURCE_ID, subsystem = "HW_Signals_Interface",
                                          requests_in   = f"hsi_datahandler.request_input",
                                          fragments_out = f"hsi_datahandler.fragment_queue")
-    mgraph.add_endpoint(f"timesync_hsi", f"hsi_datahandler.timesync_output",    Direction.OUT, ["Timesync"], toposort=False)
+    mgraph.add_endpoint(f"timesync_timing_hsi", f"hsi_datahandler.timesync_output",    Direction.OUT, ["Timesync"], toposort=False)
 
     
     if CONTROL_HSI_HARDWARE:

@@ -102,7 +102,7 @@ def get_fake_hsi_app(RUN_NUMBER=333,
     mgraph.add_fragment_producer(id = HSI_SOURCE_ID, subsystem = "HW_Signals_Interface",
                                          requests_in   = f"hsi_datahandler.request_input",
                                          fragments_out = f"hsi_datahandler.fragment_queue")
-    mgraph.add_endpoint(f"timesync_hsi", f"hsi_datahandler.timesync_output",    Direction.OUT, ["Timesync"], toposort=False)
+    mgraph.add_endpoint(f"timesync_fake_hsi", f"hsi_datahandler.timesync_output",    Direction.OUT, ["Timesync"], toposort=False)
 
     # P. Rodrigues 2022-02-15 We don't make endpoints for the
     # timesync connection because they are handled by some
