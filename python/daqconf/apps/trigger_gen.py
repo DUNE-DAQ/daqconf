@@ -73,6 +73,8 @@ def get_buffer_conf(source_id, data_request_timeout):
 def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                     DATA_RATE_SLOWDOWN_FACTOR: float = 1,
                     TP_CONFIG: dict = {},
+                    TOLERATE_INCOMPLETENESS=False,
+                    COMPLETENESS_TOLERANCE=1,
 
                     ACTIVITY_PLUGIN: str = 'TriggerActivityMakerPrescalePlugin',
                     ACTIVITY_CONFIG: dict = dict(prescale=10000),
@@ -217,9 +219,12 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                 # tazipper.max_latency_ms, everything should be fine.
                 modules += [DAQModule(name = f'zip_{region_id}',
                                       plugin = 'TPZipper',
-                                              conf = tzip.ConfParams(cardinality=ta_conf["conf"].link_count,
+                                              conf = tzip.ConfParams(cardinality=len(TP_SOURCE_IDS)/len(TA_SOURCE_IDS),
                                                                      max_latency_ms=100,
-                                                                     element_id=ta_conf["source_id"])),
+                                                                     element_id=ta_conf["source_id"],
+                                                                     # Need to find out where to specify these"
+                                                                     tolerate_incompleteness=TOLERATE_INCOMPLETENESS,
+                                                                     completeness_tolerance=COMPLETENESS_TOLERANCE)),
                                     
                             DAQModule(name = f'tam_{region_id}',
                                       plugin = 'TriggerActivityMaker',
