@@ -650,7 +650,6 @@ def generate_boot(
         }
     }
 
-
     external_connections = []
     for app in system.apps:
         external_connections += [ext.external_name for ext in system.apps[app].modulegraph.external_connections]
@@ -719,11 +718,17 @@ def generate_boot(
         if conf.use_k8s:
             raise RuntimeError(
                 'Starting connectivity service only supported with ssh.\n')
+
+        # CONNECTION_PORT will be updatd by nanorc remove this entry
+        daq_app_specs[daq_app_exec_name]["env"].pop("CONNECTION_PORT")
         consvc={
             "connectionservice": {
                 "exec": "consvc_ssh",
                 "host": "connectionservice",
-                "port": conf.connectivity_service_port
+                "port": conf.connectivity_service_port,
+                "update-env": {
+                    "CONNECTION_PORT": "{APP_PORT}"
+                }
             }
         }
         consvc_exec={
