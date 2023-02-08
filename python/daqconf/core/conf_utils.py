@@ -650,7 +650,6 @@ def generate_boot(
         }
     }
 
-
     external_connections = []
     for app in system.apps:
         external_connections += [ext.external_name for ext in system.apps[app].modulegraph.external_connections]
@@ -714,6 +713,49 @@ def generate_boot(
             verbose = verbose,
             control_to_data_network = control_to_data_network,
         )
+
+    if conf.start_connectivity_service:
+        if conf.use_k8s:
+            raise RuntimeError(
+                'Starting connectivity service only supported with ssh.\n')
+
+        # CONNECTION_PORT will be updatd by nanorc remove this entry
+        daq_app_specs[daq_app_exec_name]["env"].pop("CONNECTION_PORT")
+        consvc={
+            "connectionservice": {
+                "exec": "consvc_ssh",
+                "host": "connectionservice",
+                "port": conf.connectivity_service_port,
+                "update-env": {
+                    "CONNECTION_PORT": "{APP_PORT}"
+                }
+            }
+        }
+        consvc_exec={
+            "consvc_ssh": {
+                "args": [
+                    "--bind=0.0.0.0:{APP_PORT}",
+                    "--workers=1",
+                    "--worker-class=gthread",
+                    f"--threads={conf.connectivity_service_threads}",
+                    "--timeout=0",
+                    "--pid={APP_NAME}.pid",
+                    "connection-service.connection-flask:app"
+                ],
+                "cmd": "gunicorn",
+                "env": {
+                    "CONNECTION_FLASK_DEBUG": "getenv:2",
+                    "PATH": "getenv",
+                    "PYTHONPATH": "getenv"
+                }
+            }
+        }
+        if not "services" in boot:
+            boot["services"]={}
+        boot["services"].update(consvc)
+        boot["exec"].update(consvc_exec)
+        boot["hosts-ctrl"].update({"connectionservice":
+                                   conf.connectivity_service_host})
     return boot
 
 
