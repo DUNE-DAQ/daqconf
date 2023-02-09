@@ -739,7 +739,7 @@ def generate_boot(
                     "--worker-class=gthread",
                     f"--threads={conf.connectivity_service_threads}",
                     "--timeout=0",
-                    "--pid={APP_NAME}.pid",
+                    "--pid={APP_NAME}_{APP_PORT}.pid",
                     "connection-service.connection-flask:app"
                 ],
                 "cmd": "gunicorn",
