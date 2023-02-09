@@ -54,6 +54,7 @@ def get_readout_app(DRO_CONFIG=None,
                     RUN_NUMBER=333, 
                     DATA_FILE="./frames.bin",
                     FLX_INPUT=False,
+                    ETH_MODE=False,
                     CLOCK_SPEED_HZ=50000000,
                     RAW_RECORDING_ENABLED=False,
                     RAW_RECORDING_OUTPUT_DIR=".",
@@ -92,9 +93,13 @@ def get_readout_app(DRO_CONFIG=None,
     if ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 50000000):
         FRONTEND_TYPE = "wib"
         FAKEDATA_FRAGMENT_TYPE = "ProtoWIB"
-    elif ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 62500000):
+    elif ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 62500000 and ETH_MODE==False ):
         FRONTEND_TYPE = "wib2"
         FAKEDATA_FRAGMENT_TYPE = "WIB"
+    elif ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 62500000 and ETH_MODE==True):
+        FRONTEND_TYPE = "wibeth"
+        QUEUE_FRAGMENT_TYPE="WIBEthFrame"
+        FAKEDATA_FRAGMENT_TYPE = "WIBEth"
     elif FRONTEND_TYPE== "HD_PDS" or FRONTEND_TYPE== "VD_Cathode_PDS" or FRONTEND_TYPE=="VD_Membrane_PDS":
         FRONTEND_TYPE = "pds_stream"
         FAKEDATA_FRAGMENT_TYPE = "DAPHNE"

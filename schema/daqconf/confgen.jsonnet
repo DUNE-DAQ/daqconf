@@ -103,6 +103,7 @@ local cs = {
     s.field( "clock_speed_hz", self.freq, default=50000000),
     s.field( "data_file", self.path, default='./frames.bin', doc="File containing data frames to be replayed by the fake cards. Former -d"),
     s.field( "use_felix", self.flag, default=false, doc="Use real felix cards instead of fake ones. Former -f"),
+    s.field( "eth_mode", self.flag, default=false, doc="Use ethernet packet format"),
     s.field( "latency_buffer_size", self.count, default=499968, doc="Size of the latency buffers (in number of elements)"),
     s.field( "fragment_send_timeout_ms", self.count, default=10, doc="The send timeout that will be used in the readout modules when sending fragments downstream (i.e. to the TRB)."),
     s.field( "enable_software_tpg", self.flag, default=false, doc="Enable software TPG"),
