@@ -92,9 +92,11 @@ def get_readout_app(DRO_CONFIG=None,
     FRONTEND_TYPE = DetID.subdetector_to_string(DetID.Subdetector(DRO_CONFIG.links[0].det_id))
     if ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 50000000):
         FRONTEND_TYPE = "wib"
+        QUEUE_FRAGMENT_TYPE="WIBFrame"
         FAKEDATA_FRAGMENT_TYPE = "ProtoWIB"
     elif ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 62500000 and ETH_MODE==False ):
         FRONTEND_TYPE = "wib2"
+        QUEUE_FRAGMENT_TYPE="WIB2Frame"
         FAKEDATA_FRAGMENT_TYPE = "WIB"
     elif ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 62500000 and ETH_MODE==True):
         FRONTEND_TYPE = "wibeth"
@@ -103,19 +105,19 @@ def get_readout_app(DRO_CONFIG=None,
     elif FRONTEND_TYPE== "HD_PDS" or FRONTEND_TYPE== "VD_Cathode_PDS" or FRONTEND_TYPE=="VD_Membrane_PDS":
         FRONTEND_TYPE = "pds_stream"
         FAKEDATA_FRAGMENT_TYPE = "DAPHNE"
-        QUEUE_FRAGMENT_TYPE = "PDSFrame"
+        QUEUE_FRAGMENT_TYPE = "PDSStreamFrame"
     elif FRONTEND_TYPE== "VD_Top_TPC":
         FRONTEND_TYPE = "tde"
         FAKEDATA_FRAGMENT_TYPE = "TDE_AMC"
-        QUEUE_FRAGMENT_TYPE = "TDEData"
+        QUEUE_FRAGMENT_TYPE = "TDEAMCFrame"
     elif FRONTEND_TYPE== "NDLAr_TPC":
         FRONTEND_TYPE = "pacman"
         FAKEDATA_FRAGMENT_TYPE = "PACMAN"
-        QUEUE_FRAGMENT_TYPE = "PACMAN"
+        QUEUE_FRAGMENT_TYPE = "PACMANFrame"
     elif FRONTEND_TYPE== "NDLAr_PDS":
         FRONTEND_TYPE = "mpd"
         FAKEDATA_FRAGMENT_TYPE = "MPD"
-        QUEUE_FRAGMENT_TYPE = "MPD"
+        QUEUE_FRAGMENT_TYPE = "MPDFrame"
         
     print(f' in readout gen FRONTENT_TYPE={FRONTEND_TYPE}')
 
