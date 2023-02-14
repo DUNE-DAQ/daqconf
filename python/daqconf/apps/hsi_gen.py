@@ -128,8 +128,8 @@ def get_hsi_app(RUN_NUMBER = 333,
 
     
     if CONTROL_HSI_HARDWARE:
-        mgraph.add_external_connection("timing_cmds", "hsic.timing_cmds", "TimingHwCmd", Direction.OUT, TIMING_HOST, TIMING_PORT)
-        mgraph.add_external_connection("timing_device_info", None, "JSON", Direction.IN, TIMING_HOST, TIMING_PORT+1, [HSI_DEVICE_NAME])
+        mgraph.add_endpoint("timing_cmds", "hsic.timing_cmds", "TimingHwCmd", Direction.OUT, check_endpoints=False)
+        mgraph.add_endpoint("timing_device_info", None, "JSON", Direction.IN, is_pubsub=True, check_endpoints=False)
 
     mgraph.add_endpoint("hsievents", None, "HSIEvent",    Direction.OUT)
     mgraph.add_endpoint(None, None, "TimeSync", Direction.IN, is_pubsub=True)
