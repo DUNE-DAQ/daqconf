@@ -274,7 +274,8 @@ def make_system_connections(the_system, verbose=False, use_k8s=False, use_connec
             raise ValueError(f"Connection with name {endpoint_name} has no producers!")
 
         if not check_endpoints:
-            make_network_connection(the_system, endpoint_name, data_type, in_apps, out_apps, verbose, use_k8s=use_k8s, use_connectivity_service=use_connectivity_service)
+            if len(in_apps) > 0:
+                make_network_connection(the_system, endpoint_name, data_type, in_apps, out_apps, verbose, use_k8s=use_k8s, use_connectivity_service=use_connectivity_service)
         elif all(first_app == elem["app"] for elem in endpoints):
             make_queue_connection(the_system, first_app, endpoint_name, data_type, in_apps, out_apps, size, verbose)
         elif len(in_apps) == len(out_apps):
