@@ -205,7 +205,7 @@ def make_external_connection(the_system, endpoint_name, data_type, app_name, hos
     address = f"tcp://{host}:{port}"
 
     for connection in the_system.connections[app_name]:
-        if connection.uid == endpoint_name:
+        if connection.id == endpoint_name:
             console.log(f"Duplicate external connection {endpoint_name} detected! Not adding to configuration!")
             return
 
@@ -266,7 +266,7 @@ def make_system_connections(the_system, verbose=False, use_k8s=False, use_connec
       for queue in the_system.apps[app].modulegraph.queues:
             make_queue_connection(the_system, app, queue.name, queue.data_type, queue.push_modules, queue.pop_modules, queue.size, verbose)
       for external_conn in the_system.apps[app].modulegraph.external_connections:
-            make_external_connection(the_system, external_conn.external_name, conn.data_type, app, external_conn.host, external_conn.port, external_conn.topic, external_conn.direction, verbose)
+            make_external_connection(the_system, external_conn.external_name, external_conn.data_type, app, external_conn.host, external_conn.port, external_conn.is_pubsub, external_conn.direction, verbose)
             external_uids.add(external_conn.external_name)
       for endpoint in the_system.apps[app].modulegraph.endpoints:
         if not endpoint.is_pubsub:
@@ -383,7 +383,7 @@ def make_system_connections(the_system, verbose=False, use_k8s=False, use_connec
                         conn_copy = cp.deepcopy(pubsub_connectionids[connid])
                         the_system.connections[subscriber] += [conn_copy]
 
-def make_app_command_data(system, app, appkey, verbose=False, use_k8s=False, use_connectivity_service=True):
+def make_app_command_data(system, app, appkey, verbose=False, use_k8s=False, use_connectivity_service=True, connectivity_service_interval=1000):
     """Given an App instance, create the 'command data' suitable for
     feeding to nanorc. The needed queues are inferred from from
     connections between modules, as are the start and stop order of the
@@ -451,7 +451,9 @@ def make_app_command_data(system, app, appkey, verbose=False, use_k8s=False, use
     # Fill in the "standard" command entries in the command_data structure
     command_data['init'] = appfwk.Init(modules=mod_specs,
                                        connections=system.connections[appkey],
-                                       queues=system.queues[appkey], use_connectivity_service=use_connectivity_service)
+                                       queues=system.queues[appkey], 
+                                       use_connectivity_service=use_connectivity_service,
+                                       connectivity_service_interval_ms=connectivity_service_interval)
 
     # TODO: Conf ordering
     command_data['conf'] = acmd([
@@ -648,7 +650,6 @@ def generate_boot(
         }
     }
 
-
     external_connections = []
     for app in system.apps:
         external_connections += [ext.external_name for ext in system.apps[app].modulegraph.external_connections]
@@ -712,6 +713,49 @@ def generate_boot(
             verbose = verbose,
             control_to_data_network = control_to_data_network,
         )
+
+    if conf.start_connectivity_service:
+        if conf.use_k8s:
+            raise RuntimeError(
+                'Starting connectivity service only supported with ssh.\n')
+
+        # CONNECTION_PORT will be updatd by nanorc remove this entry
+        daq_app_specs[daq_app_exec_name]["env"].pop("CONNECTION_PORT")
+        consvc={
+            "connectionservice": {
+                "exec": "consvc_ssh",
+                "host": "connectionservice",
+                "port": conf.connectivity_service_port,
+                "update-env": {
+                    "CONNECTION_PORT": "{APP_PORT}"
+                }
+            }
+        }
+        consvc_exec={
+            "consvc_ssh": {
+                "args": [
+                    "--bind=0.0.0.0:{APP_PORT}",
+                    "--workers=1",
+                    "--worker-class=gthread",
+                    f"--threads={conf.connectivity_service_threads}",
+                    "--timeout=0",
+                    "--pid={APP_NAME}_{APP_PORT}.pid",
+                    "connection-service.connection-flask:app"
+                ],
+                "cmd": "gunicorn",
+                "env": {
+                    "CONNECTION_FLASK_DEBUG": "getenv:2",
+                    "PATH": "getenv",
+                    "PYTHONPATH": "getenv"
+                }
+            }
+        }
+        if not "services" in boot:
+            boot["services"]={}
+        boot["services"].update(consvc)
+        boot["exec"].update(consvc_exec)
+        boot["hosts-ctrl"].update({"connectionservice":
+                                   conf.connectivity_service_host})
     return boot
 
 
