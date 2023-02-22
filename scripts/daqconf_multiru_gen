@@ -143,6 +143,28 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             host_df += [appconfig.host_df]
 
 
+    from urllib.parse import urlparse
+    data_file_url = urlparse(readout.data_file)
+    console.log(data_file_url)
+    if data_file_url.scheme == 'asset':
+        asset_meta = data_file_url.netloc
+        asset_entry = data_file_url.path[1:]
+        from daq_assettools.asset_file import AssetFile
+        from daq_assettools.asset_database import Database
+        asset_db = Database('/cvmfs/dunedaq.opensciencegrid.org/assets/dunedaq-asset-db.sqlite')
+        files = asset_db.get_files({asset_meta: asset_entry})
+        print(dirname(asset_db.database_file))
+        root_dir = dirname(asset_db.database_file)
+        if not files:
+            raise RuntimeError(f"Couldn\'t find the asset {asset_hash}")
+        readout.data_file = f'{root_dir}/{files[0]["path"]}/{files[0]["name"]}'
+
+    elif data_file_url.scheme == 'file':
+        readout.data_file = "/"+data_file_url.netloc+data_file_url.path
+
+    if readout.data_file != '' and not exists(readout.data_file):
+        raise RuntimeError(f'Cannot find the frames.bin file {readout.data_file}')
+
     if boot.use_k8s:
         console.log(f'Using k8s')
         trigger.tpset_output_path = abspath(trigger.tpset_output_path)
@@ -151,9 +173,6 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             for op in df_app.output_paths:
                 new_output_path += [abspath(op)]
             df_app.output_paths = new_output_path
-        readout.hardware_map_file = abspath(readout.hardware_map_file)
-        readout.data_file = abspath(readout.data_file)
-        print(readout.data_file)
 
     console.log(f"Generating configs for hosts trigger={trigger.host_trigger} DFO={dataflow.host_dfo} dataflow={host_df} hsi={hsi.host_hsi} dqm={dqm.host_dqm}")
 
@@ -421,13 +440,14 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
                     f"felix.cern/flx{c}-data": "1", # requesting FLX{c}
                     "memory": "32Gi" # yes bro
                 }
-            # TODO: HACK, can't do that any other way now, please give me a nice asset manager
-            the_system.apps[ru_name].mounted_dirs += [{
-                'name': 'frames-bin',
-                'physical_location': dirname(readout.data_file),
-                'in_pod_location':   dirname(readout.data_file),
-                'read_only': True,
-            }]
+
+            if os.path.commonprefix(['/cvmfs', readout.data_file]) != '/cvmfs':
+                the_system.apps[ru_name].mounted_dirs += [{
+                    'name': 'frames-bin',
+                    'physical_location': dirname(readout.data_file),
+                    'in_pod_location':   dirname(readout.data_file),
+                    'read_only': True,
+                }]
 
 
         if debug:
@@ -682,7 +702,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         resolved_thread_pinning_file = os.path.abspath(os.path.expanduser(os.path.expandvars(readout.thread_pinning_file)))
         if not exists(resolved_thread_pinning_file):
             raise RuntimeError(f'Cannot find the file {readout.thread_pinning_file} ({resolved_thread_pinning_file})')
-    
+
         system_command_datas['boot']['scripts'] = {
             "thread_pinning": {
                 "cmd": [
