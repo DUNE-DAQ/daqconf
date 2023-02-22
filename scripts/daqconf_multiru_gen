@@ -21,6 +21,9 @@ moo.io.default_load_path = get_moo_model_path()
 # Load configuration types
 import moo.otypes
 
+moo.otypes.load_types('detchannelmaps/hardwaremapservice.jsonnet')
+import dunedaq.detchannelmaps.hardwaremapservice as hwms
+
 # Add -h as default help option
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(context_settings=CONTEXT_SETTINGS)
@@ -163,7 +166,9 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     # The ru apps are determined by the combinations of hostname and card_id, the SourceID determines the
     # DLH (with physical slr+link information), the detId acts as system_type allows to infer the frontend_type
     hw_map_service = HardwareMapService(readout.hardware_map_file)
-    serialized_hw_map = hw_map_service.get_serialized_hardware_map()
+    serialized_hw_map = hw_map_service.get_hardware_map_json()
+    hw_map = hwms.HardwareMap(serialized_hw_map)
+    console.log(f"{hw_map}")
 
     # Get the list of RU processes
     dro_infos = hw_map_service.get_all_dro_info()
@@ -477,7 +482,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             TRB_TIMEOUT = trigger_record_building_timeout,
             HOST=df_config.host_df,
             HAS_DQM=dqm.enable_dqm,
-            HARDWARE_MAP=serialized_hw_map,
+            HARDWARE_MAP=hw_map,
             DEBUG=debug
         )
         if boot.use_k8s:
@@ -530,7 +535,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             MAX_FILE_SIZE = trigger.tpset_output_file_size,
             DATA_RATE_SLOWDOWN_FACTOR = readout.data_rate_slowdown_factor,
             CLOCK_SPEED_HZ = readout.clock_speed_hz,
-            HARDWARE_MAP=serialized_hw_map,
+            HARDWARE_MAP=hw_map,
             SOURCE_IDX=dfidx,
             HOST=trigger.host_tpw,
             DEBUG=debug)
