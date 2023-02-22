@@ -52,7 +52,8 @@ def get_readout_app(DRO_CONFIG=None,
                     EMULATOR_MODE=False,
                     DATA_RATE_SLOWDOWN_FACTOR=1,
                     RUN_NUMBER=333, 
-                    DATA_FILE="./frames.bin",
+                    DEFAULT_DATA_FILE="./frames.bin",
+                    DATA_FILES={},
                     FLX_INPUT=False,
                     ETH_MODE=False,
                     CLOCK_SPEED_HZ=50000000,
@@ -84,6 +85,8 @@ def get_readout_app(DRO_CONFIG=None,
     
     if DRO_CONFIG is None:
         raise RuntimeError(f"ERROR: DRO_CONFIG is None!")
+
+    DATA_FILE = DATA_FILES[DRO_CONFIG.links[0].det_id] if DRO_CONFIG.links[0].det_id in DATA_FILES.keys() else DEFAULT_DATA_FILE
 
     # Hack on strings to be used for connection instances: will be solved when data_type is properly used.
 
