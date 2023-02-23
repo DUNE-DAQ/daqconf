@@ -86,8 +86,6 @@ def get_readout_app(DRO_CONFIG=None,
     if DRO_CONFIG is None:
         raise RuntimeError(f"ERROR: DRO_CONFIG is None!")
 
-    DATA_FILE = DATA_FILES[DRO_CONFIG.links[0].det_id] if DRO_CONFIG.links[0].det_id in DATA_FILES.keys() else DEFAULT_DATA_FILE
-
     # Hack on strings to be used for connection instances: will be solved when data_type is properly used.
 
     FAKEDATA_FRAGMENT_TYPE = "Unknown"
@@ -429,7 +427,7 @@ def get_readout_app(DRO_CONFIG=None,
                 conf = sec.Conf(link_confs = [sec.LinkConfiguration(source_id=link.dro_source_id,
                                                                     slowdown=DATA_RATE_SLOWDOWN_FACTOR,
                                                                     queue_name=f"output_{link.dro_source_id}",
-                                                                    data_filename = DATA_FILE,
+                                                                    data_filename = DATA_FILES[link.det_id] if link.det_id in DATA_FILES.keys() else DEFAULT_DATA_FILE,
                                                                     emu_frame_error_rate=0) for link in DRO_CONFIG.links],
                                                                     queue_timeout_ms = QUEUE_POP_WAIT_MS)
                 if FRONTEND_TYPE=='pacman':
