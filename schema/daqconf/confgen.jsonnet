@@ -95,13 +95,20 @@ local cs = {
     s.field( "enabled_hsi_signals", self.count, default=1, doc='Fake HSI only: bit mask of enabled fake HSI signals'),
   ]),
 
+  data_file_entry: s.record("data_file_entry", [
+    s.field("file_name", self.path, default='./frames.bin', doc="File containing data frames to be replayed by the fake cards. Former -d. Uses the asset manager, can also be 'asset://checksum/somelonghash', or 'file://somewhere/frames.bin' or 'frames.bin'"),
+    s.field("detector_id", self.count, default=3, doc="Detector ID that this file applies to"),
+  ]),
+  data_files: s.sequence("data_files", self.data_file_entry),
+
   readout: s.record("readout", [
     s.field( "hardware_map_file", self.path, default='./HardwareMap.txt', doc="File containing detector hardware map for configuration to run"),
     s.field( "emulator_mode", self.flag, default=false, doc="If active, timestamps of data frames are overwritten when processed by the readout. This is necessary if the felix card does not set correct timestamps. Former -e"),
     s.field( "thread_pinning_file", self.path, default="", doc="A thread pinning configuration file that gets executed after conf."),
     s.field( "data_rate_slowdown_factor",self.count, default=1, doc="Factor by which to suppress data generation. Former -s"),
     s.field( "clock_speed_hz", self.freq, default=50000000),
-    s.field( "data_file", self.path, default='asset://label/ProtoWIB', doc="File containing data frames to be replayed by the fake cards. Former -d. Uses the asset manager, can also be 'asset://checksum/somelonghash', or 'file://somewhere/frames.bin' or 'frames.bin'"),
+    s.field( "default_data_file", self.path, default='asset://label/ProtoWIB', doc="File containing data frames to be replayed by the fake cards. Former -d. Uses the asset manager, can also be 'asset://checksum/somelonghash', or 'file://somewhere/frames.bin' or 'frames.bin'"),
+    s.field( "data_files", self.data_files, default=[], doc="Files to use by detector type"),
     s.field( "use_felix", self.flag, default=false, doc="Use real felix cards instead of fake ones. Former -f"),
     s.field( "eth_mode", self.flag, default=false, doc="Use ethernet packet format"),
     s.field( "latency_buffer_size", self.count, default=499968, doc="Size of the latency buffers (in number of elements)"),

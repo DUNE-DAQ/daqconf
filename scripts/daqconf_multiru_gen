@@ -143,27 +143,32 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             host_df += [appconfig.host_df]
 
 
-    from urllib.parse import urlparse
-    data_file_url = urlparse(readout.data_file)
-    console.log(data_file_url)
-    if data_file_url.scheme == 'asset':
-        asset_meta = data_file_url.netloc
-        asset_entry = data_file_url.path[1:]
-        from daq_assettools.asset_file import AssetFile
-        from daq_assettools.asset_database import Database
-        asset_db = Database('/cvmfs/dunedaq.opensciencegrid.org/assets/dunedaq-asset-db.sqlite')
-        files = asset_db.get_files({asset_meta: asset_entry})
-        print(dirname(asset_db.database_file))
-        root_dir = dirname(asset_db.database_file)
-        if not files:
-            raise RuntimeError(f"Couldn\'t find the asset {asset_hash}")
-        readout.data_file = f'{root_dir}/{files[0]["path"]}/{files[0]["name"]}'
+    def check_readout_file(data_file):
+        from urllib.parse import urlparse
+        data_file_url = urlparse(data_file)
+        console.log(data_file_url)
+        if data_file_url.scheme == 'asset':
+            asset_meta = data_file_url.netloc
+            asset_entry = data_file_url.path[1:]
+            from daq_assettools.asset_file import AssetFile
+            from daq_assettools.asset_database import Database
+            asset_db = Database('/cvmfs/dunedaq.opensciencegrid.org/assets/dunedaq-asset-db.sqlite')
+            files = asset_db.get_files({asset_meta: asset_entry})
+            print(dirname(asset_db.database_file))
+            root_dir = dirname(asset_db.database_file)
+            if not files:
+                raise RuntimeError(f"Couldn\'t find the asset {asset_hash}")
+            return f'{root_dir}/{files[0]["path"]}/{files[0]["name"]}'
 
-    elif data_file_url.scheme == 'file':
-        readout.data_file = "/"+data_file_url.netloc+data_file_url.path
+        elif data_file_url.scheme == 'file':
+            return "/"+data_file_url.netloc+data_file_url.path
 
-    if readout.data_file != '' and not exists(readout.data_file):
-        raise RuntimeError(f'Cannot find the frames.bin file {readout.data_file}')
+        if data_file != '' and not exists(data_file):
+            raise RuntimeError(f'Cannot find the frames.bin file {data_file}')
+    readout.default_data_file = check_readout_file(readout.default_data_file)
+    data_file_map = {}
+    for entry in readout.data_files:
+        data_file_map[entry["detector_id"]] = check_readout_file(entry["file_name"])
 
     if boot.use_k8s:
         console.log(f'Using k8s')
@@ -405,7 +410,8 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             DRO_CONFIG=dro_config,
             EMULATOR_MODE = readout.emulator_mode,
             DATA_RATE_SLOWDOWN_FACTOR = readout.data_rate_slowdown_factor,
-            DATA_FILE = readout.data_file,
+            DEFAULT_DATA_FILE = readout.default_data_file,
+            DATA_FILES = data_file_map,
             FLX_INPUT = readout.use_felix,
             ETH_MODE = readout.eth_mode,
             CLOCK_SPEED_HZ = readout.clock_speed_hz,
@@ -441,14 +447,24 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
                     "memory": "32Gi" # yes bro
                 }
 
-            if os.path.commonprefix(['/cvmfs', readout.data_file]) != '/cvmfs':
+            dir_names = set()
+
+            if os.path.commonprefix(['/cvmfs', readout.default_data_file]) != '/cvmfs':
+                dir_names.add(dirname(readout.default_data_file))
+
+            for id,file in data_file_map:
+                if os.path.commonprefix(['/cvmfs', file]) != '/cvmfs':
+                    dir_names.add(dirname(file))
+
+            dirindex = 0
+            for dir_name in dir_names:
                 the_system.apps[ru_name].mounted_dirs += [{
-                    'name': 'frames-bin',
-                    'physical_location': dirname(readout.data_file),
-                    'in_pod_location':   dirname(readout.data_file),
+                    'name': f'frames-bin-{dirindex}',
+                    'physical_location': dir_name,
+                    'in_pod_location':   dir_name,
                     'read_only': True,
                 }]
-
+                dirindex += 1
 
         if debug:
             console.log(f"{ru_name} app: {the_system.apps[ru_name]}")
