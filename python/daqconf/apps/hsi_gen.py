@@ -37,8 +37,9 @@ from daqconf.core.conf_utils import Direction, Queue
 
 #===============================================================================
 def get_hsi_app(RUN_NUMBER = 333,
-                CLOCK_SPEED_HZ: int = 50000000,
+                CLOCK_SPEED_HZ: int = 62500000,
                 TRIGGER_RATE_HZ: int = 1,
+                DATA_RATE_SLOWDOWN_FACTOR: int=1,
                 CONTROL_HSI_HARDWARE = False,
                 READOUT_PERIOD_US: int = 1e3,
                 HSI_ENDPOINT_ADDRESS = 1,
@@ -51,9 +52,7 @@ def get_hsi_app(RUN_NUMBER = 333,
                 CONNECTIONS_FILE="${TIMING_SHARE}/config/etc/connections.xml",
                 HSI_DEVICE_NAME="BOREAS_TLU",
                 UHAL_LOG_LEVEL="notice",
-                TIMING_PARTITION="UNKNOWN",
-                TIMING_HOST="np04-srv-012.cern.ch",
-                TIMING_PORT=12345,
+                TIMING_SESSION="",
                 QUEUE_POP_WAIT_MS=10,
                 LATENCY_BUFFER_SIZE=100000,
                 DATA_REQUEST_TIMEOUT=1000,
@@ -106,6 +105,7 @@ def get_hsi_app(RUN_NUMBER = 333,
                         DAQModule(name="hsic",
                                 plugin = "HSIController",
                                 conf = hsic.ConfParams( device=HSI_DEVICE_NAME,
+                                                        timing_session_name=TIMING_SESSION,
                                                         clock_frequency=CLOCK_SPEED_HZ,
                                                         trigger_rate=TRIGGER_RATE_HZ,
                                                         address=HSI_ENDPOINT_ADDRESS,
@@ -129,7 +129,7 @@ def get_hsi_app(RUN_NUMBER = 333,
     
     if CONTROL_HSI_HARDWARE:
         mgraph.add_endpoint("timing_cmds", "hsic.timing_cmds", "TimingHwCmd", Direction.OUT, check_endpoints=False)
-        mgraph.add_endpoint("timing_device_info", None, "JSON", Direction.IN, is_pubsub=True, check_endpoints=False)
+        mgraph.add_endpoint(HSI_DEVICE_NAME+"_info", "hsic."+HSI_DEVICE_NAME+"_info", "JSON", Direction.IN, is_pubsub=True, check_endpoints=False)
 
     mgraph.add_endpoint("hsievents", None, "HSIEvent",    Direction.OUT)
     mgraph.add_endpoint(None, None, "TimeSync", Direction.IN, is_pubsub=True)

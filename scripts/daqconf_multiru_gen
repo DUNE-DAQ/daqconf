@@ -157,7 +157,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
     console.log(f"Generating configs for hosts trigger={trigger.host_trigger} DFO={dataflow.host_dfo} dataflow={host_df} hsi={hsi.host_hsi} dqm={dqm.host_dqm}")
 
-    the_system = System(first_port=timing.port_timing+1)
+    the_system = System()
 
     # Load the hw map file here to extract ru hosts, cards, slr, links, forntend types, sourceIDs and geoIDs
     # The ru apps are determined by the combinations of hostname and card_id, the SourceID determines the
@@ -299,9 +299,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             HSI_INV_MASK=hsi.hsi_inv_mask,
             HSI_SOURCE=hsi.hsi_source,
             HSI_SOURCE_ID=hsi_source_id,
-            TIMING_PARTITION=timing.timing_partition_name,
-            TIMING_HOST=timing.host_timing,
-            TIMING_PORT=timing.port_timing,
+            TIMING_SESSION=timing.timing_session_name,
             HOST=hsi.host_hsi,
             DEBUG=debug)
     else:
@@ -326,9 +324,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             TRIGGER_MASK=timing.timing_partition_trigger_mask,
             RATE_CONTROL_ENABLED=timing.timing_partition_rate_control_enabled,
             SPILL_GATE_ENABLED=timing.timing_partition_spill_gate_enabled,
-            TIMING_PARTITION=timing.timing_partition_name,
-            TIMING_HOST=timing.host_timing,
-            TIMING_PORT=timing.port_timing,
+            TIMING_SESSION=timing.timing_session_name,
             HOST=timing.host_tprtc,
             DEBUG=debug)
 

@@ -31,13 +31,11 @@ from daqconf.core.conf_utils import Direction
 
 #===============================================================================
 def get_tprtc_app(MASTER_DEVICE_NAME="",
+                  TIMING_SESSION="",
                   TIMING_PARTITION_ID=0,
                   TRIGGER_MASK=0xff,
                   RATE_CONTROL_ENABLED=True,
                   SPILL_GATE_ENABLED=False,
-                  TIMING_PARTITION="UNKNOWN",
-                  TIMING_HOST="np04-srv-012.cern.ch",
-                  TIMING_PORT=12345,
                   HOST="localhost",
                   DEBUG=False):
     
@@ -47,6 +45,7 @@ def get_tprtc_app(MASTER_DEVICE_NAME="",
                          plugin = "TimingPartitionController",
                          conf = tprtc.PartitionConfParams(
                                              device=MASTER_DEVICE_NAME,
+                                             timing_session_name=TIMING_SESSION,
                                              partition_id=TIMING_PARTITION_ID,
                                              trigger_mask=TRIGGER_MASK,
                                              spill_gate_enabled=SPILL_GATE_ENABLED,
