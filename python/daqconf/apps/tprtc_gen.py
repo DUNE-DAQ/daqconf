@@ -31,11 +31,11 @@ from daqconf.core.conf_utils import Direction
 
 #===============================================================================
 def get_tprtc_app(MASTER_DEVICE_NAME="",
-                  TIMING_SESSION="",
                   TIMING_PARTITION_ID=0,
                   TRIGGER_MASK=0xff,
                   RATE_CONTROL_ENABLED=True,
                   SPILL_GATE_ENABLED=False,
+                  TIMING_SESSION="",
                   HOST="localhost",
                   DEBUG=False):
     
