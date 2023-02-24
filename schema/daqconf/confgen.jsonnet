@@ -96,7 +96,7 @@ local cs = {
   ]),
 
   data_file_entry: s.record("data_file_entry", [
-    s.field("file_name", self.path, default='./frames.bin', doc="File containing data frames to be replayed by the fake cards. Former -d. Uses the asset manager, can also be 'asset://checksum/somelonghash', or 'file://somewhere/frames.bin' or 'frames.bin'"),
+    s.field("data_file", self.path, default='./frames.bin', doc="File containing data frames to be replayed by the fake cards. Former -d. Uses the asset manager, can also be 'asset://checksum/somelonghash', or 'file://somewhere/frames.bin' or 'frames.bin'"),
     s.field("detector_id", self.count, default=3, doc="Detector ID that this file applies to"),
   ]),
   data_files: s.sequence("data_files", self.data_file_entry),

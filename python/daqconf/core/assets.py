@@ -1,0 +1,41 @@
+
+from os.path import exists,abspath,dirname
+from rich.console import Console
+console = Console()
+
+from daq_assettools.asset_file import AssetFile
+from daq_assettools.asset_database import Database
+from sqlite3 import OperationalError
+
+def check_asset_file(data_file, verbose):
+        from urllib.parse import urlparse
+        data_file_url = urlparse(data_file)
+        if verbose:
+            console.log(f"Checking asset URI {data_file_url}")
+        if data_file_url.scheme == 'asset':
+            asset_meta = data_file_url.netloc
+            asset_entry = data_file_url.path[1:]
+            asset_db = Database('/cvmfs/dunedaq.opensciencegrid.org/assets/dunedaq-asset-db.sqlite')
+            try:
+                files = asset_db.get_files({asset_meta: asset_entry})
+                if not files:
+                    raise RuntimeError(f"Couldn\'t find the asset {asset_meta}/{asset_entry}")
+                if verbose:
+                    console.log(f"Found asset in {dirname(asset_db.database_file)}")
+                root_dir = dirname(asset_db.database_file)
+                return f'{root_dir}/{files[0]["path"]}/{files[0]["name"]}'
+            except OperationalError:
+                raise RuntimeError(f"Couldn\'t find the asset {asset_meta}/{asset_entry}")
+
+        elif data_file_url.scheme == 'file':
+            filename =  abspath(data_file_url.netloc+data_file_url.path)
+            if not exists(filename):
+                raise RuntimeError(f'Cannot find the frames.bin file {filename}')
+            if verbose: console.log(f"Found asset in {dirname(filename)}")
+            return filename
+
+        if data_file != '' and not exists(data_file):
+            raise RuntimeError(f'Cannot find the frames.bin file {data_file}')
+        
+        if verbose: console.log(f"Found asset in {dirname(abspath(data_file))}")
+        return abspath(data_file)

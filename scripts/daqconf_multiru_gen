@@ -8,6 +8,7 @@ from daqconf.core.system import System
 from daqconf.core.metadata import write_metadata_file
 from daqconf.core.sourceid import SourceIDBroker, get_tpg_mode
 from daqconf.core.config_file import generate_cli_from_schema
+from daqconf.core.assets import check_asset_file
 from detchannelmaps._daq_detchannelmaps_py import HardwareMapService
 from detdataformats._daq_detdataformats_py import *
 
@@ -143,32 +144,11 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             host_df += [appconfig.host_df]
 
 
-    def check_readout_file(data_file):
-        from urllib.parse import urlparse
-        data_file_url = urlparse(data_file)
-        console.log(data_file_url)
-        if data_file_url.scheme == 'asset':
-            asset_meta = data_file_url.netloc
-            asset_entry = data_file_url.path[1:]
-            from daq_assettools.asset_file import AssetFile
-            from daq_assettools.asset_database import Database
-            asset_db = Database('/cvmfs/dunedaq.opensciencegrid.org/assets/dunedaq-asset-db.sqlite')
-            files = asset_db.get_files({asset_meta: asset_entry})
-            print(dirname(asset_db.database_file))
-            root_dir = dirname(asset_db.database_file)
-            if not files:
-                raise RuntimeError(f"Couldn\'t find the asset {asset_hash}")
-            return f'{root_dir}/{files[0]["path"]}/{files[0]["name"]}'
-
-        elif data_file_url.scheme == 'file':
-            return "/"+data_file_url.netloc+data_file_url.path
-
-        if data_file != '' and not exists(data_file):
-            raise RuntimeError(f'Cannot find the frames.bin file {data_file}')
-    readout.default_data_file = check_readout_file(readout.default_data_file)
+    
+    readout.default_data_file = check_asset_file(readout.default_data_file, debug)
     data_file_map = {}
     for entry in readout.data_files:
-        data_file_map[entry["detector_id"]] = check_readout_file(entry["file_name"])
+        data_file_map[entry["detector_id"]] = check_asset_file(entry["data_file"], debug)
 
     if boot.use_k8s:
         console.log(f'Using k8s')
