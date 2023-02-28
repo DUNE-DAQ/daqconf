@@ -2,6 +2,10 @@
 //
 
 local moo = import "moo.jsonnet";
+
+local sctb = import "ctbmodules/ctbmodule.jsonnet";
+local ctbmodule = moo.oschema.hier(sctb).dunedaq.ctbmodules.ctbmodule;
+
 local s = moo.oschema.schema("dunedaq.daqconf.confgen");
 local nc = moo.oschema.numeric_constraints;
 // A temporary schema construction context.
@@ -74,12 +78,12 @@ local cs = {
   ]),
 
   hsi: s.record("hsi", [
-    s.field( "host_hsi", self.host, default='localhost', doc='Host to run the HSI app on'),
-    # hsi readout options
+    # timing hsi options
+    s.field( "use_timing_hsi", self.flag, default=false, doc='Flag to control whether real hardware timing HSI config is generated. Default is false'),
+    s.field( "host_timing_hsi", self.host, default='localhost', doc='Host to run the HSI app on'),
     s.field( "hsi_hw_connections_file", self.path, default="${TIMING_SHARE}/config/etc/connections.xml", doc='Real timing hardware only: path to hardware connections file'),
     s.field( "hsi_device_name", self.string, default="", doc='Real HSI hardware only: device name of HSI hw'),
     s.field( "hsi_readout_period", self.count, default=1e3, doc='Real HSI hardware only: Period between HSI hardware polling [us]'),
-    # hw hsi options
     s.field( "control_hsi_hw", self.flag, default=false, doc='Flag to control whether we are controlling hsi hardware'),
     s.field( "hsi_endpoint_address", self.count, default=1, doc='Timing address of HSI endpoint'),
     s.field( "hsi_endpoint_partition", self.count, default=0, doc='Timing partition of HSI endpoint'),
@@ -88,11 +92,24 @@ local cs = {
     s.field( "hsi_inv_mask",self.count, default=0, doc='Invert-edge mask'),
     s.field( "hsi_source",self.count, default=1, doc='HSI signal source; 0 - hardware, 1 - emulation (trigger timestamp bits)'),
     # fake hsi options
-    s.field( "use_hsi_hw", self.flag, default=false, doc='Flag to control whether fake or real hardware HSI config is generated. Default is fake'),
+    s.field( "use_fake_hsi", self.flag, default=true, doc='Flag to control whether fake or real hardware HSI config is generated. Default is true'),
+    s.field( "host_fake_hsi", self.host, default='localhost', doc='Host to run the HSI app on'),
     s.field( "hsi_device_id", self.count, default=0, doc='Fake HSI only: device ID of fake HSIEvents'),
     s.field( "mean_hsi_signal_multiplicity", self.count, default=1, doc='Fake HSI only: rate of individual HSI signals in emulation mode 1'),
     s.field( "hsi_signal_emulation_mode", self.count, default=0, doc='Fake HSI only: HSI signal emulation mode'),
-    s.field( "enabled_hsi_signals", self.count, default=1, doc='Fake HSI only: bit mask of enabled fake HSI signals'),
+    s.field( "enabled_hsi_signals", self.count, default=1, doc='Fake HSI only: bit mask of enabled fake HSI signals')
+  ]),
+
+  ctb_hsi: s.record("ctb_hsi", [
+    # ctb options
+    s.field( "use_ctb_hsi", self.flag, default=false, doc='Flag to control whether CTB HSI config is generated. Default is false'),
+    s.field( "host_ctb_hsi", self.host, default='localhost', doc='Host to run the HSI app on'),
+    s.field("hlt_triggers", ctbmodule.Hlt_trigger_seq, []),
+    s.field("beam_llt_triggers", ctbmodule.Llt_mask_trigger_seq, []),
+    s.field("crt_llt_triggers", ctbmodule.Llt_count_trigger_seq, []),
+    s.field("pds_llt_triggers", ctbmodule.Llt_count_trigger_seq, []),
+    s.field("fake_trig_1", ctbmodule.Randomtrigger, ctbmodule.Randomtrigger),
+    s.field("fake_trig_2", ctbmodule.Randomtrigger, ctbmodule.Randomtrigger)
   ]),
 
   readout: s.record("readout", [
@@ -142,6 +159,8 @@ local cs = {
     s.field( "host_trigger", self.host, default='localhost', doc='Host to run the trigger app on'),
     s.field( "host_tpw", self.host, default='localhost', doc='Host to run the TPWriter app on'),
     # trigger options
+    s.field( "completeness_tolerance", self.count, default=1, doc="Maximum number of inactive queues we will tolerate."),
+    s.field( "tolerate_incompleteness", self.flag, default=false, doc="Flag to tell trigger to tolerate inactive queues."),
     s.field( "ttcm_s1", self.count,default=1, doc="Timing trigger candidate maker accepted HSI signal ID 1"),
     s.field( "ttcm_s2", self.count, default=2, doc="Timing trigger candidate maker accepted HSI signal ID 2"),
     s.field( "trigger_activity_plugin", self.string, default='TriggerActivityMakerPrescalePlugin', doc="Trigger activity algorithm plugin"),
@@ -204,6 +223,7 @@ local cs = {
     s.field('dataflow', self.dataflow, default=self.dataflow, doc='Dataflow paramaters'),
     s.field('dqm',      self.dqm,      default=self.dqm,      doc='DQM parameters'),
     s.field('hsi',      self.hsi,      default=self.hsi,      doc='HSI parameters'),
+    s.field('ctb_hsi',  self.ctb_hsi,  default=self.ctb_hsi,  doc='CTB parameters'),
     s.field('readout',  self.readout,  default=self.readout,  doc='Readout parameters'),
     s.field('timing',   self.timing,   default=self.timing,   doc='Timing parameters'),
     s.field('trigger',  self.trigger,  default=self.trigger,  doc='Trigger parameters'),
@@ -213,4 +233,4 @@ local cs = {
 };
 
 // Output a topologically sorted array.
-moo.oschema.sort_select(cs)
+sctb + moo.oschema.sort_select(cs)

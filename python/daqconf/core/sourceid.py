@@ -117,7 +117,7 @@ class SourceIDBroker:
         for dro_config in dro_configs:
             dro_sends_data = False
             for link in dro_config.links:
-                if link.det_id != 3: continue # Only HD_TPC for now
+                # if link.det_id != 3: continue # Only HD_TPC for now
                 dro_sends_data = True
                 taid = TAID(link.det_id, link.det_crate)
                 if taid not in ta_infos:

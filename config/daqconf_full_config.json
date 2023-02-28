@@ -40,24 +40,55 @@
     "kafka_topic": "DQM"
   },
   "hsi": {
-    "host_hsi": "localhost",
-    "hsi_hw_connections_file": "${\"TIMING_SHARE\"}/config/etc/connections.xml",
+    "use_timing_hsi": false,
+    "host_timing_hsi": "localhost",
+    "hsi_hw_connections_file": "${TIMING_SHARE}/config/etc/connections.xml",
     "hsi_device_name": "",
     "hsi_readout_period": 1000,
     "control_hsi_hw": false,
     "hsi_endpoint_address": 1,
-    "hsi_endpoint_partition": 0,
+    "hsi_endpoint_partition": 0, 
     "hsi_re_mask": 0,
     "hsi_fe_mask": 0,
     "hsi_inv_mask": 0,
     "hsi_source": 1,
-    "use_hsi_hw": false,
+    "use_fake_hsi": true,
+    "host_fake_hsi": "localhost",
     "hsi_device_id": 0,
     "mean_hsi_signal_multiplicity": 1,
     "hsi_signal_emulation_mode": 0,
     "enabled_hsi_signals": 1
   },
-
+  "ctb_hsi": {
+    "use_ctb_hsi": false,
+    "host_ctb_hsi": "localhost", 
+    "hlt_triggers": [
+                      { "id":"HLT_4",
+                        "description": "TEST HLT",
+                        "enable":true,
+                        "minc" : "0x1",
+                        "mexc" : "0x0",
+                        "prescale" : "0x0"
+                      }
+    ],
+    "beam_llt_triggers": [],
+    "crt_llt_triggers":[],
+    "pds_llt_triggers": [],
+    "fake_trig_1": {
+                    "description": "Fake 1Hz LLT trigger",
+                    "enable": true,
+                    "fixed_freq": true,
+                    "beam_mode": false,
+                    "period": 62500000
+                   },
+    "fake_trig_2": {
+                    "description": "Fake 1Hz LLT trigger",
+                    "enable": true,
+                    "fixed_freq": true,
+                    "beam_mode": false,
+                    "period": 62500000
+                   }
+  },
   "readout": {
     "hardware_map_file": "./HardwareMap.txt",
     "emulator_mode": false,
