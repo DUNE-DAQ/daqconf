@@ -46,6 +46,8 @@ In this configuration the `detector_id` is used to key the pattern file. This `d
 
 
 For `data_file`, you can specify:
+
+
 | location desired | syntax                 | example                                                          |
 ----------------------------------------------------------------------------------------------------------------
 | file system      | <absolute-path>        | /some/path/frames.bin                                            |
