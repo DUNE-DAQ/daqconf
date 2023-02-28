@@ -49,7 +49,7 @@ For `data_file`, you can specify:
 
 
 | location desired | syntax                 | example                                                          |
-----------------------------------------------------------------------------------------------------------------
+| ---------------- | ---------------------- | ---------------------------------------------------------------- |
 | file system      | <absolute-path>        | /some/path/frames.bin                                            |
 | file system      | file://<absolute-path> | file:///some/path/note/the/3/slashes/at/the/beginning/frames.bin |
 | file system      | relative path          | ../some/path/frames.bin                                          |
