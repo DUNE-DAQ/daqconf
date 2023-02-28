@@ -107,7 +107,7 @@ local cs = {
     s.field( "thread_pinning_file", self.path, default="", doc="A thread pinning configuration file that gets executed after conf."),
     s.field( "data_rate_slowdown_factor",self.count, default=1, doc="Factor by which to suppress data generation. Former -s"),
     s.field( "clock_speed_hz", self.freq, default=50000000),
-    s.field( "default_data_file", self.path, default='asset://label/ProtoWIB', doc="File containing data frames to be replayed by the fake cards. Former -d. Uses the asset manager, can also be 'asset://checksum/somelonghash', or 'file://somewhere/frames.bin' or 'frames.bin'"),
+    s.field( "default_data_file", self.path, default='asset://?label=ProtoWIB&subsystem=readout', doc="File containing data frames to be replayed by the fake cards. Former -d. Uses the asset manager, can also be 'asset://?checksum=somelonghash', or 'file://somewhere/frames.bin' or 'frames.bin'"),
     s.field( "data_files", self.data_files, default=[], doc="Files to use by detector type"),
     s.field( "use_felix", self.flag, default=false, doc="Use real felix cards instead of fake ones. Former -f"),
     s.field( "eth_mode", self.flag, default=false, doc="Use ethernet packet format"),
