@@ -48,12 +48,13 @@ In this configuration the `detector_id` is used to key the pattern file. This `d
 For `data_file`, you can specify:
 
 
-| location desired | syntax                   | example                                                            |
-| ---------------- | ------------------------ | ------------------------------------------------------------------ |
-| file system      | `<absolute-path>`        | `/some/path/frames.bin`                                            |
-| file system      | `file://<absolute-path>` | `file:///some/path/note/the/3/slashes/at/the/beginning/frames.bin` |
-| file system      | relative path            | `../some/path/frames.bin`                                          |
-| asset            | `asset://?query`         | `asset://?label=ProtoWIB&subsystem=readout`                        |
+| location desired | syntax                   | example                                                                |
+| ---------------- | ------------------------ | ---------------------------------------------------------------------- |
+| file system      | `<absolute-path>`        | `/some/path/frames.bin`                                                |
+| file system      | `file://<absolute-path>` | `file:///some/path/note/the/THREE/slashes/at/the/beginning/frames.bin` |
+| file system      | `file://<relative-path>` | `file://some/path/note/the/TWO/slashes/at/the/beginning/frames.bin`    |
+| file system      | `<relative path>`        | `../some/path/frames.bin`                                              |
+| asset            | `asset://?query`         | `asset://?label=ProtoWIB&subsystem=readout`                            |
 
 
 The query should be of the form:
