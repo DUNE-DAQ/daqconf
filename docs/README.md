@@ -75,3 +75,4 @@ e2f7a4d6ae354c2d6529c190ec8335f3 readout         DuneWIB         valid          
 
 and there are no asset files in the "trigger" subsystem.
 
+Note that daqconf will _not_ use an expired asset.

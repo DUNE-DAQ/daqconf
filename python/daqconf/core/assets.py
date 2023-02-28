@@ -17,11 +17,13 @@ def check_asset_file(data_file, verbose):
     if data_file_url.scheme == 'asset':
         asset_query = dict(parse_qsl(data_file_url.query))
         asset_db = Database('/cvmfs/dunedaq.opensciencegrid.org/assets/dunedaq-asset-db.sqlite')
+        asset_query['status'] = 'valid'
 
         try:
             files = asset_db.get_files(asset_query)
             if not files:
-                raise RuntimeError(f"Couldn\'t find the asset {data_file}")
+                raise RuntimeError(f"Couldn\'t find a valid asset for the query {data_file_url.query}")
+
             elif len(files)>1:
                 console.log(f"Found {len(files)} assets in {dirname(asset_db.database_file)}, taking the first one")
 
@@ -33,6 +35,7 @@ def check_asset_file(data_file, verbose):
 
         except OperationalError:
             raise RuntimeError(f"Couldn\'t find the asset {data_file}")
+
 
     elif data_file_url.scheme == 'file':
         filename = abspath(data_file_url.netloc+data_file_url.path)
