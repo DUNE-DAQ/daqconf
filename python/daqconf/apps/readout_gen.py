@@ -133,8 +133,9 @@ def get_readout_app(DRO_CONFIG=None,
         # as the frontend type
         LATENCY_BUFFER_SIZE = 4096
 
-    if (ENABLE_DPDK_SENDER or ENABLE_DPDK_READER) and FRONTEND_TYPE != 'tde':
-        raise RuntimeError(f'DPDK is only supported when using the frontend type TDE, current frontend type is {FRONTEND_TYPE}')
+    # RS: Ignore FE type for DPDK receiver. Should NOT matter.
+    #if (ENABLE_DPDK_SENDER or ENABLE_DPDK_READER) and FRONTEND_TYPE != 'wibeth':
+    #    raise RuntimeError(f'DPDK is only supported when using the frontend type TDE, current frontend type is {FRONTEND_TYPE}')
     if ENABLE_DPDK_SENDER and not ENABLE_DPDK_READER:
         raise RuntimeError('The DPDK sender can not be enabled and the DPDK reader disabled')
 
@@ -471,6 +472,7 @@ def get_readout_app(DRO_CONFIG=None,
             modules += [DAQModule(name="nic_reader", plugin="NICReceiver",
                                 conf=nrc.Conf(eal_arg_list=EAL_ARGS,
                                                 dest_ip=DESTINATION_IP,
+                                                rx_cores=rxcores,
                                                 ip_sources=links),
                 )]
 
