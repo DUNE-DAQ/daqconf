@@ -53,6 +53,7 @@ def get_dqm_app(DQM_IMPL='',
                 DF_TIME_WINDOW=0,
                 DRO_CONFIG=None,
                 APP_NAME="dqm",
+                TRB_DQM_SOURCEID_OFFSET=0,
                 DEBUG=False,
                 ):
 
@@ -81,7 +82,7 @@ def get_dqm_app(DQM_IMPL='',
                             plugin='TriggerRecordBuilder',
                             conf=trb.ConfParams(
                                 general_queue_timeout=QUEUE_POP_WAIT_MS,
-                                source_id = DQMIDX,
+                                source_id = DQMIDX+TRB_DQM_SOURCEID_OFFSET,
                                 reply_connection_name = "",
                                 max_time_window=0
                             ))]
