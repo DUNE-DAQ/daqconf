@@ -363,6 +363,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         DEBUG=debug)
 
 
+    trb_dqm_sourceid_offset = sourceid_broker.get_next_source_id("TRBuilder")
     ru_app_names=[]
     dqm_app_names = []
     for dro_idx,dro_config in enumerate(dro_infos):
@@ -452,6 +453,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
                 FOURIER_CHANNEL_PARAMS=dqm.fourier_channel_params,
                 FOURIER_PLANE_PARAMS=dqm.fourier_plane_params,
                 LINKS=dqm_links,
+                TRB_DQM_SOURCEID_OFFSET=trb_dqm_sourceid_offset,
                 HOST=dqm.host_dqm[dro_idx % len(dqm.host_dqm)],
                 DRO_CONFIG=dro_config,
                 DEBUG=debug)
