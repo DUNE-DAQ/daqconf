@@ -7,7 +7,7 @@ from daq_assettools.asset_file import AssetFile
 from daq_assettools.asset_database import Database
 from sqlite3 import OperationalError
 
-def check_asset_file(data_file, verbose):
+def resolve_asset_file(data_file, verbose):
     from urllib.parse import urlparse, parse_qsl
     data_file_url = urlparse(data_file)
 

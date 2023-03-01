@@ -8,7 +8,7 @@ from daqconf.core.system import System
 from daqconf.core.metadata import write_metadata_file
 from daqconf.core.sourceid import SourceIDBroker, get_tpg_mode
 from daqconf.core.config_file import generate_cli_from_schema
-from daqconf.core.assets import check_asset_file
+from daqconf.core.assets import resolve_asset_file
 from detchannelmaps._daq_detchannelmaps_py import HardwareMapService
 from detdataformats._daq_detdataformats_py import *
 
@@ -145,10 +145,10 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
 
     
-    readout.default_data_file = check_asset_file(readout.default_data_file, debug)
+    readout.default_data_file = resolve_asset_file(readout.default_data_file, debug)
     data_file_map = {}
     for entry in readout.data_files:
-        data_file_map[entry["detector_id"]] = check_asset_file(entry["data_file"], debug)
+        data_file_map[entry["detector_id"]] = resolve_asset_file(entry["data_file"], debug)
 
     if boot.use_k8s:
         console.log(f'Using k8s')
