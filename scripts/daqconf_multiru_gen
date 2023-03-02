@@ -8,6 +8,7 @@ from daqconf.core.system import System
 from daqconf.core.metadata import write_metadata_file
 from daqconf.core.sourceid import SourceIDBroker, get_tpg_mode
 from daqconf.core.config_file import generate_cli_from_schema
+from daqconf.core.assets import resolve_asset_file
 from detchannelmaps._daq_detchannelmaps_py import HardwareMapService
 from detdataformats._daq_detdataformats_py import *
 
@@ -148,6 +149,12 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             host_df += [appconfig.host_df]
 
 
+    
+    readout.default_data_file = resolve_asset_file(readout.default_data_file, debug)
+    data_file_map = {}
+    for entry in readout.data_files:
+        data_file_map[entry["detector_id"]] = resolve_asset_file(entry["data_file"], debug)
+
     if boot.use_k8s:
         console.log(f'Using k8s')
         trigger.tpset_output_path = abspath(trigger.tpset_output_path)
@@ -156,9 +163,6 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             for op in df_app.output_paths:
                 new_output_path += [abspath(op)]
             df_app.output_paths = new_output_path
-        readout.hardware_map_file = abspath(readout.hardware_map_file)
-        readout.data_file = abspath(readout.data_file)
-        print(readout.data_file)
 
     console.log(f"Generating configs for hosts trigger={trigger.host_trigger} DFO={dataflow.host_dfo} dataflow={host_df} timing_hsi={hsi.host_timing_hsi} fake_hsi={hsi.host_fake_hsi} ctb_hsi={ctb_hsi.host_ctb_hsi} dqm={dqm.host_dqm}")
 
@@ -421,7 +425,8 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             DRO_CONFIG=dro_config,
             EMULATOR_MODE = readout.emulator_mode,
             DATA_RATE_SLOWDOWN_FACTOR = readout.data_rate_slowdown_factor,
-            DATA_FILE = readout.data_file,
+            DEFAULT_DATA_FILE = readout.default_data_file,
+            DATA_FILES = data_file_map,
             FLX_INPUT = readout.use_felix,
             ETH_MODE = readout.eth_mode,
             CLOCK_SPEED_HZ = readout.clock_speed_hz,
@@ -456,14 +461,25 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
                     f"felix.cern/flx{c}-data": "1", # requesting FLX{c}
                     "memory": "32Gi" # yes bro
                 }
-            # TODO: HACK, can't do that any other way now, please give me a nice asset manager
-            the_system.apps[ru_name].mounted_dirs += [{
-                'name': 'frames-bin',
-                'physical_location': dirname(readout.data_file),
-                'in_pod_location':   dirname(readout.data_file),
-                'read_only': True,
-            }]
 
+            dir_names = set()
+
+            if os.path.commonprefix(['/cvmfs', readout.default_data_file]) != '/cvmfs':
+                dir_names.add(dirname(readout.default_data_file))
+
+            for id,file in data_file_map:
+                if os.path.commonprefix(['/cvmfs', file]) != '/cvmfs':
+                    dir_names.add(dirname(file))
+
+            dirindex = 0
+            for dir_name in dir_names:
+                the_system.apps[ru_name].mounted_dirs += [{
+                    'name': f'frames-bin-{dirindex}',
+                    'physical_location': dir_name,
+                    'in_pod_location':   dir_name,
+                    'read_only': True,
+                }]
+                dirindex += 1
 
         if debug:
             console.log(f"{ru_name} app: {the_system.apps[ru_name]}")
@@ -718,7 +734,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         resolved_thread_pinning_file = os.path.abspath(os.path.expanduser(os.path.expandvars(readout.thread_pinning_file)))
         if not exists(resolved_thread_pinning_file):
             raise RuntimeError(f'Cannot find the file {readout.thread_pinning_file} ({resolved_thread_pinning_file})')
-    
+
         system_command_datas['boot']['scripts'] = {
             "thread_pinning": {
                 "cmd": [
