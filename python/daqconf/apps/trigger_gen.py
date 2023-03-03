@@ -8,6 +8,7 @@ import moo.otypes
 
 moo.otypes.load_types('trigger/triggeractivitymaker.jsonnet')
 moo.otypes.load_types('trigger/triggercandidatemaker.jsonnet')
+moo.otypes.load_types('trigger/customtriggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/triggerzipper.jsonnet')
 moo.otypes.load_types('trigger/moduleleveltrigger.jsonnet')
 moo.otypes.load_types('trigger/timingtriggercandidatemaker.jsonnet')
@@ -19,6 +20,7 @@ moo.otypes.load_types('trigger/tpchannelfilter.jsonnet')
 # Import new types
 import dunedaq.trigger.triggeractivitymaker as tam
 import dunedaq.trigger.triggercandidatemaker as tcm
+import dunedaq.trigger.customtriggercandidatemaker as ctcm
 import dunedaq.trigger.triggerzipper as tzip
 import dunedaq.trigger.moduleleveltrigger as mlt
 import dunedaq.trigger.timingtriggercandidatemaker as ttcm
@@ -88,6 +90,8 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                     TRIGGER_WINDOW_BEFORE_TICKS: int = 1000,
                     TRIGGER_WINDOW_AFTER_TICKS: int = 1000,
                     HSI_TRIGGER_TYPE_PASSTHROUGH: bool = False,
+
+                    USE_CUSTOM_MAKER = True,
 
                     MLT_BUFFER_TIMEOUT: int = 100,
                     MLT_SEND_TIMED_OUT_TDS: bool = False,
@@ -279,6 +283,14 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                                                        time_after=TRIGGER_WINDOW_AFTER_TICKS),
                                          hsievent_connection_name = "hsievents",
                      hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH))]
+
+    if USE_CUSTOM_MAKER:
+        modules += [DAQModule(name = 'ctcm',
+                       plugin = 'CustomTriggerCandidateMaker',
+                       conf=ctcm.Conf(trigger_interval_ticks=10,
+                       clock_frequency_hz=CLOCK_SPEED_HZ,
+                       timestamp_method="kTimeSync",
+                       time_distribution="kUniform"))]
     
     # We need to populate the list of links based on the fragment
     # producers available in the system. This is a bit of a
@@ -305,6 +317,9 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
         mgraph.connect_modules("ttcm.output",         "tctee_ttcm.input",             "TriggerCandidate", "ttcm_input", size_hint=1000)
         mgraph.connect_modules("tctee_ttcm.output1",  "mlt.trigger_candidate_source", "TriggerCandidate","tcs_to_mlt", size_hint=1000)
         mgraph.connect_modules("tctee_ttcm.output2",  "tc_buf.tc_source",             "TriggerCandidate","tcs_to_buf", size_hint=1000)
+
+    if USE_CUSTOM_MAKER:
+        mgraph.connect_modules("ctcm.trigger_candidate_sink", "mlt.trigger_candidate_source", "tcs_to_mlt", size_hint=1000)
 
     if len(TP_SOURCE_IDS) > 0:
         mgraph.connect_modules("tazipper.output", "tcm.input", data_type="TASet", size_hint=1000)
