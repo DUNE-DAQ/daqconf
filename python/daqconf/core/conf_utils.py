@@ -620,6 +620,7 @@ def generate_boot(
         "response_listener": {
             "port": 56789
         },
+        "external_connections": [],
         "exec": daq_app_specs
     }
 
