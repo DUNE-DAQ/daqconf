@@ -83,7 +83,6 @@ def get_dqm_app(DQM_IMPL='',
                             conf=trb.ConfParams(
                                 general_queue_timeout=QUEUE_POP_WAIT_MS,
                                 source_id = DQMIDX+TRB_DQM_SOURCEID_OFFSET,
-                                reply_connection_name = "",
                                 max_time_window=0
                             ))]
 
