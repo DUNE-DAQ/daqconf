@@ -331,7 +331,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             HSI_SOURCE=hsi.hsi_source,
             HSI_SOURCE_ID=timing_hsi_source_id,
             TIMING_SESSION=timing.timing_session_name,
-            HOST=hsi.host_hsi,
+            HOST=hsi.host_timing_hsi,
             DEBUG=debug)
         if debug: console.log("timing hsi cmd data:", the_system.apps["timinghsi"])
     
