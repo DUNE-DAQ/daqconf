@@ -137,6 +137,5 @@ def connect_all_fragment_producers(the_system, dataflow_name="dataflow", verbose
         old_trb_conf = df_mgraph.get_module(trb_module_name).conf
         df_mgraph.reset_module_conf(trb_module_name, trb.ConfParams(general_queue_timeout=old_trb_conf.general_queue_timeout,
                                                                source_id = old_trb_conf.source_id,
-                                                          reply_connection_name = fragment_connection_name,
                                                           max_time_window = old_trb_conf.max_time_window,
                                                           trigger_record_timeout_ms = old_trb_conf.trigger_record_timeout_ms))
