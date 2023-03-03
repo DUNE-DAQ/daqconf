@@ -93,6 +93,18 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                     MLT_SEND_TIMED_OUT_TDS: bool = False,
                     MLT_MAX_TD_LENGTH_MS: int = 1000,
                     MLT_IGNORE_TC: list = [],
+                    MLT_READOUT_MAP: dict = {
+                      'c0': {'candidate_type': 0, 'time_before': 10000, 'time_after': 20000},
+                      'c1': {'candidate_type': 1, 'time_before': 10000, 'time_after': 20000},
+                      'c2': {'candidate_type': 2, 'time_before': 10000, 'time_after': 20000},
+                      'c3': {'candidate_type': 3, 'time_before': 10000, 'time_after': 20000},
+                      'c4': {'candidate_type': 4, 'time_before': 10000, 'time_after': 20000},
+                      'c5': {'candidate_type': 5, 'time_before': 10000, 'time_after': 20000},
+                      'c6': {'candidate_type': 6, 'time_before': 10000, 'time_after': 20000},
+                      'c7': {'candidate_type': 7, 'time_before': 10000, 'time_after': 20000},
+                      'c8': {'candidate_type': 8, 'time_before': 10000, 'time_after': 20000},
+                      'c9': {'candidate_type': 9, 'time_before': 10000, 'time_after': 20000}
+                    },
 
                     USE_CHANNEL_FILTER: bool = True,
 
@@ -284,7 +296,8 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                           buffer_timeout=MLT_BUFFER_TIMEOUT,
                                               td_out_of_timeout=MLT_SEND_TIMED_OUT_TDS,
                                               ignore_tc=MLT_IGNORE_TC,
-                                              td_readout_limit=max_td_length_ticks))]
+                                              td_readout_limit=max_td_length_ticks,
+                                              td_readout_map=MLT_READOUT_MAP))]
 
     mgraph = ModuleGraph(modules)
 
