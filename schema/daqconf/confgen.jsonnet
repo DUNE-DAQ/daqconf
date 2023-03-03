@@ -64,9 +64,7 @@ local cs = {
   ]),
 
   timing: s.record("timing", [
-    s.field( "timing_partition_name", self.string, default="timing", doc="Name of the global partition to use, for ERS and OPMON and timing commands"),
-    s.field( "host_timing", self.host, default='np04-srv-012.cern.ch', doc='Host to run the (global) timing hardware interface app on'),
-    s.field( "port_timing", self.port, default=12345, doc='Port to host running the (global) timing hardware interface app on'),
+    s.field( "timing_session_name", self.string, default="", doc="Name of the global timing session to use, for timing commands"),
     s.field( "host_tprtc", self.host, default='localhost', doc='Host to run the timing partition controller app on'),
     # timing hw partition options
     s.field( "control_timing_partition", self.flag, default=false, doc='Flag to control whether we are controlling timing partition in master hardware'),
