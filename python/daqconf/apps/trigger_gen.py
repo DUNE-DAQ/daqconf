@@ -287,8 +287,8 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
     if USE_CUSTOM_MAKER:
         modules += [DAQModule(name = 'ctcm',
                        plugin = 'CustomTriggerCandidateMaker',
-                       conf=ctcm.Conf(trigger_interval_ticks=10,
-                       clock_frequency_hz=CLOCK_SPEED_HZ,
+                       conf=ctcm.Conf(trigger_interval_ticks=1,
+                       clock_frequency_hz=62500000,
                        timestamp_method="kTimeSync",
                        time_distribution="kUniform"))]
     
@@ -319,7 +319,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
         mgraph.connect_modules("tctee_ttcm.output2",  "tc_buf.tc_source",             "TriggerCandidate","tcs_to_buf", size_hint=1000)
 
     if USE_CUSTOM_MAKER:
-        mgraph.connect_modules("ctcm.trigger_candidate_sink", "mlt.trigger_candidate_source", "tcs_to_mlt", size_hint=1000)
+        mgraph.connect_modules("ctcm.trigger_candidate_sink", "mlt.trigger_candidate_source", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
 
     if len(TP_SOURCE_IDS) > 0:
         mgraph.connect_modules("tazipper.output", "tcm.input", data_type="TASet", size_hint=1000)
