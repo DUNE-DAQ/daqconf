@@ -484,6 +484,14 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             dqm_name = "dqm" + ru_name
             dqm_app_names.append(dqm_name)
             dqm_links = [link.dro_source_id for link in dro_config.links]
+
+            # 07-Mar-2023, KAB: I don't know why {ru_name} in this code *doesn't* have an
+            # underscore in it, and the {RUID}X variable inside get_readout_app *does* have
+            # an underscore, but that idiosyncrasy means that we can't just give the ru_name
+            # to get_dqm_app for it to use when subscribing to TimeSync messages. So, we'll
+            # create a dedicated variable here *with* the underscore.
+            ru_name_with_underscore = f"ru{host}_{dro_config.card}"
+
             the_system.apps[dqm_name] = get_dqm_app(
                 DQM_IMPL=dqm.impl,
                 DATA_RATE_SLOWDOWN_FACTOR=readout.data_rate_slowdown_factor,
@@ -499,6 +507,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
                 FOURIER_CHANNEL_PARAMS=dqm.fourier_channel_params,
                 FOURIER_PLANE_PARAMS=dqm.fourier_plane_params,
                 LINKS=dqm_links,
+                RU_APPNAME_WITH_UNDERSCORE=ru_name_with_underscore,
                 TRB_DQM_SOURCEID_OFFSET=trb_dqm_sourceid_offset,
                 HOST=dqm.host_dqm[dro_idx % len(dqm.host_dqm)],
                 DRO_CONFIG=dro_config,
