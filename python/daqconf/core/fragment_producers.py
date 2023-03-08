@@ -38,8 +38,6 @@ def set_mlt_links(the_system, mlt_app_name="trigger", verbose=False):
     mgraph = the_system.apps[mlt_app_name].modulegraph
     old_mlt_conf = mgraph.get_module("mlt").conf
     mgraph.reset_module_conf("mlt", mlt.ConfParams(links=mlt_links, 
-                                                   dfo_connection=old_mlt_conf.dfo_connection, 
-                                                   dfo_busy_connection=old_mlt_conf.dfo_busy_connection,
                                                    hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough,
 						   buffer_timeout=old_mlt_conf.buffer_timeout,
                                                    td_out_of_timeout=old_mlt_conf.td_out_of_timeout,
@@ -58,8 +56,6 @@ def remove_mlt_link(the_system, source_id, mlt_app_name="trigger"):
         raise ValueError(f"SourceID {source_id} not in MLT links list")
     mlt_links.remove(source_id)
     mgraph.reset_module_conf("mlt", mlt.ConfParams(links=mlt_links, 
-                                                   dfo_connection=old_mlt_conf.dfo_connection, 
-                                                   dfo_busy_connection=old_mlt_conf.dfo_busy_connection,
                                                    hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough,
                                                    buffer_timeout=old_mlt_conf.buffer_timeout,
 					       	   td_out_of_timeout=old_mlt_conf.td_out_of_timeout,

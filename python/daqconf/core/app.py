@@ -1,5 +1,5 @@
 from daqconf.core.daqmodule import DAQModule
-from daqconf.core.conf_utils import Endpoint, Direction, FragmentProducer, Queue, ExternalConnection
+from daqconf.core.conf_utils import Endpoint, Direction, FragmentProducer, Queue
 from daqconf.core.sourceid import SourceID, ensure_subsystem
 import networkx as nx
 
@@ -39,12 +39,11 @@ class ModuleGraph:
 
         return output_queues
 
-    def __init__(self, modules:[DAQModule]=None, endpoints:[Endpoint]=None, fragment_producers:{FragmentProducer}=None, queues:[Queue]=None, external_connections:[ExternalConnection]=None):
+    def __init__(self, modules:[DAQModule]=None, endpoints:[Endpoint]=None, fragment_producers:{FragmentProducer}=None, queues:[Queue]=None):
         self.modules=modules if modules else []
         self.endpoints=endpoints if endpoints else []
         self.fragment_producers = fragment_producers if  fragment_producers else dict()
         self.queues = self.combine_queues(queues) if queues else []
-        self.external_connections = external_connections if external_connections else []
 
     def __repr__(self):
         return f"modulegraph(modules={self.modules}, endpoints={self.endpoints}, fragment_producers={self.fragment_producers})"
@@ -178,12 +177,9 @@ class ModuleGraph:
                 return True
         return False
 
-    def add_endpoint(self, external_name:str, internal_name:str, data_type:str, inout:Direction, is_pubsub=False, toposort=False):
+    def add_endpoint(self, external_name:str, internal_name:str, data_type:str, inout:Direction, is_pubsub=False, toposort=False, check_endpoints=True):
         if not self.has_endpoint(external_name, internal_name):
-            self.endpoints += [Endpoint(external_name, data_type, internal_name, inout, is_pubsub=is_pubsub, toposort=toposort)]
-
-    def add_external_connection(self, external_name:str, internal_name:str, data_type:str, inout:Direction, host:str, port:int, is_pubsub=False):
-        self.external_connections += [ExternalConnection(external_name, data_type, internal_name, inout, host, port, is_pubsub)]
+            self.endpoints += [Endpoint(external_name, data_type, internal_name, inout, is_pubsub=is_pubsub, toposort=toposort, check_endpoints=check_endpoints)]
 
     def connect_modules(self, push_addr:str, pop_addr:str, data_type:str, queue_name:str = "", size_hint:int = 10, toposort = True):
         queue_start = push_addr.split(".")

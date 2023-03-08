@@ -51,7 +51,7 @@ class Endpoint:
     #         self.__init_with_nwmgr(**kwargs)
     #     else:
     #         self.__init_with_external_name(**kwargs)
-    def __init__(self, external_name:str, data_type:str, internal_name:str, direction:Direction, is_pubsub=False, size_hint=1000, toposort=False):
+    def __init__(self, external_name:str, data_type:str, internal_name:str, direction:Direction, is_pubsub=False, size_hint=1000, toposort=False, check_endpoints=True):
         self.external_name = external_name
         self.data_type = data_type
         self.internal_name = internal_name
@@ -59,6 +59,7 @@ class Endpoint:
         self.is_pubsub = is_pubsub
         self.size_hint = size_hint
         self.toposort = toposort
+        self.check_endpoints = check_endpoints
 
     def __repr__(self):
         return f"{'' if self.toposort else '!'}{self.external_name}/{self.internal_name}"
@@ -67,12 +68,6 @@ class Endpoint:
     #     self.internal_name = internal_name
     #     self.external_name = None
     #     self.direction = Direction.IN
-
-class ExternalConnection(Endpoint):
-   def __init__(self, external_name:str, data_type:str, internal_name:str, direction:Direction, host:str, port:int, is_pubsub=False):
-        super().__init__(external_name, data_type, internal_name, direction, is_pubsub)
-        self.host = host
-        self.port = port
 
 class Queue:
     def __init__(self, push_module:str, pop_module:str, data_type:str, name:str = None, size=10, toposort=False):
@@ -199,30 +194,6 @@ def make_queue_connection(the_system, app, endpoint_name, data_type, in_apps, ou
             console.log(f"Queue {endpoint_name}, MPMC Queue (data_type={data_type}, size={size})")
         the_system.queues[app] += [conn.QueueConfig(id=conn_id, queue_type="kFollyMPMCQueue", capacity=size)]
 
-def make_external_connection(the_system, endpoint_name, data_type, app_name, host, port, is_pubsub, inout, verbose):
-    if verbose:
-        console.log(f"External connection {endpoint_name}")
-    address = f"tcp://{host}:{port}"
-
-    for connection in the_system.connections[app_name]:
-        if connection.id == endpoint_name:
-            console.log(f"Duplicate external connection {endpoint_name} detected! Not adding to configuration!")
-            return
-
-    conn_id = conn.ConnectionId(uid=endpoint_name, data_type=data_type)
-    if not is_pubsub:
-        if inout==Direction.IN:
-            new_address = replace_localhost_ip(address)
-            the_system.connections[app_name] += [conn.Connection(id=conn_id, connection_type="kSendRecv", uri=new_address)]
-        else:
-            the_system.connections[app_name] += [conn.Connection(id=conn_id, connection_type='kSendRecv', uri=address)]
-    else:
-        if inout==Direction.IN:
-            the_system.connections[app_name] += [conn.Connection(id=conn_id, connection_type="kPubSub", uri=address)]
-        else:
-            new_address = replace_localhost_ip(address)
-            the_system.connections[app_name] += [conn.Connection(id=conn_id, connection_type='kPubSub', uri=new_address)]
-
 def make_network_connection(the_system, endpoint_name, data_type, in_apps, out_apps, verbose, use_k8s=False, use_connectivity_service=True):
     if verbose:
         console.log(f"Connection {endpoint_name}, Network")
@@ -255,7 +226,6 @@ def make_system_connections(the_system, verbose=False, use_k8s=False, use_connec
 
     """
 
-    external_uids = set()
     uids = []
     endpoint_map = defaultdict(list)
     topic_map = defaultdict(list)
@@ -265,9 +235,6 @@ def make_system_connections(the_system, verbose=False, use_k8s=False, use_connec
       the_system.queues[app] = []
       for queue in the_system.apps[app].modulegraph.queues:
             make_queue_connection(the_system, app, queue.name, queue.data_type, queue.push_modules, queue.pop_modules, queue.size, verbose)
-      for external_conn in the_system.apps[app].modulegraph.external_connections:
-            make_external_connection(the_system, external_conn.external_name, external_conn.data_type, app, external_conn.host, external_conn.port, external_conn.is_pubsub, external_conn.direction, verbose)
-            external_uids.add(external_conn.external_name)
       for endpoint in the_system.apps[app].modulegraph.endpoints:
         if not endpoint.is_pubsub:
             if verbose:
@@ -279,12 +246,6 @@ def make_system_connections(the_system, verbose=False, use_k8s=False, use_connec
                 console.log(f"Getting topics for endpoint {endpoint.external_name}, app {app}, direction {endpoint.direction}")
             topic_map[endpoint.data_type] += [{"app": app, "endpoint": endpoint}]
 
-    for external_uid in external_uids:
-        if external_uid in topic_map.keys():
-            raise ValueError(f"Name {external_uid} is both a data_type and an external connection name")
-        if external_uid in uids:
-            raise ValueError(f"Name {external_uid} is both an endpoint name and an external connection name")
-
     for topic in topic_map.keys():
         if topic in uids:
             raise ValueError(f"Name {topic} is both an endpoint external name and a data_type")
@@ -293,6 +254,7 @@ def make_system_connections(the_system, verbose=False, use_k8s=False, use_connec
         if verbose:
             console.log(f"Processing {endpoint_name} with defined endpoints {endpoints}")
         first_app = endpoints[0]["app"]
+        check_endpoints = endpoints[0]["endpoint"].check_endpoints
         in_apps = []
         out_apps = []
         size = 0
@@ -306,12 +268,15 @@ def make_system_connections(the_system, verbose=False, use_k8s=False, use_connec
             if endpoint['endpoint'].size_hint > size:
                 size = endpoint['endpoint'].size_hint
 
-        if len(in_apps) == 0:
+        if len(in_apps) == 0 and check_endpoints:
             raise ValueError(f"Connection with name {endpoint_name} has no consumers!")
-        if len(out_apps) == 0:
+        if len(out_apps) == 0 and check_endpoints:
             raise ValueError(f"Connection with name {endpoint_name} has no producers!")
 
-        if all(first_app == elem["app"] for elem in endpoints):
+        if not check_endpoints:
+            if len(in_apps) > 0:
+                make_network_connection(the_system, endpoint_name, data_type, in_apps, out_apps, verbose, use_k8s=use_k8s, use_connectivity_service=use_connectivity_service)
+        elif all(first_app == elem["app"] for elem in endpoints):
             make_queue_connection(the_system, first_app, endpoint_name, data_type, in_apps, out_apps, size, verbose)
         elif len(in_apps) == len(out_apps):
             paired_exactly = False
@@ -344,6 +309,7 @@ def make_system_connections(the_system, verbose=False, use_k8s=False, use_connec
         subscribers = [] # Only really care about the topics from here
         publisher_uids = {}
         topic_connectionuids = []
+        check_endpoints = endpoints[0]["endpoint"].check_endpoints
 
         for endpoint in endpoints:
             direction = endpoint['endpoint'].direction
@@ -363,9 +329,9 @@ def make_system_connections(the_system, verbose=False, use_k8s=False, use_connec
                 if endpoint['app'] not in publisher_uids.keys(): publisher_uids[endpoint["app"]] = []
                 publisher_uids[endpoint["app"]] += [endpoint['endpoint'].external_name]
 
-        if len(subscribers) == 0:
+        if len(subscribers) == 0 and check_endpoints:
             raise ValueError(f"Data Type {topic} has no subscribers!")
-        if len(publishers) == 0:
+        if len(publishers) == 0 and check_endpoints:
             raise ValueError(f"Data Type {topic} has no publishers!")
 
         for publisher in publishers:
@@ -426,14 +392,6 @@ def make_app_command_data(system, app, appkey, verbose=False, use_k8s=False, use
         if verbose:
             console.log(f"module, name= {module}, {name}, endpoint.external_name={endpoint.external_name}, endpoint.direction={endpoint.direction}")
         app_connrefs[module] += [appfwk.ConnectionReference(name=name, uid=endpoint.external_name)]
-
-    for external_conn in app.modulegraph.external_connections:
-        if external_conn.internal_name is None:
-            continue
-        module, name = external_conn.internal_name.split(".")
-        if verbose:
-            console.log(f"module, name= {module}, {name}, external_conn.external_name={external_conn.external_name}, external_conn.direction={external_conn.direction}")
-        app_connrefs[module] += [appfwk.ConnectionReference(name=name, uid=external_conn.external_name)]
 
     for queue in app.modulegraph.queues:
         queue_uid = queue.name
@@ -650,10 +608,6 @@ def generate_boot(
         }
     }
 
-    external_connections = []
-    for app in system.apps:
-        external_connections += [ext.external_name for ext in system.apps[app].modulegraph.external_connections]
-
     boot = {
         "env": {
             "DUNEDAQ_ERS_VERBOSITY_LEVEL": "getenv:1",
@@ -666,7 +620,7 @@ def generate_boot(
         "response_listener": {
             "port": 56789
         },
-        "external_connections": external_connections,
+        "external_connections": [],
         "exec": daq_app_specs
     }
 

@@ -43,7 +43,7 @@ import math
 
 #===============================================================================
 def get_fake_hsi_app(RUN_NUMBER=333,
-                     CLOCK_SPEED_HZ: int=50000000,
+                     CLOCK_SPEED_HZ: int=62500000,
                      DATA_RATE_SLOWDOWN_FACTOR: int=1,
                      TRIGGER_RATE_HZ: int=1,
                      HSI_SOURCE_ID: int=0,
