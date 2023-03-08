@@ -486,7 +486,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             dqm_links = [link.dro_source_id for link in dro_config.links]
 
             # 07-Mar-2023, KAB: I don't know why {ru_name} in this code *doesn't* have an
-            # underscore in it, and the {RUID}X variable inside get_readout_app *does* have
+            # underscore in it, and the {RUIDX} variable inside get_readout_app *does* have
             # an underscore, but that idiosyncrasy means that we can't just give the ru_name
             # to get_dqm_app for it to use when subscribing to TimeSync messages. So, we'll
             # create a dedicated variable here *with* the underscore.

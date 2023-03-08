@@ -117,8 +117,8 @@ def get_dqm_app(DQM_IMPL='',
 
     if MODE == 'readout':
         mgraph.add_endpoint(f"timesync_{RU_APPNAME_WITH_UNDERSCORE}_.*", "dqmprocessor.timesync_input", "TimeSync", Direction.IN, is_pubsub=True)
-        mgraph.connect_modules("dqmprocessor.trigger_decision_input_queue", "trb_dqm.trigger_decision_input", "TriggerDecision", 'trigger_decision_q_dqm')
-        mgraph.connect_modules('trb_dqm.trigger_record_output', 'dqmprocessor.trigger_record_dqm_processor', "TriggerRecord", 'trigger_record_q_dqm', toposort=False)  
+        mgraph.connect_modules("dqmprocessor.trigger_decision_output", "trb_dqm.trigger_decision_input", "TriggerDecision", 'trigger_decision_q_dqm')
+        mgraph.connect_modules('trb_dqm.trigger_record_output', 'dqmprocessor.trigger_record_input', "TriggerRecord", 'trigger_record_q_dqm', toposort=False)  
     else:
         mgraph.add_endpoint(f'trmon_dqm2df_{DQMIDX}', None, "TRMonRequest", Direction.OUT)
         mgraph.add_endpoint(f"tr_df2dqm_{DQMIDX}", None, "TriggerRecord", Direction.IN, toposort=True)
