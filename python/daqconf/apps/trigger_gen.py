@@ -73,6 +73,8 @@ def get_buffer_conf(source_id, data_request_timeout):
 def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                     DATA_RATE_SLOWDOWN_FACTOR: float = 1,
                     TP_CONFIG: dict = {},
+                    TOLERATE_INCOMPLETENESS=False,
+                    COMPLETENESS_TOLERANCE=1,
 
                     ACTIVITY_PLUGIN: str = 'TriggerActivityMakerPrescalePlugin',
                     ACTIVITY_CONFIG: dict = dict(prescale=10000),
@@ -219,7 +221,10 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                                       plugin = 'TPZipper',
                                               conf = tzip.ConfParams(cardinality=len(TP_SOURCE_IDS)/len(TA_SOURCE_IDS),
                                                                      max_latency_ms=100,
-                                                                     element_id=ta_conf["source_id"])),
+                                                                     element_id=ta_conf["source_id"],
+                                                                     # Need to find out where to specify these"
+                                                                     tolerate_incompleteness=TOLERATE_INCOMPLETENESS,
+                                                                     completeness_tolerance=COMPLETENESS_TOLERANCE)),
                                     
                             DAQModule(name = f'tam_{region_id}',
                                       plugin = 'TriggerActivityMaker',
@@ -260,7 +265,6 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                                          s2=ttcm.map_t(signal_type=TTCM_S2,
                                                        time_before=TRIGGER_WINDOW_BEFORE_TICKS,
                                                        time_after=TRIGGER_WINDOW_AFTER_TICKS),
-                                         hsievent_connection_name = "hsievents",
                      hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH))]
     
     # We need to populate the list of links based on the fragment
@@ -273,8 +277,6 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
     modules += [DAQModule(name = 'mlt',
                           plugin = 'ModuleLevelTrigger',
                           conf=mlt.ConfParams(links=[],  # To be updated later - see comment above
-                                              dfo_connection=f"td_to_dfo",
-                                              dfo_busy_connection=f"df_busy_signal",
                                               hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH,
                           buffer_timeout=MLT_BUFFER_TIMEOUT,
                                               td_out_of_timeout=MLT_SEND_TIMED_OUT_TDS,
@@ -285,8 +287,9 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
 
     if USE_HSI_INPUT:
         mgraph.connect_modules("ttcm.output",         "tctee_ttcm.input",             "TriggerCandidate", "ttcm_input", size_hint=1000)
-        mgraph.connect_modules("tctee_ttcm.output1",  "mlt.trigger_candidate_source", "TriggerCandidate","tcs_to_mlt", size_hint=1000)
+        mgraph.connect_modules("tctee_ttcm.output1",  "mlt.trigger_candidate_input", "TriggerCandidate","tcs_to_mlt", size_hint=1000)
         mgraph.connect_modules("tctee_ttcm.output2",  "tc_buf.tc_source",             "TriggerCandidate","tcs_to_buf", size_hint=1000)
+        mgraph.add_endpoint("hsievents", "ttcm.hsi_input", "HSIEvent", Direction.IN)
 
     if len(TP_SOURCE_IDS) > 0:
         mgraph.connect_modules("tazipper.output", "tcm.input", data_type="TASet", size_hint=1000)
@@ -307,7 +310,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
         # Use connect_modules to connect up the Tees to the buffers/MLT,
         # as manually adding Queues doesn't give the desired behaviour
         mgraph.connect_modules("tcm.output",          "tctee_chain.input",           "TriggerCandidate", "chain_input", size_hint=1000)
-        mgraph.connect_modules("tctee_chain.output1", "mlt.trigger_candidate_source","TriggerCandidate", "tcs_to_mlt",  size_hint=1000)
+        mgraph.connect_modules("tctee_chain.output1", "mlt.trigger_candidate_input","TriggerCandidate", "tcs_to_mlt",  size_hint=1000)
         mgraph.connect_modules("tctee_chain.output2", "tc_buf.tc_source",             "TriggerCandidate","tcs_to_buf",  size_hint=1000)
 
 
@@ -316,11 +319,8 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
             mgraph.connect_modules(f'tasettee_region_{region_id}.output1', f'tazipper.input', queue_name="tas_to_tazipper",     data_type="TASet", size_hint=1000)
             mgraph.connect_modules(f'tasettee_region_{region_id}.output2', f'ta_buf_region_{region_id}.taset_source',data_type="TASet", size_hint=1000)
 
-    if USE_HSI_INPUT:
-        mgraph.add_endpoint("hsievents", None, "HSIEvent", Direction.IN)
-        
-    mgraph.add_endpoint("td_to_dfo", None, "TriggerDecision", Direction.OUT, toposort=True)
-    mgraph.add_endpoint("df_busy_signal", None, "TriggerInhibit", Direction.IN)
+    mgraph.add_endpoint("td_to_dfo", "mlt.td_output", "TriggerDecision", Direction.OUT, toposort=True)
+    mgraph.add_endpoint("df_busy_signal", "mlt.dfo_inhibit_input", "TriggerInhibit", Direction.IN)
 
     mgraph.add_fragment_producer(id=TC_SOURCE_ID["source_id"], subsystem="Trigger",
                                  requests_in="tc_buf.data_request_source",

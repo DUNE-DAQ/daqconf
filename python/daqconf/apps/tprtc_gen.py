@@ -10,6 +10,7 @@
 # in this directory, no modules from the readout package are used: the
 # fragments are provided by the FakeDataProd module from dfmodules
 
+from distutils.command.check import check
 import math
 from rich.console import Console
 console = Console()
@@ -34,9 +35,7 @@ def get_tprtc_app(MASTER_DEVICE_NAME="",
                   TRIGGER_MASK=0xff,
                   RATE_CONTROL_ENABLED=True,
                   SPILL_GATE_ENABLED=False,
-                  TIMING_PARTITION="UNKNOWN",
-                  TIMING_HOST="np04-srv-012.cern.ch",
-                  TIMING_PORT=12345,
+                  TIMING_SESSION="",
                   HOST="localhost",
                   DEBUG=False):
     
@@ -46,6 +45,7 @@ def get_tprtc_app(MASTER_DEVICE_NAME="",
                          plugin = "TimingPartitionController",
                          conf = tprtc.PartitionConfParams(
                                              device=MASTER_DEVICE_NAME,
+                                             timing_session_name=TIMING_SESSION,
                                              partition_id=TIMING_PARTITION_ID,
                                              trigger_mask=TRIGGER_MASK,
                                              spill_gate_enabled=SPILL_GATE_ENABLED,
@@ -54,8 +54,8 @@ def get_tprtc_app(MASTER_DEVICE_NAME="",
 
     mgraph = ModuleGraph(modules)
 
-    mgraph.add_external_connection("timing_cmds", "tprtc.timing_cmds", "TimingHwCmd", Direction.OUT, TIMING_HOST, TIMING_PORT)
-    mgraph.add_external_connection("timing_device_info", None,"JSON", Direction.IN, TIMING_HOST, TIMING_PORT+1, [MASTER_DEVICE_NAME])
+    mgraph.add_endpoint("timing_cmds", "tprtc.timing_cmds", "TimingHwCmd", Direction.OUT, check_endpoints=False)
+    mgraph.add_endpoint("timing_device_info", None,"JSON", Direction.IN, is_pubsub=True, check_endpoints=False)
 
     tprtc_app = App(modulegraph=mgraph, host=HOST, name="TPRTCApp")
      

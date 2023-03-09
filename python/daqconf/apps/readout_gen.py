@@ -52,7 +52,8 @@ def get_readout_app(DRO_CONFIG=None,
                     EMULATOR_MODE=False,
                     DATA_RATE_SLOWDOWN_FACTOR=1,
                     RUN_NUMBER=333, 
-                    DATA_FILE="./frames.bin",
+                    DEFAULT_DATA_FILE="./frames.bin",
+                    DATA_FILES={},
                     FLX_INPUT=False,
                     ETH_MODE=False,
                     CLOCK_SPEED_HZ=50000000,
@@ -133,8 +134,9 @@ def get_readout_app(DRO_CONFIG=None,
         # as the frontend type
         LATENCY_BUFFER_SIZE = 4096
 
-    if (ENABLE_DPDK_SENDER or ENABLE_DPDK_READER) and FRONTEND_TYPE != 'tde':
-        raise RuntimeError(f'DPDK is only supported when using the frontend type TDE, current frontend type is {FRONTEND_TYPE}')
+    # RS: Ignore FE type for DPDK receiver. Should NOT matter.
+    #if (ENABLE_DPDK_SENDER or ENABLE_DPDK_READER) and FRONTEND_TYPE != 'wibeth':
+    #    raise RuntimeError(f'DPDK is only supported when using the frontend type TDE, current frontend type is {FRONTEND_TYPE}')
     if ENABLE_DPDK_SENDER and not ENABLE_DPDK_READER:
         raise RuntimeError('The DPDK sender can not be enabled and the DPDK reader disabled')
 
@@ -238,7 +240,6 @@ def get_readout_app(DRO_CONFIG=None,
                                           source_queue_timeout_ms= QUEUE_POP_WAIT_MS,
                                           # fake_trigger_flag=0, # default
                                           source_id = tp,
-                                          timesync_connection_name = f"timesync_{RUIDX}",
                                       ),
                                       latencybufferconf= rconf.LatencyBufferConf(
                                           latency_buffer_alignment_size = 4096,
@@ -307,7 +308,6 @@ def get_readout_app(DRO_CONFIG=None,
                                           source_queue_timeout_ms= QUEUE_POP_WAIT_MS,
                                           # fake_trigger_flag=0, # default
                                           source_id =  link.dro_source_id,
-                                          timesync_connection_name = f"timesync_{RUIDX}",
                                           send_partial_fragment_if_available = (FRONTEND_TYPE == 'mpd')
                                       ),
                                       latencybufferconf= rconf.LatencyBufferConf(
@@ -426,7 +426,7 @@ def get_readout_app(DRO_CONFIG=None,
                 conf = sec.Conf(link_confs = [sec.LinkConfiguration(source_id=link.dro_source_id,
                                                                     slowdown=DATA_RATE_SLOWDOWN_FACTOR,
                                                                     queue_name=f"output_{link.dro_source_id}",
-                                                                    data_filename = DATA_FILE,
+                                                                    data_filename = DATA_FILES[link.det_id] if link.det_id in DATA_FILES.keys() else DEFAULT_DATA_FILE,
                                                                     emu_frame_error_rate=0) for link in DRO_CONFIG.links],
                                                                     queue_timeout_ms = QUEUE_POP_WAIT_MS)
                 if FRONTEND_TYPE=='pacman':
@@ -471,6 +471,7 @@ def get_readout_app(DRO_CONFIG=None,
             modules += [DAQModule(name="nic_reader", plugin="NICReceiver",
                                 conf=nrc.Conf(eal_arg_list=EAL_ARGS,
                                                 dest_ip=DESTINATION_IP,
+                                                rx_cores=rxcores,
                                                 ip_sources=links),
                 )]
 

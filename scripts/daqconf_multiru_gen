@@ -8,6 +8,7 @@ from daqconf.core.system import System
 from daqconf.core.metadata import write_metadata_file
 from daqconf.core.sourceid import SourceIDBroker, get_tpg_mode
 from daqconf.core.config_file import generate_cli_from_schema
+from daqconf.core.assets import resolve_asset_file
 from detchannelmaps._daq_detchannelmaps_py import HardwareMapService
 from detdataformats._daq_detdataformats_py import *
 
@@ -68,6 +69,9 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     hsi = confgen.hsi(**config_data.hsi)
     if debug: console.log(f"hsi configuration object: {hsi.pod()}")
 
+    ctb_hsi = confgen.ctb_hsi(**config_data.ctb_hsi)
+    if debug: console.log(f"ctb_hsi configuration object: {ctb_hsi.pod()}")
+
     readout = confgen.readout(**config_data.readout)
     if debug: console.log(f"readout configuration object: {readout.pod()}")
 
@@ -107,10 +111,12 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     from daqconf.apps.trigger_gen import get_trigger_app
     console.log("Loading DFO config generator")
     from daqconf.apps.dfo_gen import get_dfo_app
-    console.log("Loading hsi config generator")
-    from daqconf.apps.hsi_gen import get_hsi_app
+    console.log("Loading timing hsi config generator")
+    from daqconf.apps.hsi_gen import get_timing_hsi_app
     console.log("Loading fake hsi config generator")
     from daqconf.apps.fake_hsi_gen import get_fake_hsi_app
+    console.log("Loading ctb config generator")
+    from ctbmodules.apps.ctb_hsi_gen import get_ctb_hsi_app
     console.log("Loading timing partition controller config generator")
     from daqconf.apps.tprtc_gen import get_tprtc_app
     console.log("Loading DPDK sender config generator")
@@ -146,6 +152,12 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             host_df += [appconfig.host_df]
 
 
+    
+    readout.default_data_file = resolve_asset_file(readout.default_data_file, debug)
+    data_file_map = {}
+    for entry in readout.data_files:
+        data_file_map[entry["detector_id"]] = resolve_asset_file(entry["data_file"], debug)
+
     if boot.use_k8s:
         console.log(f'Using k8s')
         trigger.tpset_output_path = abspath(trigger.tpset_output_path)
@@ -154,13 +166,10 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             for op in df_app.output_paths:
                 new_output_path += [abspath(op)]
             df_app.output_paths = new_output_path
-        readout.hardware_map_file = abspath(readout.hardware_map_file)
-        readout.data_file = abspath(readout.data_file)
-        print(readout.data_file)
 
-    console.log(f"Generating configs for hosts trigger={trigger.host_trigger} DFO={dataflow.host_dfo} dataflow={host_df} hsi={hsi.host_hsi} dqm={dqm.host_dqm}")
+    console.log(f"Generating configs for hosts trigger={trigger.host_trigger} DFO={dataflow.host_dfo} dataflow={host_df} timing_hsi={hsi.host_timing_hsi} fake_hsi={hsi.host_fake_hsi} ctb_hsi={ctb_hsi.host_ctb_hsi} dqm={dqm.host_dqm}")
 
-    the_system = System(first_port=timing.port_timing+1)
+    the_system = System()
 
     # Load the hw map file here to extract ru hosts, cards, slr, links, forntend types, sourceIDs and geoIDs
     # The ru apps are determined by the combinations of hostname and card_id, the SourceID determines the
@@ -219,14 +228,14 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 #            region_id_temp.append(reg)
 #        region_id = tuple(region_id_temp)
 
-    if hsi.use_hsi_hw and not hsi.hsi_device_name:
+    if hsi.use_timing_hsi and not hsi.hsi_device_name:
         raise Exception("If --use-hsi-hw flag is set to true, --hsi-device-name must be specified!")
 
     if timing.control_timing_partition and not timing.timing_partition_master_device_name:
         raise Exception("If --control-timing-partition flag is set to true, --timing-partition-master-device-name must be specified!")
 
-    if hsi.control_hsi_hw and not hsi.use_hsi_hw:
-        raise Exception("HSI hardware control can only be enabled if HSI hardware is used!")
+    if hsi.control_hsi_hw and not hsi.use_timing_hsi:
+        raise Exception("Timing HSI hardware control can only be enabled if timing HSI hardware is used!")
 
     if boot.use_k8s and not boot.image:
         raise Exception("You need to provide an --image if running with k8s")
@@ -288,42 +297,68 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     trigger_record_building_timeout += 15 * TRB_TIMEOUT_SAFETY_FACTOR * max_expected_tr_sequences
     dfo_stop_timeout = max(DFO_TIMEOUT_SAFETY_FACTOR * trigger_record_building_timeout, MINIMUM_DFO_TIMEOUT)
 
-    hsi_source_id = sourceid_broker.get_next_source_id("HW_Signals_Interface")
-    sourceid_broker.register_source_id("HW_Signals_Interface", hsi_source_id, None)
-    if hsi.use_hsi_hw:
-        the_system.apps["hsi"] = get_hsi_app(
+    if ctb_hsi.use_ctb_hsi:
+        ctb_llt_source_id = sourceid_broker.get_next_source_id("HW_Signals_Interface")
+        sourceid_broker.register_source_id("HW_Signals_Interface", ctb_llt_source_id, None)
+
+        ctb_hlt_source_id = sourceid_broker.get_next_source_id("HW_Signals_Interface")
+        sourceid_broker.register_source_id("HW_Signals_Interface", ctb_hlt_source_id, None)
+
+        the_system.apps["ctbhsi"] = get_ctb_hsi_app(
+            nickname = "ctb",
+            LLT_SOURCE_ID=ctb_llt_source_id,
+            HLT_SOURCE_ID=ctb_hlt_source_id,
+            HOST=ctb_hsi.host_ctb_hsi,
+            HLT_LIST=ctb_hsi.hlt_triggers,
+            BEAM_LLT_LIST=ctb_hsi.beam_llt_triggers,
+            CRT_LLT_LIST=ctb_hsi.crt_llt_triggers,
+            PDS_LLT_LIST=ctb_hsi.pds_llt_triggers,
+            FAKE_TRIG_1=ctb_hsi.fake_trig_1,
+            FAKE_TRIG_2=ctb_hsi.fake_trig_2
+            )
+        if debug: console.log("ctb hsi cmd data:", the_system.apps["ctbhsi"])
+        
+    if hsi.use_timing_hsi:
+        timing_hsi_source_id = sourceid_broker.get_next_source_id("HW_Signals_Interface")
+        sourceid_broker.register_source_id("HW_Signals_Interface", timing_hsi_source_id, None)
+        
+        the_system.apps["timinghsi"] = get_timing_hsi_app(
             CLOCK_SPEED_HZ = readout.clock_speed_hz,
             TRIGGER_RATE_HZ = trigger.trigger_rate_hz,
             CONTROL_HSI_HARDWARE=hsi.control_hsi_hw,
             CONNECTIONS_FILE=hsi.hsi_hw_connections_file,
             READOUT_PERIOD_US = hsi.hsi_readout_period,
             HSI_DEVICE_NAME = hsi.hsi_device_name,
+            HARDWARE_STATE_RECOVERY_ENABLED = hsi.enable_hardware_state_recovery,
             HSI_ENDPOINT_ADDRESS = hsi.hsi_endpoint_address,
             HSI_ENDPOINT_PARTITION = hsi.hsi_endpoint_partition,
             HSI_RE_MASK=hsi.hsi_re_mask,
             HSI_FE_MASK=hsi.hsi_fe_mask,
             HSI_INV_MASK=hsi.hsi_inv_mask,
             HSI_SOURCE=hsi.hsi_source,
-            HSI_SOURCE_ID=hsi_source_id,
-            TIMING_PARTITION=timing.timing_partition_name,
-            TIMING_HOST=timing.host_timing,
-            TIMING_PORT=timing.port_timing,
-            HOST=hsi.host_hsi,
+            HSI_SOURCE_ID=timing_hsi_source_id,
+            TIMING_SESSION=timing.timing_session_name,
+            HOST=hsi.host_timing_hsi,
             DEBUG=debug)
-    else:
-        the_system.apps["hsi"] = get_fake_hsi_app(
+        if debug: console.log("timing hsi cmd data:", the_system.apps["timinghsi"])
+    
+    if hsi.use_fake_hsi:
+        fake_hsi_source_id = sourceid_broker.get_next_source_id("HW_Signals_Interface")
+        sourceid_broker.register_source_id("HW_Signals_Interface", fake_hsi_source_id, None)
+
+        the_system.apps["fakehsi"] = get_fake_hsi_app(
             CLOCK_SPEED_HZ = readout.clock_speed_hz,
             DATA_RATE_SLOWDOWN_FACTOR = readout.data_rate_slowdown_factor,
             TRIGGER_RATE_HZ = trigger.trigger_rate_hz,
-            HSI_SOURCE_ID=hsi_source_id,
+            HSI_SOURCE_ID=fake_hsi_source_id,
             MEAN_SIGNAL_MULTIPLICITY = hsi.mean_hsi_signal_multiplicity,
             SIGNAL_EMULATION_MODE = hsi.hsi_signal_emulation_mode,
             ENABLED_SIGNALS =  hsi.enabled_hsi_signals,
-            HOST=hsi.host_hsi,
+            HOST=hsi.host_fake_hsi,
             DEBUG=debug)
+        if debug: console.log("fake hsi cmd data:", the_system.apps["fakehsi"])
 
         # the_system.apps["hsi"] = util.App(modulegraph=mgraph_hsi, host=hsi.host_hsi)
-    if debug: console.log("hsi cmd data:", the_system.apps["hsi"])
 
     if timing.control_timing_partition:
         the_system.apps["tprtc"] = get_tprtc_app(
@@ -332,9 +367,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             TRIGGER_MASK=timing.timing_partition_trigger_mask,
             RATE_CONTROL_ENABLED=timing.timing_partition_rate_control_enabled,
             SPILL_GATE_ENABLED=timing.timing_partition_spill_gate_enabled,
-            TIMING_PARTITION=timing.timing_partition_name,
-            TIMING_HOST=timing.host_timing,
-            TIMING_PORT=timing.port_timing,
+            TIMING_SESSION=timing.timing_session_name,
             HOST=timing.host_tprtc,
             DEBUG=debug)
 
@@ -342,6 +375,8 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         DATA_RATE_SLOWDOWN_FACTOR = readout.data_rate_slowdown_factor,
         CLOCK_SPEED_HZ = readout.clock_speed_hz,
         TP_CONFIG = tp_infos,
+        TOLERATE_INCOMPLETENESS=trigger.tolerate_incompleteness,
+        COMPLETENESS_TOLERANCE=trigger.completeness_tolerance,
         ACTIVITY_PLUGIN = trigger.trigger_activity_plugin,
         ACTIVITY_CONFIG = trigger.trigger_activity_config,
         CANDIDATE_PLUGIN = trigger.trigger_candidate_plugin,
@@ -369,6 +404,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         DEBUG=debug)
 
 
+    trb_dqm_sourceid_offset = sourceid_broker.get_next_source_id("TRBuilder")
     ru_app_names=[]
     dqm_app_names = []
     for dro_idx,dro_config in enumerate(dro_infos):
@@ -392,7 +428,8 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             DRO_CONFIG=dro_config,
             EMULATOR_MODE = readout.emulator_mode,
             DATA_RATE_SLOWDOWN_FACTOR = readout.data_rate_slowdown_factor,
-            DATA_FILE = readout.data_file,
+            DEFAULT_DATA_FILE = readout.default_data_file,
+            DATA_FILES = data_file_map,
             FLX_INPUT = readout.use_felix,
             ETH_MODE = readout.eth_mode,
             CLOCK_SPEED_HZ = readout.clock_speed_hz,
@@ -427,14 +464,25 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
                     f"felix.cern/flx{c}-data": "1", # requesting FLX{c}
                     "memory": "32Gi" # yes bro
                 }
-            # TODO: HACK, can't do that any other way now, please give me a nice asset manager
-            the_system.apps[ru_name].mounted_dirs += [{
-                'name': 'frames-bin',
-                'physical_location': dirname(readout.data_file),
-                'in_pod_location':   dirname(readout.data_file),
-                'read_only': True,
-            }]
 
+            dir_names = set()
+
+            if os.path.commonprefix(['/cvmfs', readout.default_data_file]) != '/cvmfs':
+                dir_names.add(dirname(readout.default_data_file))
+
+            for id,file in data_file_map:
+                if os.path.commonprefix(['/cvmfs', file]) != '/cvmfs':
+                    dir_names.add(dirname(file))
+
+            dirindex = 0
+            for dir_name in dir_names:
+                the_system.apps[ru_name].mounted_dirs += [{
+                    'name': f'frames-bin-{dirindex}',
+                    'physical_location': dir_name,
+                    'in_pod_location':   dir_name,
+                    'read_only': True,
+                }]
+                dirindex += 1
 
         if debug:
             console.log(f"{ru_name} app: {the_system.apps[ru_name]}")
@@ -443,6 +491,14 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             dqm_name = "dqm" + ru_name
             dqm_app_names.append(dqm_name)
             dqm_links = [link.dro_source_id for link in dro_config.links]
+
+            # 07-Mar-2023, KAB: I don't know why {ru_name} in this code *doesn't* have an
+            # underscore in it, and the {RUIDX} variable inside get_readout_app *does* have
+            # an underscore, but that idiosyncrasy means that we can't just give the ru_name
+            # to get_dqm_app for it to use when subscribing to TimeSync messages. So, we'll
+            # create a dedicated variable here *with* the underscore.
+            ru_name_with_underscore = f"ru{host}_{dro_config.card}"
+
             the_system.apps[dqm_name] = get_dqm_app(
                 DQM_IMPL=dqm.impl,
                 DATA_RATE_SLOWDOWN_FACTOR=readout.data_rate_slowdown_factor,
@@ -458,6 +514,8 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
                 FOURIER_CHANNEL_PARAMS=dqm.fourier_channel_params,
                 FOURIER_PLANE_PARAMS=dqm.fourier_plane_params,
                 LINKS=dqm_links,
+                RU_APPNAME_WITH_UNDERSCORE=ru_name_with_underscore,
+                TRB_DQM_SOURCEID_OFFSET=trb_dqm_sourceid_offset,
                 HOST=dqm.host_dqm[dro_idx % len(dqm.host_dqm)],
                 DRO_CONFIG=dro_config,
                 DEBUG=debug)
@@ -680,7 +738,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         resolved_thread_pinning_file = os.path.abspath(os.path.expanduser(os.path.expandvars(readout.thread_pinning_file)))
         if not exists(resolved_thread_pinning_file):
             raise RuntimeError(f'Cannot find the file {readout.thread_pinning_file} ({resolved_thread_pinning_file})')
-    
+
         system_command_datas['boot']['scripts'] = {
             "thread_pinning": {
                 "cmd": [

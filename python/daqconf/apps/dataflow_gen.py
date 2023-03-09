@@ -51,7 +51,6 @@ def get_dataflow_app(HOSTIDX=0,
     modules += [DAQModule(name = 'trb',
                           plugin = 'TriggerRecordBuilder',
                           conf = trb.ConfParams(general_queue_timeout=QUEUE_POP_WAIT_MS,
-                                                reply_connection_name = "",
                                                 max_time_window=MAX_TRIGGER_RECORD_WINDOW,
                                                 source_id = HOSTIDX,
                                                 trigger_record_timeout_ms=TRB_TIMEOUT))]

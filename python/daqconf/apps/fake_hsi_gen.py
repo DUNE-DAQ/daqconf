@@ -43,7 +43,7 @@ import math
 
 #===============================================================================
 def get_fake_hsi_app(RUN_NUMBER=333,
-                     CLOCK_SPEED_HZ: int=50000000,
+                     CLOCK_SPEED_HZ: int=62500000,
                      DATA_RATE_SLOWDOWN_FACTOR: int=1,
                      TRIGGER_RATE_HZ: int=1,
                      HSI_SOURCE_ID: int=0,
@@ -102,7 +102,7 @@ def get_fake_hsi_app(RUN_NUMBER=333,
     mgraph.add_fragment_producer(id = HSI_SOURCE_ID, subsystem = "HW_Signals_Interface",
                                          requests_in   = f"hsi_datahandler.request_input",
                                          fragments_out = f"hsi_datahandler.fragment_queue")
-    mgraph.add_endpoint(f"timesync_hsi", f"hsi_datahandler.timesync_output","TimeSync", Direction.OUT, is_pubsub=True, toposort=False)
+    mgraph.add_endpoint(f"timesync_fake_hsi", f"hsi_datahandler.timesync_output","TimeSync", Direction.OUT, is_pubsub=True, toposort=False)
 
     mgraph.add_endpoint("hsievents", None, "HSIEvent", Direction.OUT)
     mgraph.add_endpoint(None, None, data_type="TimeSync", inout=Direction.IN, is_pubsub=True)
