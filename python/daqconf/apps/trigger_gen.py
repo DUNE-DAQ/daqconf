@@ -91,7 +91,8 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                     TRIGGER_WINDOW_AFTER_TICKS: int = 1000,
                     HSI_TRIGGER_TYPE_PASSTHROUGH: bool = False,
 
-                    USE_CUSTOM_MAKER = True,
+                    USE_CUSTOM_MAKER: bool = False,
+                    CTCM_INTERVAL: int = 10000000,
 
                     MLT_BUFFER_TIMEOUT: int = 100,
                     MLT_SEND_TIMED_OUT_TDS: bool = False,
@@ -286,9 +287,9 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
     if USE_CUSTOM_MAKER:
         modules += [DAQModule(name = 'ctcm',
                        plugin = 'CustomTriggerCandidateMaker',
-                       conf=ctcm.Conf(trigger_interval_ticks=1,
-                       clock_frequency_hz=62500000,
-                       timestamp_method="kTimeSync",
+                       conf=ctcm.Conf(trigger_interval_ticks=CTCM_INTERVAL,
+                       clock_frequency_hz=CLOCK_SPEED_HZ,
+                       timestamp_method="kSystemClock",
                        time_distribution="kUniform"))]
     
     # We need to populate the list of links based on the fragment
