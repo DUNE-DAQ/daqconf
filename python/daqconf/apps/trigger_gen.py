@@ -92,7 +92,8 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                     HSI_TRIGGER_TYPE_PASSTHROUGH: bool = False,
 
                     USE_CUSTOM_MAKER: bool = False,
-                    CTCM_INTERVAL: int = 10000000,
+                    CTCM_TYPES: list = [4],
+                    CTCM_INTERVAL: list = [10000000],
 
                     MLT_BUFFER_TIMEOUT: int = 100,
                     MLT_SEND_TIMED_OUT_TDS: bool = False,
@@ -287,7 +288,8 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
     if USE_CUSTOM_MAKER:
         modules += [DAQModule(name = 'ctcm',
                        plugin = 'CustomTriggerCandidateMaker',
-                       conf=ctcm.Conf(trigger_interval_ticks=CTCM_INTERVAL,
+                       conf=ctcm.Conf(trigger_types=CTCM_TYPES,
+                       trigger_intervals=CTCM_INTERVAL,
                        clock_frequency_hz=CLOCK_SPEED_HZ,
                        timestamp_method="kSystemClock",
                        time_distribution="kUniform"))]
