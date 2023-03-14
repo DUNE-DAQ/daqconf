@@ -110,7 +110,7 @@ def get_readout_app(DRO_CONFIG=None,
     elif FRONTEND_TYPE== "VD_Top_TPC":
         FRONTEND_TYPE = "tde"
         FAKEDATA_FRAGMENT_TYPE = "TDE_AMC"
-        QUEUE_FRAGMENT_TYPE = "TDEAMCFrame"
+        QUEUE_FRAGMENT_TYPE = "TDEFrame"
     elif FRONTEND_TYPE== "NDLAr_TPC":
         FRONTEND_TYPE = "pacman"
         FAKEDATA_FRAGMENT_TYPE = "PACMAN"
