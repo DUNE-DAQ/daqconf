@@ -286,13 +286,14 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                      hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH))]
 
     if USE_CUSTOM_MAKER:
+        if (len(CTCM_TYPES) != len(CTCM_INTERVAL)):
+            raise RuntimeError(f'CTCM requires same size of types and intervals!')
         modules += [DAQModule(name = 'ctcm',
                        plugin = 'CustomTriggerCandidateMaker',
                        conf=ctcm.Conf(trigger_types=CTCM_TYPES,
                        trigger_intervals=CTCM_INTERVAL,
                        clock_frequency_hz=CLOCK_SPEED_HZ,
-                       timestamp_method="kSystemClock",
-                       time_distribution="kUniform"))]
+                       timestamp_method="kSystemClock"))]
     
     # We need to populate the list of links based on the fragment
     # producers available in the system. This is a bit of a
