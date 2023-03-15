@@ -455,6 +455,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             LATENCY_BUFFER_NUMA_AWARE = latency_numa,
             LATENCY_BUFFER_ALLOCATION_MODE = latency_preallocate,
             CARD_ID_OVERRIDE = card_override,
+            EMULATED_DATA_TIMES_START_WITH_NOW = readout.emulated_data_times_start_with_now,
             DEBUG=debug)
 
         if boot.use_k8s:
