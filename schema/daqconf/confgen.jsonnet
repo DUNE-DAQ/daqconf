@@ -27,8 +27,8 @@ local cs = {
   dqm_params:      s.sequence( "DQMParams",     self.count, doc="Parameters for DQM (fixme)"),
   tc_types:        s.sequence( "TCTypes",       self.count, doc="List of TC types"),
   tc_type:         s.number(   "TCType",        "i4", nc(minimum=0, maximum=9), doc="Number representing TC type. Currently ranging from 0 to 9"),
-  tc_intervals:    s.sequence( "TCIntervals",   self.count, doc="List of TC intervals used in CTCM"),
-  tc_interval:     s.number(   "TCInterval",    "i8", nc(minimum=1, maximum=30000000000), doc="The intervals between TCs are inserted into MLT by CTCM, in clock ticks"),
+  tc_interval:     s.number(   "TCInterval",    "i8", nc(minimum=1, maximum=30000000000), doc="The intervals between TCs that are inserted into MLT by CTCM, in clock ticks"),
+  tc_intervals:    s.sequence( "TCIntervals",   self.tc_interval, doc="List of TC intervals used by CTCM"),
   readout_time:    s.number(   "ROTime",        "i8", doc="A readout time in ticks"),
   
   numa_exception:  s.record( "NUMAException", [
@@ -251,8 +251,8 @@ local cs = {
     s.field( "mlt_ignore_tc", self.tc_types, default=[], doc="Optional list of TC types to be ignored in MLT"),
     s.field( "mlt_td_readout_map", self.tc_readout_map, default=self.tc_readout_map, doc="The readout windows assigned to TDs in MLT, based on TC type."),
     s.field( "use_custom_maker", self.flag, default=false, doc="Option to use a Custom Trigger Candidate Maker (plugin)"),
-    s.field( "ctcm_trigger_types", self.tc_types, default=[], doc="Optional list of TC types to be used by the Custom Trigger Candidate Maker (plugin)"),
-    s.field( "ctcm_trigger_intervals", self.tc_intervals, default=[], doc="Optional list of intervals (clock ticks) for the TC types to be used by the Custom Trigger Candidate Maker (plugin)"),
+    s.field( "ctcm_trigger_types", self.tc_types, default=[4], doc="Optional list of TC types to be used by the Custom Trigger Candidate Maker (plugin)"),
+    s.field( "ctcm_trigger_intervals", self.tc_intervals, default=[10000000], doc="Optional list of intervals (clock ticks) for the TC types to be used by the Custom Trigger Candidate Maker (plugin)"),
   ]),
 
   dataflowapp: s.record("dataflowapp",[
