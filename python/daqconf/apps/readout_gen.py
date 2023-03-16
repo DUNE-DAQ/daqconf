@@ -430,6 +430,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                                     data_filename = DATA_FILES[link.det_id] if link.det_id in DATA_FILES.keys() else DEFAULT_DATA_FILE,
                                                                     emu_frame_error_rate=0) for link in DRO_CONFIG.links],
                                 use_now_as_first_data_time=EMULATED_DATA_TIMES_START_WITH_NOW,
+                                clock_speed_hz=CLOCK_SPEED_HZ,
                                 queue_timeout_ms = QUEUE_POP_WAIT_MS)
                 if FRONTEND_TYPE=='pacman':
                     fake_source = "pacman_source"
