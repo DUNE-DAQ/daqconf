@@ -143,6 +143,7 @@ local cs = {
     s.field( "base_source_ip", self.string, default='10.73.139.', doc='First part of the IP of the source'),
     s.field( "destination_ip", self.string, default='10.73.139.17', doc='IP of the destination'),
     s.field( "numa_config", self.numa_config, default=self.numa_config, doc='Configuration of FELIX NUMA IDs'),
+    s.field( "emulated_data_times_start_with_now", self.flag, default=false, doc="If active, the timestamp of the first emulated data frame is set to the current wallclock time"),
   ]),
 
   trigger_algo_config: s.record("trigger_algo_config", [
