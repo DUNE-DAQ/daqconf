@@ -307,7 +307,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                           plugin = 'ModuleLevelTrigger',
                           conf=mlt.ConfParams(links=[],  # To be updated later - see comment above
                                               hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH,
-                                              buffer_timeout=mlt_buffer_timeout,
+                                              buffer_timeout=MLT_BUFFER_TIMEOUT,
                                               td_out_of_timeout=MLT_SEND_TIMED_OUT_TDS,
                                               ignore_tc=MLT_IGNORE_TC,
                                               td_readout_limit=max_td_length_ticks,
