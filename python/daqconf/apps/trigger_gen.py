@@ -127,9 +127,8 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
     # How many clock ticks are there in a _wall clock_ second?
     ticks_per_wall_clock_s = CLOCK_SPEED_HZ / DATA_RATE_SLOWDOWN_FACTOR
     
-    # Converting certain parameters to ms instead of ticks
+    # Converting certain parameters to ticks instead of ms
     max_td_length_ticks = MLT_MAX_TD_LENGTH_MS * CLOCK_SPEED_HZ / 1000
-    mlt_buffer_timeout = MLT_BUFFER_TIMEOUT * CLOCK_SPEED_HZ / 1000
     
     modules = []
     
