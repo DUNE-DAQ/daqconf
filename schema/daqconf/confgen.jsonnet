@@ -84,6 +84,7 @@ local cs = {
     s.field( "use_timing_hsi", self.flag, default=false, doc='Flag to control whether real hardware timing HSI config is generated. Default is false'),
     s.field( "host_timing_hsi", self.host, default='localhost', doc='Host to run the HSI app on'),
     s.field( "hsi_hw_connections_file", self.path, default="${TIMING_SHARE}/config/etc/connections.xml", doc='Real timing hardware only: path to hardware connections file'),
+    s.field( "enable_hardware_state_recovery", self.flag, default=true, doc="Enable (or not) hardware state recovery"),
     s.field( "hsi_device_name", self.string, default="", doc='Real HSI hardware only: device name of HSI hw'),
     s.field( "hsi_readout_period", self.count, default=1e3, doc='Real HSI hardware only: Period between HSI hardware polling [us]'),
     s.field( "control_hsi_hw", self.flag, default=false, doc='Flag to control whether we are controlling hsi hardware'),
@@ -146,6 +147,7 @@ local cs = {
     s.field( "base_source_ip", self.string, default='10.73.139.', doc='First part of the IP of the source'),
     s.field( "destination_ip", self.string, default='10.73.139.17', doc='IP of the destination'),
     s.field( "numa_config", self.numa_config, default=self.numa_config, doc='Configuration of FELIX NUMA IDs'),
+    s.field( "emulated_data_times_start_with_now", self.flag, default=false, doc="If active, the timestamp of the first emulated data frame is set to the current wallclock time"),
   ]),
 
   trigger_algo_config: s.record("trigger_algo_config", [

@@ -80,6 +80,7 @@ def get_readout_app(DRO_CONFIG=None,
                     LATENCY_BUFFER_NUMA_AWARE = False,
                     LATENCY_BUFFER_ALLOCATION_MODE = False,
                     CARD_ID_OVERRIDE = -1,
+                    EMULATED_DATA_TIMES_START_WITH_NOW = False,
                     DEBUG=False):
     """Generate the json configuration for the readout process"""
     
@@ -240,7 +241,6 @@ def get_readout_app(DRO_CONFIG=None,
                                           source_queue_timeout_ms= QUEUE_POP_WAIT_MS,
                                           # fake_trigger_flag=0, # default
                                           source_id = tp,
-                                          timesync_connection_name = f"timesync_{RUIDX}",
                                       ),
                                       latencybufferconf= rconf.LatencyBufferConf(
                                           latency_buffer_alignment_size = 4096,
@@ -309,7 +309,6 @@ def get_readout_app(DRO_CONFIG=None,
                                           source_queue_timeout_ms= QUEUE_POP_WAIT_MS,
                                           # fake_trigger_flag=0, # default
                                           source_id =  link.dro_source_id,
-                                          timesync_connection_name = f"timesync_{RUIDX}",
                                           send_partial_fragment_if_available = (FRONTEND_TYPE == 'mpd')
                                       ),
                                       latencybufferconf= rconf.LatencyBufferConf(
@@ -430,7 +429,9 @@ def get_readout_app(DRO_CONFIG=None,
                                                                     queue_name=f"output_{link.dro_source_id}",
                                                                     data_filename = DATA_FILES[link.det_id] if link.det_id in DATA_FILES.keys() else DEFAULT_DATA_FILE,
                                                                     emu_frame_error_rate=0) for link in DRO_CONFIG.links],
-                                                                    queue_timeout_ms = QUEUE_POP_WAIT_MS)
+                                use_now_as_first_data_time=EMULATED_DATA_TIMES_START_WITH_NOW,
+                                clock_speed_hz=CLOCK_SPEED_HZ,
+                                queue_timeout_ms = QUEUE_POP_WAIT_MS)
                 if FRONTEND_TYPE=='pacman':
                     fake_source = "pacman_source"
                     card_reader = "PacmanCardReader"
