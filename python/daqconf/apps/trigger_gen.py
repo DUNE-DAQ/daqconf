@@ -8,6 +8,7 @@ import moo.otypes
 
 moo.otypes.load_types('trigger/triggeractivitymaker.jsonnet')
 moo.otypes.load_types('trigger/triggercandidatemaker.jsonnet')
+moo.otypes.load_types('trigger/customtriggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/triggerzipper.jsonnet')
 moo.otypes.load_types('trigger/moduleleveltrigger.jsonnet')
 moo.otypes.load_types('trigger/timingtriggercandidatemaker.jsonnet')
@@ -19,6 +20,7 @@ moo.otypes.load_types('trigger/tpchannelfilter.jsonnet')
 # Import new types
 import dunedaq.trigger.triggeractivitymaker as tam
 import dunedaq.trigger.triggercandidatemaker as tcm
+import dunedaq.trigger.customtriggercandidatemaker as ctcm
 import dunedaq.trigger.triggerzipper as tzip
 import dunedaq.trigger.moduleleveltrigger as mlt
 import dunedaq.trigger.timingtriggercandidatemaker as ttcm
@@ -89,10 +91,26 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                     TRIGGER_WINDOW_AFTER_TICKS: int = 1000,
                     HSI_TRIGGER_TYPE_PASSTHROUGH: bool = False,
 
+                    USE_CUSTOM_MAKER: bool = False,
+                    CTCM_TYPES: list = [4],
+                    CTCM_INTERVAL: list = [10000000],
+
                     MLT_BUFFER_TIMEOUT: int = 100,
                     MLT_SEND_TIMED_OUT_TDS: bool = False,
                     MLT_MAX_TD_LENGTH_MS: int = 1000,
                     MLT_IGNORE_TC: list = [],
+                    MLT_READOUT_MAP: dict = {
+                      'c0': {'candidate_type': 0, 'time_before': 10000, 'time_after': 20000},
+                      'c1': {'candidate_type': 1, 'time_before': 10000, 'time_after': 20000},
+                      'c2': {'candidate_type': 2, 'time_before': 10000, 'time_after': 20000},
+                      'c3': {'candidate_type': 3, 'time_before': 10000, 'time_after': 20000},
+                      'c4': {'candidate_type': 4, 'time_before': 10000, 'time_after': 20000},
+                      'c5': {'candidate_type': 5, 'time_before': 10000, 'time_after': 20000},
+                      'c6': {'candidate_type': 6, 'time_before': 10000, 'time_after': 20000},
+                      'c7': {'candidate_type': 7, 'time_before': 10000, 'time_after': 20000},
+                      'c8': {'candidate_type': 8, 'time_before': 10000, 'time_after': 20000},
+                      'c9': {'candidate_type': 9, 'time_before': 10000, 'time_after': 20000}
+                    },
 
                     USE_CHANNEL_FILTER: bool = True,
 
@@ -109,6 +127,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
     # How many clock ticks are there in a _wall clock_ second?
     ticks_per_wall_clock_s = CLOCK_SPEED_HZ / DATA_RATE_SLOWDOWN_FACTOR
     
+    # Converting certain parameters to ticks instead of ms
     max_td_length_ticks = MLT_MAX_TD_LENGTH_MS * CLOCK_SPEED_HZ / 1000
     
     modules = []
@@ -266,6 +285,16 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                                                        time_before=TRIGGER_WINDOW_BEFORE_TICKS,
                                                        time_after=TRIGGER_WINDOW_AFTER_TICKS),
                      hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH))]
+
+    if USE_CUSTOM_MAKER:
+        if (len(CTCM_TYPES) != len(CTCM_INTERVAL)):
+            raise RuntimeError(f'CTCM requires same size of types and intervals!')
+        modules += [DAQModule(name = 'ctcm',
+                       plugin = 'CustomTriggerCandidateMaker',
+                       conf=ctcm.Conf(trigger_types=CTCM_TYPES,
+                       trigger_intervals=CTCM_INTERVAL,
+                       clock_frequency_hz=CLOCK_SPEED_HZ,
+                       timestamp_method="kSystemClock"))]
     
     # We need to populate the list of links based on the fragment
     # producers available in the system. This is a bit of a
@@ -278,10 +307,11 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                           plugin = 'ModuleLevelTrigger',
                           conf=mlt.ConfParams(links=[],  # To be updated later - see comment above
                                               hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH,
-                          buffer_timeout=MLT_BUFFER_TIMEOUT,
+                                              buffer_timeout=MLT_BUFFER_TIMEOUT,
                                               td_out_of_timeout=MLT_SEND_TIMED_OUT_TDS,
                                               ignore_tc=MLT_IGNORE_TC,
-                                              td_readout_limit=max_td_length_ticks))]
+                                              td_readout_limit=max_td_length_ticks,
+                                              td_readout_map=MLT_READOUT_MAP))]
 
     mgraph = ModuleGraph(modules)
 
@@ -290,6 +320,9 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
         mgraph.connect_modules("tctee_ttcm.output1",  "mlt.trigger_candidate_input", "TriggerCandidate","tcs_to_mlt", size_hint=1000)
         mgraph.connect_modules("tctee_ttcm.output2",  "tc_buf.tc_source",             "TriggerCandidate","tcs_to_buf", size_hint=1000)
         mgraph.add_endpoint("hsievents", "ttcm.hsi_input", "HSIEvent", Direction.IN)
+
+    if USE_CUSTOM_MAKER:
+        mgraph.connect_modules("ctcm.trigger_candidate_sink", "mlt.trigger_candidate_source", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
 
     if len(TP_SOURCE_IDS) > 0:
         mgraph.connect_modules("tazipper.output", "tcm.input", data_type="TASet", size_hint=1000)
