@@ -34,7 +34,7 @@ QUEUE_POP_WAIT_MS = 100
 
 def get_dqm_app(DQM_IMPL='',
                 DATA_RATE_SLOWDOWN_FACTOR=1,
-                CLOCK_SPEED_HZ=50000000,
+                CLOCK_SPEED_HZ=62500000,
                 DQMIDX=0,
                 MAX_NUM_FRAMES=32768,
                 KAFKA_ADDRESS='',

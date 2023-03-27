@@ -126,7 +126,7 @@ local cs = {
     s.field( "emulator_mode", self.flag, default=false, doc="If active, timestamps of data frames are overwritten when processed by the readout. This is necessary if the felix card does not set correct timestamps. Former -e"),
     s.field( "thread_pinning_file", self.path, default="", doc="A thread pinning configuration file that gets executed after conf."),
     s.field( "data_rate_slowdown_factor",self.count, default=1, doc="Factor by which to suppress data generation. Former -s"),
-    s.field( "clock_speed_hz", self.freq, default=50000000),
+    s.field( "clock_speed_hz", self.freq, default=62500000),
     s.field( "default_data_file", self.path, default='asset://?label=ProtoWIB&subsystem=readout', doc="File containing data frames to be replayed by the fake cards. Former -d. Uses the asset manager, can also be 'asset://?checksum=somelonghash', or 'file://somewhere/frames.bin' or 'frames.bin'"),
     s.field( "data_files", self.data_files, default=[], doc="Files to use by detector type"),
     s.field( "use_felix", self.flag, default=false, doc="Use real felix cards instead of fake ones. Former -f"),

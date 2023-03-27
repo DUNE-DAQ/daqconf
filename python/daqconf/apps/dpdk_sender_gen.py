@@ -19,7 +19,7 @@ from daqconf.core.conf_utils import Endpoint, Direction, Queue
 # Time to waait on pop()
 QUEUE_POP_WAIT_MS = 100
 # local clock speed Hz
-CLOCK_SPEED_HZ = 50000000
+CLOCK_SPEED_HZ = 62500000
 
 
 def get_dpdk_sender_app(
