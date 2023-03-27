@@ -43,6 +43,7 @@ def set_mlt_links(the_system, mlt_app_name="trigger", verbose=False):
                                                    td_out_of_timeout=old_mlt_conf.td_out_of_timeout,
                                                    td_readout_limit=old_mlt_conf.td_readout_limit,
                                                    ignore_tc=old_mlt_conf.ignore_tc,
+                                                   use_readout_map=old_mlt_conf.use_readout_map,
                                                    td_readout_map=old_mlt_conf.td_readout_map))
 
 def remove_mlt_link(the_system, source_id, mlt_app_name="trigger"):
@@ -61,6 +62,7 @@ def remove_mlt_link(the_system, source_id, mlt_app_name="trigger"):
 					       	   td_out_of_timeout=old_mlt_conf.td_out_of_timeout,
                                                    td_readout_limit=old_mlt_conf.td_readout_limit,
                                                    ignore_tc=old_mlt_conf.ignore_tc,
+                                                   use_readout_map=old_mlt_conf.use_readout_map,
                                                    td_readout_map=old_mlt_conf.td_readout_map))
  
 def connect_fragment_producers(app_name, the_system, verbose=False):
