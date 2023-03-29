@@ -93,10 +93,10 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
 
                     USE_CUSTOM_MAKER: bool = False,
                     CTCM_TYPES: list = [4],
-                    CTCM_INTERVAL: list = [10000000],
+                    CTCM_INTERVAL: list = [50000000],
 
                     MLT_BUFFER_TIMEOUT: int = 100,
-                    MLT_SEND_TIMED_OUT_TDS: bool = False,
+                    MLT_SEND_TIMED_OUT_TDS: bool = True,
                     MLT_MAX_TD_LENGTH_MS: int = 1000,
                     MLT_IGNORE_TC: list = [],
                     MLT_USE_READOUT_MAP: bool = False,
@@ -109,23 +109,6 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                     HOST="localhost",
                     DEBUG=False):
     
-    # The assignment inside the main function parantheses does not propagate
-    # to the final trigger configuration. We therefore set the MLT map here
-    # to ensure that. Should you need to change other values, do that also
-    # outside the brackets. (Below this comment)
-    MLT_READOUT_MAP: dict = {
-     'c0': {'candidate_type': 0, 'time_before': 1000, 'time_after': 1001},
-     'c1': {'candidate_type': 1, 'time_before': 1000, 'time_after': 1001},  # HSI Timing 1000 - 1001
-     'c2': {'candidate_type': 2, 'time_before': 1000, 'time_after': 1001},
-     'c3': {'candidate_type': 3, 'time_before': 1000, 'time_after': 1001},
-     'c4': {'candidate_type': 4, 'time_before': 1000, 'time_after': 1001},
-     'c5': {'candidate_type': 5, 'time_before': 1000, 'time_after': 1001},
-     'c6': {'candidate_type': 6, 'time_before': 1000, 'time_after': 1001},
-     'c7': {'candidate_type': 7, 'time_before': 1000, 'time_after': 1001},
-     'c8': {'candidate_type': 8, 'time_before': 1000, 'time_after': 1001},
-     'c9': {'candidate_type': 9, 'time_before': 1000, 'time_after': 1001}
-    }
- 
     # Generate schema for the maker plugins on the fly in the temptypes module
     make_moo_record(ACTIVITY_CONFIG , 'ActivityConf' , 'temptypes')
     make_moo_record(CANDIDATE_CONFIG, 'CandidateConf', 'temptypes')

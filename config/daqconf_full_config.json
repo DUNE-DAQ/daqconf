@@ -146,9 +146,54 @@
     "tpset_output_file_size": 4294967296,
     "tpg_channel_map": "ProtoDUNESP1ChannelMap",
     "mlt_buffer_timeout": 100,
-    "mlt_send_timed_out_tds": false,
+    "mlt_send_timed_out_tds": true,
     "mlt_max_td_length_ms": 1000,
-    "mlt_ignore_tc": []
+    "mlt_ignore_tc": [],
+    "use_custom_maker": false,
+    "ctcm_trigger_types": [4],
+    "ctcm_trigger_intervals": [50000000],
+    "mlt_use_readout_map": false,
+    "mlt_td_readout_map": {
+      "c0": {
+        "time_before":1000,
+        "time_after": 1001
+      },
+      "c1": {
+        "time_before":1000,
+        "time_after": 1001
+      },
+      "c2": {
+        "time_before":1000,
+        "time_after": 1001
+      },
+      "c3": {
+        "time_before":1000,
+        "time_after": 1001
+      },
+      "c4": {
+        "time_before":1000,
+        "time_after": 1001
+      },
+      "c5": {
+        "time_before":1000,
+        "time_after": 1001
+      },
+      "c6": {
+        "time_before":1000,
+        "time_after": 1001
+      },
+      "c7": {
+        "time_before":1000,
+        "time_after": 1001
+      },
+      "c8": {
+        "time_before":1000,
+        "time_after": 1001
+      },
+      "c9": {
+        "time_before":1000,
+        "time_after": 1001
+      }
   },
   "dpdk_sender": {
     "enable_dpdk_sender": false,
