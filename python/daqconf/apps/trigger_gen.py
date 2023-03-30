@@ -72,7 +72,7 @@ def get_buffer_conf(source_id, data_request_timeout):
                                                                                enable_raw_recording = False))
     
 #===============================================================================
-def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
+def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                     DATA_RATE_SLOWDOWN_FACTOR: float = 1,
                     TP_CONFIG: dict = {},
                     TOLERATE_INCOMPLETENESS=False,
@@ -188,7 +188,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
                                       plugin = 'TPChannelFilter',
                                       conf = chfilter.Conf(channel_map_name=CHANNEL_MAP_NAME,
                                                            keep_collection=True,
-                                                           keep_induction=True))]
+                                                           keep_induction=False))]
             modules += [DAQModule(name = f'tpsettee_{link_id}',
                                   plugin = 'TPSetTee'),
                         DAQModule(name = f'heartbeatmaker_{link_id}',
