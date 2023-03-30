@@ -30,6 +30,7 @@ local cs = {
   tc_interval:     s.number(   "TCInterval",    "i8", nc(minimum=1, maximum=30000000000), doc="The intervals between TCs that are inserted into MLT by CTCM, in clock ticks"),
   tc_intervals:    s.sequence( "TCIntervals",   self.tc_interval, doc="List of TC intervals used by CTCM"),
   readout_time:    s.number(   "ROTime",        "i8", doc="A readout time in ticks"),
+  channel_list:    s.sequence( "ChannelList",   self.count, doc="List of offline channels to be masked out from the TPHandler"),
   
   numa_exception:  s.record( "NUMAException", [
     s.field( "host", self.host, default='localhost', doc="Host of exception"),
@@ -134,6 +135,9 @@ local cs = {
     s.field( "latency_buffer_size", self.count, default=499968, doc="Size of the latency buffers (in number of elements)"),
     s.field( "fragment_send_timeout_ms", self.count, default=10, doc="The send timeout that will be used in the readout modules when sending fragments downstream (i.e. to the TRB)."),
     s.field( "enable_software_tpg", self.flag, default=false, doc="Enable software TPG"),
+    s.field( "software_tpg_threshold", self.count, default=120, doc="Select software TPG threshold"),
+    s.field( "software_tpg_algorithm", self.string, default="SWTPG", doc="Select software TPG algorithm (SWTPG, AbsRS)"),
+    s.field( "software_tpg_channel_mask", self.channel_list, default=[], doc="List of offline channels to be masked out from the TPHandler"),
     s.field( "enable_firmware_tpg", self.flag, default=false, doc="Enable firmware TPG"),
     s.field( "dtp_connections_file", self.path, default="${DTPCONTROLS_SHARE}/config/dtp_connections.xml", doc="DTP connections file"),
     s.field( "firmware_hit_threshold", self.count, default=20, doc="firmware hitfinder threshold"),
