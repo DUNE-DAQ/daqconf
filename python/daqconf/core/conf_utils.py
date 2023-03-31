@@ -540,6 +540,12 @@ def update_with_k8s_boot_data(
     boot_data["exec"]["daq_application_k8s"]["image"] = image
 
 
+def resolve_localhost(host):
+    if host == 'localhost' or host[:4] == '127.':
+        import socket
+        return socket.gethostname()
+    return host
+
 def generate_boot(
         conf,
         system,
@@ -645,9 +651,7 @@ def generate_boot(
 
     if not conf.use_k8s:
         for app in system.apps.values():
-            if app.host == 'localhost' or app.host[:4] == '127.':
-                import socket
-                app.host = socket.gethostname()
+            app.host = resolve_localhost(app.host)
 
         update_with_ssh_boot_data(
             boot_data = boot,
@@ -713,6 +717,7 @@ def generate_boot(
             boot["services"]={}
         boot["services"].update(consvc)
         boot["exec"].update(consvc_exec)
+        conf.connectivity_service_host = resolve_localhost(conf.connectivity_service_host)
         boot["hosts-ctrl"].update({"connectionservice":
                                    conf.connectivity_service_host})
     return boot
