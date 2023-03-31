@@ -644,6 +644,11 @@ def generate_boot(
     
 
     if not conf.use_k8s:
+        for app in system.apps.values():
+            if app.host == 'localhost' or app.host[:4] == '127.':
+                import socket
+                app.host = socket.gethostname()
+
         update_with_ssh_boot_data(
             boot_data = boot,
             apps = system.apps,
