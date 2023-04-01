@@ -540,6 +540,12 @@ def update_with_k8s_boot_data(
     boot_data["exec"]["daq_application_k8s"]["image"] = image
 
 
+def resolve_localhost(host):
+    if host == 'localhost' or host[:4] == '127.':
+        import socket
+        return socket.gethostname()
+    return host
+
 def generate_boot(
         conf,
         system,
@@ -590,7 +596,7 @@ def generate_boot(
                 "PATH": "getenv",
                 "TRACE_FILE": "getenv:/tmp/trace_buffer_{APP_HOST}_{DUNEDAQ_PARTITION}",
                 "CMD_FAC": "rest://localhost:{APP_PORT}",
-                "CONNECTION_SERVER": conf.connectivity_service_host,
+                "CONNECTION_SERVER": resolve_localhost(conf.connectivity_service_host),
                 "CONNECTION_PORT": f"{conf.connectivity_service_port}",
                 "INFO_SVC": info_svc_uri,
             },
@@ -644,6 +650,9 @@ def generate_boot(
     
 
     if not conf.use_k8s:
+        for app in system.apps.values():
+            app.host = resolve_localhost(app.host)
+
         update_with_ssh_boot_data(
             boot_data = boot,
             apps = system.apps,
@@ -708,6 +717,7 @@ def generate_boot(
             boot["services"]={}
         boot["services"].update(consvc)
         boot["exec"].update(consvc_exec)
+        conf.connectivity_service_host = resolve_localhost(conf.connectivity_service_host)
         boot["hosts-ctrl"].update({"connectionservice":
                                    conf.connectivity_service_host})
     return boot
