@@ -355,7 +355,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
         for region_id in TA_SOURCE_IDS.keys():
             for j in range(num_algs):
                 mgraph.connect_modules(f'tam_{region_id}_{j}.output', f'tasettee_region_{region_id}_{j}.input', data_type="TASet", size_hint=1000)
-                mgraph.connect_modules(f'tasettee_region_{region_id}_{j}.output1', f'tazipper_{j}.input', queue_name="tas_to_tazipper", data_type="TASet", size_hint=1000)
+                mgraph.connect_modules(f'tasettee_region_{region_id}_{j}.output1', f'tazipper_{j}.input', queue_name=f"tas{j}_to_tazipper_{j}", data_type="TASet", size_hint=1000)
                 mgraph.connect_modules(f'tasettee_region_{region_id}_{j}.output2', f'ta_buf_region_{region_id}.taset_source',data_type="TASet", size_hint=1000)
 
     mgraph.add_endpoint("td_to_dfo", "mlt.td_output", "TriggerDecision", Direction.OUT, toposort=True)
