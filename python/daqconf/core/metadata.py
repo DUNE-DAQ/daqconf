@@ -39,8 +39,8 @@ def write_metadata_file(json_dir, generator, config_file):
         json.dump(daqconf_info, f, indent=4, sort_keys=True)
 
 
-def write_config_file(json_dir, json_input_file, data):
-    console.log(f'Saving metadata {json_input_file}')
+def write_config_file(json_dir, json_output_file, data):
+    console.log(f'Saving metadata {json_output_file}')
     # Backwards compatibility
     if isinstance(json_dir, str):
         from pathlib import Path
@@ -49,5 +49,5 @@ def write_config_file(json_dir, json_input_file, data):
     path = json_dir/'config'
     os.mkdir(path)
 
-    with open(join(path/json_input_file), 'w') as f:
+    with open(join(path/json_output_file), 'w') as f:
         json.dump(data.pod(), f, indent=4, sort_keys=True)

@@ -2,6 +2,7 @@ from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Endpoint, Direction, FragmentProducer, Queue
 from daqconf.core.sourceid import SourceID, ensure_subsystem
 import networkx as nx
+from typing import List, Dict
 
 class ModuleGraph:
     """
@@ -39,7 +40,7 @@ class ModuleGraph:
 
         return output_queues
 
-    def __init__(self, modules:[DAQModule]=None, endpoints:[Endpoint]=None, fragment_producers:{FragmentProducer}=None, queues:[Queue]=None):
+    def __init__(self, modules:List[DAQModule]=None, endpoints:List[Endpoint]=None, fragment_producers:Dict[int, FragmentProducer]=None, queues: List[Queue]=None):
         self.modules=modules if modules else []
         self.endpoints=endpoints if endpoints else []
         self.fragment_producers = fragment_producers if  fragment_producers else dict()

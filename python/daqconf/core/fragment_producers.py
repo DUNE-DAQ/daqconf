@@ -39,7 +39,7 @@ def set_mlt_links(the_system, mlt_app_name="trigger", verbose=False):
     old_mlt_conf = mgraph.get_module("mlt").conf
     mgraph.reset_module_conf("mlt", mlt.ConfParams(links=mlt_links, 
                                                    hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough,
-						   buffer_timeout=old_mlt_conf.buffer_timeout,
+                                                   buffer_timeout=old_mlt_conf.buffer_timeout,
                                                    td_out_of_timeout=old_mlt_conf.td_out_of_timeout,
                                                    td_readout_limit=old_mlt_conf.td_readout_limit,
                                                    ignore_tc=old_mlt_conf.ignore_tc,
@@ -59,7 +59,7 @@ def remove_mlt_link(the_system, source_id, mlt_app_name="trigger"):
     mgraph.reset_module_conf("mlt", mlt.ConfParams(links=mlt_links, 
                                                    hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough,
                                                    buffer_timeout=old_mlt_conf.buffer_timeout,
-					       	   td_out_of_timeout=old_mlt_conf.td_out_of_timeout,
+                                                   td_out_of_timeout=old_mlt_conf.td_out_of_timeout,
                                                    td_readout_limit=old_mlt_conf.td_readout_limit,
                                                    ignore_tc=old_mlt_conf.ignore_tc,
                                                    use_readout_map=old_mlt_conf.use_readout_map,

@@ -2,7 +2,7 @@
 import click
 import math
 from rich.console import Console
-from os.path import exists,abspath,dirname
+from os.path import exists, abspath, dirname, basename
 from pathlib import Path
 from daqconf.core.system import System
 from daqconf.core.metadata import write_metadata_file, write_config_file
@@ -106,7 +106,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         console.log("Loading dqm config generator")
         from daqconf.apps.dqm_gen import get_dqm_app
     console.log("Loading readout config generator")
-    from daqconf.apps.readout_gen import get_readout_app
+    from daqconf.apps.readout_gen import get_readout_app, create_readout_app
     console.log("Loading trigger config generator")
     from daqconf.apps.trigger_gen import get_trigger_app
     console.log("Loading DFO config generator")
@@ -386,7 +386,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         TRIGGER_WINDOW_BEFORE_TICKS = trigger.trigger_window_before_ticks,
         TRIGGER_WINDOW_AFTER_TICKS = trigger.trigger_window_after_ticks,
         HSI_TRIGGER_TYPE_PASSTHROUGH = trigger.hsi_trigger_type_passthrough,
-	MLT_BUFFER_TIMEOUT = trigger.mlt_buffer_timeout,
+	    MLT_BUFFER_TIMEOUT = trigger.mlt_buffer_timeout,
         MLT_MAX_TD_LENGTH_MS = trigger.mlt_max_td_length_ms,
         MLT_SEND_TIMED_OUT_TDS = trigger.mlt_send_timed_out_tds,
         MLT_IGNORE_TC = trigger.mlt_ignore_tc,
@@ -428,7 +428,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
                 latency_preallocate = ex['latency_buffer_preallocation']
                 card_override = ex['felix_card_id']
 
-        the_system.apps[ru_name] = get_readout_app(
+        the_system.apps[ru_name] = create_readout_app(
             HOST=dro_config.host,
             DRO_CONFIG=dro_config,
             EMULATOR_MODE = readout.emulator_mode,
@@ -440,13 +440,13 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             CLOCK_SPEED_HZ = readout.clock_speed_hz,
             RAW_RECORDING_ENABLED = readout.enable_raw_recording,
             RAW_RECORDING_OUTPUT_DIR = readout.raw_recording_output_dir,
-            SOFTWARE_TPG_ENABLED = readout.enable_software_tpg,
-            THRESHOLD_SOFTWARE_TPG = readout.software_tpg_threshold,
-            ALGORITHM_SOFTWARE_TPG = readout.software_tpg_algorithm,
-            CHANNEL_MASK_SOFTWARE_TPG = readout.software_tpg_channel_mask,
-            FIRMWARE_TPG_ENABLED = readout.enable_firmware_tpg,
-            DTP_CONNECTIONS_FILE= readout.dtp_connections_file,
-            FIRMWARE_HIT_THRESHOLD= readout.firmware_hit_threshold,
+            TPG_ENABLED = readout.enable_software_tpg,
+            THRESHOLD_TPG = readout.software_tpg_threshold,
+            ALGORITHM_TPG = readout.software_tpg_algorithm,
+            CHANNEL_MASK_TPG = readout.software_tpg_channel_mask,
+            # FIRMWARE_TPG_ENABLED = readout.enable_firmware_tpg,
+            # DTP_CONNECTIONS_FILE= readout.dtp_connections_file,
+            # FIRMWARE_HIT_THRESHOLD= readout.firmware_hit_threshold,
             TPG_CHANNEL_MAP = trigger.tpg_channel_map,
             USE_FAKE_DATA_PRODUCERS = readout.use_fake_data_producers,
             LATENCY_BUFFER_SIZE=readout.latency_buffer_size,
@@ -454,8 +454,8 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             FRAGMENT_SEND_TIMEOUT=readout.fragment_send_timeout_ms,
             SOURCEID_BROKER = sourceid_broker,
             READOUT_SENDS_TP_FRAGMENTS = readout.readout_sends_tp_fragments,
-            ENABLE_DPDK_SENDER=dpdk_sender.enable_dpdk_sender,
-            ENABLE_DPDK_READER=readout.enable_dpdk_reader,
+            # ENABLE_DPDK_SENDER=dpdk_sender.enable_dpdk_sender,
+            # ENABLE_DPDK_READER=readout.enable_dpdk_reader,
             EAL_ARGS=readout.eal_args,
             BASE_SOURCE_IP=readout.base_source_ip,
             DESTINATION_IP=readout.destination_ip,
@@ -769,7 +769,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     write_metadata_file(output_dir, "daqconf_multiru_gen", config_file)
     write_config_file(
         output_dir,
-        config_file,
+        basename(config_file),
         confgen.daqconf_multiru_gen(  # <facepalm>
             boot = boot,
             dataflow = dataflow,
