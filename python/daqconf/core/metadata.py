@@ -40,14 +40,16 @@ def write_metadata_file(json_dir, generator, config_file):
 
 
 def write_config_file(json_dir, json_input_file, data):
-    console.log(f'Saving metadata {json_input_file}')
     # Backwards compatibility
     if isinstance(json_dir, str):
         from pathlib import Path
         json_dir = Path(json_dir)
 
     path = json_dir/'config'
+    out_file = json_input_file.split("/")[-1]
+    console.log(f'Saving metadata to {path}/{out_file}')
+
     os.mkdir(path)
 
-    with open(join(path/json_input_file), 'w') as f:
+    with open(join(path/out_file), 'w') as f:
         json.dump(data.pod(), f, indent=4, sort_keys=True)
