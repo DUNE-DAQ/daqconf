@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+!/usr/bin/env python3
 import click
 import math
 from rich.console import Console
@@ -506,7 +506,8 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             # an underscore, but that idiosyncrasy means that we can't just give the ru_name
             # to get_dqm_app for it to use when subscribing to TimeSync messages. So, we'll
             # create a dedicated variable here *with* the underscore.
-            ru_name_with_underscore = f"ru{host}_{dro_config.card}"
+            host2=dro_config.host.replace("-","_")
+            ru_name_with_underscore = f"ru{host2}_{dro_config.card}"
 
             the_system.apps[dqm_name] = get_dqm_app(
                 DQM_IMPL=dqm.impl,
