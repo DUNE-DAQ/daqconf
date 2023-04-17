@@ -476,6 +476,8 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
             dir_names = set()
 
+            import os
+
             if os.path.commonprefix(['/cvmfs', readout.default_data_file]) != '/cvmfs':
                 dir_names.add(dirname(readout.default_data_file))
 
