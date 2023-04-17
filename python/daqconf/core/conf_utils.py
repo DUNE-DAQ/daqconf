@@ -598,6 +598,7 @@ def generate_boot(
                 "CMD_FAC": "rest://localhost:{APP_PORT}",
                 "CONNECTION_SERVER": resolve_localhost(conf.connectivity_service_host),
                 "CONNECTION_PORT": f"{conf.connectivity_service_port}",
+                "IOMANAGER_RESOLVE_CONNECTIONS": not conf.use_k8s,
                 "INFO_SVC": info_svc_uri,
             },
             "cmd":"daq_application",
