@@ -80,20 +80,20 @@ def compute_data_types(
         raise ValueError(f"No match for {det_str}, {clk_freq_hz}, {ro_protocol}")
 
 
-    return fe_type, fake_frag_type, queue_frag_type
+    return fe_type, queue_frag_type, fake_frag_type
 
 
 ###
 # Fake Card Reader creator
 ###
-def create_fake_card(
+def create_fake_cardreader(
+    FRONTEND_TYPE: str,
+    QUEUE_FRAGMENT_TYPE: str,
     DATA_RATE_SLOWDOWN_FACTOR: int,
     DATA_FILES: dict,
     DEFAULT_DATA_FILE: str,
     CLOCK_SPEED_HZ: int,
     EMULATED_DATA_TIMES_START_WITH_NOW: bool,
-    QUEUE_FRAGMENT_TYPE: str,
-    FRONTEND_TYPE: str,
     det_ro_links: list  # This is a list of DROInfo
 
 ) -> tuple[list, list]:
@@ -134,7 +134,7 @@ def create_fake_card(
 ###
 # FELIX Card Reader creator
 ###
-def create_felix_card(
+def create_felix_cardreader(
         FRONTEND_TYPE: str,
         QUEUE_FRAGMENT_TYPE: str,
         CARD_ID_OVERRIDE: int,
@@ -220,12 +220,12 @@ def create_felix_card(
 ###
 # DPDK Card Reader creator
 ###
-def create_dpdk_card(
+def create_dpdk_cardreader(
+        FRONTEND_TYPE: str,
+        QUEUE_FRAGMENT_TYPE: str,
         BASE_SOURCE_IP: str,
         DESTINATION_IP: str,
         EAL_ARGS: str,
-        FRONTEND_TYPE: str,
-        QUEUE_FRAGMENT_TYPE: str,
         det_ro_links: list  # This is a list of DROInfo
     ) -> tuple[list, list]:
     """
@@ -396,7 +396,7 @@ def enable_processing(
 ###
 # Create TP data link handlers
 ###
-def create_tp_dhls(
+def create_tp_dlhs(
     dro_dlh_list: list,
     LATENCY_BUFFER_SIZE: int, # To Check
     DATA_REQUEST_TIMEOUT: int, # To Check
@@ -568,8 +568,9 @@ def create_readout_app(
     modules = []
     queues = []
 
+    # Create the card readers
     if FLX_INPUT:
-        flx_mods, flx_queues = create_felix_card(
+        flx_mods, flx_queues = create_felix_cardreader(
             FRONTEND_TYPE,
             QUEUE_FRAGMENT_TYPE,
             CARD_ID_OVERRIDE,
@@ -580,43 +581,44 @@ def create_readout_app(
         queues += flx_queues
 
     elif ETH_MODE:
-        dpdk_mods, dpdk_queues = create_dpdk_card(
+        dpdk_mods, dpdk_queues = create_dpdk_cardreader(
+            FRONTEND_TYPE=FRONTEND_TYPE,
+            QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
             BASE_SOURCE_IP=BASE_SOURCE_IP,
             DESTINATION_IP=DESTINATION_IP,
             EAL_ARGS=EAL_ARGS,
-            FRONTEND_TYPE=FRONTEND_TYPE,
-            QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
             det_ro_links=DRO_CONFIG.links
         )
         modules += dpdk_mods
         queues += dpdk_queues
 
     else:
-        fakecr_mods, fakecr_queues = create_fake_card(
+        fakecr_mods, fakecr_queues = create_fake_cardreader(
+            FRONTEND_TYPE=FRONTEND_TYPE,
+            QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
             DATA_RATE_SLOWDOWN_FACTOR=DATA_RATE_SLOWDOWN_FACTOR,
             DATA_FILES=DATA_FILES,
             DEFAULT_DATA_FILE=DEFAULT_DATA_FILE,
             CLOCK_SPEED_HZ=CLOCK_SPEED_HZ,
             EMULATED_DATA_TIMES_START_WITH_NOW=EMULATED_DATA_TIMES_START_WITH_NOW,
-            FRONTEND_TYPE=FRONTEND_TYPE,
-            QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
             det_ro_links=DRO_CONFIG.links
         )
         modules += fakecr_mods
         queues += fakecr_queues
 
+    # Create the data-link handlers
     dlhs, _ = create_det_dhl(
         RUIDX,
-        LATENCY_BUFFER_SIZE,
-        LATENCY_BUFFER_NUMA_AWARE,
-        LATENCY_BUFFER_ALLOCATION_MODE,
-        NUMA_ID,
-        False,
-        RAW_RECORDING_OUTPUT_DIR,
-        DATA_REQUEST_TIMEOUT,
-        FRAGMENT_SEND_TIMEOUT,
-        RAW_RECORDING_ENABLED,
-        DRO_CONFIG.links
+        LATENCY_BUFFER_SIZE=LATENCY_BUFFER_SIZE,
+        LATENCY_BUFFER_NUMA_AWARE=LATENCY_BUFFER_NUMA_AWARE,
+        LATENCY_BUFFER_ALLOCATION_MODE=LATENCY_BUFFER_ALLOCATION_MODE,
+        NUMA_ID=NUMA_ID,
+        SEND_PARTIAL_FRAGMENTS=False,
+        RAW_RECORDING_OUTPUT_DIR=RAW_RECORDING_OUTPUT_DIR,
+        DATA_REQUEST_TIMEOUT=DATA_REQUEST_TIMEOUT,
+        FRAGMENT_SEND_TIMEOUT=FRAGMENT_SEND_TIMEOUT,
+        RAW_RECORDING_ENABLED=RAW_RECORDING_ENABLED,
+        det_ro_links=DRO_CONFIG.links
 
     )
 
@@ -636,7 +638,7 @@ def create_readout_app(
     modules += dlhs
 
     if READOUT_SENDS_TP_FRAGMENTS:
-        tpg_mods, tpg_queues = create_tp_dhls(
+        tpg_mods, tpg_queues = create_tp_dlhs(
             dro_dlh_list=dlhs,
             LATENCY_BUFFER_SIZE=LATENCY_BUFFER_SIZE,
             DATA_REQUEST_TIMEOUT=DATA_REQUEST_TIMEOUT,
@@ -674,7 +676,7 @@ def create_readout_app(
 
 
 
-
+######## Legacy code beyond this point
 
 
 def get_readout_app(DRO_CONFIG=None,
