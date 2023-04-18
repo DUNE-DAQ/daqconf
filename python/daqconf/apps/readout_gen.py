@@ -164,6 +164,7 @@ def create_felix_cardreader(
     card_id = det_ro_links[0].dro_card if CARD_ID_OVERRIDE == -1 else CARD_ID_OVERRIDE
 
     modules = []
+    queues = []
     if len(link_slr0) > 0:
         modules += [DAQModule(name = 'flxcard_0',
                         plugin = 'FelixCardReader',
@@ -405,6 +406,7 @@ def create_tp_dlhs(
     
     modules = []
     queues = []
+    
     for dlh in dro_dlh_list:
 
         # extract source ids
@@ -492,6 +494,7 @@ def add_dro_eps_and_fps(
             )
 
 
+            # Switch to a different workaround: check if there is any queue connecte to datahandler_{dro_sid}.tp_out, if not, add a pubsub node
             # Workaround to avoid WIBProcessors to crash trying to send to tp_out when there is no TP DLH
             mgraph.add_endpoint(
                 f"tp_ru{RUIDX}_link{dro_sid}",
