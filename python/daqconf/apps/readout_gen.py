@@ -39,7 +39,7 @@ import json
 from daqconf.core.conf_utils import Direction, Queue
 from daqconf.core.sourceid import TPInfo, SourceIDBroker, FWTPID, FWTPOUTID
 from daqconf.core.daqmodule import DAQModule
-from daqconf.core.app import App,ModuleGraph
+from daqconf.core.app import App, ModuleGraph
 
 # from detdataformats._daq_detdataformats_py import *
 from detdataformats import *
@@ -481,10 +481,21 @@ def add_dro_eps_and_fps(
             toposort=False
         )
 
+        # if processing is enabled, add a pubsub endooint for TPSets
         if dlh.conf.rawdataprocessorconf['enable_software_tpg']:
             mgraph.add_endpoint(
                 f"tpsets_ru{RUIDX}_link{dro_sid}",
                 f"datahandler_{dro_sid}.tpset_out",
+                "TPSet",
+                Direction.OUT,
+                is_pubsub=True
+            )
+
+
+            # Workaround to avoid WIBProcessors to crash trying to send to tp_out when there is no TP DLH
+            mgraph.add_endpoint(
+                f"tp_ru{RUIDX}_link{dro_sid}",
+                f"datahandler_{dro_sid}.tp_out",
                 "TPSet",
                 Direction.OUT,
                 is_pubsub=True
@@ -495,16 +506,26 @@ def add_dro_eps_and_fps(
 ###
 def add_tpg_eps_and_fps(
     mgraph: ModuleGraph,
+    dro_dlh_list: list,
     tpg_dlh_list: list,
     RUIDX: str,
         
 ) -> None: 
     """Adds detector readout endpoints and fragment producers"""
+
+    # Remove tp_out endpoints added by add_dro_eps_and_fps.
+    # tp_out is already connected to a queue
+    for dlh in dro_dlh_list:
+        # extract source ids
+        dro_sid = dlh.conf.readoutmodelconf['source_id']
+        mgraph.remove_endpoint(f"tp_ru{RUIDX}_link{dro_sid}")
+
     for dlh in tpg_dlh_list:
 
         # extract source ids
         tp_sid = dlh.conf.readoutmodelconf['source_id']
 
+        # Add enpoint with this source id
         mgraph.add_endpoint(
             f"timesync_tp_dlh_ru{RUIDX}_{tp_sid}",
             f"tp_datahandler_{tp_sid}.timesync_output",
@@ -513,6 +534,7 @@ def add_tpg_eps_and_fps(
             is_pubsub=True
         )
 
+        # Add Fragment producer with this source id
         mgraph.add_fragment_producer(
             id = tp_sid, subsystem = "Trigger",
             requests_in   = f"tp_datahandler_{tp_sid}.request_input",
@@ -564,9 +586,11 @@ def create_readout_app(
 
     FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _ = compute_data_types(DRO_CONFIG.links[0].det_id, CLOCK_SPEED_HZ,'FELIX'  if not ETH_MODE else 'ETH')
 
-
     modules = []
     queues = []
+
+    cr_mods = []
+    cr_queues = []
 
     # Create the card readers
     if FLX_INPUT:
@@ -577,8 +601,8 @@ def create_readout_app(
             NUMA_ID,
             DRO_CONFIG.links
         )
-        modules += flx_mods
-        queues += flx_queues
+        cr_mods += flx_mods
+        cr_queues += flx_queues
 
     elif ETH_MODE:
         dpdk_mods, dpdk_queues = create_dpdk_cardreader(
@@ -589,8 +613,8 @@ def create_readout_app(
             EAL_ARGS=EAL_ARGS,
             det_ro_links=DRO_CONFIG.links
         )
-        modules += dpdk_mods
-        queues += dpdk_queues
+        cr_mods += dpdk_mods
+        cr_queues += dpdk_queues
 
     else:
         fakecr_mods, fakecr_queues = create_fake_cardreader(
@@ -603,11 +627,15 @@ def create_readout_app(
             EMULATED_DATA_TIMES_START_WITH_NOW=EMULATED_DATA_TIMES_START_WITH_NOW,
             det_ro_links=DRO_CONFIG.links
         )
-        modules += fakecr_mods
-        queues += fakecr_queues
+        cr_mods += fakecr_mods
+        cr_queues += fakecr_queues
+
+
+    modules += cr_mods
+    queues += cr_queues
 
     # Create the data-link handlers
-    dlhs, _ = create_det_dhl(
+    dlhs_mods, _ = create_det_dhl(
         RUIDX,
         LATENCY_BUFFER_SIZE=LATENCY_BUFFER_SIZE,
         LATENCY_BUFFER_NUMA_AWARE=LATENCY_BUFFER_NUMA_AWARE,
@@ -623,8 +651,8 @@ def create_readout_app(
     )
 
     if TPG_ENABLED:
-        dlhs = enable_processing(
-           dro_dlh_list=dlhs,
+        dlhs_mods = enable_processing(
+           dro_dlh_list=dlhs_mods,
            THRESHOLD_TPG=THRESHOLD_TPG,
            ALGORITHM_TPG=ALGORITHM_TPG,
            CHANNEL_MASK_TPG=CHANNEL_MASK_TPG,
@@ -635,11 +663,11 @@ def create_readout_app(
            SOURCEID_BROKER=SOURCEID_BROKER
         )
 
-    modules += dlhs
+    modules += dlhs_mods
 
     if READOUT_SENDS_TP_FRAGMENTS:
         tpg_mods, tpg_queues = create_tp_dlhs(
-            dro_dlh_list=dlhs,
+            dro_dlh_list=dlhs_mods,
             LATENCY_BUFFER_SIZE=LATENCY_BUFFER_SIZE,
             DATA_REQUEST_TIMEOUT=DATA_REQUEST_TIMEOUT,
             FRAGMENT_SEND_TIMEOUT=FRAGMENT_SEND_TIMEOUT
@@ -649,14 +677,15 @@ def create_readout_app(
 
     mgraph = ModuleGraph(modules, queues=queues)
 
-
+    # Add endpoints and frame producers to DRO data handlers
     add_dro_eps_and_fps(
         mgraph=mgraph,
-        dro_dlh_list=dlhs,
+        dro_dlh_list=dlhs_mods,
         RUIDX=RUIDX
     )
 
     if READOUT_SENDS_TP_FRAGMENTS:
+       # Add endpoints and frame producers to TP data handlers
         add_tpg_eps_and_fps(
             mgraph=mgraph,
             tpg_dlh_list=tpg_mods,
