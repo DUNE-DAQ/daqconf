@@ -20,7 +20,7 @@ class ModuleGraph:
     changed without affecting other applications.
     """
 
-    def combine_queues(self, queues : [Queue]):
+    def combine_queues(self, queues : List[Queue]):
         output_queues = []
 
         for q in queues:

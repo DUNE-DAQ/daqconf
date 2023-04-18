@@ -688,6 +688,7 @@ def create_readout_app(
        # Add endpoints and frame producers to TP data handlers
         add_tpg_eps_and_fps(
             mgraph=mgraph,
+            dro_dlh_list=dlhs_mods,
             tpg_dlh_list=tpg_mods,
             RUIDX=RUIDX
         )
