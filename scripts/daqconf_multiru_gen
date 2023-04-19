@@ -106,7 +106,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         console.log("Loading dqm config generator")
         from daqconf.apps.dqm_gen import get_dqm_app
     console.log("Loading readout config generator")
-    from daqconf.apps.readout_gen import get_readout_app, create_readout_app
+    from daqconf.apps.readout_gen import create_readout_app
     console.log("Loading trigger config generator")
     from daqconf.apps.trigger_gen import get_trigger_app
     console.log("Loading DFO config generator")

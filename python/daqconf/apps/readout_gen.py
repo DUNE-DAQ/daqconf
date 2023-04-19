@@ -393,18 +393,6 @@ def add_tp_processing(
                 ),
             )
         )]
-
-        # TOFIX: Workaround. This queue is only strictly needed if the TP DH is added later.
-        # But since the TP Handler cannot cope with a Sender not bein defined at the moment, we add it nevertheless.
-        # If no TP DLHis added, this queue will fill 
-        queues += [
-            Queue(
-                f"{dlh.name}.tp_out",
-                f"tp_datahandler_{tp_sid}.raw_input",
-                "TriggerPrimitive",
-                f"sw_tp_link_{dro_sid}",100000 
-                )
-            ]
         
     return modules, queues
 
@@ -424,7 +412,7 @@ def create_tp_dlhs(
     for dlh in dro_dlh_list:
 
         # extract source ids
-        # dro_sid = dlh.conf.readoutmodelconf["source_id"]
+        dro_sid = dlh.conf.readoutmodelconf["source_id"]
         tp_sid = dlh.conf.rawdataprocessorconf["tpset_sourceid"]
 
         modules += [
@@ -456,14 +444,15 @@ def create_tp_dlhs(
                 )
             ]
 
-        # queues += [
-        #     Queue(
-        #         f"{dlh.name}.tp_out",
-        #         f"tp_datahandler_{tp_sid}.raw_input",
-        #         "TriggerPrimitive",
-        #         f"sw_tp_link_{dro_sid}",100000 
-        #         )
-        #     ]
+        # Attach to the detector DLH's tp_out connector
+        queues += [
+            Queue(
+                f"{dlh.name}.tp_out",
+                f"tp_datahandler_{tp_sid}.raw_input",
+                "TriggerPrimitive",
+                f"sw_tp_link_{dro_sid}",100000 
+                )
+            ]
 
     return modules, queues
 
@@ -507,16 +496,6 @@ def add_dro_eps_and_fps(
                 is_pubsub=True
             )
 
-            # Not needed?
-            # # Switch to a different workaround: check if there is any queue connecte to datahandler_{dro_sid}.tp_out, if not, add a pubsub node
-            # # Workaround to avoid WIBProcessors to crash trying to send to tp_out when there is no TP DLH
-            # mgraph.add_endpoint(
-            #     f"tp_ru{RUIDX}_link{dro_sid}",
-            #     f"datahandler_{dro_sid}.tp_out",
-            #     "TPSet",
-            #     Direction.OUT,
-            #     is_pubsub=True
-            # )
 
 ###
 # Add tpg endpoints and fragment producers
@@ -529,13 +508,6 @@ def add_tpg_eps_and_fps(
         
 ) -> None: 
     """Adds detector readout endpoints and fragment producers"""
-
-    # Remove tp_out endpoints added by add_dro_eps_and_fps.
-    # tp_out is already connected to a queue
-    # for dlh in dro_dlh_list:
-    #     # extract source ids
-    #     dro_sid = dlh.conf.readoutmodelconf['source_id']
-    #     mgraph.remove_endpoint(f"tp_ru{RUIDX}_link{dro_sid}")
 
     for dlh in tpg_dlh_list:
 
