@@ -321,8 +321,8 @@ def make_system_connections(the_system, verbose=False, use_k8s=False, use_connec
                     port = the_system.next_unassigned_port() if not use_connectivity_service or use_k8s else '*'
                     address = f'tcp://{{{endpoint["app"]}}}:{port}' if not use_k8s else f'tcp://{endpoint["app"]}:{port}'
                     conn_id =conn.ConnectionId( uid=endpoint['endpoint'].external_name, data_type=endpoint['endpoint'].data_type)
-                    pubsub_connectionids[endpoint['endpoint'].external_name] = conn.Connection(id=conn_id,                        
-                        connection_type="kPubSub",                        
+                    pubsub_connectionids[endpoint['endpoint'].external_name] = conn.Connection(id=conn_id,
+                        connection_type="kPubSub",
                         uri=address
                     )
                 topic_connectionuids += [endpoint['endpoint'].external_name]
@@ -409,7 +409,7 @@ def make_app_command_data(system, app, appkey, verbose=False, use_k8s=False, use
     # Fill in the "standard" command entries in the command_data structure
     command_data['init'] = appfwk.Init(modules=mod_specs,
                                        connections=system.connections[appkey],
-                                       queues=system.queues[appkey], 
+                                       queues=system.queues[appkey],
                                        use_connectivity_service=use_connectivity_service,
                                        connectivity_service_interval_ms=connectivity_service_interval)
 
@@ -598,7 +598,7 @@ def generate_boot(
                 "CMD_FAC": "rest://localhost:{APP_PORT}",
                 "CONNECTION_SERVER": resolve_localhost(conf.connectivity_service_host),
                 "CONNECTION_PORT": f"{conf.connectivity_service_port}",
-                "IOMANAGER_RESOLVE_CONNECTIONS": not conf.use_k8s,
+                "IOMANAGER_RESOLVE_CONNECTIONS": int(not conf.use_k8s),
                 "INFO_SVC": info_svc_uri,
             },
             "cmd":"daq_application",
@@ -648,7 +648,7 @@ def generate_boot(
         case 2:
             pass
 
-    
+
 
     if not conf.use_k8s:
         for app in system.apps.values():
