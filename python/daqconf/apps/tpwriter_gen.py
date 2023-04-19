@@ -31,7 +31,7 @@ def get_tpwriter_app(
                      OPERATIONAL_ENVIRONMENT="swtest",
                      MAX_FILE_SIZE=4*1024*1024*1024,
                      DATA_RATE_SLOWDOWN_FACTOR=1,
-                     CLOCK_SPEED_HZ=50000000,
+                     CLOCK_SPEED_HZ=62500000,
                      HARDWARE_MAP='',
                      SOURCE_IDX=998,
                      HOST="localhost",
