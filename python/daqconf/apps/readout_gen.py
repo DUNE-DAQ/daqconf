@@ -467,6 +467,7 @@ def add_dro_eps_and_fps(
 ) -> None: 
     """Adds detector readout endpoints and fragment producers"""
     for dlh in dro_dlh_list:
+        print(dlh)
 
         # extract source ids
         dro_sid = dlh.conf.readoutmodelconf['source_id']
