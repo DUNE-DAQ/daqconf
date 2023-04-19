@@ -43,7 +43,7 @@ class ModuleGraph:
     def __init__(self, modules:List[DAQModule]=None, endpoints:List[Endpoint]=None, fragment_producers:Dict[int, FragmentProducer]=None, queues: List[Queue]=None):
         self.modules=modules if modules else []
         self.endpoints=endpoints if endpoints else []
-        self.fragment_producers = fragment_producers if  fragment_producers else dict()
+        self.fragment_producers = fragment_producers if fragment_producers else dict()
         self.queues = self.combine_queues(queues) if queues else []
 
     def __repr__(self):
