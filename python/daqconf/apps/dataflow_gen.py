@@ -28,22 +28,25 @@ from daqconf.core.conf_utils import Direction
 # Time to wait on pop()
 QUEUE_POP_WAIT_MS = 100
 
-def get_dataflow_app(HOSTIDX=0,
-                     OUTPUT_PATHS=["."],
-                     APP_NAME="dataflow0",
-                     OPERATIONAL_ENVIRONMENT="swtest",
-                     DATA_STORE_MODE='all-per-file',
-                     MAX_FILE_SIZE=4*1024*1024*1024,
-                     MAX_TRIGGER_RECORD_WINDOW=0,
-                     MAX_EXPECTED_TR_SEQUENCES=1,
-                     TOKEN_COUNT=10,
-                     TRB_TIMEOUT=200,
-                     HOST="localhost",
-                     HAS_DQM=False,
-                     HARDWARE_MAP='',
-                     DEBUG=False):
-
+def get_dataflow_app(sourceid, common_conf, dataflow_app_conf, dataflow_conf, max_expected_tr_sequences, trigger_record_building_timeout, dfidx, app_name, debug=False):
     """Generate the json configuration for the readout and DF process"""
+
+    OPERATIONAL_ENVIRONMENT = common_conf.op_env
+
+    HOSTIDX = dfidx
+    APP_NAME = app_name
+
+    OUTPUT_PATHS = dataflow_app_conf.output_paths
+    DATA_STORE_MODE = dataflow_app_conf.data_store_mode
+    MAX_FILE_SIZE = dataflow_app_conf.max_file_size
+    MAX_TRIGGER_RECORD_WINDOW = dataflow_app_conf.max_trigger_record_window
+    MAX_EXPECTED_TR_SEQUENCES = max_expected_tr_sequences
+    TOKEN_COUNT = dataflow_conf.token_count
+    TRB_TIMEOUT = trigger_record_building_timeout
+    HOST = dataflow_app_conf.host_df
+    HAS_DQM = common_conf.enable_dqm
+    HARDWARE_MAP = hw_map
+
 
     modules = []
 
@@ -54,9 +57,9 @@ def get_dataflow_app(HOSTIDX=0,
                                                 max_time_window=MAX_TRIGGER_RECORD_WINDOW,
                                                 source_id = HOSTIDX,
                                                 trigger_record_timeout_ms=TRB_TIMEOUT))]
-                      
-    for i in range(len(OUTPUT_PATHS)):     
-        if DEBUG: print(f"dataflow{HOSTIDX}: Adding datawriter{i} instance")                 
+
+    for i in range(len(OUTPUT_PATHS)):
+        if DEBUG: print(f"dataflow{HOSTIDX}: Adding datawriter{i} instance")
         modules += [DAQModule(name = f'datawriter_{i}',
                        plugin = 'DataWriter',
                        conf = dw.ConfParams(decision_connection=f"trigger_decision_{HOSTIDX}",

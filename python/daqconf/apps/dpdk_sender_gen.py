@@ -22,19 +22,14 @@ QUEUE_POP_WAIT_MS = 100
 CLOCK_SPEED_HZ = 50000000
 
 
-def get_dpdk_sender_app(
-        HOST='localhost',
-        NUMBER_OF_CORES=2,
-        NUMBER_OF_IPS_PER_CORE=2,
-        BASE_SOURCE_IP='10.73.139.',
-        DESTINATION_IP='10.73.139.17',
-        DESTINATION_MAC='EC:0D:9A:8E:BA:10',
-        FRONTEND_TYPE='tde',
-        RATE=None,
-        TIME_TICK_DIFFERENCE=1000,
-        EAL_ARGS='',
-        DEBUG=False,
-):
+def get_dpdk_sender_app(sourceid, common_conf, dpdk_sender_conf, debug=False):
+
+    NUMBER_OF_CORES=2
+    NUMBER_OF_IPS_PER_CORE=2
+    BASE_SOURCE_IP='10.73.139.'
+    TIME_TICK_DIFFERENCE=1000
+    EAL_ARGS=''
+    HOST=dpdk_sender_conf.host_dpdk_sender[0]
 
     modules = []
     queues = []

@@ -70,45 +70,39 @@ def get_buffer_conf(source_id, data_request_timeout):
                                                                                request_timeout_ms = data_request_timeout,
                                                                                warn_on_timeout = False,
                                                                                enable_raw_recording = False))
-    
+
 #===============================================================================
-def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
-                    DATA_RATE_SLOWDOWN_FACTOR: float = 1,
-                    TP_CONFIG: dict = {},
-                    TOLERATE_INCOMPLETENESS=False,
-                    COMPLETENESS_TOLERANCE=1,
+def get_trigger_app(sourceid, common_conf, trigger_conf, debug=False):
 
-                    ACTIVITY_PLUGIN: str = 'TriggerActivityMakerPrescalePlugin',
-                    ACTIVITY_CONFIG: dict = dict(prescale=10000),
+    DATA_RATE_SLOWDOWN_FACTOR = common_conf.data_rate_slowdown_factor
+    CLOCK_SPEED_HZ            = common_conf.clock_speed_hz
+    DATA_REQUEST_TIMEOUT      = common_conf.data_request_timeout_ms
 
-                    CANDIDATE_PLUGIN: str = 'TriggerCandidateMakerPrescalePlugin',
-                    CANDIDATE_CONFIG: int = dict(prescale=10),
+    TP_CONFIG = sourceid.get_all_source_ids("Trigger")
 
-                    USE_HSI_INPUT = True,
-                    TTCM_S1: int = 1,
-                    TTCM_S2: int = 2,
-                    TRIGGER_WINDOW_BEFORE_TICKS: int = 1000,
-                    TRIGGER_WINDOW_AFTER_TICKS: int = 1000,
-                    HSI_TRIGGER_TYPE_PASSTHROUGH: bool = False,
+    TOLERATE_INCOMPLETENESS      = trigger_conf.tolerate_incompleteness
+    COMPLETENESS_TOLERANCE       = trigger_conf.completeness_tolerance
+    ACTIVITY_PLUGIN              = trigger_conf.trigger_activity_plugin
+    ACTIVITY_CONFIG              = trigger_conf.trigger_activity_config
+    CANDIDATE_PLUGIN             = trigger_conf.trigger_candidate_plugin
+    CANDIDATE_CONFIG             = trigger_conf.trigger_candidate_config
+    TTCM_S1                      = trigger_conf.ttcm_s1
+    TTCM_S2                      = trigger_conf.ttcm_s2
+    TRIGGER_WINDOW_BEFORE_TICKS  = trigger_conf.trigger_window_before_ticks
+    TRIGGER_WINDOW_AFTER_TICKS   = trigger_conf.trigger_window_after_ticks
+    HSI_TRIGGER_TYPE_PASSTHROUGH = trigger_conf.hsi_trigger_type_passthrough
+    MLT_BUFFER_TIMEOUT           = trigger_conf.mlt_buffer_timeout
+    MLT_MAX_TD_LENGTH_MS         = trigger_conf.mlt_max_td_length_ms
+    MLT_SEND_TIMED_OUT_TDS       = trigger_conf.mlt_send_timed_out_tds
+    MLT_IGNORE_TC                = trigger_conf.mlt_ignore_tc
+    MLT_USE_READOUT_MAP          = trigger_conf.mlt_use_readout_map
+    MLT_READOUT_MAP              = trigger_conf.mlt_td_readout_map
+    USE_CUSTOM_MAKER             = trigger_conf.use_custom_maker
+    CTCM_TYPES                   = trigger_conf.ctcm_trigger_types
+    CTCM_INTERVAL                = trigger_conf.ctcm_trigger_intervals
+    CHANNEL_MAP_NAME             = trigger_conf.tpg_channel_map
+    HOST                         = trigger_conf.host_trigger
 
-                    USE_CUSTOM_MAKER: bool = False,
-                    CTCM_TYPES: list = [4],
-                    CTCM_INTERVAL: list = [50000000],
-
-                    MLT_BUFFER_TIMEOUT: int = 100,
-                    MLT_SEND_TIMED_OUT_TDS: bool = True,
-                    MLT_MAX_TD_LENGTH_MS: int = 1000,
-                    MLT_IGNORE_TC: list = [],
-                    MLT_USE_READOUT_MAP: bool = False,
-                    MLT_READOUT_MAP: dict = {},
-
-                    USE_CHANNEL_FILTER: bool = True,
-
-                    CHANNEL_MAP_NAME = "ProtoDUNESP1ChannelMap",
-                    DATA_REQUEST_TIMEOUT = 1000,
-                    HOST="localhost",
-                    DEBUG=False):
-    
     # Generate schema for the maker plugins on the fly in the temptypes module
     make_moo_record(ACTIVITY_CONFIG , 'ActivityConf' , 'temptypes')
     make_moo_record(CANDIDATE_CONFIG, 'CandidateConf', 'temptypes')
@@ -116,12 +110,12 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
 
     # How many clock ticks are there in a _wall clock_ second?
     ticks_per_wall_clock_s = CLOCK_SPEED_HZ / DATA_RATE_SLOWDOWN_FACTOR
-    
+
     # Converting certain parameters to ticks instead of ms
     max_td_length_ticks = MLT_MAX_TD_LENGTH_MS * CLOCK_SPEED_HZ / 1000
-    
+
     modules = []
-    
+
     TP_SOURCE_IDS = {}
     TA_SOURCE_IDS = {}
     TC_SOURCE_ID = {}
@@ -142,8 +136,8 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
         modules += [DAQModule(name = 'tctee_ttcm',
                          plugin = 'TCTee')]
 
-    
-    if len(TP_SOURCE_IDS) > 0:        
+
+    if len(TP_SOURCE_IDS) > 0:
         config_tcm =  tcm.Conf(candidate_maker=CANDIDATE_PLUGIN,
                                candidate_maker_config=temptypes.CandidateConf(**CANDIDATE_CONFIG))
 
@@ -177,7 +171,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                         DAQModule(name = f'heartbeatmaker_{link_id}',
                                   plugin = 'FakeTPCreatorHeartbeatMaker',
                                   conf = heartbeater.Conf(heartbeat_interval=ticks_per_wall_clock_s//100))]
-            
+
             # 1 buffer per TPG channel
             modules += [DAQModule(name = f'buf_{link_id}',
                                   plugin = 'TPBuffer',
@@ -234,7 +228,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                                                                      # Need to find out where to specify these"
                                                                      tolerate_incompleteness=TOLERATE_INCOMPLETENESS,
                                                                      completeness_tolerance=COMPLETENESS_TOLERANCE)),
-                                    
+
                             DAQModule(name = f'tam_{region_id}',
                                       plugin = 'TriggerActivityMaker',
                                       conf = tam.Conf(activity_maker=ACTIVITY_PLUGIN,
@@ -245,7 +239,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
 
                             DAQModule(name = f'tasettee_region_{region_id}',
                                       plugin = "TASetTee"),
-                            
+
                             DAQModule(name = f'ta_buf_region_{region_id}',
                                       plugin = 'TABuffer',
                                       # PAR 2022-04-20 Not sure what to set the element id to so it doesn't collide with the region/element used by TP buffers. Make it some big number that shouldn't already be used by the TP buffer
@@ -261,7 +255,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                                                                                                                  request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                                                  enable_raw_recording = False)))]
 
-        
+
     if USE_HSI_INPUT:
         modules += [DAQModule(name = 'ttcm',
                           plugin = 'TimingTriggerCandidateMaker',
@@ -285,7 +279,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                        trigger_intervals=CTCM_INTERVAL,
                        clock_frequency_hz=CLOCK_SPEED_HZ,
                        timestamp_method="kSystemClock"))]
-    
+
     # We need to populate the list of links based on the fragment
     # producers available in the system. This is a bit of a
     # chicken-and-egg problem, because the trigger app itself creates
@@ -362,7 +356,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
                     mgraph.add_endpoint(f"tpsets_{link_id1}", f"channelfilter_{link_id2}.tpset_source", "TPSet", Direction.IN, is_pubsub=True)
                 else:
                     mgraph.add_endpoint(f"tpsets_{link_id1}", f'tpsettee_{link_id2}.input', "TPSet",            Direction.IN, is_pubsub=True)
-                    
+
 
                 mgraph.add_fragment_producer(id=tp_sid, subsystem="Trigger",
                                              requests_in=f"{buf_name}.data_request_source",
@@ -376,6 +370,6 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
 
 
     trigger_app = App(modulegraph=mgraph, host=HOST, name='TriggerApp')
-    
+
     return trigger_app
 

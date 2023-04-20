@@ -32,30 +32,56 @@ QUEUE_POP_WAIT_MS = 100
 # local clock speed Hz
 # CLOCK_SPEED_HZ = 50000000;
 
-def get_dqm_app(DQM_IMPL='',
-                DATA_RATE_SLOWDOWN_FACTOR=1,
-                CLOCK_SPEED_HZ=50000000,
-                DQMIDX=0,
-                MAX_NUM_FRAMES=32768,
-                KAFKA_ADDRESS='',
-                KAFKA_TOPIC='',
-                CMAP='HD',
-                RAW_PARAMS=[60, 50],
-                RMS_PARAMS=[10, 1000],
-                STD_PARAMS=[10, 1000],
-                FOURIER_CHANNEL_PARAMS=[600, 100],
-                FOURIER_PLANE_PARAMS=[60, 1000],
-                LINKS=[],
-                HOST="localhost",
-                MODE="readout",
-                DF_RATE=10,
-                DF_ALGS='raw std fourier_plane',
-                DF_TIME_WINDOW=0,
-                DRO_CONFIG=None,
-                RU_APPNAME_WITH_UNDERSCORE="ru_0",
-                TRB_DQM_SOURCEID_OFFSET=0,
-                DEBUG=False,
-                ):
+def get_dqm_app(sourceid, common_conf, dqm_conf, dro_config, idx, ru_name_with_underscore='', debug=False):
+
+    '''
+    DQM_IMPL='',
+    DATA_RATE_SLOWDOWN_FACTOR=1,
+    CLOCK_SPEED_HZ=50000000,
+    DQMIDX=0,
+    MAX_NUM_FRAMES=32768,
+    KAFKA_ADDRESS='',
+    KAFKA_TOPIC='',
+    CMAP='HD',
+    RAW_PARAMS=[60, 50],
+    RMS_PARAMS=[10, 1000],
+    STD_PARAMS=[10, 1000],
+    FOURIER_CHANNEL_PARAMS=[600, 100],
+    FOURIER_PLANE_PARAMS=[60, 1000],
+    LINKS=[],
+    HOST="localhost",
+    MODE="readout",
+    DF_RATE=10,
+    DF_ALGS='raw std fourier_plane',
+    DF_TIME_WINDOW=0,
+    DRO_CONFIG=None,
+    RU_APPNAME_WITH_UNDERSCORE="ru_0",
+    TRB_DQM_SOURCEID_OFFSET=0,
+    DEBUG=False,
+    '''
+    DATA_RATE_SLOWDOWN_FACTOR = common_conf.data_rate_slowdown_factor
+    CLOCK_SPEED_HZ            = common_conf.clock_speed_hz
+
+    TRB_DQM_SOURCEID_OFFSET = sourceid.get_next_source_id("TRBuilder")
+
+    DQMIDX = idx
+    LINKS  = dqm_links
+    DRO_CONFIG = dro_config
+    RU_APPNAME_WITH_UNDERSCORE = ru_name_with_underscore
+
+    dqm_links = [link.dro_source_id for dro_config in dro_infos for link in dro_config.links]
+
+    DQM_IMPL                   = dqm_conf.impl
+    MAX_NUM_FRAMES             = dqm_conf.max_num_frames
+    KAFKA_ADDRESS              = dqm_conf.kafka_address
+    KAFKA_TOPIC                = dqm_conf.kafka_topic
+    CMAP                       = dqm_conf.cmap
+    RAW_PARAMS                 = dqm_conf.raw_params
+    RMS_PARAMS                 = dqm_conf.rms_params
+    STD_PARAMS                 = dqm_conf.std_params
+    FOURIER_CHANNEL_PARAMS     = dqm_conf.fourier_channel_params
+    FOURIER_PLANE_PARAMS       = dqm_conf.fourier_plane_params
+    HOST                       = dqm_conf.host_dqm[DQMIDX % len(dqm_conf.host_dqm)]
 
     FRONTEND_TYPE = DetID.subdetector_to_string(DetID.Subdetector(DRO_CONFIG.links[0].det_id))
     if ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 50000000):
@@ -118,11 +144,11 @@ def get_dqm_app(DQM_IMPL='',
     if MODE == 'readout':
         mgraph.add_endpoint(f"timesync_{RU_APPNAME_WITH_UNDERSCORE}_.*", "dqmprocessor.timesync_input", "TimeSync", Direction.IN, is_pubsub=True)
         mgraph.connect_modules("dqmprocessor.trigger_decision_output", "trb_dqm.trigger_decision_input", "TriggerDecision", 'trigger_decision_q_dqm')
-        mgraph.connect_modules('trb_dqm.trigger_record_output', 'dqmprocessor.trigger_record_input', "TriggerRecord", 'trigger_record_q_dqm', toposort=False)  
+        mgraph.connect_modules('trb_dqm.trigger_record_output', 'dqmprocessor.trigger_record_input', "TriggerRecord", 'trigger_record_q_dqm', toposort=False)
     else:
         mgraph.add_endpoint(f'trmon_dqm2df_{DQMIDX}', None, "TRMonRequest", Direction.OUT)
         mgraph.add_endpoint(f"tr_df2dqm_{DQMIDX}", None, "TriggerRecord", Direction.IN, toposort=True)
-    
+
     dqm_app = App(mgraph, host=HOST)
 
     return dqm_app

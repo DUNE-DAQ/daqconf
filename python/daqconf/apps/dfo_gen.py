@@ -36,15 +36,16 @@ def make_moo_record(conf_dict,name,path='temptypes'):
     moo.otypes.make_type(schema='record', fields=fields, name=name, path=path)
 
 #===============================================================================
-def get_dfo_app(FREE_COUNT=1,
-                BUSY_COUNT=2,
-                DF_CONF : dict = {},
-                STOP_TIMEOUT: int = 10000,
-                HOST="localhost",
-                DEBUG=False):
+def get_dfo_app(sourceid, common_conf, dataflow_conf, debug=False):
+
+    FREE_COUNT   = max(1, dataflow_conf.token_count / 2)
+    BUSY_COUNT   = dataflow_conf.token_count
+    DF_CONF      = dataflow_conf.df_conf
+    STOP_TIMEOUT = dataflow_conf.dfo_stop_timeout
+    HOST         = dataflow_conf.host_dfo
 
     modules = []
-    
+
     modules += [DAQModule(name = "dfo",
                           plugin = "DataFlowOrchestrator",
                           conf = dfo.ConfParams(

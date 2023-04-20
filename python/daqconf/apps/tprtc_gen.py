@@ -30,15 +30,16 @@ from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Direction
 
 #===============================================================================
-def get_tprtc_app(MASTER_DEVICE_NAME="",
-                  TIMING_PARTITION_ID=0,
-                  TRIGGER_MASK=0xff,
-                  RATE_CONTROL_ENABLED=True,
-                  SPILL_GATE_ENABLED=False,
-                  TIMING_SESSION="",
-                  HOST="localhost",
-                  DEBUG=False):
-    
+def get_tprtc_app(sourceid, common_conf, timing_conf, debug=False):
+
+    MASTER_DEVICE_NAME   = timing_conf.timing_partition_master_device_name
+    TIMING_PARTITION_ID  = timing_conf.timing_partition_id
+    TRIGGER_MASK         = timing_conf.timing_partition_trigger_mask
+    RATE_CONTROL_ENABLED = timing_conf.timing_partition_rate_control_enabled
+    SPILL_GATE_ENABLED   = timing_conf.timing_partition_spill_gate_enabled
+    TIMING_SESSION       = timing_conf.timing_session_name
+    HOST                 = timing_conf.host_tprtc
+
     modules = {}
 
     modules = [DAQModule(name = "tprtc",
@@ -58,5 +59,5 @@ def get_tprtc_app(MASTER_DEVICE_NAME="",
     mgraph.add_endpoint("timing_device_info", None,"JSON", Direction.IN, is_pubsub=True, check_endpoints=False)
 
     tprtc_app = App(modulegraph=mgraph, host=HOST, name="TPRTCApp")
-     
+
     return tprtc_app

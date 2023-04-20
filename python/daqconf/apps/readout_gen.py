@@ -48,45 +48,95 @@ QUEUE_POP_WAIT_MS = 10 # This affects stop time, as each link will wait this lon
 # local clock speed Hz
 # CLOCK_SPEED_HZ = 50000000;
 
-def get_readout_app(DRO_CONFIG=None,
-                    EMULATOR_MODE=False,
-                    DATA_RATE_SLOWDOWN_FACTOR=1,
-                    RUN_NUMBER=333, 
-                    DEFAULT_DATA_FILE="./frames.bin",
-                    DATA_FILES={},
-                    FLX_INPUT=False,
-                    ETH_MODE=False,
-                    CLOCK_SPEED_HZ=50000000,
-                    RAW_RECORDING_ENABLED=False,
-                    RAW_RECORDING_OUTPUT_DIR=".",
-                    CHANNEL_MASK_SOFTWARE_TPG: list = [],
-                    THRESHOLD_SOFTWARE_TPG=120,
-                    ALGORITHM_SOFTWARE_TPG="SWTPG",
-                    SOFTWARE_TPG_ENABLED=False,                                        
-                    FIRMWARE_TPG_ENABLED=False,
-                    DTP_CONNECTIONS_FILE="${DTPCONTROLS_SHARE}/config/dtp_connections.xml",
-                    FIRMWARE_HIT_THRESHOLD=20,
-                    TPG_CHANNEL_MAP= "ProtoDUNESP1ChannelMap",
-                    USE_FAKE_DATA_PRODUCERS=False,
-                    LATENCY_BUFFER_SIZE=499968,
-                    DATA_REQUEST_TIMEOUT=1000,
-                    FRAGMENT_SEND_TIMEOUT=10,
-                    HOST="localhost",
-                    SOURCEID_BROKER : SourceIDBroker = None,
-                    READOUT_SENDS_TP_FRAGMENTS=False,
-                    ENABLE_DPDK_SENDER=False,
-                    ENABLE_DPDK_READER=False,
-                    EAL_ARGS='-l 0-1 -n 3 -- -m [0:1].0 -j',
-                    BASE_SOURCE_IP="10.73.139.",
-                    DESTINATION_IP="10.73.139.17",
-                    NUMA_ID=0,
-                    LATENCY_BUFFER_NUMA_AWARE = False,
-                    LATENCY_BUFFER_ALLOCATION_MODE = False,
-                    CARD_ID_OVERRIDE = -1,
-                    EMULATED_DATA_TIMES_START_WITH_NOW = False,
-                    DEBUG=False):
+def get_readout_app(sourceid, common_conf, readout_conf, dro_config, data_file_map,tpg_channel_map, debug=False):
+    '''
+    DRO_CONFIG=None,
+    EMULATOR_MODE=False,
+    DATA_RATE_SLOWDOWN_FACTOR=1,
+    RUN_NUMBER=333,
+    DEFAULT_DATA_FILE="./frames.bin",
+    DATA_FILES={},
+    FLX_INPUT=False,
+    ETH_MODE=False,
+    CLOCK_SPEED_HZ=50000000,
+    RAW_RECORDING_ENABLED=False,
+    RAW_RECORDING_OUTPUT_DIR=".",
+    CHANNEL_MASK_SOFTWARE_TPG: list = [],
+    THRESHOLD_SOFTWARE_TPG=120,
+    ALGORITHM_SOFTWARE_TPG="SWTPG",
+    SOFTWARE_TPG_ENABLED=False,
+    FIRMWARE_TPG_ENABLED=False,
+    DTP_CONNECTIONS_FILE="${DTPCONTROLS_SHARE}/config/dtp_connections.xml",
+    FIRMWARE_HIT_THRESHOLD=20,
+    TPG_CHANNEL_MAP= "ProtoDUNESP1ChannelMap",
+    USE_FAKE_DATA_PRODUCERS=False,
+    LATENCY_BUFFER_SIZE=499968,
+    DATA_REQUEST_TIMEOUT=1000,
+    FRAGMENT_SEND_TIMEOUT=10,
+    HOST="localhost",
+    SOURCEID_BROKER : SourceIDBroker = None,
+    READOUT_SENDS_TP_FRAGMENTS=False,
+    ENABLE_DPDK_SENDER=False,
+    ENABLE_DPDK_READER=False,
+    EAL_ARGS='-l 0-1 -n 3 -- -m [0:1].0 -j',
+    BASE_SOURCE_IP="10.73.139.",
+    DESTINATION_IP="10.73.139.17",
+    NUMA_ID=0,
+    LATENCY_BUFFER_NUMA_AWARE = False,
+    LATENCY_BUFFER_ALLOCATION_MODE = False,
+    CARD_ID_OVERRIDE = -1,
+    EMULATED_DATA_TIMES_START_WITH_NOW = False,
+    DEBUG=False):'''
+    numa_id = readout.numa_config['default_id']
+    latency_numa = readout.numa_config['default_latency_numa_aware']
+    latency_preallocate = readout.numa_config['default_latency_preallocation']
+    card_override = -1
+    for ex in readout.numa_config['exceptions']:
+        if ex['host'] == dro_config.host and ex['card'] == dro_config.card:
+            numa_id = ex['numa_id']
+            latency_numa = ex['latency_buffer_numa_aware']
+            latency_preallocate = ex['latency_buffer_preallocation']
+            card_override = ex['felix_card_id']
+
+    DATA_RATE_SLOWDOWN_FACTOR = common_conf.data_rate_slowdown_factor
+    CLOCK_SPEED_HZ            = common_conf.clock_speed_hz
+    DATA_REQUEST_TIMEOUT      = common_conf.data_request_timeout_ms
+    ENABLE_DPDK_SENDER        = common_conf.enable_dpdk_sender
+
+    DRO_CONFIG = dro_config
+    HOST = DRO_CONFIG.host
+    DATA_FILES = data_file_map
+    TPG_CHANNEL_MAP = tpg_channel_map
+    NUMA_ID = numa_id
+
+    EMULATOR_MODE     = readout_conf.emulator_mode
+    DEFAULT_DATA_FILE = readout_conf.default_data_file
+    FLX_INPUT         = readout_conf.use_felix
+    ETH_MODE          = readout_conf.eth_mode
+    RAW_RECORDING_ENABLED = readout_conf.enable_raw_recording
+    RAW_RECORDING_OUTPUT_DIR = readout_conf.raw_recording_output_dir
+    SOFTWARE_TPG_ENABLED = readout_conf.enable_software_tpg
+    THRESHOLD_SOFTWARE_TPG = readout_conf.software_tpg_threshold
+    ALGORITHM_SOFTWARE_TPG = readout_conf.software_tpg_algorithm
+    CHANNEL_MASK_SOFTWARE_TPG = readout_conf.software_tpg_channel_mask
+    FIRMWARE_TPG_ENABLED = readout_conf.enable_firmware_tpg
+    DTP_CONNECTIONS_FILE= readout_conf.dtp_connections_file
+    FIRMWARE_HIT_THRESHOLD= readout_conf.firmware_hit_threshold
+    USE_FAKE_DATA_PRODUCERS = readout_conf.use_fake_data_producers
+    LATENCY_BUFFER_SIZE=readout_conf.latency_buffer_size
+    FRAGMENT_SEND_TIMEOUT=readout_conf.fragment_send_timeout_ms
+    READOUT_SENDS_TP_FRAGMENTS = readout_conf.readout_sends_tp_fragments
+    ENABLE_DPDK_READER = readout_conf.enable_dpdk_reader
+    EAL_ARGS=readout_conf.eal_args
+    BASE_SOURCE_IP=readout_conf.base_source_ip
+    DESTINATION_IP=readout_conf.destination_ip
+    LATENCY_BUFFER_NUMA_AWARE = latency_numa
+    LATENCY_BUFFER_ALLOCATION_MODE = latency_preallocate
+    CARD_ID_OVERRIDE = card_override
+    EMULATED_DATA_TIMES_START_WITH_NOW = readout_conf.emulated_data_times_start_with_now
+
     """Generate the json configuration for the readout process"""
-    
+
     if DRO_CONFIG is None:
         raise RuntimeError(f"ERROR: DRO_CONFIG is None!")
 
@@ -123,7 +173,7 @@ def get_readout_app(DRO_CONFIG=None,
         FRONTEND_TYPE = "mpd"
         FAKEDATA_FRAGMENT_TYPE = "MPD"
         QUEUE_FRAGMENT_TYPE = "MPDFrame"
-        
+
     print(f' in readout gen FRONTENT_TYPE={FRONTEND_TYPE}')
 
     if DEBUG: print(f'FRONTENT_TYPE={FRONTEND_TYPE}')
@@ -147,7 +197,7 @@ def get_readout_app(DRO_CONFIG=None,
     cmd_data = {}
 
     RATE_KHZ = CLOCK_SPEED_HZ / (25 * 12 * DATA_RATE_SLOWDOWN_FACTOR * 1000)
-    
+
     if DEBUG: print(f"ReadoutApp.__init__ with host={DRO_CONFIG.host} and {len(DRO_CONFIG.links)} links enabled")
 
     if DEBUG: print(f'FRONTENT_TYPE={FRONTEND_TYPE}')
@@ -196,7 +246,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                  rawdataprocessorconf = rconf.RawDataProcessorConf(source_id = link_to_tp_sid_map[link.dro_source_id],
                                                                                                    enable_software_tpg = False,
                                                                                                    software_tpg_threshold = THRESHOLD_SOFTWARE_TPG,
-                                                                                                   software_tpg_algorithm = ALGORITHM_SOFTWARE_TPG,               
+                                                                                                   software_tpg_algorithm = ALGORITHM_SOFTWARE_TPG,
                                                                                                    software_tpg_channel_mask = CHANNEL_MASK_SOFTWARE_TPG,
                                                                                                    channel_map_name=TPG_CHANNEL_MAP),
                                                  requesthandlerconf= rconf.RequestHandlerConf(latency_buffer_size = LATENCY_BUFFER_SIZE,
@@ -214,7 +264,7 @@ def get_readout_app(DRO_CONFIG=None,
         assert(len(fw_tp_id_map) <= 2)
         for tp, tp_out in zip(fw_tp_id_map.values(), fw_tp_out_id_map.values()):
             # for sid in fw_tp_out_id_map.values():
-            queues += [Queue(f"tp_datahandler_{tp}.tp_out",f"tp_out_datahandler_{tp_out}.raw_input", "TriggerPrimitive",f"sw_tp_link_{tp_out}",100000 )]                
+            queues += [Queue(f"tp_datahandler_{tp}.tp_out",f"tp_out_datahandler_{tp_out}.raw_input", "TriggerPrimitive",f"sw_tp_link_{tp_out}",100000 )]
             modules += [DAQModule(name = f"tp_out_datahandler_{tp_out}",
                                plugin = "DataLinkHandler",
                                conf = rconf.Conf(readoutmodelconf = rconf.ReadoutModelConf(source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
@@ -241,7 +291,7 @@ def get_readout_app(DRO_CONFIG=None,
             # for sid in fw_tp_id_map.values():
             queues += [Queue(f"tp_datahandler_{tp}.errored_frames", 'errored_frame_consumer.input_queue',"WIBFrame", "errored_frames_q")]
             modules += [DAQModule(name = f"tp_datahandler_{tp}",
-                                  plugin = "DataLinkHandler", 
+                                  plugin = "DataLinkHandler",
                                   conf = rconf.Conf(
                                       readoutmodelconf= rconf.ReadoutModelConf(
                                           source_queue_timeout_ms= QUEUE_POP_WAIT_MS,
@@ -261,7 +311,7 @@ def get_readout_app(DRO_CONFIG=None,
                                           source_id = tp,
                                           enable_software_tpg = False,
                                           software_tpg_threshold = THRESHOLD_SOFTWARE_TPG,
-                                          software_tpg_algorithm = ALGORITHM_SOFTWARE_TPG,                                          
+                                          software_tpg_algorithm = ALGORITHM_SOFTWARE_TPG,
                                           software_tpg_channel_mask = CHANNEL_MASK_SOFTWARE_TPG,
                                           enable_firmware_tpg = True,
                                           fwtp_fake_timestamp = False,
@@ -290,7 +340,7 @@ def get_readout_app(DRO_CONFIG=None,
 
     # There are two flags to be checked so I think a for loop
     # is the closest way to the blocks that are being used here
-    
+
     for link in DRO_CONFIG.links:
         if USE_FAKE_DATA_PRODUCERS:
             modules += [DAQModule(name = f"fakedataprod_{link.dro_source_id}",
@@ -305,14 +355,14 @@ def get_readout_app(DRO_CONFIG=None,
                                   ))]
         else:
             if SOFTWARE_TPG_ENABLED:
-                queues += [Queue(f"datahandler_{link.dro_source_id}.tp_out",f"tp_datahandler_{link_to_tp_sid_map[link.dro_source_id]}.raw_input","TriggerPrimitive",f"sw_tp_link_{link.dro_source_id}",100000 )]                
+                queues += [Queue(f"datahandler_{link.dro_source_id}.tp_out",f"tp_datahandler_{link_to_tp_sid_map[link.dro_source_id]}.raw_input","TriggerPrimitive",f"sw_tp_link_{link.dro_source_id}",100000 )]
 
             #? why only create errored frames for wib, should this also be created for wib2 or other FE's?
             if FRONTEND_TYPE == 'wib':
                 queues += [Queue(f"datahandler_{link.dro_source_id}.errored_frames", 'errored_frame_consumer.input_queue',"WIBFrame", "errored_frames_q")]
 
             modules += [DAQModule(name = f"datahandler_{link.dro_source_id}",
-                                  plugin = "DataLinkHandler", 
+                                  plugin = "DataLinkHandler",
                                   conf = rconf.Conf(
                                       readoutmodelconf= rconf.ReadoutModelConf(
                                           source_queue_timeout_ms= QUEUE_POP_WAIT_MS,
@@ -355,7 +405,7 @@ def get_readout_app(DRO_CONFIG=None,
                                           enable_raw_recording = RAW_RECORDING_ENABLED,
                                       )))]
 
-                    
+
     if not USE_FAKE_DATA_PRODUCERS:
         if FLX_INPUT:
             link_0 = []
@@ -381,7 +431,7 @@ def get_readout_app(DRO_CONFIG=None,
                     link_1.append(5)
                     fw_tp_sid = fw_tp_id_map[FWTPID(DRO_CONFIG.host, DRO_CONFIG.card, 1)]
                     queues += [Queue(f'flxcard_1.output_{fw_tp_sid}',f"tp_datahandler_{fw_tp_sid}.raw_input","TPSet", f'raw_tp_link_{fw_tp_sid}', 100000 )]
-            
+
             link_0.sort()
             link_1.sort()
 
@@ -395,7 +445,7 @@ def get_readout_app(DRO_CONFIG=None,
                                                  dma_memory_size_gb = 4,
                                                  numa_id = NUMA_ID,
                                                  links_enabled = link_0))]
-            
+
             if len(link_1) > 0:
                 modules += [DAQModule(name = "flxcard_1",
                                    plugin = "FelixCardReader",
@@ -452,7 +502,7 @@ def get_readout_app(DRO_CONFIG=None,
                                   zmq_receiver_timeout = 10000)
                 if FRONTEND_TYPE=='mpd':
                     fake_source = "mpd_source"
-                    card_reader = "PacmanCardReader" # Should be generic for all NDLAR 
+                    card_reader = "PacmanCardReader" # Should be generic for all NDLAR
                     conf = pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=link.dro_source_id)
                                                   for link in DRO_CONFIG.links],
                                     zmq_receiver_timeout = 10000)
@@ -493,12 +543,12 @@ def get_readout_app(DRO_CONFIG=None,
             queues += [Queue(f"nic_reader.output_{link.dro_source_id}",
                              f"datahandler_{link.dro_source_id}.raw_input", QUEUE_FRAGMENT_TYPE,
                              f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000) for link in DRO_CONFIG.links]
-                  
+
     # modules += [
     #     DAQModule(name = "fragment_sender",
     #                    plugin = "FragmentSender",
     #                    conf = None)]
-                        
+
     mgraph = ModuleGraph(modules, queues=queues)
 
     if FIRMWARE_TPG_ENABLED:
@@ -528,7 +578,7 @@ def get_readout_app(DRO_CONFIG=None,
         if SOFTWARE_TPG_ENABLED:
             mgraph.add_endpoint(f"tpsets_ru{RUIDX}_link{link.dro_source_id}", f"datahandler_{link.dro_source_id}.tpset_out", "TPSet",   Direction.OUT, is_pubsub=True)
             mgraph.add_endpoint(f"timesync_tp_dlh_ru{RUIDX}_{link_to_tp_sid_map[link.dro_source_id]}", f"tp_datahandler_{link_to_tp_sid_map[link.dro_source_id]}.timesync_output","TimeSync",    Direction.OUT, is_pubsub=True)
-        
+
         if USE_FAKE_DATA_PRODUCERS:
             # Add fragment producers for fake data. This call is necessary to create the RequestReceiver instance, but we don't need the generated FragmentSender or its queues...
             mgraph.add_fragment_producer(id = link.dro_source_id, subsystem = "Detector_Readout",

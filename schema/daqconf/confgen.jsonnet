@@ -31,7 +31,7 @@ local cs = {
   tc_intervals:    s.sequence( "TCIntervals",   self.tc_interval, doc="List of TC intervals used by CTCM"),
   readout_time:    s.number(   "ROTime",        "i8", doc="A readout time in ticks"),
   channel_list:    s.sequence( "ChannelList",   self.count, doc="List of offline channels to be masked out from the TPHandler"),
-  
+
   numa_exception:  s.record( "NUMAException", [
     s.field( "host", self.host, default='localhost', doc="Host of exception"),
     s.field( "card", self.count, default=0, doc="Card ID of exception"),
@@ -56,8 +56,6 @@ local cs = {
     s.field( "pocket_url", self.host, default='127.0.0.1', doc="URL for connecting to Pocket services"),
     s.field( "image", self.string, default="dunedaq/c8-minimal", doc="Which docker image to use"),
     s.field( "use_k8s", self.flag, default=false, doc="Whether to use k8s"),
-    s.field( "op_env", self.string, default='swtest', doc="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files"),
-    s.field( "data_request_timeout_ms", self.count, default=1000, doc="The baseline data request timeout that will be used by modules in the Readout and Trigger subsystems (i.e. any module that produces data fragments). Downstream timeouts, such as the trigger-record-building timeout, are derived from this."),
     s.field( "use_connectivity_service", self.flag, default=true, doc="Whether to use the ConnectivityService to manage connections"),
     s.field( "start_connectivity_service", self.flag, default=true, doc="Whether to use the ConnectivityService to manage connections"),
     s.field( "connectivity_service_threads", self.count, default=2, doc="Number of threads for the gunicorn server that serves connection info"),
@@ -68,8 +66,19 @@ local cs = {
     s.field( "use_data_network", self.flag, default = false, doc="Whether to use the data network (Won't work with k8s)"),
   ]),
 
-  timing: s.record("timing", [
+  common: s.record("common", [
+    s.field( "data_request_timeout_ms", self.count, default=1000, doc="The baseline data request timeout that will be used by modules in the Readout and Trigger subsystems (i.e. any module that produces data fragments). Downstream timeouts, such as the trigger-record-building timeout, are derived from this."),
+    s.field( "trigger_rate_hz", self.rate, default=1.0, doc='Fake HSI only: rate at which fake HSIEvents are sent. 0 - disable HSIEvent generation. Former -t'),
+    s.field( "clock_speed_hz", self.freq, default=50000000),
+    s.field( "data_rate_slowdown_factor",self.count, default=1, doc="Factor by which to suppress data generation. Former -s"),
     s.field( "timing_session_name", self.string, default="", doc="Name of the global timing session to use, for timing commands"),
+    s.field( "op_env", self.string, default='swtest', doc="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files"),
+    s.field( "hardware_map_file", self.path, default='./HardwareMap.txt', doc="File containing detector hardware map for configuration to run"),
+    s.field( 'enable_dqm', self.flag, default=false, doc="Enable Data Quality Monitoring"),
+    s.field( "enable_dpdk_reader", self.flag, default=false, doc="Enable sending frames using DPDK"),
+  ]),
+
+  timing: s.record("timing", [
     s.field( "host_tprtc", self.host, default='localhost', doc='Host to run the timing partition controller app on'),
     # timing hw partition options
     s.field( "control_timing_partition", self.flag, default=false, doc='Flag to control whether we are controlling timing partition in master hardware'),
@@ -123,11 +132,8 @@ local cs = {
   data_files: s.sequence("data_files", self.data_file_entry),
 
   readout: s.record("readout", [
-    s.field( "hardware_map_file", self.path, default='./HardwareMap.txt', doc="File containing detector hardware map for configuration to run"),
     s.field( "emulator_mode", self.flag, default=false, doc="If active, timestamps of data frames are overwritten when processed by the readout. This is necessary if the felix card does not set correct timestamps. Former -e"),
     s.field( "thread_pinning_file", self.path, default="", doc="A thread pinning configuration file that gets executed after conf."),
-    s.field( "data_rate_slowdown_factor",self.count, default=1, doc="Factor by which to suppress data generation. Former -s"),
-    s.field( "clock_speed_hz", self.freq, default=50000000),
     s.field( "default_data_file", self.path, default='asset://?label=ProtoWIB&subsystem=readout', doc="File containing data frames to be replayed by the fake cards. Former -d. Uses the asset manager, can also be 'asset://?checksum=somelonghash', or 'file://somewhere/frames.bin' or 'frames.bin'"),
     s.field( "data_files", self.data_files, default=[], doc="Files to use by detector type"),
     s.field( "use_felix", self.flag, default=false, doc="Use real felix cards instead of fake ones. Former -f"),
@@ -145,7 +151,6 @@ local cs = {
     s.field( "raw_recording_output_dir", self.path, default='.', doc="Output directory where recorded data is written to. Data for each link is written to a separate file"),
     s.field( "use_fake_data_producers", self.flag, default=false, doc="Use fake data producers that respond with empty fragments immediately instead of (fake) cards and DLHs"),
     s.field( "readout_sends_tp_fragments",self.flag, default=false, doc="Send TP Fragments from Readout to Dataflow (via enabling TP Fragment links in MLT)"),
-    s.field( "enable_dpdk_reader", self.flag, default=false, doc="Enable sending frames using DPDK"),
     s.field( "host_dpdk_reader", self.hosts, default=['np04-srv-022'], doc="Which host to use to receive frames"),
     s.field( "eal_args", self.string, default='-l 0-1 -n 3 -- -m [0:1].0 -j', doc='Args passed to the EAL in DPDK'),
     s.field( "base_source_ip", self.string, default='10.73.139.', doc='First part of the IP of the source'),
@@ -232,7 +237,6 @@ local cs = {
   ]),
 
   trigger: s.record("trigger",[
-    s.field( "trigger_rate_hz", self.rate, default=1.0, doc='Fake HSI only: rate at which fake HSIEvents are sent. 0 - disable HSIEvent generation. Former -t'),
     s.field( "trigger_window_before_ticks",self.count, default=1000, doc="Trigger window before marker. Former -b"),
     s.field( "trigger_window_after_ticks", self.count, default=1000, doc="Trigger window after marker. Former -a"),
     s.field( "host_trigger", self.host, default='localhost', doc='Host to run the trigger app on'),
@@ -280,7 +284,6 @@ local cs = {
   ]),
 
   dqm: s.record("dqm", [
-    s.field('enable_dqm', self.flag, default=false, doc="Enable Data Quality Monitoring"),
     s.field('impl', self.monitoring_dest, default='local', doc="DQM destination (Kafka used for cern and pocket)"),
     s.field('cmap', self.dqm_channel_map, default='HD', doc="Which channel map to use for DQM"),
     s.field('host_dqm', self.hosts, default=['localhost'], doc='Host(s) to run the DQM app on'),
@@ -303,14 +306,15 @@ local cs = {
   ]),
 
   daqconf_multiru_gen: s.record('daqconf_multiru_gen', [
-    s.field('boot',     self.boot,    default=self.boot,      doc='Boot parameters'),
-    s.field('dataflow', self.dataflow, default=self.dataflow, doc='Dataflow paramaters'),
-    s.field('dqm',      self.dqm,      default=self.dqm,      doc='DQM parameters'),
-    s.field('hsi',      self.hsi,      default=self.hsi,      doc='HSI parameters'),
-    s.field('ctb_hsi',  self.ctb_hsi,  default=self.ctb_hsi,  doc='CTB parameters'),
-    s.field('readout',  self.readout,  default=self.readout,  doc='Readout parameters'),
-    s.field('timing',   self.timing,   default=self.timing,   doc='Timing parameters'),
-    s.field('trigger',  self.trigger,  default=self.trigger,  doc='Trigger parameters'),
+    s.field('boot',        self.boot,        default=self.boot,        doc='Boot (run control only!!) parameters'),
+    s.field('common',      self.common,      default=self.common,      doc='Common parameters'),
+    s.field('dataflow',    self.dataflow,    default=self.dataflow,    doc='Dataflow paramaters'),
+    s.field('dqm',         self.dqm,         default=self.dqm,         doc='DQM parameters'),
+    s.field('hsi',         self.hsi,         default=self.hsi,         doc='HSI parameters'),
+    s.field('ctb_hsi',     self.ctb_hsi,     default=self.ctb_hsi,     doc='CTB parameters'),
+    s.field('readout',     self.readout,     default=self.readout,     doc='Readout parameters'),
+    s.field('timing',      self.timing,      default=self.timing,      doc='Timing parameters'),
+    s.field('trigger',     self.trigger,     default=self.trigger,     doc='Trigger parameters'),
     s.field('dpdk_sender', self.dpdk_sender, default=self.dpdk_sender, doc='DPDK sender parameters'),
   ]),
 

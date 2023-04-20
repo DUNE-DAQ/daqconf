@@ -13,7 +13,13 @@ moo.otypes.load_types('appfwk/app.jsonnet')
 moo.otypes.load_types('dfmodules/tpstreamwriter.jsonnet')
 moo.otypes.load_types('dfmodules/hdf5datastore.jsonnet')
 
-# Import new types
+moo.otypes.load_types('detchannelmaps/hardwaremapservice.jsonnet')
+
+# Load configuration types
+import moo.otypes
+
+import dunedaq.detchannelmaps.hardwaremapservice as hwms # PL things will have to get worse before they get better
+
 import dunedaq.dfmodules.tpstreamwriter as tpsw
 import dunedaq.hdf5libs.hdf5filelayout as h5fl
 import dunedaq.dfmodules.hdf5datastore as hdf5ds
@@ -25,19 +31,25 @@ from daqconf.core.conf_utils import Direction
 # Time to wait on pop()
 QUEUE_POP_WAIT_MS = 100
 
-def get_tpwriter_app(
-                     OUTPUT_PATH=".",
-                     APP_NAME="tpwriter",
-                     OPERATIONAL_ENVIRONMENT="swtest",
-                     MAX_FILE_SIZE=4*1024*1024*1024,
-                     DATA_RATE_SLOWDOWN_FACTOR=1,
-                     CLOCK_SPEED_HZ=50000000,
-                     HARDWARE_MAP='',
-                     SOURCE_IDX=998,
-                     HOST="localhost",
-                     DEBUG=False):
-
+def get_tpwriter_app(sourceid, common_conf, trigger_conf, debug=False):
     """Generate the json configuration for the readout and DF process"""
+
+    SOURCE_IDX = sourceid.get_next_source_id("TRBuilder")
+    sourceid.register_source_id("TRBuilder", SOURCE_IDX, None)
+
+    hw_map_service = HardwareMapService(common_conf.hardware_map_file)
+    serialized_hw_map = hw_map_service.get_hardware_map_json()
+    HARDWARE_MAP = hwms.HardwareMap(serialized_hw_map)
+
+    DATA_RATE_SLOWDOWN_FACTOR = common_conf.data_rate_slowdown_factor
+    CLOCK_SPEED_HZ            = common_conf.clock_speed_hz
+    OPERATIONAL_ENVIRONMENT   = common_conf.op_env
+
+    APP_NAME = "tpwriter"
+
+    OUTPUT_PATH   = trigger_conf.tpset_output_path
+    MAX_FILE_SIZE = trigger_conf.tpset_output_file_size
+    HOST          = trigger_conf.host_tpw
 
     ONE_SECOND_INTERVAL_TICKS = CLOCK_SPEED_HZ / DATA_RATE_SLOWDOWN_FACTOR
 
