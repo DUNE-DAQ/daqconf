@@ -94,7 +94,7 @@
     "emulator_mode": false,
     "thread_pinning_file": "",
     "data_rate_slowdown_factor": 1,
-    "clock_speed_hz": 50000000,
+    "clock_speed_hz": 62500000,
     "data_file": "./frames.bin",
     "use_felix": false,
     "latency_buffer_size": 499968,
