@@ -33,10 +33,10 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('--hardware-map-file', default='', help="File containing detector hardware map for configuration to run")
 @click.option('-s', '--data-rate-slowdown-factor', default=0, help="Scale factor for readout internal clock to generate less data")
 @click.option('--enable-dqm', default=False, is_flag=True, help="Enable generation of DQM apps")
-@click.option('--op-env', default='', help="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files")
+@click.option('--file-label', default='', help="File - used for raw data filename prefix")
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
-def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor, enable_dqm, op_env, debug, json_dir):
+def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor, enable_dqm, file_label, debug, json_dir):
 
     output_dir = Path(json_dir)
     if output_dir.exists():
@@ -97,8 +97,8 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     dqm.enable_dqm |= enable_dqm
     if dqm.impl == 'pocket':
         dqm.kafka_address = boot.pocket_url + ":30092"
-    if op_env != '':
-        boot.op_env = op_env
+    # if op_env != '':
+        # boot.op_env = op_env
 
     console.log("Loading dataflow config generator")
     from daqconf.apps.dataflow_gen import get_dataflow_app
@@ -542,6 +542,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
             OUTPUT_PATHS = df_config.output_paths,
             APP_NAME=app_name,
             OPERATIONAL_ENVIRONMENT = boot.op_env,
+            FILE_LABEL = file_label if file_label else boot.op_env,
             DATA_STORE_MODE=df_config.data_store_mode,
             MAX_FILE_SIZE = df_config.max_file_size,
             MAX_TRIGGER_RECORD_WINDOW = df_config.max_trigger_record_window,
