@@ -93,12 +93,16 @@ def get_readout_app(DRO_CONFIG=None,
     # Hack on strings to be used for connection instances: will be solved when data_type is properly used.
 
     FAKEDATA_FRAGMENT_TYPE = "Unknown"
+    FAKEDATA_TIME_TICK=32
+    FAKEDATA_FRAME_SIZE=472
     QUEUE_FRAGMENT_TYPE="WIBFrame"
     FRONTEND_TYPE = DetID.subdetector_to_string(DetID.Subdetector(DRO_CONFIG.links[0].det_id))
     if ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 50000000):
         FRONTEND_TYPE = "wib"
         QUEUE_FRAGMENT_TYPE="WIBFrame"
         FAKEDATA_FRAGMENT_TYPE = "ProtoWIB"
+        FAKEDATA_TIME_TICK=25
+        FAKEDATA_FRAME_SIZE=434
     elif ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 62500000 and ETH_MODE==False ):
         FRONTEND_TYPE = "wib2"
         QUEUE_FRAGMENT_TYPE="WIB2Frame"
@@ -107,6 +111,8 @@ def get_readout_app(DRO_CONFIG=None,
         FRONTEND_TYPE = "wibeth"
         QUEUE_FRAGMENT_TYPE="WIBEthFrame"
         FAKEDATA_FRAGMENT_TYPE = "WIBEth"
+        FAKEDATA_TIME_TICK=2048
+        FAKEDATA_FRAME_SIZE=7200
     elif FRONTEND_TYPE== "HD_PDS" or FRONTEND_TYPE== "VD_Cathode_PDS" or FRONTEND_TYPE=="VD_Membrane_PDS":
         FRONTEND_TYPE = "pds_stream"
         FAKEDATA_FRAGMENT_TYPE = "DAPHNE"
@@ -115,6 +121,8 @@ def get_readout_app(DRO_CONFIG=None,
         FRONTEND_TYPE = "tde"
         FAKEDATA_FRAGMENT_TYPE = "TDE_AMC"
         QUEUE_FRAGMENT_TYPE = "TDEFrame"
+        FAKEDATA_TIME_TICK=4472*32
+        FAKEDATA_FRAME_SIZE=8972
     elif FRONTEND_TYPE== "NDLAr_TPC":
         FRONTEND_TYPE = "pacman"
         FAKEDATA_FRAGMENT_TYPE = "PACMAN"
@@ -298,8 +306,8 @@ def get_readout_app(DRO_CONFIG=None,
                                   conf = fdp.ConfParams(
                                   system_type = "Detector_Readout",
                                   source_id = link.dro_source_id,
-                                  time_tick_diff = 25 if CLOCK_SPEED_HZ == 50000000 else 32, # WIB1 only if clock is WIB1 clock, otherwise WIB2
-                                  frame_size = 464 if CLOCK_SPEED_HZ == 50000000 else 472, # WIB1 only if clock is WIB1 clock, otherwise WIB2
+                                  time_tick_diff =     FAKEDATA_TIME_TICK,
+                                  frame_size = FAKEDATA_FRAME_SIZE,
                                   response_delay = 0,
                                   fragment_type = FAKEDATA_FRAGMENT_TYPE,
                                   ))]
