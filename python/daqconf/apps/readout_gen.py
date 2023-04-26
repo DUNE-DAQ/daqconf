@@ -45,8 +45,6 @@ from detdataformats._daq_detdataformats_py import *
 
 # Time to wait on pop()
 QUEUE_POP_WAIT_MS = 10 # This affects stop time, as each link will wait this long before stop
-# local clock speed Hz
-# CLOCK_SPEED_HZ = 50000000;
 
 def get_readout_app(DRO_CONFIG=None,
                     EMULATOR_MODE=False,
@@ -56,7 +54,7 @@ def get_readout_app(DRO_CONFIG=None,
                     DATA_FILES={},
                     FLX_INPUT=False,
                     ETH_MODE=False,
-                    CLOCK_SPEED_HZ=50000000,
+                    CLOCK_SPEED_HZ=62500000,
                     RAW_RECORDING_ENABLED=False,
                     RAW_RECORDING_OUTPUT_DIR=".",
                     CHANNEL_MASK_SOFTWARE_TPG: list = [],
