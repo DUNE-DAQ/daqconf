@@ -72,7 +72,7 @@ def get_buffer_conf(source_id, data_request_timeout):
                                                                                enable_raw_recording = False))
     
 #===============================================================================
-def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
+def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
                     DATA_RATE_SLOWDOWN_FACTOR: float = 1,
                     TP_CONFIG: dict = {},
                     TOLERATE_INCOMPLETENESS=False,
@@ -93,7 +93,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 50_000_000,
 
                     USE_CUSTOM_MAKER: bool = False,
                     CTCM_TYPES: list = [4],
-                    CTCM_INTERVAL: list = [50000000],
+                    CTCM_INTERVAL: list = [62500000],
 
                     MLT_MERGE_OVERLAPPING_TCS: bool = True,
                     MLT_BUFFER_TIMEOUT: int = 100,
