@@ -7,6 +7,9 @@ import click
 import json
 from rich import print
 from rich.table import Table
+from rich.console import Console
+
+console = Console()
 
 @click.group(chain=True)
 @click.pass_obj
@@ -14,28 +17,61 @@ def cli(obj):
     pass
 
 
-@cli.command('load')
+@cli.command('load', help="Load map from file")
 @click.argument('path', type=click.Path(exists=True))
 @click.pass_obj
 def load(obj, path):
     m = obj
     m.load(path)
-    # print(m.get_by_type("flx"))
 
-    print(m.as_table())
+    console.print(m.as_table())
 
+@cli.command('load-hw-map', help="Load map from a hardware map file")
+@click.argument('path', type=click.Path(exists=True))
+@click.pass_obj
+def load_hw_map(obj, path):
+    console.log("Loading HarwareMap libraries")
+    from detchannelmaps._daq_detchannelmaps_py import HardwareMapService
+    # Load configuration types
+    import moo.otypes
 
-@cli.command('rm')
+    moo.otypes.load_types('detchannelmaps/hardwaremapservice.jsonnet')
+    import dunedaq.detchannelmaps.hardwaremapservice as hwms
+
+    console.log(f"Loading '{path}'")
+
+    m = obj
+    hwmap_svc = HardwareMapService(path)
+    hw_map = hwmap_svc.get_hardware_map()
+    for hw_info in hw_map.link_infos:
+        m.add_srcid(
+            hw_info.dro_source_id, 
+            dromap.GeoID(
+                    det_id=hw_info.det_id,
+                    crate_id=hw_info.det_crate,
+                    slot_id=hw_info.det_slot,
+                    stream_id=hw_info.det_link,
+                ), 
+                'flx', 
+                host=hw_info.dro_host,
+                card=hw_info.dro_card,
+                slr=hw_info.dro_slr,
+                link=hw_info.dro_link,
+            )
+
+    console.print(m.as_table())
+
+@cli.command('rm', help="Remove a stream")
 @click.argument('src_id', type=int)
 @click.pass_obj
 def rm(obj, src_id):
-    print("Removing")
+    console.log(f"Removing {src_id}")
     m = obj
     m.remove_srcid(src_id)
-    print(m.as_table())
+    console.print(m.as_table())
 
 
-@cli.command("add-flx")
+@cli.command("add-flx", help="Add a felix stream")
 @click.option('--force', type=bool, default=False)
 @click.option('--src-id', type=int, default=None)
 @click.option('--geo-det-id', type=int, default=0)
@@ -57,16 +93,20 @@ def add_flx(obj, force, src_id, **kwargs):
     elif src_id in m.get_src_ids() and force:
         m.remove_srcid(src_id)
         
-    print(f"Adding felix entry {src_id}")
+    console.log(f"Adding felix entry {src_id}")
 
     geo_args = {k.removeprefix('geo_'):v for k,v in kwargs.items() if k.startswith('geo_') and v is not None}
     flx_args = {k.removeprefix('flx_'):v for k,v in kwargs.items() if k.startswith('flx_') and v is not None}
 
-    m.add_srcid(src_id, dromap.GeoID(**geo_args), 'flx', **flx_args )
+    try:
+        m.add_srcid(src_id, dromap.GeoID(**geo_args), 'flx', **flx_args )
+    except ValueError:
+        print(f"ERROR: {e}")
+        raise click.ClickException(f"Failed to insert src {src_id}")
     print(m.as_table())
 
     
-@cli.command("add-eth")
+@cli.command("add-eth", help="Add an Ethernet stream")
 @click.option('--force', type=bool, default=False)
 @click.option('--src-id', type=int, default=None)
 @click.option('--geo-det-id', type=int, default=0)
@@ -92,16 +132,20 @@ def add_eth(obj, force, src_id, **kwargs):
         m.remove_srcid(src_id)
 
 
-    print(f"Adding felix entry {src_id}")
+    console.log(f"Adding felix entry {src_id}")
 
     geo_args = {k.removeprefix('geo_'):v for k,v in kwargs.items() if k.startswith('geo_') and v is not None}
     eth_args = {k.removeprefix('eth_'):v for k,v in kwargs.items() if k.startswith('eth_') and v is not None}
 
-    m.add_srcid(src_id, dromap.GeoID(**geo_args), 'eth', **eth_args )
+    try:
+        m.add_srcid(src_id, dromap.GeoID(**geo_args), 'eth', **eth_args )
+    except ValueError as e:
+        print(f"ERROR: {e}")
+        raise click.ClickException(f"Failed to insert src {src_id}: {e}")
     print(m.as_table())
 
 
-@cli.command("save")
+@cli.command("save", help="Save the map to json file")
 @click.argument('path', type=click.Path())
 @click.pass_obj
 def save(obj, path):
@@ -109,6 +153,17 @@ def save(obj, path):
     m = obj
     with open(path,"w") as f:
         json.dump(m.as_json(), f, indent=4)
+    console.log(f"Map saved to '{path}'")
     
+
+@cli.command("ipy", help="Start IPython")
+@click.pass_obj
+def ipy(obj):
+
+    m = obj
+
+    import IPython
+    IPython.embed(colors="neutral")
+
 if __name__ == "__main__":
     cli(obj=dromap.DROMapService())

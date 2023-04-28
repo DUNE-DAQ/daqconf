@@ -1,3 +1,13 @@
+"""
+Detector-Readout Stream MAP
+
+BEWARE: Horrible things are done in this module, such that others don't have to suffer
+
+Open questions:
+
+- General vs specific validation (ETH, FLX) - delegate to spedific classes?
+- Streams mapping to readout unit applications, consistency checks: delegate to a dedicated class?
+"""
 # Set moo schema search path
 from dunedaq.env import get_moo_model_path
 import moo.io
@@ -14,10 +24,12 @@ import json
 import pathlib
 import copy
 
-from collections import namedtuple
+from typing import Dict
+from collections import namedtuple, defaultdict
 
 import sys
 
+from rich import print
 from rich.table import Table
 
 
@@ -35,14 +47,64 @@ for c in [
     setattr(thismodule, c_name, namedtuple(c_name, [f['name'] for f in c_ost['fields']]))
 
 
+
+# ROUnitID = namedtuple('ROUnitID', ['host_name', 'app_id', 'tech'])
+
+class ROUnitID:
+    """
+    """
+    
+    def __init__(self, host_name, iface, tech):
+        self.host_name = host_name
+        self.iface = iface
+        self.tech = tech
+
+    def __repr__(self):
+        return f"ROUnitID({self.host_name}, {self.iface}, {self.tech})"
+    
+
+    def __eq__(self, other):
+        return (
+            (self.host_name == other.host_name) and
+            (self.iface == other.iface) and 
+            (self.tech == other.tech) 
+        )
+      
+    def __hash__(self):
+        return hash((self.host_name, self.iface, self.tech))  
+
+    @property
+    def safe_host_name(self):
+        return self.host_name.replace('-','')
+
+    @property
+    def label(self):
+        return f"{self.safe_host_name}{self.tech}{self.iface}"
+    
+    
 class DROMapService:
     """Detector - Readout Link mapping"""
+
+    _tech_map =  {
+        'flx': (FelixStreamConf, dlm.FelixStreamConf),
+        'eth': (EthStreamConf, dlm.EthStreamConf),
+    }
+
+    _host_label_map = {
+        'flx': 'host',
+        'eth': 'rx_host',
+    }
+
+    _iflabel_map = {
+        'flx': 'card',
+        'eth': 'rx_iface',
+    }
 
     def __init__(self):
         self._map = {}
 
 
-    def load(self, map_path: str):
+    def load(self, map_path: str) -> None:
         
         map_fp = pathlib.Path(map_path)
 
@@ -53,89 +115,215 @@ class DROMapService:
             # a dictionary
             data = json.load(f)
 
-        self.validate(data)
-        self.build(data)
+        self._validate_json(data)
+        
+        streams = self._build_streams(data)
+
+        self._validate_streams(streams)
+        self._validate_eth(streams)
+        self._validate_rohosts(streams)
+
+        self._map = {s.src_id:s for s in streams}
 
     
-    def validate(self, data):
+    def _validate_json(self, data) -> None:
 
         # Make a copy to work locally
         data = copy.deepcopy(data)
 
         dro_links = []
-        srcid_list = []
-        geoid_list = []
         
         for e in data:
 
-            srcid_list.append(e['src_id'])
-            geoid_list.append(GeoID(**e['geo_id']))
             info = e.pop('config')
 
             dro_en = dlm.DROStreamEntry(**e)
-
-            if dro_en.tech == "flx":
-                dro_en.config = dlm.FelixStreamConf(**info)
-            elif dro_en.tech == "eth":
-                dro_en.config = dlm.EthStreamConf(**info)
+            
+            _, tech_moo_t = self._tech_map[dro_en.tech]
+            dro_en.config = tech_moo_t(**info)
 
             dro_links.append(dro_en)
 
         dlmap = dlm.DROStreamMap(dro_links)
         _ = dlmap.pod()
 
-        dups_srcids = [item for item, count in collections.Counter(srcid_list).items() if count > 1]
-        if len(dups_srcids):
-            raise ValueError(f"Found duplicated source ids : {', '.join([str(i) for i in dups_srcids])}")
-
-        dups_geoids = [item for item, count in collections.Counter(geoid_list).items() if count > 1]
-        if len(dups_geoids):
-            raise ValueError(f"Found duplicated source ids : {', '.join([str(i) for i in dups_geoids])}")
-
     
-    def build(self, data):
+    def _build_streams(self, data) -> None:
+        """Build a list of stream entries"""
 
-        self._map = {}
-        for e in data:
+        streams = []
+        for s in data:
 
-            tech = e['tech']
-            config = None
+            tech_t, _ = self._tech_map[s['tech']]
+            config = tech_t(**s['config'])
 
-            if tech == "flx":
-                config = FelixStreamConf(**e['config'])
-            elif tech == "eth":
-                config = EthStreamConf(**e['config'])
-                
-
-            e.update({
+            s.update({
                 'config':config,
-                'geo_id':GeoID(**e['geo_id'])
+                'geo_id':GeoID(**s['geo_id'])
             })
-            en = DROStreamEntry(**e)
-            self._map[en.src_id] = en
+            en = DROStreamEntry(**s)
+            streams.append(en)
+        return streams
+    
+    def _validate_streams(self, streams):
+        """Validates the list of stream entries"""
+
+        src_id_list = [s.src_id for s in streams]
+        geo_id_list = [s.geo_id for s in streams]
+
+        # Ensure source id uniqueness
+        dups_src_ids = [item for item, count in collections.Counter(src_id_list).items() if count > 1]
+        if len(dups_src_ids):
+            raise ValueError(f"Found duplicated source ids : {', '.join([str(i) for i in dups_srcids])}")
+        
+        # Ensure geo id uniqueness
+        dups_geo_ids = [item for item, count in collections.Counter(geo_id_list).items() if count > 1]
+        if len(dups_geo_ids):
+            raise ValueError(f"Found duplicated geo ids : {', '.join([str(i) for i in dups_geo_ids])}")
+        
+        
+    def _validate_rohosts(self, streams):
+        # Check RU consistency, i.e. only one tech type per readout host
+        host_label_map = {
+            'flx': 'host',
+            'eth': 'rx_host',
+        }
+
+        tech_m = {}
+        for en in streams:
+            tech_m.setdefault(getattr(en.config, host_label_map[en.tech]),set()).add(en.tech)
+        multi_tech_hosts = {k:v for k,v in tech_m.items() if len(v) > 1}
+        if multi_tech_hosts:
+            raise ValueError(f"Readout hosts with streams of different techs are not supported. Found {multi_tech_hosts}")
+    
+    # FIXME: Dedicated Ethernet Validator class?
+    def _validate_eth(self, streams):
+        """
+        Apply rules:
+        - ip and mac pairing is strict (one-to-one)
+        - a mac can only belong to a single host
+        """
+
+
+        rx_mac_to_host = defaultdict(set)
+        rx_mac_to_ip = defaultdict(set)
+        rx_mac_to_iface = defaultdict(set)
+        rx_ip_to_mac = defaultdict(set)
+
+        tx_mac_to_host = defaultdict(set)
+        tx_mac_to_ip = defaultdict(set)
+        tx_ip_to_mac = defaultdict(set)
+
+        for s in streams:
+            if s.tech != 'eth':
+                continue
+            
+            rx_mac_to_host[s.config.rx_mac].add(s.config.rx_host)
+            rx_mac_to_ip[s.config.rx_mac].add(s.config.rx_ip)
+            rx_mac_to_iface[s.config.rx_mac].add(s.config.rx_iface)
+            rx_ip_to_mac[s.config.rx_ip].add(s.config.rx_mac)
+
+            tx_mac_to_ip[s.config.tx_mac].add(s.config.tx_ip)
+            tx_ip_to_mac[s.config.tx_ip].add(s.config.tx_mac)
+            tx_mac_to_host[s.config.tx_mac].add(s.config.tx_host)
+
+
+        dup_rx_hosts = { k:v for k,v in rx_mac_to_host.items() if len(v) > 1}
+        dup_rx_macs = { k:v for k,v in rx_mac_to_ip.items() if len(v) > 1}
+        dup_rx_iface = { k:v for k,v in rx_mac_to_iface.items() if len(v) > 1}
+        dup_rx_ips = { k:v for k,v in rx_ip_to_mac.items() if len(v) > 1}
+
+        dup_tx_hosts = { k:v for k,v in tx_mac_to_host.items() if len(v) > 1}
+        dup_tx_macs = { k:v for k,v in tx_mac_to_ip.items() if len(v) > 1}
+        dup_tx_ips = { k:v for k,v in tx_ip_to_mac.items() if len(v) > 1}
+        
+
+        errors = []
+        if dup_rx_hosts:
+            errors.append(f"Many rx hosts associated to the same rx mac {dup_rx_hosts}")
+        if dup_rx_macs:
+            errors.append(f"Many rx ips associated to the same rx mac {dup_rx_macs}")
+        if dup_rx_iface:
+            errors.append(f"Many rx interfaces associated to the same rx mac {dup_rx_iface}")
+        if dup_rx_ips:
+            errors.append(f"Many rx macs associated to the same rx ips {dup_rx_ips}")
+
+
+        if dup_tx_hosts:
+            errors.append(f"Many tx hosts associated to the same tx mac {dup_tx_hosts}")
+        if dup_tx_macs:
+            errors.append(f"Many tx macs associated to the same tx ips {dup_tx_macs}")
+        if dup_tx_ips:
+            errors.append(f"Many tx ips associated to the same tx mac {dup_tx_ips}")
+
+        # FIXME : Create a dedicated exception
+        if errors:
+            nl = r'\n'
+            raise RuntimeError(f"Ethernet streams validation failed: {nl.join(errors)}")
+
+    @property
+    def streams(self):
+        return list(self._map.values())
 
 
     def get(self):
         return self._map
 
 
-    def get_by_type(self, type: str):
+    def group_by_host(self) -> Dict:
+        m = {}
 
+        host_label_map = {
+            'flx': 'host',
+            'eth': 'rx_host',
+        }
+
+        for s in self._map.values():
+            m.setdefault(getattr(s.config, host_label_map[s.tech]),[]).append(s)
+
+        return m
+
+    # FIXME: This belongs to readout configuration. Should it be here?
+    def group_by_ro_unit(self) -> Dict:
+
+        m = defaultdict(list)
+        for s in self.streams:
+            ru_host = getattr(s.config, self._host_label_map[s.tech])
+            ru_iface = getattr(s.config, self._iflabel_map[s.tech])
+            m[ROUnitID(ru_host, ru_iface, s.tech)].append(s)
+
+        return dict(m)
+
+
+    def get_by_tech(self, tech: str):
         return {
             k:v for k,v in self._map.items()
-            if v.tech == type
+            if v.tech == tech
         }
-    
+
+
     def get_src_ids(self):
         return list(self._map)
 
+
     def get_geo_ids(self):
-        return [v.geo_id for v in self._map.values()]
+        '''Return the list of GeoIDs in the map'''
+        return [v.geo_id for v in self.streams]
+
+
+    def get_src_geo_map(self):
+        """Build the SrcGeoID map for HDF5RawDataFile"""
+        return hdf5rdf.SrcGeoIDMap([
+            hdf5rdf.SrcGeoIDEntry(
+                src_id=s,
+                geo_id=hdf5rdf.GeoID(**(en.geo_id._asdict()))
+            ) for s,en in self._map.items()
+        ])
 
 
     def as_table(self):
+        """Export the table as a rich table"""
         m = self._map
-        # cols = ['src_id'] + list(GeoID._fields) + ['tech'] + [f"eth_{f}" for f in FelixStreamConf._fields] + [f"eth_{f}" for f in EthStreamConf._fields]
 
         t = Table()
         t.add_column('src_id', style='blue')
@@ -167,6 +355,7 @@ class DROMapService:
     
 
     def as_json(self):
+        """Convert the map into a moo-json object"""
         m = self._map
 
         dro_seq = []
@@ -177,10 +366,9 @@ class DROMapService:
             dro_en.tech = en.tech
             dro_en.geo_id = hdf5rdf.GeoID(**(en.geo_id._asdict()))
 
-            if en.tech == 'flx':
-                dro_en.config = dlm.FelixStreamConf(**(en.config._asdict()))
-            elif en.tech == 'eth':
-                dro_en.config = dlm.EthStreamConf(**(en.config._asdict()))
+            _, tech_moo_t = self._tech_map[en.tech]
+            dro_en.config = tech_moo_t(**(en.config._asdict()))
+
             dro_seq.append(dro_en)
 
         dlmap = dlm.DROStreamMap(dro_seq)
@@ -188,10 +376,12 @@ class DROMapService:
     
 
     def remove_srcid(self, srcid):
+        """Remove a source ID"""
         return self._map.pop(srcid)
 
 
     def add_srcid(self, src_id, geo_id, tech, **kwargs):
+        """Add a new source id"""
 
         if src_id in self._map:
             raise KeyError(f"Source ID {src_id} is already present in the map")
@@ -200,12 +390,14 @@ class DROMapService:
             raise KeyError(f"Geo ID {geo_id} is already present in the map")
 
 
+        tech_t, tech_moo_t = self._tech_map[tech]
+        config = tech_t(**(tech_moo_t(**kwargs).pod()))
 
-        if tech == 'flx':
-            config = FelixStreamConf(**(dlm.FelixStreamConf(**kwargs).pod()))
-        elif tech == 'eth':
-            config = EthStreamConf(**(dlm.EthStreamConf(**kwargs).pod()))
-        else:
-            print(f"What the tech {tech}")
 
-        self._map[src_id] = DROStreamEntry(src_id=src_id, geo_id=geo_id, tech=tech, config=config)
+        s = DROStreamEntry(src_id=src_id, geo_id=geo_id, tech=tech, config=config)
+        stream_list = list(self.streams)+[s]
+        self._validate_streams(stream_list)
+        self._validate_eth(stream_list)
+        self._validate_rohosts(stream_list)
+        self._map[src_id] = s
+    
