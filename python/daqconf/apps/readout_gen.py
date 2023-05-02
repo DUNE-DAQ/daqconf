@@ -93,7 +93,7 @@ def create_fake_cardreader(
     DEFAULT_DATA_FILE: str,
     CLOCK_SPEED_HZ: int,
     EMULATED_DATA_TIMES_START_WITH_NOW: bool,
-    RU_STREAMS: list  # This is a list of DROInfo
+    RU_DESCRIPTOR # ReadoutUnitDescriptor
 
 ) -> tuple[list, list]:
     """
@@ -108,7 +108,7 @@ def create_fake_cardreader(
                         queue_name=f"output_{s.src_id}",
                         data_filename = DATA_FILES[s.geo_id.det_id] if s.geo_id.det_id in DATA_FILES.keys() else DEFAULT_DATA_FILE,
                         emu_frame_error_rate=0
-                    ) for s in RU_STREAMS],
+                    ) for s in RU_DESCRIPTOR.streams],
             use_now_as_first_data_time=EMULATED_DATA_TIMES_START_WITH_NOW,
             clock_speed_hz=CLOCK_SPEED_HZ,
             queue_timeout_ms = QUEUE_POP_WAIT_MS
@@ -124,7 +124,7 @@ def create_fake_cardreader(
             f"datahandler_{s.src_id}.raw_input",
             QUEUE_FRAGMENT_TYPE,
             f'{FRONTEND_TYPE}_link_{s.src_id}', 100000
-        ) for s in RU_STREAMS
+        ) for s in RU_DESCRIPTOR.streams
     ]
     
     return modules, queues
@@ -138,7 +138,7 @@ def create_felix_cardreader(
         QUEUE_FRAGMENT_TYPE: str,
         CARD_ID_OVERRIDE: int,
         NUMA_ID: int,
-        RU_STREAMS: list  # This is a list of DROInfo
+        RU_DESCRIPTOR # ReadoutUnitDescriptor
     ) -> tuple[list, list]:
     """
     Create a FELIX Card Reader (and reader->DHL Queues?)
@@ -149,7 +149,7 @@ def create_felix_cardreader(
     links_slr1 = []
     sids_slr0 = []
     sids_slr1 = []
-    for stream in RU_STREAMS:
+    for stream in RU_DESCRIPTOR.streams:
         if stream.config.slr == 0:
             link_slr0.append(stream.geo_id.stream_id)
             sids_slr0.append(stream.src_id)
@@ -160,7 +160,7 @@ def create_felix_cardreader(
     link_slr0.sort()
     links_slr1.sort()
 
-    card_id = RU_STREAMS[0].config.card if CARD_ID_OVERRIDE == -1 else CARD_ID_OVERRIDE
+    card_id = RU_DESCRIPTOR.iface if CARD_ID_OVERRIDE == -1 else CARD_ID_OVERRIDE
 
     modules = []
     queues = []
@@ -226,7 +226,9 @@ def create_dpdk_cardreader(
         BASE_SOURCE_IP: str,
         DESTINATION_IP: str,
         EAL_ARGS: str,
-        RU_STREAMS: list  # This is a list of DROInfo
+        # RU_STREAMS: list  # This is a list of DROInfo
+        RU_DESCRIPTOR # ReadoutUnitDescriptor
+
     ) -> tuple[list, list]:
     """
     Create a DPDK Card Reader (and reader->DHL Queues?)
@@ -277,7 +279,7 @@ def create_dpdk_cardreader(
             f"datahandler_{link.dro_source_id}.raw_input", QUEUE_FRAGMENT_TYPE,
             f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000
         ) 
-        for link in RU_STREAMS
+        for link in RU_DESCRIPTOR.streams
     ]
     
     return modules, queues
@@ -286,7 +288,6 @@ def create_dpdk_cardreader(
 # Create detector datalink handlers
 ###
 def create_det_dhl(
-        RUIDX: str,
         LATENCY_BUFFER_SIZE: int,
         LATENCY_BUFFER_NUMA_AWARE: int,
         LATENCY_BUFFER_ALLOCATION_MODE: int,
@@ -296,12 +297,12 @@ def create_det_dhl(
         DATA_REQUEST_TIMEOUT: int,
         FRAGMENT_SEND_TIMEOUT: int,
         RAW_RECORDING_ENABLED: bool,
-        RU_STREAMS: list  # This is a list of DROInfo    
+        RU_DESCRIPTOR # ReadoutUnitDescriptor
+ 
     ) -> tuple[list, list]:
     
-    det_id = RU_STREAMS[0].geo_id.det_id
     modules = []
-    for stream in RU_STREAMS:
+    for stream in RU_DESCRIPTOR.streams:
         modules += [DAQModule(
                     name = f"datahandler_{stream.src_id}",
                     plugin = "DataLinkHandler", 
@@ -327,8 +328,8 @@ def create_det_dhl(
                             pop_limit_pct = 0.8,
                             pop_size_pct = 0.1,
                             source_id = stream.src_id,
-                            det_id = det_id,
-                            output_file = path.join(RAW_RECORDING_OUTPUT_DIR, f"output_{RUIDX}_{stream.src_id}.out"),
+                            det_id = RU_DESCRIPTOR.det_id,
+                            output_file = path.join(RAW_RECORDING_OUTPUT_DIR, f"output_{RU_DESCRIPTOR.label}_{stream.src_id}.out"),
                             stream_buffer_size = 8388608,
                             request_timeout_ms = DATA_REQUEST_TIMEOUT,
                             fragment_send_timeout_ms = FRAGMENT_SEND_TIMEOUT,
@@ -534,8 +535,9 @@ QUEUE_POP_WAIT_MS = 10 # This affects stop time, as each link will wait this lon
 
 def create_readout_app(
     # DRO_CONFIG,
-    RU_ID,
-    RU_STREAMS,
+    # RU_ID,
+    # RU_STREAMS,
+    RU_DESCRIPTOR,
     EMULATOR_MODE=False,
     DATA_RATE_SLOWDOWN_FACTOR=1,
     DEFAULT_DATA_FILE="./frames.bin",
@@ -570,51 +572,14 @@ def create_readout_app(
     EMULATED_DATA_TIMES_START_WITH_NOW = False,
     DEBUG=False
 ):
-    FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _ = compute_data_types(RU_STREAMS[0].geo_id.det_id, CLOCK_SPEED_HZ, RU_ID.tech)
-
+    FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _ = compute_data_types(RU_DESCRIPTOR.det_id, CLOCK_SPEED_HZ, RU_DESCRIPTOR.tech)
+    # TPG is automatically disabled for non wib2 frontends
+    TPG_ENABLED = TPG_ENABLED and (FRONTEND_TYPE=='wib2')
     modules = []
     queues = []
 
     cr_mods = []
     cr_queues = []
-
-    # # Create the card readers
-    # if FLX_INPUT:
-    #     flx_mods, flx_queues = create_felix_cardreader(
-    #         FRONTEND_TYPE,
-    #         QUEUE_FRAGMENT_TYPE,
-    #         CARD_ID_OVERRIDE,
-    #         NUMA_ID,
-    #         RU_STREAMS
-    #     )
-    #     cr_mods += flx_mods
-    #     cr_queues += flx_queues
-
-    # elif ETH_MODE:
-    #     dpdk_mods, dpdk_queues = create_dpdk_cardreader(
-    #         FRONTEND_TYPE=FRONTEND_TYPE,
-    #         QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
-    #         BASE_SOURCE_IP=BASE_SOURCE_IP,
-    #         DESTINATION_IP=DESTINATION_IP,
-    #         EAL_ARGS=EAL_ARGS,
-    #         RU_STREAMS=RU_STREAMS
-    #     )
-    #     cr_mods += dpdk_mods
-    #     cr_queues += dpdk_queues
-
-    # else:
-    #     fakecr_mods, fakecr_queues = create_fake_cardreader(
-    #         FRONTEND_TYPE=FRONTEND_TYPE,
-    #         QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
-    #         DATA_RATE_SLOWDOWN_FACTOR=DATA_RATE_SLOWDOWN_FACTOR,
-    #         DATA_FILES=DATA_FILES,
-    #         DEFAULT_DATA_FILE=DEFAULT_DATA_FILE,
-    #         CLOCK_SPEED_HZ=CLOCK_SPEED_HZ,
-    #         EMULATED_DATA_TIMES_START_WITH_NOW=EMULATED_DATA_TIMES_START_WITH_NOW,
-    #         RU_STREAMS=RU_STREAMS
-    #     )
-    #     cr_mods += fakecr_mods
-    #     cr_queues += fakecr_queues
 
 
     if USE_FAKE_CARDS:
@@ -626,31 +591,31 @@ def create_readout_app(
             DEFAULT_DATA_FILE=DEFAULT_DATA_FILE,
             CLOCK_SPEED_HZ=CLOCK_SPEED_HZ,
             EMULATED_DATA_TIMES_START_WITH_NOW=EMULATED_DATA_TIMES_START_WITH_NOW,
-            RU_STREAMS=RU_STREAMS
+            RU_DESCRIPTOR=RU_DESCRIPTOR
         )
         cr_mods += fakecr_mods
         cr_queues += fakecr_queues
     # Create the card readers
     else:
-        if RU_ID.tech == 'flx':
+        if RU_DESCRIPTOR.tech == 'flx':
             flx_mods, flx_queues = create_felix_cardreader(
-                FRONTEND_TYPE,
-                QUEUE_FRAGMENT_TYPE,
-                CARD_ID_OVERRIDE,
-                NUMA_ID,
-                RU_STREAMS
+                FRONTEND_TYPE=FRONTEND_TYPE,
+                QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
+                CARD_ID_OVERRIDE=CARD_ID_OVERRIDE,
+                NUMA_ID=NUMA_ID,
+                RU_DESCRIPTOR=RU_DESCRIPTOR
             )
             cr_mods += flx_mods
             cr_queues += flx_queues
 
-        elif RU_ID.tech == 'eth':
+        elif RU_DESCRIPTOR.tech == 'eth':
             dpdk_mods, dpdk_queues = create_dpdk_cardreader(
                 FRONTEND_TYPE=FRONTEND_TYPE,
                 QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
                 BASE_SOURCE_IP=BASE_SOURCE_IP,
                 DESTINATION_IP=DESTINATION_IP,
                 EAL_ARGS=EAL_ARGS,
-                RU_STREAMS=RU_STREAMS
+                RU_DESCRIPTOR=RU_DESCRIPTOR
             )
             cr_mods += dpdk_mods
             cr_queues += dpdk_queues
@@ -660,7 +625,6 @@ def create_readout_app(
 
     # Create the data-link handlers
     dlhs_mods, _ = create_det_dhl(
-        RU_ID.label,
         LATENCY_BUFFER_SIZE=LATENCY_BUFFER_SIZE,
         LATENCY_BUFFER_NUMA_AWARE=LATENCY_BUFFER_NUMA_AWARE,
         LATENCY_BUFFER_ALLOCATION_MODE=LATENCY_BUFFER_ALLOCATION_MODE,
@@ -670,7 +634,7 @@ def create_readout_app(
         DATA_REQUEST_TIMEOUT=DATA_REQUEST_TIMEOUT,
         FRAGMENT_SEND_TIMEOUT=FRAGMENT_SEND_TIMEOUT,
         RAW_RECORDING_ENABLED=RAW_RECORDING_ENABLED,
-        RU_STREAMS=RU_STREAMS
+        RU_DESCRIPTOR=RU_DESCRIPTOR
 
     )
 
@@ -689,7 +653,7 @@ def create_readout_app(
 
     modules += dlhs_mods
 
-    if READOUT_SENDS_TP_FRAGMENTS:
+    if TPG_ENABLED and READOUT_SENDS_TP_FRAGMENTS:
         tpg_mods, tpg_queues = create_tp_dlhs(
             dro_dlh_list=dlhs_mods,
             LATENCY_BUFFER_SIZE=LATENCY_BUFFER_SIZE,
@@ -705,18 +669,18 @@ def create_readout_app(
     add_dro_eps_and_fps(
         mgraph=mgraph,
         dro_dlh_list=dlhs_mods,
-        RUIDX=RU_ID.label
+        RUIDX=RU_DESCRIPTOR.label
     )
 
-    if READOUT_SENDS_TP_FRAGMENTS:
+    if TPG_ENABLED and READOUT_SENDS_TP_FRAGMENTS:
        # Add endpoints and frame producers to TP data handlers
         add_tpg_eps_and_fps(
             mgraph=mgraph,
             # dro_dlh_list=dlhs_mods,
             tpg_dlh_list=tpg_mods,
-            RUIDX=RU_ID.label
+            RUIDX=RU_DESCRIPTOR.label
         )
 
-    readout_app = App(mgraph, host=RU_ID.host_name)
+    readout_app = App(mgraph, host=RU_DESCRIPTOR.app_name)
     return readout_app
 

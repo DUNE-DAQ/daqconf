@@ -12,7 +12,7 @@ from daqconf.core.assets import resolve_asset_file
 # from detchannelmaps._daq_detchannelmaps_py import HardwareMapService
 from detdataformats._daq_detdataformats_py import *
 
-import daqconf.drolink_map as dromap
+import daqconf.detreadoutmap as dromap
 
 console = Console()
 
@@ -186,18 +186,18 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
     
     
-    dro_map = dromap.DROMapService()
+    dro_map = dromap.DetReadoutMapService()
     dro_map.load(readout.hardware_map_file)
 
-    ru_confs = dro_map.group_by_ro_unit()
+    ru_descrs = dro_map.get_ru_descriptors()
 
     # tp_mode = get_tpg_mode(readout.enable_firmware_tpg,readout.enable_tpg)
     sourceid_broker.register_readout_source_ids(dro_map.streams)
-    sourceid_broker.generate_trigger_source_ids(ru_confs, readout.enable_tpg)
+    sourceid_broker.generate_trigger_source_ids(ru_descrs, readout.enable_tpg)
     tp_infos = sourceid_broker.get_all_source_ids("Trigger")
 
-    for ru_id, ru_streams in ru_confs.items():
-        console.log(f"Will generate a RU process on {ru_id}, {len(ru_streams)} links active")
+    for ru_name, ru_desc in ru_descrs.items():
+        console.log(f"Will generate a RU process on {ru_name} ({ru_desc.iface}, {ru_desc.tech}), {len(ru_desc.streams)} streams active")
 
 #    total_number_of_data_producers = 0
 
@@ -217,7 +217,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     if readout.use_fake_data_producers and dqm.enable_dqm:
         raise Exception("DQM can't be used with fake data producers")
 
-    if trigger.enable_tpset_writing and not (readout.enable_tpg or readout.enable_firmware_tpg):
+    if trigger.enable_tpset_writing and not readout.enable_tpg:
         raise Exception("TP writing can only be used when either software or firmware TPG is enabled")
 
     # if readout.enable_firmware_tpg and not readout.use_felix:
@@ -296,11 +296,11 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     readout_data_request_timeout = boot.data_request_timeout_ms # can that be put somewhere else? in dataflow?
     trigger_data_request_timeout = boot.data_request_timeout_ms
     trigger_record_building_timeout = max(MINIMUM_BASIC_TRB_TIMEOUT, TRB_TIMEOUT_SAFETY_FACTOR * max(readout_data_request_timeout, trigger_data_request_timeout))
-    if len(ru_confs) >= 1:
-        effective_number_of_data_producers = len(ru_confs)  # number of DataLinkHandlers
-        if readout.enable_tpg or readout.enable_firmware_tpg:
+    if len(ru_descrs) >= 1:
+        effective_number_of_data_producers = len(ru_descrs)  # number of DataLinkHandlers
+        if readout.enable_tpg:
             effective_number_of_data_producers *= 2  # add in TPSet producers from Trigger (one per Link)
-            effective_number_of_data_producers += len(ru_confs)  # add in TA producers from Trigger (one per RU)
+            effective_number_of_data_producers += len(ru_descrs)  # add in TA producers from Trigger (one per RU)
         trigger_record_building_timeout = int(math.sqrt(effective_number_of_data_producers) * trigger_record_building_timeout)
     trigger_record_building_timeout += 15 * TRB_TIMEOUT_SAFETY_FACTOR * max_expected_tr_sequences
     dfo_stop_timeout = max(DFO_TIMEOUT_SAFETY_FACTOR * trigger_record_building_timeout, MINIMUM_DFO_TIMEOUT)
@@ -420,18 +420,18 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     trb_dqm_sourceid_offset = sourceid_broker.get_next_source_id("TRBuilder")
     ru_app_names=[]
     dqm_app_names = []
-    for ru_i,(ru_id, ru_streams) in enumerate(ru_confs.items()):
+    for ru_i,(ru_name, ru_descr) in enumerate(ru_descrs.items()):
 
         # host=ru_id.host_name.replace("-","")
-        ru_name = f"ru{ru_id.label}"
-        ru_app_names.append(ru_name)
+        # ru_name = f"ru{ru_id.label}"
+        # ru_app_names.append(ru_name)
 
         numa_id = readout.numa_config['default_id']
         latency_numa = readout.numa_config['default_latency_numa_aware']
         latency_preallocate = readout.numa_config['default_latency_preallocation']
         card_override = -1
         for ex in readout.numa_config['exceptions']:
-            if ex['host'] == ru_id.host_name and ex['card'] == ru_id.iface:
+            if ex['host'] == ru_descr.host_name and ex['card'] == ru_descr.iface:
                 numa_id = ex['numa_id']
                 latency_numa = ex['latency_buffer_numa_aware']
                 latency_preallocate = ex['latency_buffer_preallocation']
@@ -440,8 +440,9 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         the_system.apps[ru_name] = create_readout_app(
             # HOST=ru_id.host_name,
             # DRO_CONFIG=dro_config,
-            RU_ID = ru_id,
-            RU_STREAMS = ru_streams,
+            # RU_ID = ru_id,
+            # RU_STREAMS = ru_streams,
+            RU_DESCRIPTOR = ru_descr,
             EMULATOR_MODE = readout.emulator_mode,
             DATA_RATE_SLOWDOWN_FACTOR = readout.data_rate_slowdown_factor,
             DEFAULT_DATA_FILE = readout.default_data_file,
@@ -480,7 +481,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
         if boot.use_k8s:
             if readout.use_felix:
-                c = card_override if card_override != -1 else ru_id.iface
+                c = card_override if card_override != -1 else ru_desc.iface
                 the_system.apps[ru_name].resources = {
                     f"felix.cern/flx{c}-data": "1", # requesting FLX{c}
                     "memory": "32Gi" # yes bro
@@ -511,7 +512,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         if dqm.enable_dqm:
             dqm_name = "dqm" + ru_name
             dqm_app_names.append(dqm_name)
-            dqm_links = [ s.src_id for s in ru_streams ]
+            dqm_links = [ s.src_id for s in ru_desc.streams ]
 
             # 07-Mar-2023, KAB: I don't know why {ru_name} in this code *doesn't* have an
             # underscore in it, and the {RUIDX} variable inside get_readout_app *does* have
@@ -538,7 +539,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
                 RU_APPNAME=ru_name,
                 TRB_DQM_SOURCEID_OFFSET=trb_dqm_sourceid_offset,
                 HOST=dqm.host_dqm[ru_i % len(dqm.host_dqm)],
-                RU_STREAMS=ru_streams,
+                RU_STREAMS=ru_desc.streams,
                 DEBUG=debug)
 
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
@@ -577,7 +578,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
         if dqm.enable_dqm:
             dqm_name = f"dqmdf{dfidx}"
             dqm_df_app_names.append(dqm_name)
-            dqm_links = [ s.src_id for s in ru_streams ]
+            dqm_links = [ s.src_id for s in ru_desc.streams ]
             the_system.apps[dqm_name] = get_dqm_app(
                 DQM_IMPL=dqm.impl,
                 DATA_RATE_SLOWDOWN_FACTOR = readout.data_rate_slowdown_factor,
@@ -599,7 +600,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
                 DF_ALGS=dqm.df_algs,
                 DF_TIME_WINDOW=trigger.trigger_window_before_ticks + trigger.trigger_window_after_ticks,
                 # DRO_CONFIG=dro_config, # This is coming from the readout loop
-                RU_STREAMS=ru_streams, # This is coming from the readout loop
+                RU_STREAMS=ru_desc.streams, # This is coming from the readout loop
                 DEBUG=debug)
 
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")

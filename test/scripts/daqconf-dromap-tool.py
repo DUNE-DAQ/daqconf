@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import daqconf.drolink_map as dromap
+import daqconf.detreadoutmap as dromap
 
 
 import click
@@ -166,4 +166,4 @@ def ipy(obj):
     IPython.embed(colors="neutral")
 
 if __name__ == "__main__":
-    cli(obj=dromap.DROMapService())
+    cli(obj=dromap.DetReadoutMapService())
