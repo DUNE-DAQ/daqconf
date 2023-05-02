@@ -34,11 +34,13 @@ import dunedaq.dpdklibs.nicreader as nrc
 
 # from appfwk.utils import acmd, mcmd, mrccmd, mspec
 from os import path
+from itertools import groupby
 
 from daqconf.core.conf_utils import Direction, Queue
 from daqconf.core.sourceid import TPInfo, SourceIDBroker, FWTPID, FWTPOUTID
 from daqconf.core.daqmodule import DAQModule
 from daqconf.core.app import App, ModuleGraph
+from daqconf.detreadoutmap import ReadoutUnitDescriptor
 
 # from detdataformats._daq_detdataformats_py import *
 from detdataformats import *
@@ -220,6 +222,95 @@ def create_felix_cardreader(
 ###
 # DPDK Card Reader creator
 ###
+
+
+
+### Move to utility module
+def group_by_key(coll, key):
+    """
+    """
+    m = {}
+    s = sorted(coll, key=key)
+    for k, g in groupby(s, key):
+        m[k] = list(g)
+    return m
+
+
+
+class EthReadoutUnitBuilder:
+
+    def __init__(self, rudesc : ReadoutUnitDescriptor):
+        self.desc = rudesc
+
+    
+    def streams_by_iface(self):
+
+        iface_map = group_by_key(self.desc.streams, lambda s: (s.config.rx_ip, s.config.rx_mac, s.config.rx_host))
+
+        return iface_map
+
+    def streams_by_iface_and_tx_endpoint(self):
+
+        s_by_if = self.streams_by_iface()
+        m = {}
+        for k,v in s_by_if.items():
+            m[k] = group_by_key(v, lambda s: (s.config.tx_ip, s.config.tx_mac, s.config.tx_host))
+            
+        return m
+    
+    # def streams_by_ru(self):
+    #     m = group_by_key(self.desc.streams, lambda s: (getattr(s.config, self.desc._host_label_map[s.tech]), getattr(s.config, self.desc._iflabel_map[s.tech]), s.tech, s.geo_id.det_id))
+    #     return m
+
+    def build_conf(self, eal_arg_list):
+
+        streams_by_if_and_tx = self.streams_by_iface_and_tx_endpoint()
+
+        ifcfgs = []
+        for (rx_ip, rx_mac, _),txs in streams_by_if_and_tx.items():
+            srcs = []
+            # Sid is used for the "Source.id". What is it?
+
+            for sid,((tx_ip,_,_),streams) in enumerate(txs.items()):
+                ssm = nrc.SrcStreamsMapping([
+                        nrc.StreamMap(source_id=s.src_id, stream_id=s.geo_id.stream_id)
+                        for s in streams
+                    ])
+                geo_id = streams[0].geo_id
+                si = nrc.SrcGeoInfo(
+                    det_id=geo_id.det_id,
+                    crate_id=geo_id.crate_id,
+                    slot_id=geo_id.slot_id
+                )
+
+                srcs.append(
+                    nrc.Source(
+                        id=sid, # FIXME what is this ID?
+                        ip_addr=tx_ip,
+                        lcore=sid,
+                        rx_q=sid,
+                        src_info=si,
+                        src_streams_mapping=ssm
+                    )
+                )
+            ifcfgs.append(
+                nrc.Interface(
+                    ip_addr=rx_ip,
+                    mac_addr=rx_mac,
+                    expected_sources=srcs
+                )
+            )         
+
+
+        conf = nrc.Conf(
+            ifaces = ifcfgs,
+            eal_arg_list=eal_arg_list
+        )
+
+        return conf
+
+
+
 def create_dpdk_cardreader(
         FRONTEND_TYPE: str,
         QUEUE_FRAGMENT_TYPE: str,
@@ -235,51 +326,50 @@ def create_dpdk_cardreader(
 
     [CR]->queues
     """
-    NUMBER_OF_GROUPS = 1
-    NUMBER_OF_LINKS_PER_GROUP = 1
+    # NUMBER_OF_GROUPS = 1
+    # NUMBER_OF_LINKS_PER_GROUP = 1
 
     # number_of_dlh = NUMBER_OF_GROUPS
 
-    links = []
-    rxcores = []
-    lid = 0
-    last_ip = 100
-    for group in range(NUMBER_OF_GROUPS):
-        offset= 0
-        qlist = []
-        for _ in range(NUMBER_OF_LINKS_PER_GROUP):
-            links.append(
-                nrc.Link(
-                    id=lid,
-                    ip=BASE_SOURCE_IP+str(last_ip),
-                    rx_q=lid, 
-                    lcore=group+1
-                    )
-                )
-            qlist.append(lid)
-            lid += 1
-            last_ip += 1
-        offset += NUMBER_OF_LINKS_PER_GROUP
+    # links = []
+    # rxcores = []
+    # lid = 0
+    # last_ip = 100
+    # for group in range(NUMBER_OF_GROUPS):
+    #     offset= 0
+    #     qlist = []
+    #     for _ in range(NUMBER_OF_LINKS_PER_GROUP):
+    #         links.append(
+    #             nrc.Link(
+    #                 id=lid,
+    #                 ip=BASE_SOURCE_IP+str(last_ip),
+    #                 rx_q=lid, 
+    #                 lcore=group+1
+    #                 )
+    #             )
+    #         qlist.append(lid)
+    #         lid += 1
+    #         last_ip += 1
+    #     offset += NUMBER_OF_LINKS_PER_GROUP
+
+    eth_ru_bldr = EthReadoutUnitBuilder(RU_DESCRIPTOR)
+
+    nic_reader_name = f"nic_reader_{RU_DESCRIPTOR.iface}"
 
     modules = [DAQModule(
-                name="nic_reader",
+                name=nic_reader_name,
                 plugin="NICReceiver",
-                conf=nrc.Conf(
-                    eal_arg_list=EAL_ARGS,
-                    dest_ip=DESTINATION_IP,
-                    rx_cores=rxcores,
-                    ip_sources=links
-                ),
+                conf=eth_ru_bldr.build_conf(eal_arg_list=EAL_ARGS),
             )]
 
     # Queues
     queues = [
         Queue(
-            f"nic_reader.output_{link.dro_source_id}",
-            f"datahandler_{link.dro_source_id}.raw_input", QUEUE_FRAGMENT_TYPE,
-            f'{FRONTEND_TYPE}_link_{link.dro_source_id}', 100000
+            f"{nic_reader_name}.output_{stream.src_id}",
+            f"datahandler_{stream.src_id}.raw_input", QUEUE_FRAGMENT_TYPE,
+            f'{FRONTEND_TYPE}_stream_{stream.src_id}', 100000
         ) 
-        for link in RU_DESCRIPTOR.streams
+        for stream in RU_DESCRIPTOR.streams
     ]
     
     return modules, queues
