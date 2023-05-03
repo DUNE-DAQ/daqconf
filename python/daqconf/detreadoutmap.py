@@ -67,7 +67,8 @@ class ReadoutUnitDescriptor:
     @property
     def app_name(self):
         return f"ru{self.label}"
-    
+
+
 class DetReadoutMapService:
     """Detector - Readout Link mapping"""
 
