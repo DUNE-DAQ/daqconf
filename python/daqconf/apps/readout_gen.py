@@ -771,6 +771,6 @@ def create_readout_app(
             RUIDX=RU_DESCRIPTOR.label
         )
 
-    readout_app = App(mgraph, host=RU_DESCRIPTOR.app_name)
+    readout_app = App(mgraph, host=RU_DESCRIPTOR.host_name)
     return readout_app
 

@@ -47,40 +47,6 @@ for c in [
     setattr(thismodule, c_name, namedtuple(c_name, [f['name'] for f in c_ost['fields']]))
 
 
-
-# # ROUnitID = namedtuple('ROUnitID', ['host_name', 'app_id', 'tech'])
-
-# class ROUnitID:
-#     """
-#     """
-    
-#     def __init__(self, host_name, iface, tech):
-#         self.host_name = host_name
-#         self.iface = iface
-#         self.tech = tech
-
-#     def __repr__(self):
-#         return f"ROUnitID({self.host_name}, {self.iface}, {self.tech})"
-    
-
-#     def __eq__(self, other):
-#         return (
-#             (self.host_name == other.host_name) and
-#             (self.iface == other.iface) and 
-#             (self.tech == other.tech) 
-#         )
-      
-#     def __hash__(self):
-#         return hash((self.host_name, self.iface, self.tech))  
-
-#     @property
-#     def safe_host_name(self):
-#         return self.host_name.replace('-','')
-
-#     @property
-#     def label(self):
-#         return f"{self.safe_host_name}{self.tech}{self.iface}"
-    
 class ReadoutUnitDescriptor:
 
     def __init__(self, host_name, iface, tech, det_id, streams):
@@ -124,7 +90,7 @@ class DetReadoutMapService:
         self._map = {}
 
 
-    def load(self, map_path: str) -> None:
+    def load(self, map_path: str, merge: bool = False) -> None:
         
         map_fp = pathlib.Path(map_path)
 
@@ -139,14 +105,25 @@ class DetReadoutMapService:
         
         streams = self._build_streams(data)
 
+        if merge:
+            if True:
+                src_offset = max(self.get())+1 if self.get() else 0
+                src_min = min([s.src_id for s in streams])
+                shifted_streams = []
+                for s in streams:
+                    shifted_streams.append(s._replace(src_id = s.src_id - src_min + src_offset))
+                streams = shifted_streams
+            streams = self.streams + streams
+
         self._validate_streams(streams)
         self._validate_eth(streams)
         self._validate_rohosts(streams)
 
-        self._map = {s.src_id:s for s in streams}
 
+        self._map = {s.src_id:s for s in streams}
     
-    def _validate_json(self, data) -> None:
+    @classmethod
+    def _validate_json(cls, data) -> None:
 
         # Make a copy to work locally
         data = copy.deepcopy(data)
@@ -159,7 +136,7 @@ class DetReadoutMapService:
 
             dro_en = dlm.DROStreamEntry(**e)
             
-            _, tech_moo_t = self._tech_map[dro_en.tech]
+            _, tech_moo_t = cls._tech_map[dro_en.tech]
             dro_en.config = tech_moo_t(**info)
 
             dro_links.append(dro_en)
@@ -168,13 +145,14 @@ class DetReadoutMapService:
         _ = dlmap.pod()
 
     
-    def _build_streams(self, data) -> None:
+    @classmethod
+    def _build_streams(cls, data) -> None:
         """Build a list of stream entries"""
 
         streams = []
         for s in data:
 
-            tech_t, _ = self._tech_map[s['tech']]
+            tech_t, _ = cls._tech_map[s['tech']]
             config = tech_t(**s['config'])
 
             s.update({
@@ -194,7 +172,7 @@ class DetReadoutMapService:
         # Ensure source id uniqueness
         dups_src_ids = [item for item, count in collections.Counter(src_id_list).items() if count > 1]
         if len(dups_src_ids):
-            raise ValueError(f"Found duplicated source ids : {', '.join([str(i) for i in dups_srcids])}")
+            raise ValueError(f"Found duplicated source ids : {', '.join([str(i) for i in sorted(dups_src_ids)])}")
         
         # Ensure geo id uniqueness
         dups_geo_ids = [item for item, count in collections.Counter(geo_id_list).items() if count > 1]
@@ -380,7 +358,7 @@ class DetReadoutMapService:
         for f in EthStreamConf._fields:
             t.add_column(f"eth_{f}", style='magenta')
 
-        for s,en in m.items():
+        for s,en in sorted(m.items(), key=lambda x: x[0]):
 
             row = [str(s)]+[str(x) for x in en.geo_id]+[en.tech]
 

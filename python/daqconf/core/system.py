@@ -45,7 +45,7 @@ class System:
         return all_producers
 
     def make_digraph(self, for_toposort=False):
-        deps = nx.DiGraph()
+        deps = nx.MultiDiGraph()
 
         for app_name in self.apps.keys():
             deps.add_node(app_name)
@@ -62,6 +62,7 @@ class System:
                                         color="blue"
                                     elif for_toposort:
                                         continue
+                                    print(f"adding edge {from_app_n}->{to_app_n} {to_ep.external_name}")
                                     deps.add_edge(from_app_n, to_app_n, label=to_ep.external_name, color=color)
 
 
