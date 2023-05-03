@@ -251,6 +251,7 @@ local cs = {
     s.field( "tpset_output_path", self.path,default='.', doc="Output directory for TPSet stream files"),
     s.field( "tpset_output_file_size",self.count, default=4*1024*1024*1024, doc="The size threshold when TPSet stream files are closed (in bytes)"),
     s.field( "tpg_channel_map", self.tpg_channel_map, default="ProtoDUNESP1ChannelMap", doc="Channel map for software TPG"),
+    s.field( "mlt_merge_overlapping_tcs", self.flag, default=true, doc="Option to turn off merging of overlapping TCs when forming TDs in MLT"),
     s.field( "mlt_buffer_timeout", self.count, default=100, doc="Timeout (buffer) to wait for new overlapping TCs before sending TD"),
     s.field( "mlt_send_timed_out_tds", self.flag, default=true, doc="Option to drop TD if TC comes out of timeout window"),
     s.field( "mlt_max_td_length_ms", self.count, default=1000, doc="Maximum allowed time length [ms] for a readout window of a single TD"),

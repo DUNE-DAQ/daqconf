@@ -145,6 +145,7 @@
     "tpset_output_path": ".",
     "tpset_output_file_size": 4294967296,
     "tpg_channel_map": "ProtoDUNESP1ChannelMap",
+    "mlt_merge_overlapping_tcs": true,
     "mlt_buffer_timeout": 100,
     "mlt_send_timed_out_tds": true,
     "mlt_max_td_length_ms": 1000,
