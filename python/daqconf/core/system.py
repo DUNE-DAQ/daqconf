@@ -62,7 +62,6 @@ class System:
                                         color="blue"
                                     elif for_toposort:
                                         continue
-                                    print(f"adding edge {from_app_n}->{to_app_n} {to_ep.external_name}")
                                     deps.add_edge(from_app_n, to_app_n, label=to_ep.external_name, color=color)
 
 
