@@ -53,7 +53,7 @@ def get_tpwriter_app(
                               directory_path = OUTPUT_PATH,
                               max_file_size_bytes = MAX_FILE_SIZE,
                               disable_unique_filename_suffix = False,
-                              hardware_map=SRC_GEO_ID_MAP,
+                              srcid_geoid_map=SRC_GEO_ID_MAP,
                               filename_parameters = hdf5ds.FileNameParams(
                                   overall_prefix = "tpstream",
                                   digits_for_run_number = 6,
