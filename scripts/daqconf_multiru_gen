@@ -32,13 +32,13 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(context_settings=CONTEXT_SETTINGS)
 @generate_cli_from_schema('daqconf/confgen.jsonnet', 'daqconf_multiru_gen', 'dataflowapp')
 @click.option('--base-command-port', type=int, default=-1, help="Base port of application command endpoints")
-@click.option('--hardware-map-file', default='', help="File containing detector hardware map for configuration to run")
+@click.option('--detector-readout-map-file', default='', help="File containing detector detector-readout map for configuration to run")
 @click.option('-s', '--data-rate-slowdown-factor', default=0, help="Scale factor for readout internal clock to generate less data")
 @click.option('--enable-dqm', default=False, is_flag=True, help="Enable generation of DQM apps")
 @click.option('--file-label', default='', help="File - used for raw data filename prefix")
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
-def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor, enable_dqm, file_label, debug, json_dir):
+def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown_factor, enable_dqm, file_label, debug, json_dir):
 
     output_dir = Path(json_dir)
     if output_dir.exists():
@@ -92,8 +92,8 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     # Update with command-line options
     if base_command_port != -1:
        boot.base_command_port = base_command_port
-    if hardware_map_file != '':
-        readout.hardware_map_file = hardware_map_file
+    if detector_readout_map_file != '':
+        readout.detector_readout_map_file = detector_readout_map_file
     if data_rate_slowdown_factor != 0:
         readout.data_rate_slowdown_factor = data_rate_slowdown_factor
     dqm.enable_dqm |= enable_dqm
@@ -176,7 +176,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     # Load the hw map file here to extract ru hosts, cards, slr, links, forntend types, sourceIDs and geoIDs
     # The ru apps are determined by the combinations of hostname and card_id, the SourceID determines the
     # DLH (with physical slr+link information), the detId acts as system_type allows to infer the frontend_type
-    # hw_map_service = HardwareMapService(readout.hardware_map_file)
+    # hw_map_service = HardwareMapService(readout.detector_readout_map_file)
     # serialized_hw_map = hw_map_service.get_hardware_map_json()
     # hw_map = hwms.HardwareMap(serialized_hw_map)
     # console.log(f"{hw_map}")
@@ -187,7 +187,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     
     
     dro_map = dromap.DetReadoutMapService()
-    dro_map.load(readout.hardware_map_file)
+    dro_map.load(readout.detector_readout_map_file)
 
     ru_descrs = dro_map.get_ru_descriptors()
 
@@ -808,7 +808,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
 
     import json
-    hwmap_file = open(readout.hardware_map_file, 'r')
+    hwmap_file = open(readout.detector_readout_map_file, 'r')
     hwmap_data = hwmap_file.read()
     with open(output_dir/'hwmap.json', 'w') as f :
         json.dump({

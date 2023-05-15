@@ -90,7 +90,7 @@
                    }
   },
   "readout": {
-    "hardware_map_file": "./HardwareMap.txt",
+    "detector_readout_map_file": "./HardwareMap.json",
     "emulator_mode": false,
     "thread_pinning_file": "",
     "data_rate_slowdown_factor": 1,

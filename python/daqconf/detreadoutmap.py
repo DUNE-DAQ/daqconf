@@ -107,12 +107,14 @@ class DetReadoutMapService:
         streams = self._build_streams(data)
 
         if merge:
-            if True:
-                src_offset = max(self.get())+1 if self.get() else 0
-                src_min = min([s.src_id for s in streams])
-                shifted_streams = []
+            src_id_max = max(self.get())+1 if self.get() else 0
+            new_src_id_min = min([s.src_id for s in streams])
+            shifted_streams = []
+
+            if src_id_max > new_src_id_min:
+                print(f"WARNING: source id overlap detected, loaded source ids will be shifted by {src_id_max - new_src_id_min}")
                 for s in streams:
-                    shifted_streams.append(s._replace(src_id = s.src_id - src_min + src_offset))
+                    shifted_streams.append(s._replace(src_id = s.src_id - new_src_id_min + src_id_max))
                 streams = shifted_streams
             streams = self.streams + streams
 
@@ -337,8 +339,8 @@ class DetReadoutMapService:
 
     def get_src_geo_map(self):
         """Build the SrcGeoID map for HDF5RawDataFile"""
-        return hdf5rdf.SrcGeoIDMap([
-            hdf5rdf.SrcGeoIDEntry(
+        return hdf5rdf.SrcIDGeoIDMap([
+            hdf5rdf.SrcIDGeoIDEntry(
                 src_id=s,
                 geo_id=hdf5rdf.GeoID(**(en.geo_id._asdict()))
             ) for s,en in self._map.items()

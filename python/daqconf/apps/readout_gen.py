@@ -45,6 +45,19 @@ from daqconf.detreadoutmap import ReadoutUnitDescriptor
 # from detdataformats._daq_detdataformats_py import *
 from detdataformats import *
 
+
+### Move to utility module
+def group_by_key(coll, key):
+    """
+    """
+    m = {}
+    s = sorted(coll, key=key)
+    for k, g in groupby(s, key):
+        m[k] = list(g)
+    return m
+
+
+
 ## Compute the frament types from detector infos
 def compute_data_types(
         det_id : int,
@@ -57,26 +70,37 @@ def compute_data_types(
     fake_frag_type = None
     queue_frag_type = None
 
-    # if ((det_str== "HD_TPC" or det_str== "VD_Bottom_TPC") and clk_freq_hz== 50000000):
+    # if ((det_str == "HD_TPC" or det_str== "VD_Bottom_TPC") and clk_freq_hz== 50000000):
     #     fe_type = "wib"
     #     queue_frag_type="WIBFrame"
     #     fake_frag_type = "ProtoWIB"
-    if ((det_str== "HD_TPC" or det_str== "VD_Bottom_TPC") and clk_freq_hz== 62500000 and tech=='flx' ):
+    # Far detector types
+    if ((det_str == "HD_TPC" or det_str == "VD_Bottom_TPC") and clk_freq_hz== 62500000 and tech=='flx' ):
         fe_type = "wib2"
         queue_frag_type="WIB2Frame"
         fake_frag_type = "WIB"
-    elif ((det_str== "HD_TPC" or det_str== "VD_Bottom_TPC") and clk_freq_hz== 62500000 and tech=='eth' ):
+    elif ((det_str == "HD_TPC" or det_str == "VD_Bottom_TPC") and clk_freq_hz== 62500000 and tech=='eth' ):
         fe_type = "wibeth"
         queue_frag_type="WIBEthFrame"
         fake_frag_type = "WIBEth"
-    elif det_str== "HD_PDS" or det_str== "VD_Cathode_PDS" or det_str=="VD_Membrane_PDS":
+    elif det_str == "HD_PDS" or det_str == "VD_Cathode_PDS" or det_str =="VD_Membrane_PDS":
         fe_type = "pds_stream"
         fake_frag_type = "DAPHNE"
         queue_frag_type = "PDSStreamFrame"
-    elif det_str== "VD_Top_TPC":
+    elif det_str == "VD_Top_TPC":
         fe_type = "tde"
         fake_frag_type = "TDE_AMC"
         queue_frag_type = "TDEFrame"
+
+    # Far detector types
+    # elif det_str == "NDLAr_TPC":
+    #     fe_type = "pacman"
+    #     fake_frag_type = "PACMAN"
+    #     queue_frag_type = "PACMANFrame"
+    # elif det_str == "NDLAr_PDS":
+    #     fe_type = "mpd"
+    #     fake_frag_type = "MPD"
+    #     queue_frag_type = "MPDFrame"
     else:
         raise ValueError(f"No match for {det_str}, {clk_freq_hz}, {tech}")
 
@@ -147,26 +171,26 @@ def create_felix_cardreader(
 
     [CR]->queues
     """
-    link_slr0 = []
+    links_slr0 = []
     links_slr1 = []
     sids_slr0 = []
     sids_slr1 = []
     for stream in RU_DESCRIPTOR.streams:
         if stream.config.slr == 0:
-            link_slr0.append(stream.geo_id.stream_id)
+            links_slr0.append(stream.config.link)
             sids_slr0.append(stream.src_id)
         if stream.config.slr == 1:
-            links_slr1.append(stream.geo_id.stream_id)
+            links_slr1.append(stream.config.link)
             sids_slr1.append(stream.src_id)
 
-    link_slr0.sort()
+    links_slr0.sort()
     links_slr1.sort()
 
     card_id = RU_DESCRIPTOR.iface if CARD_ID_OVERRIDE == -1 else CARD_ID_OVERRIDE
 
     modules = []
     queues = []
-    if len(link_slr0) > 0:
+    if len(links_slr0) > 0:
         modules += [DAQModule(name = 'flxcard_0',
                         plugin = 'FelixCardReader',
                         conf = flxcr.Conf(card_id = card_id,
@@ -176,7 +200,7 @@ def create_felix_cardreader(
                                             dma_block_size_kb = 4,
                                             dma_memory_size_gb = 4,
                                             numa_id = NUMA_ID,
-                                            links_enabled = link_slr0
+                                            links_enabled = links_slr0
                                         )
                     )]
     
@@ -222,27 +246,22 @@ def create_felix_cardreader(
 ###
 # DPDK Card Reader creator
 ###
+class NICReceiverBuilder:
 
-
-
-### Move to utility module
-def group_by_key(coll, key):
-    """
-    """
-    m = {}
-    s = sorted(coll, key=key)
-    for k, g in groupby(s, key):
-        m[k] = list(g)
-    return m
-
-
-
-class EthReadoutUnitBuilder:
+    # FIXME: workaround to avoid lcore to be set to 0
+    # To be reviewd
+    lcore_offset = 1
 
     def __init__(self, rudesc : ReadoutUnitDescriptor):
         self.desc = rudesc
 
-    
+
+    def streams_by_host(self):
+
+        iface_map = group_by_key(self.desc.streams, lambda s: s.config.rx_host)
+
+        return iface_map    
+
     def streams_by_iface(self):
 
         iface_map = group_by_key(self.desc.streams, lambda s: (s.config.rx_ip, s.config.rx_mac, s.config.rx_host))
@@ -287,7 +306,7 @@ class EthReadoutUnitBuilder:
                     nrc.Source(
                         id=sid, # FIXME what is this ID?
                         ip_addr=tx_ip,
-                        lcore=sid,
+                        lcore=sid+self.lcore_offset,
                         rx_q=sid,
                         src_info=si,
                         src_streams_mapping=ssm
@@ -309,13 +328,58 @@ class EthReadoutUnitBuilder:
 
         return conf
 
+    def build_conf_by_host(self, eal_arg_list):
 
+        streams_by_if_and_tx = self.streams_by_host()
+
+        ifcfgs = []
+        for (rx_ip, rx_mac, _),txs in streams_by_if_and_tx.items():
+            srcs = []
+            # Sid is used for the "Source.id". What is it?
+
+            for sid,((tx_ip,_,_),streams) in enumerate(txs.items()):
+                ssm = nrc.SrcStreamsMapping([
+                        nrc.StreamMap(source_id=s.src_id, stream_id=s.geo_id.stream_id)
+                        for s in streams
+                    ])
+                geo_id = streams[0].geo_id
+                si = nrc.SrcGeoInfo(
+                    det_id=geo_id.det_id,
+                    crate_id=geo_id.crate_id,
+                    slot_id=geo_id.slot_id
+                )
+
+                srcs.append(
+                    nrc.Source(
+                        id=sid, # FIXME what is this ID?
+                        ip_addr=tx_ip,
+                        lcore=sid+self.lcore_offset,
+                        rx_q=sid,
+                        src_info=si,
+                        src_streams_mapping=ssm
+                    )
+                )
+            ifcfgs.append(
+                nrc.Interface(
+                    ip_addr=rx_ip,
+                    mac_addr=rx_mac,
+                    expected_sources=srcs
+                )
+            )         
+
+
+        conf = nrc.Conf(
+            ifaces = ifcfgs,
+            eal_arg_list=eal_arg_list
+        )
+
+        return conf
 
 def create_dpdk_cardreader(
         FRONTEND_TYPE: str,
         QUEUE_FRAGMENT_TYPE: str,
-        BASE_SOURCE_IP: str,
-        DESTINATION_IP: str,
+        # BASE_SOURCE_IP: str,
+        # DESTINATION_IP: str,
         EAL_ARGS: str,
         # RU_STREAMS: list  # This is a list of DROInfo
         RU_DESCRIPTOR # ReadoutUnitDescriptor
@@ -352,7 +416,7 @@ def create_dpdk_cardreader(
     #         last_ip += 1
     #     offset += NUMBER_OF_LINKS_PER_GROUP
 
-    eth_ru_bldr = EthReadoutUnitBuilder(RU_DESCRIPTOR)
+    eth_ru_bldr = NICReceiverBuilder(RU_DESCRIPTOR)
 
     nic_reader_name = f"nic_reader_{RU_DESCRIPTOR.iface}"
 
@@ -662,12 +726,17 @@ def create_readout_app(
     EMULATED_DATA_TIMES_START_WITH_NOW = False,
     DEBUG=False
 ):
+    
     FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _ = compute_data_types(RU_DESCRIPTOR.det_id, CLOCK_SPEED_HZ, RU_DESCRIPTOR.tech)
+    
     # TPG is automatically disabled for non wib2 frontends
     TPG_ENABLED = TPG_ENABLED and (FRONTEND_TYPE=='wib2')
+    
     modules = []
     queues = []
 
+
+    # Create the card readers
     cr_mods = []
     cr_queues = []
 
@@ -702,8 +771,8 @@ def create_readout_app(
             dpdk_mods, dpdk_queues = create_dpdk_cardreader(
                 FRONTEND_TYPE=FRONTEND_TYPE,
                 QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
-                BASE_SOURCE_IP=BASE_SOURCE_IP,
-                DESTINATION_IP=DESTINATION_IP,
+                # BASE_SOURCE_IP=BASE_SOURCE_IP,
+                # DESTINATION_IP=DESTINATION_IP,
                 EAL_ARGS=EAL_ARGS,
                 RU_DESCRIPTOR=RU_DESCRIPTOR
             )
@@ -728,6 +797,7 @@ def create_readout_app(
 
     )
 
+    # Configure the TP processing if requrested
     if TPG_ENABLED:
         dlhs_mods = add_tp_processing(
            dro_dlh_list=dlhs_mods,
@@ -743,6 +813,7 @@ def create_readout_app(
 
     modules += dlhs_mods
 
+    # Add the TP datalink handlers
     if TPG_ENABLED and READOUT_SENDS_TP_FRAGMENTS:
         tpg_mods, tpg_queues = create_tp_dlhs(
             dro_dlh_list=dlhs_mods,
@@ -753,6 +824,7 @@ def create_readout_app(
         modules += tpg_mods
         queues += tpg_queues
 
+    # Create the Module graphs
     mgraph = ModuleGraph(modules, queues=queues)
 
     # Add endpoints and frame producers to DRO data handlers
@@ -771,6 +843,9 @@ def create_readout_app(
             RUIDX=RU_DESCRIPTOR.label
         )
 
+    # Create the application
     readout_app = App(mgraph, host=RU_DESCRIPTOR.host_name)
+
+    # All done
     return readout_app
 
