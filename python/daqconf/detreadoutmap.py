@@ -23,6 +23,7 @@ import collections
 import json
 import pathlib
 import copy
+from itertools import groupby
 
 from typing import Dict
 from collections import namedtuple, defaultdict
@@ -33,6 +34,17 @@ from rich import print
 from rich.table import Table
 
 
+### Move to utility module
+def group_by_key(coll, key):
+    """
+    """
+    m = {}
+    s = sorted(coll, key=key)
+    for k, g in groupby(s, key):
+        m[k] = list(g)
+    return m
+
+### HORROR!
 thismodule = sys.modules[__name__]
 
 # Turn moo object into named tuples
@@ -292,16 +304,6 @@ class DetReadoutMapService:
 
         return m
 
-    # # FIXME: This belongs to readout configuration. Should it be here?
-    # def group_by_ro_unit(self) -> Dict:
-
-    #     m = defaultdict(list)
-    #     for s in self.streams:
-    #         ru_host = getattr(s.config, self._host_label_map[s.tech])
-    #         ru_iface = getattr(s.config, self._iflabel_map[s.tech])
-    #         m[ROUnitID(ru_host, ru_iface, s.tech)].append(s)
-
-    #     return dict(m)
 
     # FIXME: This belongs to readout configuration. Should it be here?
     def get_ru_descriptors(self) -> Dict:

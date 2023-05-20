@@ -24,7 +24,7 @@ local cs = {
     tech:   s.enum("StreamTechnology", ["eth", "flx"]),
     mode:   s.enum("StreamMode", ["fix_rate", "var_rate"]),
     flx_protocol: s.enum("FlxProtocol", ["full", "half"]),
-    eth_protocol: s.enum("EthProtocol", ["udp"]),
+    eth_protocol: s.enum("EthProtocol", ["udp", "zmq"]),
 
     flx_conf: s.record("FelixStreamConf", [
       s.field("protocol", self.flx_protocol, "full", doc="Felix protocol"),
@@ -55,6 +55,8 @@ local cs = {
         s.field("geo_id", hdf5rdf.GeoID, doc="Geo ID"),
         s.field("tech", self.tech, doc="eth vs flx"),
         s.field("config", self.stream_conf)
+        // s.field("details", self.stream_details)
+        // s.field("info", self.stream_info)
     ]),
 
     stream_map : s.sequence("DROStreamMap", self.stream_entry, doc="Detector Readout map" )

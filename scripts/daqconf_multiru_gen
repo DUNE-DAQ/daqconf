@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import click
 import math
+import shutil
+import os.path
 from rich.console import Console
 from os.path import exists, abspath, dirname, basename
 from pathlib import Path
@@ -10,7 +12,7 @@ from daqconf.core.sourceid import SourceIDBroker #, get_tpg_mode
 from daqconf.core.config_file import generate_cli_from_schema
 from daqconf.core.assets import resolve_asset_file
 # from detchannelmaps._daq_detchannelmaps_py import HardwareMapService
-from detdataformats._daq_detdataformats_py import *
+from detdataformats import *
 
 import daqconf.detreadoutmap as dromap
 
@@ -36,17 +38,18 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('-s', '--data-rate-slowdown-factor', default=0, help="Scale factor for readout internal clock to generate less data")
 @click.option('--enable-dqm', default=False, is_flag=True, help="Enable generation of DQM apps")
 @click.option('--file-label', default='', help="File - used for raw data filename prefix")
+@click.option('-n', '--dry-run', default=False, is_flag=True, help="Dry run, do not generate output files")
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
-def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown_factor, enable_dqm, file_label, debug, json_dir):
+def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown_factor, enable_dqm, file_label, dry_run, debug, json_dir):
 
     output_dir = Path(json_dir)
-    if output_dir.exists():
+    if output_dir.exists() and not dry_run:
         raise RuntimeError(f"Directory {output_dir} already exists")
 
 
     debug_dir = output_dir / 'debug'
-    if debug:
+    if debug and not dry_run:
         debug_dir.mkdir(parents=True)
 
     config_data = config[0]
@@ -189,14 +192,14 @@ def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown
     dro_map = dromap.DetReadoutMapService()
     dro_map.load(readout.detector_readout_map_file)
 
-    ru_descrs = dro_map.get_ru_descriptors()
+    ru_descs = dro_map.get_ru_descriptors()
 
     # tp_mode = get_tpg_mode(readout.enable_firmware_tpg,readout.enable_tpg)
     sourceid_broker.register_readout_source_ids(dro_map.streams)
-    sourceid_broker.generate_trigger_source_ids(ru_descrs, readout.enable_tpg)
+    sourceid_broker.generate_trigger_source_ids(ru_descs, readout.enable_tpg)
     tp_infos = sourceid_broker.get_all_source_ids("Trigger")
 
-    for ru_name, ru_desc in ru_descrs.items():
+    for ru_name, ru_desc in ru_descs.items():
         console.log(f"Will generate a RU process on {ru_name} ({ru_desc.iface}, {ru_desc.tech}), {len(ru_desc.streams)} streams active")
 
 #    total_number_of_data_producers = 0
@@ -219,12 +222,6 @@ def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown
 
     if trigger.enable_tpset_writing and not readout.enable_tpg:
         raise Exception("TP writing can only be used when either software or firmware TPG is enabled")
-
-    # if readout.enable_firmware_tpg and not readout.use_felix:
-        # raise Exception("firmware TPG can only be used if real felix card is also used.")
-
-    # if readout.enable_firmware_tpg and readout.use_fake_data_producers:
-        # raise Exception("Fake data producers don't support firmware tpg")
 
 #    if (len(region_id) != len(host_ru)) and (len(region_id) != 0):
 #        raise Exception("--region-id should be specified once for each --host-ru, or not at all!")
@@ -296,11 +293,11 @@ def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown
     readout_data_request_timeout = boot.data_request_timeout_ms # can that be put somewhere else? in dataflow?
     trigger_data_request_timeout = boot.data_request_timeout_ms
     trigger_record_building_timeout = max(MINIMUM_BASIC_TRB_TIMEOUT, TRB_TIMEOUT_SAFETY_FACTOR * max(readout_data_request_timeout, trigger_data_request_timeout))
-    if len(ru_descrs) >= 1:
-        effective_number_of_data_producers = len(ru_descrs)  # number of DataLinkHandlers
+    if len(ru_descs) >= 1:
+        effective_number_of_data_producers = len(ru_descs)  # number of DataLinkHandlers
         if readout.enable_tpg:
             effective_number_of_data_producers *= 2  # add in TPSet producers from Trigger (one per Link)
-            effective_number_of_data_producers += len(ru_descrs)  # add in TA producers from Trigger (one per RU)
+            effective_number_of_data_producers += len(ru_descs)  # add in TA producers from Trigger (one per RU)
         trigger_record_building_timeout = int(math.sqrt(effective_number_of_data_producers) * trigger_record_building_timeout)
     trigger_record_building_timeout += 15 * TRB_TIMEOUT_SAFETY_FACTOR * max_expected_tr_sequences
     dfo_stop_timeout = max(DFO_TIMEOUT_SAFETY_FACTOR * trigger_record_building_timeout, MINIMUM_DFO_TIMEOUT)
@@ -420,7 +417,7 @@ def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown
     trb_dqm_sourceid_offset = sourceid_broker.get_next_source_id("TRBuilder")
     ru_app_names=[]
     dqm_app_names = []
-    for ru_i,(ru_name, ru_descr) in enumerate(ru_descrs.items()):
+    for ru_i,(ru_name, ru_desc) in enumerate(ru_descs.items()):
 
         # host=ru_id.host_name.replace("-","")
         # ru_name = f"ru{ru_id.label}"
@@ -431,24 +428,19 @@ def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown
         latency_preallocate = readout.numa_config['default_latency_preallocation']
         card_override = -1
         for ex in readout.numa_config['exceptions']:
-            if ex['host'] == ru_descr.host_name and ex['card'] == ru_descr.iface:
+            if ex['host'] == ru_desc.host_name and ex['card'] == ru_desc.iface:
                 numa_id = ex['numa_id']
                 latency_numa = ex['latency_buffer_numa_aware']
                 latency_preallocate = ex['latency_buffer_preallocation']
                 card_override = ex['felix_card_id']
 
         the_system.apps[ru_name] = create_readout_app(
-            # HOST=ru_id.host_name,
-            # DRO_CONFIG=dro_config,
-            # RU_ID = ru_id,
-            # RU_STREAMS = ru_streams,
-            RU_DESCRIPTOR = ru_descr,
+            RU_DESCRIPTOR = ru_desc,
+            SOURCEID_BROKER = sourceid_broker,
             EMULATOR_MODE = readout.emulator_mode,
             DATA_RATE_SLOWDOWN_FACTOR = readout.data_rate_slowdown_factor,
             DEFAULT_DATA_FILE = readout.default_data_file,
             DATA_FILES = data_file_map,
-            # FLX_INPUT = readout.use_felix,
-            # ETH_MODE = readout.eth_mode,
             USE_FAKE_CARDS = readout.use_fake_cards,
             CLOCK_SPEED_HZ = readout.clock_speed_hz,
             RAW_RECORDING_ENABLED = readout.enable_raw_recording,
@@ -457,21 +449,12 @@ def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown
             THRESHOLD_TPG = readout.tpg_threshold,
             ALGORITHM_TPG = readout.tpg_algorithm,
             CHANNEL_MASK_TPG = readout.tpg_channel_mask,
-            # FIRMWARE_TPG_ENABLED = readout.enable_firmware_tpg,
-            # DTP_CONNECTIONS_FILE= readout.dtp_connections_file,
-            # FIRMWARE_HIT_THRESHOLD= readout.firmware_hit_threshold,
             TPG_CHANNEL_MAP = trigger.tpg_channel_map,
-            # USE_FAKE_DATA_PRODUCERS = readout.use_fake_data_producers,
             LATENCY_BUFFER_SIZE=readout.latency_buffer_size,
             DATA_REQUEST_TIMEOUT=readout_data_request_timeout,
             FRAGMENT_SEND_TIMEOUT=readout.fragment_send_timeout_ms,
-            SOURCEID_BROKER = sourceid_broker,
             READOUT_SENDS_TP_FRAGMENTS = readout.readout_sends_tp_fragments,
-            # ENABLE_DPDK_SENDER=dpdk_sender.enable_dpdk_sender,
-            # ENABLE_DPDK_READER=readout.enable_dpdk_reader,
             EAL_ARGS=readout.eal_args,
-            BASE_SOURCE_IP=readout.base_source_ip,
-            DESTINATION_IP=readout.destination_ip,
             NUMA_ID = numa_id,
             LATENCY_BUFFER_NUMA_AWARE = latency_numa,
             LATENCY_BUFFER_ALLOCATION_MODE = latency_preallocate,
@@ -480,7 +463,7 @@ def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown
             DEBUG=debug)
 
         if boot.use_k8s:
-            if readout.use_felix:
+            if ru_desc.tech == 'flx':
                 c = card_override if card_override != -1 else ru_desc.iface
                 the_system.apps[ru_name].resources = {
                     f"felix.cern/flx{c}-data": "1", # requesting FLX{c}
@@ -766,9 +749,8 @@ def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown
 
 
     if readout.thread_pinning_file != "":
-        import os
-        resolved_thread_pinning_file = os.path.abspath(os.path.expanduser(os.path.expandvars(readout.thread_pinning_file)))
-        if not exists(resolved_thread_pinning_file):
+        resolved_thread_pinning_file = Path(os.path.expandvars(readout.thread_pinning_file)).expanduser().absolute()
+        if not resolved_thread_pinning_file.exists():
             raise RuntimeError(f'Cannot find the file {readout.thread_pinning_file} ({resolved_thread_pinning_file})')
 
         system_command_datas['boot']['scripts'] = {
@@ -777,7 +759,7 @@ def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown
                     "readout-affinity.py --pinfile ${DUNEDAQ_THREAD_PIN_FILE}"
                 ],
                 "env": {
-                    "DUNEDAQ_THREAD_PIN_FILE": resolved_thread_pinning_file,
+                    "DUNEDAQ_THREAD_PIN_FILE": wresolved_thread_pinning_file,
                     "LD_LIBRARY_PATH": "getenv",
                     "PATH": "getenv"
                 }
@@ -785,40 +767,33 @@ def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown
         }
 
 
-    write_json_files(app_command_datas, system_command_datas, output_dir, verbose=debug)
+    if not dry_run:
+        write_json_files(app_command_datas, system_command_datas, output_dir, verbose=debug)
 
-    console.log(f"MDAapp config generated in {output_dir}")
+        console.log(f"MDAapp config generated in {output_dir}")
 
-    write_metadata_file(output_dir, "daqconf_multiru_gen", config_file)
-    write_config_file(
-        output_dir,
-        basename(config_file),
-        confgen.daqconf_multiru_gen(  # <facepalm>
-            boot = boot,
-            dataflow = dataflow,
-            dqm = dqm,
-            hsi = hsi,
-            ctb_hsi = ctb_hsi,
-            readout = readout,
-            timing = timing,
-            trigger = trigger,
-            dpdk_sender = dpdk_sender,
-        ) # </facepalm>
-    )
+        write_metadata_file(output_dir, "daqconf_multiru_gen", config_file)
+        write_config_file(
+            output_dir,
+            basename(config_file),
+            confgen.daqconf_multiru_gen(  # <facepalm>
+                boot = boot,
+                dataflow = dataflow,
+                dqm = dqm,
+                hsi = hsi,
+                ctb_hsi = ctb_hsi,
+                readout = readout,
+                timing = timing,
+                trigger = trigger,
+                dpdk_sender = dpdk_sender,
+            ) # </facepalm>
+        )
 
+        shutil.copyfile(readout.detector_readout_map_file, output_dir/'dromap.json')
 
-    import json
-    hwmap_file = open(readout.detector_readout_map_file, 'r')
-    hwmap_data = hwmap_file.read()
-    with open(output_dir/'hwmap.json', 'w') as f :
-        json.dump({
-            '__to_read_(rm_backslashes)': f"python -c \"import json,sys;print(json.load(open(sys.argv[1]))['hwmap'])\" {output_dir}/hwmap.json",
-            'hwmap': hwmap_data
-        }, f, indent=2)
-
-    if debug:
-        for name in the_system.apps:
-            the_system.apps[name].export(debug_dir / f"{name}.dot")
+        if debug:
+            for name in the_system.apps:
+                the_system.apps[name].export(debug_dir / f"{name}.dot")
 
 if __name__ == '__main__':
     try:

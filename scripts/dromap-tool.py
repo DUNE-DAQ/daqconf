@@ -9,9 +9,16 @@ from rich import print
 from rich.table import Table
 from rich.console import Console
 
+import click_shell
+
 console = Console()
 
-@click.group(chain=True)
+# ------------------------------------------------------------------------------
+# Add -h as default help option
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+# ------------------------------------------------------------------------------
+
+@click_shell.shell(prompt='dro> ', chain=True, context_settings=CONTEXT_SETTINGS)
 @click.pass_obj
 def cli(obj):
     pass
@@ -73,7 +80,7 @@ def rm(obj, src_id):
 
 
 @cli.command("add-flx", help="Add a felix stream")
-@click.option('--force', type=bool, default=False)
+@click.option('--force', type=bool, is_flag=True, default=False)
 @click.option('--src-id', type=int, default=None)
 @click.option('--geo-det-id', type=int, default=0)
 @click.option('--geo-crate-id', type=int, default=0)
@@ -108,7 +115,7 @@ def add_flx(obj, force, src_id, **kwargs):
 
     
 @cli.command("add-eth", help="Add an Ethernet stream")
-@click.option('--force', type=bool, default=False)
+@click.option('--force', type=bool, is_flag=True, default=False)
 @click.option('--src-id', type=int, default=None)
 @click.option('--geo-det-id', type=int, default=0)
 @click.option('--geo-crate-id', type=int, default=0)

@@ -123,7 +123,7 @@ local cs = {
   data_files: s.sequence("data_files", self.data_file_entry),
 
   readout: s.record("readout", [
-    s.field( "detector_readout_map_file", self.path, default='./HardwareMap.json', doc="File containing detector hardware map for configuration to run"),
+    s.field( "detector_readout_map_file", self.path, default='./DetectorReadoutMap.json', doc="File containing detector hardware map for configuration to run"),
     s.field( "emulator_mode", self.flag, default=false, doc="If active, timestamps of data frames are overwritten when processed by the readout. This is necessary if the felix card does not set correct timestamps. Former -e"),
     s.field( "thread_pinning_file", self.path, default="", doc="A thread pinning configuration file that gets executed after conf."),
     s.field( "data_rate_slowdown_factor",self.count, default=1, doc="Factor by which to suppress data generation. Former -s"),
