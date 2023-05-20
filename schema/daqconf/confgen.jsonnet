@@ -248,7 +248,7 @@ local cs = {
     s.field( "trigger_candidate_plugin", self.string, default='TriggerCandidateMakerPrescalePlugin', doc="Trigger candidate algorithm plugin"),
     s.field( "trigger_candidate_config", self.trigger_algo_config, default=self.trigger_algo_config, doc="Trigger candidate algorithm config (string containing python dictionary)"),
     s.field( "hsi_trigger_type_passthrough", self.flag, default=false, doc="Option to override trigger type in the MLT"),
-    s.field( "enable_tpset_writing", self.flag, default=false, doc="Enable the writing of TPs to disk (only works with enable_software_tpg or enable_firmware_tpg)"),
+    s.field( "enable_tpset_writing", self.flag, default=false, doc="Enable the writing of TPs to disk (only works with enable_tpg or enable_firmware_tpg)"),
     s.field( "tpset_output_path", self.path,default='.', doc="Output directory for TPSet stream files"),
     s.field( "tpset_output_file_size",self.count, default=4*1024*1024*1024, doc="The size threshold when TPSet stream files are closed (in bytes)"),
     s.field( "tpg_channel_map", self.tpg_channel_map, default="ProtoDUNESP1ChannelMap", doc="Channel map for TPG"),

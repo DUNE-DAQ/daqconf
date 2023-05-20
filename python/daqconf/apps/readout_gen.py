@@ -546,7 +546,7 @@ def add_tp_processing(
                 requesthandlerconf = dlh.conf.requesthandlerconf,
                 rawdataprocessorconf= rconf.RawDataProcessorConf(
                     source_id = dro_sid,
-                    enable_software_tpg = True,
+                    enable_tpg = True,
                     software_tpg_threshold = THRESHOLD_TPG,
                     software_tpg_algorithm = ALGORITHM_TPG,
                     software_tpg_channel_mask = CHANNEL_MASK_TPG,
@@ -640,7 +640,7 @@ def add_dro_eps_and_fps(
 ) -> None: 
     """Adds detector readout endpoints and fragment producers"""
     for dlh in dlh_list:
-        print(dlh)
+        # print(dlh)
 
         # extract source ids
         dro_sid = dlh.conf.readoutmodelconf['source_id']
@@ -661,7 +661,7 @@ def add_dro_eps_and_fps(
         )
 
         # if processing is enabled, add a pubsub endooint for TPSets
-        if dlh.conf.rawdataprocessorconf['enable_software_tpg']:
+        if dlh.conf.rawdataprocessorconf['enable_tpg']:
             mgraph.add_endpoint(
                 f"tpsets_ru{RUIDX}_link{dro_sid}",
                 f"datahandler_{dro_sid}.tpset_out",

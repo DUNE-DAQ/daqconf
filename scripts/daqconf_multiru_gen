@@ -38,11 +38,15 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('-s', '--data-rate-slowdown-factor', default=0, help="Scale factor for readout internal clock to generate less data")
 @click.option('--enable-dqm', default=False, is_flag=True, help="Enable generation of DQM apps")
 @click.option('--file-label', default='', help="File - used for raw data filename prefix")
+@click.option('-a', '--only-check-args', default=False, is_flag=True, help="Dry run, do not generate output files")
 @click.option('-n', '--dry-run', default=False, is_flag=True, help="Dry run, do not generate output files")
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
-def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown_factor, enable_dqm, file_label, dry_run, debug, json_dir):
+def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown_factor, enable_dqm, file_label, only_check_args, dry_run, debug, json_dir):
 
+    if only_check_args:
+        return
+    
     output_dir = Path(json_dir)
     if output_dir.exists() and not dry_run:
         raise RuntimeError(f"Directory {output_dir} already exists")
@@ -188,7 +192,7 @@ def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown
     # dro_infos = hw_map_service.get_all_dro_info()
 
     
-    
+    # Load the Detector Readout map
     dro_map = dromap.DetReadoutMapService()
     dro_map.load(readout.detector_readout_map_file)
 
@@ -800,3 +804,4 @@ if __name__ == '__main__':
         cli(show_default=True, standalone_mode=True)
     except Exception as e:
         console.print_exception()
+        raise SystemExit(-1)

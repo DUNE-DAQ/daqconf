@@ -95,7 +95,7 @@
     "thread_pinning_file": "",
     "data_rate_slowdown_factor": 1,
     "clock_speed_hz": 62500000,
-    "default_data_file": "asset://?label=ProtoWIB&subsystem=readout",
+    "default_data_file": "asset://?name=wib2-frames.bin&label=DuneWIB&subsystem=readout",
     "data_files": [],
     "latency_buffer_size": 499968,
     "enable_tpg": false,

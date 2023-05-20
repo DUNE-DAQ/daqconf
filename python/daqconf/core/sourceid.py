@@ -198,12 +198,12 @@ class SourceIDBroker:
         self.register_source_id("Trigger", self.get_next_source_id("Trigger"), tc_info)
         
 
-# def get_tpg_mode(enable_fw_tpg, enable_software_tpg):
-#     if enable_fw_tpg and enable_software_tpg:
+# def get_tpg_mode(enable_fw_tpg, enable_tpg):
+#     if enable_fw_tpg and enable_tpg:
 #         raise ValueError("Cannot enable both FW and SW TPG!")
 #     if enable_fw_tpg:
 #         return TPGenMode.FWTPG
-#     if enable_software_tpg:
+#     if enable_tpg:
 #         return TPGenMode.SWTPG
 
 #     return TPGenMode.DISABLED

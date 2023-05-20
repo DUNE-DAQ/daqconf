@@ -81,7 +81,7 @@ For our configuration example, we see that we have one readout app on np04-srv-0
 
 The first column is the Source ID for a given link. Multiple links may have the same SourceID, depending on the detector configuration. The next four fields specify the physical location of the link in hardware coordinates and the [DetID](https://github.com/DUNE-DAQ/detdataformats/blob/develop/include/detdataformats/DetID.hpp). Next comes the FELIX card location, as host/card #, and the final two numbers are the link location within the FELIX (Super Logic Region and Link #). For physical (e.g. FELIX links), there are up to 2 SLRs each supporting up to 5 links. For the HD_TPC detector, "DetCrate" corresponds to "APA".
 
-_daqconf_multiru_gen_ will create a readout app for each unique host/card pair in the given hardware map file. The hardware map can be passed using the `--hardware-map-file` command-line option or via `readout.hardware_map_file`. Note that detector type HD_TPC can be used for both ProtoWIB and DUNEWIB configurations, they are distinguished using `readout.clock_speed_hz`.
+_daqconf_multiru_gen_ will create a readout app for each unique host/card pair in the given hardware map file. The hardware map can be passed using the `--hardware-map-file` command-line option or via `readout.detector_readout_map_file`. Note that detector type HD_TPC can be used for both ProtoWIB and DUNEWIB configurations, they are distinguished using `readout.clock_speed_hz`.
 
 ### Bonus Example (Coldbox Config)
 Command line version:
