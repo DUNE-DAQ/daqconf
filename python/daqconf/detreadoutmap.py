@@ -233,16 +233,16 @@ class DetReadoutMapService:
             'eth': 'rx_host',
         }
 
-        tech_m = defaultdict(set)
+        kind_m = defaultdict(set)
         det_id_m = defaultdict(set)
         for en in streams:
             ro_host = getattr(en.parameters, host_label_map[en.kind])
-            tech_m[ro_host].add(en.kind)
+            kind_m[ro_host].add(en.kind)
             det_id_m[ro_host].add(en.geo_id.det_id)
 
-        multi_tech_hosts = {k:v for k,v in tech_m.items() if len(v) > 1}
-        if multi_tech_hosts:
-            raise ValueError(f"Readout hosts with streams of different techs are not supported. Found {multi_tech_hosts}")
+        multi_kind_hosts = {k:v for k,v in kind_m.items() if len(v) > 1}
+        if multi_kind_hosts:
+            raise ValueError(f"Readout hosts with streams of different kinds are not supported. Found {multi_kind_hosts}")
 
         multi_det_hosts = {k:v for k,v in det_id_m.items() if len(v) > 1}
         if multi_det_hosts:

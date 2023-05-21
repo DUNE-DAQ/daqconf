@@ -52,7 +52,7 @@ from ..detreadoutmap import group_by_key
 def compute_data_types(
         det_id : int,
         clk_freq_hz: int,
-        tech: str
+        kind: str
     ):
     det_str = DetID.subdetector_to_string(DetID.Subdetector(det_id))
 
@@ -61,7 +61,7 @@ def compute_data_types(
     queue_frag_type = None
     fakedata_time_tick=None
     fakedata_frame_size=None  
-    
+
     # if ((det_str == "HD_TPC" or det_str== "VD_Bottom_TPC") and clk_freq_hz== 50000000):
     #     fe_type = "wib"
     #     queue_frag_type="WIBFrame"
@@ -69,13 +69,13 @@ def compute_data_types(
         # fakedata_time_tick=25
     #    fakedata_frame_size=434
     # Far detector types
-    if ((det_str == "HD_TPC" or det_str == "VD_Bottom_TPC") and clk_freq_hz== 62500000 and tech=='flx' ):
+    if ((det_str == "HD_TPC" or det_str == "VD_Bottom_TPC") and clk_freq_hz== 62500000 and kind=='flx' ):
         fe_type = "wib2"
         queue_frag_type="WIB2Frame"
         fakedata_frag_type = "WIB"
         fakedata_time_tick=32
         fakedata_frame_size=472
-    elif ((det_str == "HD_TPC" or det_str == "VD_Bottom_TPC") and clk_freq_hz== 62500000 and tech=='eth' ):
+    elif ((det_str == "HD_TPC" or det_str == "VD_Bottom_TPC") and clk_freq_hz== 62500000 and kind=='eth' ):
         fe_type = "wibeth"
         queue_frag_type="WIBEthFrame"
         fakedata_frag_type = "WIBEth"
@@ -107,7 +107,7 @@ def compute_data_types(
         fakedata_time_tick=None
         fakedata_frame_size=None       
     else:
-        raise ValueError(f"No match for {det_str}, {clk_freq_hz}, {tech}")
+        raise ValueError(f"No match for {det_str}, {clk_freq_hz}, {kind}")
 
 
     return fe_type, queue_frag_type, fakedata_frag_type
@@ -283,7 +283,7 @@ class NICReceiverBuilder:
         return m
     
     # def streams_by_ru(self):
-    #     m = group_by_key(self.desc.streams, lambda s: (getattr(s.config, self.desc._host_label_map[s.tech]), getattr(s.config, self.desc._iflabel_map[s.tech]), s.tech, s.geo_id.det_id))
+    #     m = group_by_key(self.desc.streams, lambda s: (getattr(s.config, self.desc._host_label_map[s.kind]), getattr(s.config, self.desc._iflabel_map[s.kind]), s.kind, s.geo_id.det_id))
     #     return m
 
     def build_conf(self, eal_arg_list):
@@ -754,7 +754,7 @@ def create_readout_app(
     DEBUG=False
 ):
     
-    FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _ = compute_data_types(RU_DESCRIPTOR.det_id, CLOCK_SPEED_HZ, RU_DESCRIPTOR.tech)
+    FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _ = compute_data_types(RU_DESCRIPTOR.det_id, CLOCK_SPEED_HZ, RU_DESCRIPTOR.kind)
     
     # TPG is automatically disabled for non wib2 frontends
     TPG_ENABLED = TPG_ENABLED and (FRONTEND_TYPE=='wib2')
@@ -783,7 +783,7 @@ def create_readout_app(
         cr_mods += fakecr_mods
         cr_queues += fakecr_queues
     else:
-        if RU_DESCRIPTOR.tech == 'flx':
+        if RU_DESCRIPTOR.kind == 'flx':
             flx_mods, flx_queues = create_felix_cardreader(
                 FRONTEND_TYPE=FRONTEND_TYPE,
                 QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
@@ -794,7 +794,7 @@ def create_readout_app(
             cr_mods += flx_mods
             cr_queues += flx_queues
 
-        elif RU_DESCRIPTOR.tech == 'eth':
+        elif RU_DESCRIPTOR.kind == 'eth':
             dpdk_mods, dpdk_queues = create_dpdk_cardreader(
                 FRONTEND_TYPE=FRONTEND_TYPE,
                 QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
@@ -890,7 +890,7 @@ def create_fake_reaout_app(
     modules = []
     queues = []
 
-    _, _, FAKEDATA_FRAGMENT_TYPE = compute_data_types(RU_DESCRIPTOR.det_id, CLOCK_SPEED_HZ, RU_DESCRIPTOR.tech)
+    _, _, FAKEDATA_FRAGMENT_TYPE = compute_data_types(RU_DESCRIPTOR.det_id, CLOCK_SPEED_HZ, RU_DESCRIPTOR.kind)
 
     for stream in RU_DESCRIPTOR.streams:
             modules += [DAQModule(name = f"fakedataprod_{stream.src_id}",

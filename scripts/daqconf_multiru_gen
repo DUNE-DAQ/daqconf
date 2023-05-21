@@ -204,7 +204,7 @@ def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown
     tp_infos = sourceid_broker.get_all_source_ids("Trigger")
 
     for ru_name, ru_desc in ru_descs.items():
-        console.log(f"Will generate a RU process on {ru_name} ({ru_desc.iface}, {ru_desc.tech}), {len(ru_desc.streams)} streams active")
+        console.log(f"Will generate a RU process on {ru_name} ({ru_desc.iface}, {ru_desc.kind}), {len(ru_desc.streams)} streams active")
 
 #    total_number_of_data_producers = 0
 
@@ -468,7 +468,7 @@ def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown
             DEBUG=debug)
 
         if boot.use_k8s:
-            if ru_desc.tech == 'flx':
+            if ru_desc.kind == 'flx':
                 c = card_override if card_override != -1 else ru_desc.iface
                 the_system.apps[ru_name].resources = {
                     f"felix.cern/flx{c}-data": "1", # requesting FLX{c}
