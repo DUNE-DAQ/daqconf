@@ -13,10 +13,10 @@ from dunedaq.env import get_moo_model_path
 import moo.io
 moo.io.default_load_path = get_moo_model_path()
 
-moo.otypes.load_types('daqconf/dromap.jsonnet')
+moo.otypes.load_types('daqconf/detreadoutmap.jsonnet')
 moo.otypes.load_types('hdf5libs/hdf5rawdatafile.jsonnet')
 
-import dunedaq.daqconf.dromap as dlm
+import dunedaq.daqconf.detreadoutmap as dromap
 import dunedaq.hdf5libs.hdf5rawdatafile as hdf5rdf
 
 import collections
@@ -44,15 +44,16 @@ def group_by_key(coll, key):
         m[k] = list(g)
     return m
 
+
 ### HORROR!
 thismodule = sys.modules[__name__]
 
 # Turn moo object into named tuples
 for c in [
     hdf5rdf.GeoID,
-    dlm.DROStreamEntry,
-    dlm.EthStreamConf,
-    dlm.FelixStreamConf,
+    dromap.DROStreamEntry,
+    dromap.EthStreamParameters,
+    dromap.FelixStreamParameters,
 ]: 
     c_ost = c.__dict__['_ost']
     c_name = c_ost['name']
@@ -61,10 +62,10 @@ for c in [
 
 class ReadoutUnitDescriptor:
 
-    def __init__(self, host_name, iface, tech, det_id, streams):
+    def __init__(self, host_name, iface, kind, det_id, streams):
         self.host_name = host_name
         self.iface = iface
-        self.tech = tech
+        self.kind = kind
         self.det_id = det_id
         self.streams = streams
 
@@ -74,30 +75,60 @@ class ReadoutUnitDescriptor:
 
     @property
     def label(self):
-        return f"{self.safe_host_name}{self.tech}{self.iface}"
+        return f"{self.safe_host_name}{self.kind}{self.iface}"
     
     @property
     def app_name(self):
         return f"ru{self.label}"
 
 
+StreamKindTraits = namedtuple("StreamKindTraits", [
+    'tuple_class',
+    'moo_class',
+    'host_label',
+    'iflable'
+] )
+
 class DetReadoutMapService:
     """Detector - Readout Link mapping"""
 
-    _tech_map =  {
-        'flx': (FelixStreamConf, dlm.FelixStreamConf),
-        'eth': (EthStreamConf, dlm.EthStreamConf),
+    # _tech_map =  {
+        # 'flx': (FelixStreamParameters, dromap.FelixStreamParameters),
+        # 'eth': (EthStreamParameters, dromap.EthStreamParameters),
+    # }
+
+    # _host_label_map = {
+    #     'flx': 'host',
+    #     'eth': 'rx_host',
+    # }
+
+    # _iflabel_map = {
+    #     'flx': 'card',
+    #     'eth': 'rx_iface',
+    # }
+
+    _traits_map = {
+        'flx': StreamKindTraits(FelixStreamParameters, dromap.FelixStreamParameters, 'host', 'card'),
+        'eth': StreamKindTraits(EthStreamParameters, dromap.EthStreamParameters, 'rx_host', 'rx_iface'),
     }
 
-    _host_label_map = {
-        'flx': 'host',
-        'eth': 'rx_host',
-    }
+    @classmethod
+    def _get_host_label(cls, kind: str) -> str:
+        return cls._traits_map[kind].host_label
 
-    _iflabel_map = {
-        'flx': 'card',
-        'eth': 'rx_iface',
-    }
+    @classmethod
+    def _get_iflabel(cls, kind: str) -> str:
+        return cls._traits_map[kind].iflable
+    
+    @classmethod
+    def _get_moo_class(cls, kind: str) -> str:
+        return cls._traits_map[kind].moo_class
+    
+
+    @classmethod
+    def _get_tuple_class(cls, kind: str) -> str:
+        return cls._traits_map[kind].tuple_class
+    
 
     def __init__(self):
         self._map = {}
@@ -147,16 +178,16 @@ class DetReadoutMapService:
         
         for e in data:
 
-            info = e.pop('config')
+            info = e.pop('parameters')
 
-            dro_en = dlm.DROStreamEntry(**e)
+            dro_en = dromap.DROStreamEntry(**e)
             
-            _, tech_moo_t = cls._tech_map[dro_en.tech]
-            dro_en.config = tech_moo_t(**info)
+            moo_t = cls._get_moo_class(dro_en.kind)
+            dro_en.parameters = moo_t(**info)
 
             dro_links.append(dro_en)
 
-        dlmap = dlm.DROStreamMap(dro_links)
+        dlmap = dromap.DROStreamMap(dro_links)
         _ = dlmap.pod()
 
     
@@ -167,11 +198,11 @@ class DetReadoutMapService:
         streams = []
         for s in data:
 
-            tech_t, _ = cls._tech_map[s['tech']]
-            config = tech_t(**s['config'])
+            tuple_t = cls._get_tuple_class(s['kind'])
+            parameters = tuple_t(**s['parameters'])
 
             s.update({
-                'config':config,
+                'parameters':parameters,
                 'geo_id':GeoID(**s['geo_id'])
             })
             en = DROStreamEntry(**s)
@@ -196,7 +227,7 @@ class DetReadoutMapService:
         
         
     def _validate_rohosts(self, streams):
-        # Check RU consistency, i.e. only one tech type per readout host
+        # Check RU consistency, i.e. only one kind type per readout host
         host_label_map = {
             'flx': 'host',
             'eth': 'rx_host',
@@ -205,8 +236,8 @@ class DetReadoutMapService:
         tech_m = defaultdict(set)
         det_id_m = defaultdict(set)
         for en in streams:
-            ro_host = getattr(en.config, host_label_map[en.tech])
-            tech_m[ro_host].add(en.tech)
+            ro_host = getattr(en.parameters, host_label_map[en.kind])
+            tech_m[ro_host].add(en.kind)
             det_id_m[ro_host].add(en.geo_id.det_id)
 
         multi_tech_hosts = {k:v for k,v in tech_m.items() if len(v) > 1}
@@ -236,17 +267,17 @@ class DetReadoutMapService:
         tx_ip_to_mac = defaultdict(set)
 
         for s in streams:
-            if s.tech != 'eth':
+            if s.kind != 'eth':
                 continue
             
-            rx_mac_to_host[s.config.rx_mac].add(s.config.rx_host)
-            rx_mac_to_ip[s.config.rx_mac].add(s.config.rx_ip)
-            rx_mac_to_iface[s.config.rx_mac].add(s.config.rx_iface)
-            rx_ip_to_mac[s.config.rx_ip].add(s.config.rx_mac)
+            rx_mac_to_host[s.parameters.rx_mac].add(s.parameters.rx_host)
+            rx_mac_to_ip[s.parameters.rx_mac].add(s.parameters.rx_ip)
+            rx_mac_to_iface[s.parameters.rx_mac].add(s.parameters.rx_iface)
+            rx_ip_to_mac[s.parameters.rx_ip].add(s.parameters.rx_mac)
 
-            tx_mac_to_ip[s.config.tx_mac].add(s.config.tx_ip)
-            tx_ip_to_mac[s.config.tx_ip].add(s.config.tx_mac)
-            tx_mac_to_host[s.config.tx_mac].add(s.config.tx_host)
+            tx_mac_to_ip[s.parameters.tx_mac].add(s.parameters.tx_ip)
+            tx_ip_to_mac[s.parameters.tx_ip].add(s.parameters.tx_mac)
+            tx_mac_to_host[s.parameters.tx_mac].add(s.parameters.tx_host)
 
 
         dup_rx_hosts = { k:v for k,v in rx_mac_to_host.items() if len(v) > 1}
@@ -292,50 +323,67 @@ class DetReadoutMapService:
 
 
     def group_by_host(self) -> Dict:
+        """Group streams by host
+
+        Returns:
+            Dict: readout host -> streams map
+        """
         m = {}
 
-        host_label_map = {
-            'flx': 'host',
-            'eth': 'rx_host',
-        }
-
         for s in self._map.values():
-            m.setdefault(getattr(s.config, host_label_map[s.tech]),[]).append(s)
+            m.setdefault(getattr(s.parameters, self._get_host_label[s.kind]),[]).append(s)
 
         return m
 
 
-    # FIXME: This belongs to readout configuration. Should it be here?
+    # FIXME: This implements a readout-specific view on the stream map. Does it belong here?
     def get_ru_descriptors(self) -> Dict:
         
         m = defaultdict(list)
         for s in self.streams:
-            ru_host = getattr(s.config, self._host_label_map[s.tech])
-            ru_iface = getattr(s.config, self._iflabel_map[s.tech])
-            m[(ru_host, ru_iface, s.tech, s.geo_id.det_id)].append(s)
+            ru_host = getattr(s.parameters, self._get_host_label[s.kind])
+            ru_iface = getattr(s.parameters, self._get_iflabel[s.kind])
+            m[(ru_host, ru_iface, s.kind, s.geo_id.det_id)].append(s)
 
         # Repackage as a map of ReadoutUnitDescriptors
         rud_map = {}
-        for (ru_host, ru_iface, tech, det_id),streams in m.items():
-            d = ReadoutUnitDescriptor(ru_host, ru_iface, tech, det_id, streams)
+        for (ru_host, ru_iface, kind, det_id),streams in m.items():
+            d = ReadoutUnitDescriptor(ru_host, ru_iface, kind, det_id, streams)
             rud_map[d.app_name] = d
 
         return rud_map
 
 
-    def get_by_tech(self, tech: str):
+    def get_by_kind(self, kind: str) -> Dict:
+        """Get the stream map by stream kind
+
+        Args:
+            kind (str): _description_
+
+        Returns:
+            Dict: _description_
+        """
         return {
             k:v for k,v in self._map.items()
-            if v.tech == tech
+            if v.kind == kind
         }
 
 
-    def get_src_ids(self):
+    def get_src_ids(self) -> list:
+        """Get the list of source ids in the map
+
+        Returns:
+            list: list of source ids
+        """
         return list(self._map)
 
 
-    def get_geo_ids(self):
-        '''Return the list of GeoIDs in the map'''
+    def get_geo_ids(self) -> list:
+        """Return the list of GeoIDs in the map
+
+        Returns:
+            list: list of geo ids
+        """
         return [v.geo_id for v in self.streams]
 
 
@@ -357,23 +405,23 @@ class DetReadoutMapService:
         t.add_column('src_id', style='blue')
         for f in GeoID._fields:
             t.add_column(f)
-        t.add_column('tech')
-        for f in FelixStreamConf._fields:
+        t.add_column('kind')
+        for f in FelixStreamParameters._fields:
             t.add_column(f"flx_{f}", style='cyan')
-        for f in EthStreamConf._fields:
+        for f in EthStreamParameters._fields:
             t.add_column(f"eth_{f}", style='magenta')
 
         for s,en in sorted(m.items(), key=lambda x: x[0]):
 
-            row = [str(s)]+[str(x) for x in en.geo_id]+[en.tech]
+            row = [str(s)]+[str(x) for x in en.geo_id]+[en.kind]
 
-            if en.tech == "flx":
-                infos = [str(x) for x in en.config]
+            if en.kind == "flx":
+                infos = [str(x) for x in en.parameters]
                 pads = ['-']*(len(t.columns)-len(row)-len(infos))
                 row += infos + pads
 
-            elif en.tech == "eth":
-                infos = [str(x) for x in en.config]
+            elif en.kind == "eth":
+                infos = [str(x) for x in en.parameters]
                 pads = ['-']*(len(t.columns)-len(row)-len(infos))
                 row += pads + infos
                 
@@ -389,17 +437,17 @@ class DetReadoutMapService:
         dro_seq = []
         for _,en in m.items():
 
-            dro_en = dlm.DROStreamEntry()
+            dro_en = dromap.DROStreamEntry()
             dro_en.src_id = en.src_id
-            dro_en.tech = en.tech
+            dro_en.kind = en.kind
             dro_en.geo_id = hdf5rdf.GeoID(**(en.geo_id._asdict()))
 
-            _, tech_moo_t = self._tech_map[en.tech]
-            dro_en.config = tech_moo_t(**(en.config._asdict()))
+            moo_t = self._get_moo_class(en.kind)
+            dro_en.parameters = moo_t(**(en.parameters._asdict()))
 
             dro_seq.append(dro_en)
 
-        dlmap = dlm.DROStreamMap(dro_seq)
+        dlmap = dromap.DROStreamMap(dro_seq)
         return dlmap.pod()
     
 
@@ -408,7 +456,7 @@ class DetReadoutMapService:
         return self._map.pop(srcid)
 
 
-    def add_srcid(self, src_id, geo_id, tech, **kwargs):
+    def add_srcid(self, src_id, geo_id, kind, **kwargs):
         """Add a new source id"""
 
         if src_id in self._map:
@@ -418,11 +466,13 @@ class DetReadoutMapService:
             raise KeyError(f"Geo ID {geo_id} is already present in the map")
 
 
-        tech_t, tech_moo_t = self._tech_map[tech]
-        config = tech_t(**(tech_moo_t(**kwargs).pod()))
+        tuple_t = self._get_tuple_class(kind)
+        moo_t = self._get_moo_class(kind)
+
+        parameters = tuple_t(**(moo_t(**kwargs).pod()))
 
 
-        s = DROStreamEntry(src_id=src_id, geo_id=geo_id, tech=tech, config=config)
+        s = DROStreamEntry(src_id=src_id, geo_id=geo_id, kind=kind, parameters=parameters)
         stream_list = list(self.streams)+[s]
         self._validate_streams(stream_list)
         self._validate_eth(stream_list)

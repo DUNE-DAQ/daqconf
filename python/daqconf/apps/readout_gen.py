@@ -57,46 +57,60 @@ def compute_data_types(
     det_str = DetID.subdetector_to_string(DetID.Subdetector(det_id))
 
     fe_type = None
-    fake_frag_type = None
+    fakedata_frag_type = None
     queue_frag_type = None
-
+    fakedata_time_tick=None
+    fakedata_frame_size=None  
+    
     # if ((det_str == "HD_TPC" or det_str== "VD_Bottom_TPC") and clk_freq_hz== 50000000):
     #     fe_type = "wib"
     #     queue_frag_type="WIBFrame"
-    #     fake_frag_type = "ProtoWIB"
-
+    #     fakedata_frag_type = "ProtoWIB"
+        # fakedata_time_tick=25
+    #    fakedata_frame_size=434
     # Far detector types
     if ((det_str == "HD_TPC" or det_str == "VD_Bottom_TPC") and clk_freq_hz== 62500000 and tech=='flx' ):
         fe_type = "wib2"
         queue_frag_type="WIB2Frame"
-        fake_frag_type = "WIB"
+        fakedata_frag_type = "WIB"
+        fakedata_time_tick=32
+        fakedata_frame_size=472
     elif ((det_str == "HD_TPC" or det_str == "VD_Bottom_TPC") and clk_freq_hz== 62500000 and tech=='eth' ):
         fe_type = "wibeth"
         queue_frag_type="WIBEthFrame"
-        fake_frag_type = "WIBEth"
+        fakedata_frag_type = "WIBEth"
+        fakedata_time_tick=2048
+        fakedata_frame_size=7200
     elif det_str == "HD_PDS" or det_str == "VD_Cathode_PDS" or det_str =="VD_Membrane_PDS":
         fe_type = "pds_stream"
-        fake_frag_type = "DAPHNE"
+        fakedata_frag_type = "DAPHNE"
         queue_frag_type = "PDSStreamFrame"
+        fakedata_time_tick=None
+        fakedata_frame_size=472
     elif det_str == "VD_Top_TPC":
         fe_type = "tde"
-        fake_frag_type = "TDE_AMC"
+        fakedata_frag_type = "TDE_AMC"
         queue_frag_type = "TDEFrame"
-
+        fakedata_time_tick=4472*32
+        fakedata_frame_size=8972
     # Near detector types
     elif det_str == "NDLAr_TPC":
         fe_type = "pacman"
-        fake_frag_type = "PACMAN"
+        fakedata_frag_type = "PACMAN"
         queue_frag_type = "PACMANFrame"
+        fakedata_time_tick=None
+        fakedata_frame_size=None       
     elif det_str == "NDLAr_PDS":
         fe_type = "mpd"
-        fake_frag_type = "MPD"
+        fakedata_frag_type = "MPD"
         queue_frag_type = "MPDFrame"
+        fakedata_time_tick=None
+        fakedata_frame_size=None       
     else:
         raise ValueError(f"No match for {det_str}, {clk_freq_hz}, {tech}")
 
 
-    return fe_type, queue_frag_type, fake_frag_type
+    return fe_type, queue_frag_type, fakedata_frag_type
 
 
 ###
