@@ -110,7 +110,7 @@ def compute_data_types(
         raise ValueError(f"No match for {det_str}, {clk_freq_hz}, {kind}")
 
 
-    return fe_type, queue_frag_type, fakedata_frag_type
+    return fe_type, queue_frag_type, fakedata_frag_type, fakedata_time_tick, fakedata_frame_size
 
 
 ###
@@ -752,9 +752,9 @@ def create_readout_app(
     CARD_ID_OVERRIDE = -1,
     EMULATED_DATA_TIMES_START_WITH_NOW = False,
     DEBUG=False
-):
+) -> App:
     
-    FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _ = compute_data_types(RU_DESCRIPTOR.det_id, CLOCK_SPEED_HZ, RU_DESCRIPTOR.kind)
+    FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _, _, _ = compute_data_types(RU_DESCRIPTOR.det_id, CLOCK_SPEED_HZ, RU_DESCRIPTOR.kind)
     
     # TPG is automatically disabled for non wib2 frontends
     TPG_ENABLED = TPG_ENABLED and (FRONTEND_TYPE=='wib2')
@@ -884,13 +884,13 @@ def create_readout_app(
 def create_fake_reaout_app(
     RU_DESCRIPTOR,
     CLOCK_SPEED_HZ
-):
+) -> App:
     """
     """
     modules = []
     queues = []
 
-    _, _, FAKEDATA_FRAGMENT_TYPE = compute_data_types(RU_DESCRIPTOR.det_id, CLOCK_SPEED_HZ, RU_DESCRIPTOR.kind)
+    _, _, fakedata_fragment_type, fakedata_time_tick, fakedata_frame_size = compute_data_types(RU_DESCRIPTOR.det_id, CLOCK_SPEED_HZ, RU_DESCRIPTOR.kind)
 
     for stream in RU_DESCRIPTOR.streams:
             modules += [DAQModule(name = f"fakedataprod_{stream.src_id}",
@@ -898,10 +898,10 @@ def create_fake_reaout_app(
                                   conf = fdp.ConfParams(
                                   system_type = "Detector_Readout",
                                   source_id = stream.src_id,
-                                  time_tick_diff = 32, # WIB1 only if clock is WIB1 clock, otherwise WIB2
-                                  frame_size = 472, # WIB1 only if clock is WIB1 clock, otherwise WIB2
+                                  time_tick_diff = fakedata_time_tick,
+                                  frame_size = fakedata_frame_size,
                                   response_delay = 0,
-                                  fragment_type = FAKEDATA_FRAGMENT_TYPE,
+                                  fragment_type = fakedata_fragment_type,
                                   ))]
 
     mgraph = ModuleGraph(modules, queues=queues)
