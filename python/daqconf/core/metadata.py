@@ -47,6 +47,9 @@ def write_config_file(json_dir, json_output_file, data):
         json_dir = Path(json_dir)
 
     path = json_dir/'config'
+    out_file = json_input_file.split("/")[-1]
+    console.log(f'Saving metadata to {path}/{out_file}')
+
     os.mkdir(path)
 
     with open(join(path/json_output_file), 'w') as f:
