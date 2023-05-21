@@ -341,8 +341,8 @@ class DetReadoutMapService:
         
         m = defaultdict(list)
         for s in self.streams:
-            ru_host = getattr(s.parameters, self._get_host_label[s.kind])
-            ru_iface = getattr(s.parameters, self._get_iflabel[s.kind])
+            ru_host = getattr(s.parameters, self._get_host_label(s.kind))
+            ru_iface = getattr(s.parameters, self._get_iflabel(s.kind))
             m[(ru_host, ru_iface, s.kind, s.geo_id.det_id)].append(s)
 
         # Repackage as a map of ReadoutUnitDescriptors

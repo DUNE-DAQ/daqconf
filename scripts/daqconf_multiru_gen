@@ -115,7 +115,7 @@ def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown
         console.log("Loading dqm config generator")
         from daqconf.apps.dqm_gen import get_dqm_app
     console.log("Loading readout config generator")
-    from daqconf.apps.readout_gen import create_readout_app
+    from daqconf.apps.readout_gen import create_readout_app, create_fake_reaout_app
     console.log("Loading trigger config generator")
     from daqconf.apps.trigger_gen import get_trigger_app
     console.log("Loading DFO config generator")
@@ -184,7 +184,7 @@ def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown
     # The ru apps are determined by the combinations of hostname and card_id, the SourceID determines the
     # DLH (with physical slr+link information), the detId acts as system_type allows to infer the frontend_type
     # hw_map_service = HardwareMapService(readout.detector_readout_map_file)
-    # serialized_hw_map = hw_map_service.get_hardware_map_json()
+    # serialized_hw_map = hw_map_service.get_hardware_ma84p_json()
     # hw_map = hwms.HardwareMap(serialized_hw_map)
     # console.log(f"{hw_map}")
 
@@ -424,75 +424,78 @@ def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown
     dqm_app_names = []
     for ru_i,(ru_name, ru_desc) in enumerate(ru_descs.items()):
 
-        # host=ru_id.host_name.replace("-","")
-        # ru_name = f"ru{ru_id.label}"
-        # ru_app_names.append(ru_name)
+        if readout.use_fake_data_producers == False:
+            numa_id = readout.numa_config['default_id']
+            latency_numa = readout.numa_config['default_latency_numa_aware']
+            latency_preallocate = readout.numa_config['default_latency_preallocation']
+            card_override = -1
+            for ex in readout.numa_config['exceptions']:
+                if ex['host'] == ru_desc.host_name and ex['card'] == ru_desc.iface:
+                    numa_id = ex['numa_id']
+                    latency_numa = ex['latency_buffer_numa_aware']
+                    latency_preallocate = ex['latency_buffer_preallocation']
+                    card_override = ex['felix_card_id']
 
-        numa_id = readout.numa_config['default_id']
-        latency_numa = readout.numa_config['default_latency_numa_aware']
-        latency_preallocate = readout.numa_config['default_latency_preallocation']
-        card_override = -1
-        for ex in readout.numa_config['exceptions']:
-            if ex['host'] == ru_desc.host_name and ex['card'] == ru_desc.iface:
-                numa_id = ex['numa_id']
-                latency_numa = ex['latency_buffer_numa_aware']
-                latency_preallocate = ex['latency_buffer_preallocation']
-                card_override = ex['felix_card_id']
+            the_system.apps[ru_name] = create_readout_app(
+                RU_DESCRIPTOR = ru_desc,
+                SOURCEID_BROKER = sourceid_broker,
+                EMULATOR_MODE = readout.emulator_mode,
+                DATA_RATE_SLOWDOWN_FACTOR = readout.data_rate_slowdown_factor,
+                DEFAULT_DATA_FILE = readout.default_data_file,
+                DATA_FILES = data_file_map,
+                USE_FAKE_CARDS = readout.use_fake_cards,
+                CLOCK_SPEED_HZ = readout.clock_speed_hz,
+                RAW_RECORDING_ENABLED = readout.enable_raw_recording,
+                RAW_RECORDING_OUTPUT_DIR = readout.raw_recording_output_dir,
+                TPG_ENABLED = readout.enable_tpg,
+                THRESHOLD_TPG = readout.tpg_threshold,
+                ALGORITHM_TPG = readout.tpg_algorithm,
+                CHANNEL_MASK_TPG = readout.tpg_channel_mask,
+                TPG_CHANNEL_MAP = trigger.tpg_channel_map,
+                LATENCY_BUFFER_SIZE=readout.latency_buffer_size,
+                DATA_REQUEST_TIMEOUT=readout_data_request_timeout,
+                FRAGMENT_SEND_TIMEOUT=readout.fragment_send_timeout_ms,
+                READOUT_SENDS_TP_FRAGMENTS = readout.readout_sends_tp_fragments,
+                EAL_ARGS=readout.eal_args,
+                NUMA_ID = numa_id,
+                LATENCY_BUFFER_NUMA_AWARE = latency_numa,
+                LATENCY_BUFFER_ALLOCATION_MODE = latency_preallocate,
+                CARD_ID_OVERRIDE = card_override,
+                EMULATED_DATA_TIMES_START_WITH_NOW = readout.emulated_data_times_start_with_now,
+                DEBUG=debug)
 
-        the_system.apps[ru_name] = create_readout_app(
-            RU_DESCRIPTOR = ru_desc,
-            SOURCEID_BROKER = sourceid_broker,
-            EMULATOR_MODE = readout.emulator_mode,
-            DATA_RATE_SLOWDOWN_FACTOR = readout.data_rate_slowdown_factor,
-            DEFAULT_DATA_FILE = readout.default_data_file,
-            DATA_FILES = data_file_map,
-            USE_FAKE_CARDS = readout.use_fake_cards,
-            CLOCK_SPEED_HZ = readout.clock_speed_hz,
-            RAW_RECORDING_ENABLED = readout.enable_raw_recording,
-            RAW_RECORDING_OUTPUT_DIR = readout.raw_recording_output_dir,
-            TPG_ENABLED = readout.enable_tpg,
-            THRESHOLD_TPG = readout.tpg_threshold,
-            ALGORITHM_TPG = readout.tpg_algorithm,
-            CHANNEL_MASK_TPG = readout.tpg_channel_mask,
-            TPG_CHANNEL_MAP = trigger.tpg_channel_map,
-            LATENCY_BUFFER_SIZE=readout.latency_buffer_size,
-            DATA_REQUEST_TIMEOUT=readout_data_request_timeout,
-            FRAGMENT_SEND_TIMEOUT=readout.fragment_send_timeout_ms,
-            READOUT_SENDS_TP_FRAGMENTS = readout.readout_sends_tp_fragments,
-            EAL_ARGS=readout.eal_args,
-            NUMA_ID = numa_id,
-            LATENCY_BUFFER_NUMA_AWARE = latency_numa,
-            LATENCY_BUFFER_ALLOCATION_MODE = latency_preallocate,
-            CARD_ID_OVERRIDE = card_override,
-            EMULATED_DATA_TIMES_START_WITH_NOW = readout.emulated_data_times_start_with_now,
-            DEBUG=debug)
+            if boot.use_k8s:
+                if ru_desc.kind == 'flx':
+                    c = card_override if card_override != -1 else ru_desc.iface
+                    the_system.apps[ru_name].resources = {
+                        f"felix.cern/flx{c}-data": "1", # requesting FLX{c}
+                        "memory": "32Gi" # yes bro
+                    }
 
-        if boot.use_k8s:
-            if ru_desc.kind == 'flx':
-                c = card_override if card_override != -1 else ru_desc.iface
-                the_system.apps[ru_name].resources = {
-                    f"felix.cern/flx{c}-data": "1", # requesting FLX{c}
-                    "memory": "32Gi" # yes bro
-                }
+                dir_names = set()
 
-            dir_names = set()
+                if os.path.commonprefix(['/cvmfs', readout.default_data_file]) != '/cvmfs':
+                    dir_names.add(dirname(readout.default_data_file))
 
-            if os.path.commonprefix(['/cvmfs', readout.default_data_file]) != '/cvmfs':
-                dir_names.add(dirname(readout.default_data_file))
+                for id,file in data_file_map:
+                    if os.path.commonprefix(['/cvmfs', file]) != '/cvmfs':
+                        dir_names.add(dirname(file))
 
-            for id,file in data_file_map:
-                if os.path.commonprefix(['/cvmfs', file]) != '/cvmfs':
-                    dir_names.add(dirname(file))
+                dirindex = 0
+                for dir_name in dir_names:
+                    the_system.apps[ru_name].mounted_dirs += [{
+                        'name': f'frames-bin-{dirindex}',
+                        'physical_location': dir_name,
+                        'in_pod_location':   dir_name,
+                        'read_only': True,
+                    }]
+                    dirindex += 1
+        else:
+            the_system.apps[ru_name] = create_fake_reaout_app(
+                RU_DESCRIPTOR = ru_desc,
+                CLOCK_SPEED_HZ = readout.clock_speed_hz,
+            )
 
-            dirindex = 0
-            for dir_name in dir_names:
-                the_system.apps[ru_name].mounted_dirs += [{
-                    'name': f'frames-bin-{dirindex}',
-                    'physical_location': dir_name,
-                    'in_pod_location':   dir_name,
-                    'read_only': True,
-                }]
-                dirindex += 1
 
         if debug:
             console.log(f"{ru_name} app: {the_system.apps[ru_name]}")

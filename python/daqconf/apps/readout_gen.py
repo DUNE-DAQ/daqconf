@@ -181,11 +181,11 @@ def create_felix_cardreader(
     sids_slr0 = []
     sids_slr1 = []
     for stream in RU_DESCRIPTOR.streams:
-        if stream.config.slr == 0:
-            links_slr0.append(stream.config.link)
+        if stream.parameters.slr == 0:
+            links_slr0.append(stream.parameters.link)
             sids_slr0.append(stream.src_id)
-        if stream.config.slr == 1:
-            links_slr1.append(stream.config.link)
+        if stream.parameters.slr == 1:
+            links_slr1.append(stream.parameters.link)
             sids_slr1.append(stream.src_id)
 
     links_slr0.sort()
@@ -263,13 +263,13 @@ class NICReceiverBuilder:
 
     def streams_by_host(self):
 
-        iface_map = group_by_key(self.desc.streams, lambda s: s.config.rx_host)
+        iface_map = group_by_key(self.desc.streams, lambda s: s.parameters.rx_host)
 
         return iface_map    
 
     def streams_by_iface(self):
 
-        iface_map = group_by_key(self.desc.streams, lambda s: (s.config.rx_ip, s.config.rx_mac, s.config.rx_host))
+        iface_map = group_by_key(self.desc.streams, lambda s: (s.parameters.rx_ip, s.parameters.rx_mac, s.parameters.rx_host))
 
         return iface_map
 
@@ -278,12 +278,12 @@ class NICReceiverBuilder:
         s_by_if = self.streams_by_iface()
         m = {}
         for k,v in s_by_if.items():
-            m[k] = group_by_key(v, lambda s: (s.config.tx_ip, s.config.tx_mac, s.config.tx_host))
+            m[k] = group_by_key(v, lambda s: (s.parameters.tx_ip, s.parameters.tx_mac, s.parameters.tx_host))
             
         return m
     
     # def streams_by_ru(self):
-    #     m = group_by_key(self.desc.streams, lambda s: (getattr(s.config, self.desc._host_label_map[s.kind]), getattr(s.config, self.desc._iflabel_map[s.kind]), s.kind, s.geo_id.det_id))
+    #     m = group_by_key(self.desc.streams, lambda s: (getattr(s.parameters, self.desc._host_label_map[s.kind]), getattr(s.parameters, self.desc._iflabel_map[s.kind]), s.kind, s.geo_id.det_id))
     #     return m
 
     def build_conf(self, eal_arg_list):
@@ -560,7 +560,7 @@ def add_tp_processing(
                 requesthandlerconf = dlh.conf.requesthandlerconf,
                 rawdataprocessorconf= rconf.RawDataProcessorConf(
                     source_id = dro_sid,
-                    enable_tpg = True,
+                    enable_software_tpg = True,
                     software_tpg_threshold = THRESHOLD_TPG,
                     software_tpg_algorithm = ALGORITHM_TPG,
                     software_tpg_channel_mask = CHANNEL_MASK_TPG,
@@ -675,7 +675,7 @@ def add_dro_eps_and_fps(
         )
 
         # if processing is enabled, add a pubsub endooint for TPSets
-        if dlh.conf.rawdataprocessorconf['enable_tpg']:
+        if dlh.conf.rawdataprocessorconf['enable_software_tpg']:
             mgraph.add_endpoint(
                 f"tpsets_ru{RUIDX}_link{dro_sid}",
                 f"datahandler_{dro_sid}.tpset_out",
@@ -871,7 +871,7 @@ def create_readout_app(
         )
 
     # Create the application
-    readout_app = App(mgraph, host=RU_DESCRIPTOR.host_name)
+    readout_app = App(mgraph, host=RU_DESCRIPTOR.app_name)
 
     # All done
     return readout_app
@@ -906,10 +906,17 @@ def create_fake_reaout_app(
 
     mgraph = ModuleGraph(modules, queues=queues)
 
-    # Add fragment producers for fake data. This call is necessary to create the RequestReceiver instance, but we don't need the generated FragmentSender or its queues...
-    mgraph.add_fragment_producer(id = stream.src_id, subsystem = "Detector_Readout",
-                                    requests_in   = f"fakedataprod_{stream.src_id}.data_request_input_queue",
-                                    fragments_out = f"fakedataprod_{stream.src_id}.fragment_queue")
-    mgraph.add_endpoint(f"timesync_ru{RU_DESCRIPTOR.label}_{stream.src_id}", f"fakedataprod_{stream.src_id}.timesync_output",    "TimeSync",   Direction.OUT, is_pubsub=True, toposort=False)
+    for stream in RU_DESCRIPTOR.streams:
+        # Add fragment producers for fake data. This call is necessary to create the RequestReceiver instance, but we don't need the generated FragmentSender or its queues...
+        mgraph.add_fragment_producer(id = stream.src_id, subsystem = "Detector_Readout",
+                                        requests_in   = f"fakedataprod_{stream.src_id}.data_request_input_queue",
+                                        fragments_out = f"fakedataprod_{stream.src_id}.fragment_queue")
+        mgraph.add_endpoint(f"timesync_ru{RU_DESCRIPTOR.label}_{stream.src_id}", f"fakedataprod_{stream.src_id}.timesync_output",    "TimeSync",   Direction.OUT, is_pubsub=True, toposort=False)
+
+    # Create the application
+    readout_app = App(mgraph, host=RU_DESCRIPTOR.app_name)
+
+    # All done
+    return readout_app
 
 
