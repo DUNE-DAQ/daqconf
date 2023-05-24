@@ -794,17 +794,25 @@ def create_readout_app(
             cr_mods += flx_mods
             cr_queues += flx_queues
 
-        elif RU_DESCRIPTOR.kind == 'eth':
+        elif RU_DESCRIPTOR.kind == 'eth' and RU_DESCRIPTOR.parameters.protocol == "udp":
             dpdk_mods, dpdk_queues = create_dpdk_cardreader(
                 FRONTEND_TYPE=FRONTEND_TYPE,
                 QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
-                # BASE_SOURCE_IP=BASE_SOURCE_IP,
-                # DESTINATION_IP=DESTINATION_IP,
                 EAL_ARGS=EAL_ARGS,
                 RU_DESCRIPTOR=RU_DESCRIPTOR
             )
             cr_mods += dpdk_mods
             cr_queues += dpdk_queues
+
+        elif RU_DESCRIPTOR.kind == 'eth' and RU_DESCRIPTOR.parameters.protocol == "zmq":
+
+            pac_mods, pac_queues = create_pacman_cardreader(
+                FRONTEND_TYPE=FRONTEND_TYPE,
+                QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
+                RU_DESCRIPTOR=RU_DESCRIPTOR
+            )
+            cr_mods += pac_mods
+            cr_queues += pac_queues
 
     modules += cr_mods
     queues += cr_queues
