@@ -879,7 +879,7 @@ def create_readout_app(
         )
 
     # Create the application
-    readout_app = App(mgraph, host=RU_DESCRIPTOR.app_name)
+    readout_app = App(mgraph, host=RU_DESCRIPTOR.host_name)
 
     # All done
     return readout_app
