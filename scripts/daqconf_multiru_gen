@@ -783,7 +783,7 @@ def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown
         write_metadata_file(output_dir, "daqconf_multiru_gen", config_file)
         write_config_file(
             output_dir,
-            basename(config_file),
+            basename(config_file) if config_file else "default.json",
             confgen.daqconf_multiru_gen(  # <facepalm>
                 boot = boot,
                 dataflow = dataflow,
