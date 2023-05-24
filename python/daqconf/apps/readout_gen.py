@@ -879,7 +879,7 @@ def create_readout_app(
         )
 
     # Create the application
-    readout_app = App(mgraph, host=RU_DESCRIPTOR.app_name)
+    readout_app = App(mgraph, host=RU_DESCRIPTOR.host_name)
 
     # All done
     return readout_app
@@ -922,7 +922,7 @@ def create_fake_reaout_app(
         mgraph.add_endpoint(f"timesync_ru{RU_DESCRIPTOR.label}_{stream.src_id}", f"fakedataprod_{stream.src_id}.timesync_output",    "TimeSync",   Direction.OUT, is_pubsub=True, toposort=False)
 
     # Create the application
-    readout_app = App(mgraph, host=RU_DESCRIPTOR.app_name)
+    readout_app = App(mgraph, host=RU_DESCRIPTOR.host_name)
 
     # All done
     return readout_app
