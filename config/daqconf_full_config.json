@@ -90,36 +90,27 @@
                    }
   },
   "readout": {
-    "hardware_map_file": "./HardwareMap.txt",
+    "detector_readout_map_file": "./DetectorReadoutMap.json",
     "emulator_mode": false,
     "thread_pinning_file": "",
     "data_rate_slowdown_factor": 1,
     "clock_speed_hz": 62500000,
-    "data_file": "./frames.bin",
-    "use_felix": false,
+    "default_data_file": "asset://?name=wib2-frames.bin&label=DuneWIB&subsystem=readout",
+    "data_files": [],
     "latency_buffer_size": 499968,
-    "enable_software_tpg": false,
-    "enable_firmware_tpg": false,
-    "dtp_connections_file": "${\"DTPCONTROLS_SHARE\"}/config/dtp_connections.xml",
-    "firmware_hit_threshold": 20,
+    "enable_tpg": false,
     "enable_raw_recording": false,
     "raw_recording_output_dir": ".",
     "use_fake_data_producers": false,
     "readout_sends_tp_fragments": false,
-    "enable_dpdk_reader": false,
-    "host_dpdk_reader": [ "np04-srv-022" ],
     "eal_args": "-l 0-1 -n 3 -- -m [0:1].0 -j",
-    "base_source_ip": "10.73.139.",
-    "destination_ip": "10.73.139.17",
     "numa_config": {
       "default_id": 0,
       "exceptions": []
     }
   },
   "timing": {
-    "timing_partition_name": "timing",
-    "host_timing": "np04-srv-012.cern.ch",
-    "port_timing": 12345,
+    "timing_session_name": "timing",
     "host_tprtc": "localhost",
     "control_timing_partition": false,
     "timing_partition_master_device_name": "",
@@ -152,7 +143,7 @@
     "mlt_ignore_tc": [],
     "use_custom_maker": false,
     "ctcm_trigger_types": [4],
-    "ctcm_trigger_intervals": [50000000],
+    "ctcm_trigger_intervals": [62500000],
     "mlt_use_readout_map": false,
     "mlt_td_readout_map": {
       "c0": {
@@ -195,6 +186,7 @@
         "time_before":1000,
         "time_after": 1001
       }
+    } 
   },
   "dpdk_sender": {
     "enable_dpdk_sender": false,

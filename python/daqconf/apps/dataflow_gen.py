@@ -41,7 +41,7 @@ def get_dataflow_app(HOSTIDX=0,
                      TRB_TIMEOUT=200,
                      HOST="localhost",
                      HAS_DQM=False,
-                     HARDWARE_MAP='',
+                     SRC_GEO_ID_MAP='',
                      DEBUG=False):
 
     """Generate the json configuration for the readout and DF process"""
@@ -68,7 +68,7 @@ def get_dataflow_app(HOSTIDX=0,
                                directory_path = OUTPUT_PATHS[i],
                                max_file_size_bytes = MAX_FILE_SIZE,
                                disable_unique_filename_suffix = False,
-                               hardware_map=HARDWARE_MAP,
+                               srcid_geoid_map=SRC_GEO_ID_MAP,
                                filename_parameters = hdf5ds.FileNameParams(
                                    overall_prefix = FILE_LABEL,
                                    digits_for_run_number = 6,
