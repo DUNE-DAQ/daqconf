@@ -175,10 +175,10 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
                                                            keep_induction=False))]
             modules += [DAQModule(name = f'tpsettee_{link_id}',
                                   plugin = 'TPSetTee'),
-                        DAQModule(name = f'heartbeatmaker_{link_id}',
-                                  plugin = 'FakeTPCreatorHeartbeatMaker',
-                                  conf = heartbeater.Conf(heartbeat_interval=ticks_per_wall_clock_s//100))]
-            
+#                        DAQModule(name = f'heartbeatmaker_{link_id}',
+#                                  plugin = 'FakeTPCreatorHeartbeatMaker',
+#                                  conf = heartbeater.Conf(heartbeat_interval=ticks_per_wall_clock_s//100))]
+                       ]
             # 1 buffer per TPG channel
             modules += [DAQModule(name = f'buf_{link_id}',
                                   plugin = 'TPBuffer',
@@ -227,20 +227,21 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
                 # delays etc, the delayed TPSets's TAs _may_ arrive at
                 # the TAZipper tardily. With tpzipper.max_latency_ms <
                 # tazipper.max_latency_ms, everything should be fine.
-                modules += [DAQModule(name = f'zip_{region_id}',
-                                      plugin = 'TPZipper',
-                                              conf = tzip.ConfParams(cardinality=len(TP_SOURCE_IDS)/len(TA_SOURCE_IDS),
-                                                                     max_latency_ms=100,
-                                                                     element_id=ta_conf["source_id"],
-                                                                     # Need to find out where to specify these"
-                                                                     tolerate_incompleteness=TOLERATE_INCOMPLETENESS,
-                                                                     completeness_tolerance=COMPLETENESS_TOLERANCE)),
+                modules += [
+                            #DAQModule(name = f'zip_{region_id}',
+                            #          plugin = 'TPZipper',
+                            #                  conf = tzip.ConfParams(cardinality=len(TP_SOURCE_IDS)/len(TA_SOURCE_IDS),
+                            #                                         max_latency_ms=100,
+                            #                                         element_id=ta_conf["source_id"],
+                            #                                         # Need to find out where to specify these"
+                            #                                         tolerate_incompleteness=TOLERATE_INCOMPLETENESS,
+                            #                                         completeness_tolerance=COMPLETENESS_TOLERANCE)),
                                     
                             DAQModule(name = f'tam_{region_id}',
                                       plugin = 'TriggerActivityMaker',
                                       conf = tam.Conf(activity_maker=ACTIVITY_PLUGIN,
                                                       geoid_element=region_id,  # 2022-02-02 PL: Same comment as above
-                                                      window_time=10000,  # should match whatever makes TPSets, in principle
+                                                      window_time=10000,  # GLM: TO BE REMOVED 
                                                       buffer_time=10*ticks_per_wall_clock_s//1000, # 10 wall-clock ms
                                                       activity_maker_config=temptypes.ActivityConf(**ACTIVITY_CONFIG))),
 
@@ -326,13 +327,14 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
             if USE_CHANNEL_FILTER:
                 mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', data_type="TPSet", size_hint=1000)
 
-            mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'heartbeatmaker_{link_id}.tpset_source', data_type="TPSet", size_hint=1000)
+            #mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'heartbeatmaker_{link_id}.tpset_source', data_type="TPSet", size_hint=1000)
+            mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'tam_{tp_conf.region_id}.input', data_type="TPSet", size_hint=1000)
             mgraph.connect_modules(f'tpsettee_{link_id}.output2', f'buf_{link_id}.tpset_source',data_type="TPSet", size_hint=1000)
 
-            mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{tp_conf.region_id}.input","TPSet", f"{tp_conf.region_id}_tpset_q", size_hint=1000)
+            #mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{tp_conf.region_id}.input","TPSet", f"{tp_conf.region_id}_tpset_q", size_hint=1000)
 
-        for region_id in TA_SOURCE_IDS.keys():
-            mgraph.connect_modules(f'zip_{region_id}.output', f'tam_{region_id}.input', "TPSet", size_hint=1000)
+        #for region_id in TA_SOURCE_IDS.keys():
+        #    mgraph.connect_modules(f'zip_{region_id}.output', f'tam_{region_id}.input', "TPSet", size_hint=1000)
         # Use connect_modules to connect up the Tees to the buffers/MLT,
         # as manually adding Queues doesn't give the desired behaviour
         mgraph.connect_modules("tcm.output",          "tctee_chain.input",           "TriggerCandidate", "chain_input", size_hint=1000)
@@ -355,15 +357,13 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
     if len(TP_SOURCE_IDS) > 0:
         for tp_sid,tp_conf in TP_SOURCE_IDS.items():
                 # 1 buffer per link
-                host_underscore = tp_conf.host.replace('-','_')
-                link_id1=f"ru{host_underscore}_{tp_conf.card}_link{tp_conf.dro_source_id}"
-                link_id2=f"tplink{tp_sid}"
-                buf_name=f'buf_{link_id2}'
+                link_id=f"tplink{tp_sid}"
+                buf_name=f'buf_{link_id}'
 
                 if USE_CHANNEL_FILTER:
-                    mgraph.add_endpoint(f"tpsets_{link_id1}", f"channelfilter_{link_id2}.tpset_source", "TPSet", Direction.IN, is_pubsub=True)
+                    mgraph.add_endpoint(f"tpsets_{link_id}", f"channelfilter_{link_id}.tpset_source", "TPSet", Direction.IN, is_pubsub=True)
                 else:
-                    mgraph.add_endpoint(f"tpsets_{link_id1}", f'tpsettee_{link_id2}.input', "TPSet",            Direction.IN, is_pubsub=True)
+                    mgraph.add_endpoint(f"tpsets_{link_id}", f'tpsettee_{link_id}.input', "TPSet",            Direction.IN, is_pubsub=True)
                     
 
                 mgraph.add_fragment_producer(id=tp_sid, subsystem="Trigger",

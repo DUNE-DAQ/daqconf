@@ -181,8 +181,8 @@ class ModuleGraph:
     def add_endpoint(self, external_name:str, internal_name:str, data_type:str, inout:Direction, is_pubsub=False, toposort=False, check_endpoints=True):
         if not self.has_endpoint(external_name):
             self.endpoints += [Endpoint(external_name, data_type, internal_name, inout, is_pubsub=is_pubsub, toposort=toposort, check_endpoints=check_endpoints)]
-        else:
-            raise KeyError(f"Endpoint {external_name} - {internal_name} already registered")
+#        else:
+#            raise KeyError(f"Endpoint {external_name} - {internal_name} already registered")
         
     def remove_endpoint(self, external_name):
         for i, endpoint in enumerate(self.endpoints):
