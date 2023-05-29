@@ -875,7 +875,7 @@ def create_readout_app(
         RUIDX=RU_DESCRIPTOR.label
     )
 
-    if TPG_ENABLED and READOUT_SENDS_TP_FRAGMENTS:
+    if TPG_ENABLED:
        # Add endpoints and frame producers to TP data handlers
         add_tpg_eps_and_fps(
             mgraph=mgraph,
