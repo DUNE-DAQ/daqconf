@@ -530,7 +530,6 @@ def add_tp_processing(
         EMULATOR_MODE,
         CLOCK_SPEED_HZ: int,
         DATA_RATE_SLOWDOWN_FACTOR: int,
-        SOURCEID_BROKER: SourceIDBroker,
     ) -> list:
 
     modules = []
@@ -579,7 +578,7 @@ def create_tp_dlhs(
     dlh_list: list,
     DATA_REQUEST_TIMEOUT: int, # To Check
     FRAGMENT_SEND_TIMEOUT: int, # To Check
-    SOURCEID_BROKER: SourceIDBroker,
+    tpset_sid: int,
     )-> tuple[list, list]:
     
     default_pop_limit_pct = 0.8
@@ -590,10 +589,6 @@ def create_tp_dlhs(
 
     
     # Create the TP link handler
-
-    tpset_sid = SOURCEID_BROKER.get_next_source_id("Trigger")
-    SOURCEID_BROKER.register_source_id("Trigger", tpset_sid, None)
-
     modules = [
       DAQModule(name = f"tp_datahandler_{tpset_sid}",
                 plugin = "DataLinkHandler",
@@ -847,8 +842,7 @@ def create_readout_app(
            TPG_CHANNEL_MAP=TPG_CHANNEL_MAP,
            EMULATOR_MODE=EMULATOR_MODE,
            CLOCK_SPEED_HZ=CLOCK_SPEED_HZ,
-           DATA_RATE_SLOWDOWN_FACTOR=DATA_RATE_SLOWDOWN_FACTOR,
-           SOURCEID_BROKER=SOURCEID_BROKER
+           DATA_RATE_SLOWDOWN_FACTOR=DATA_RATE_SLOWDOWN_FACTOR
         )
 
     modules += dlhs_mods
@@ -856,11 +850,15 @@ def create_readout_app(
     # Add the TP datalink handlers
     #if TPG_ENABLED and READOUT_SENDS_TP_FRAGMENTS:
     if TPG_ENABLED:
+        tps = { k:v for k,v in SOURCEID_BROKER.get_all_source_ids("Trigger").items() if isinstance(v, ReadoutUnitDescriptor ) and v==RU_DESCRIPTOR}
+        if len(tps) != 1:
+            raise RuntimeError(f"Could not retrieve unique element from source id map {tps}")
+
         tpg_mods, tpg_queues = create_tp_dlhs(
             dlh_list=dlhs_mods,
             DATA_REQUEST_TIMEOUT=DATA_REQUEST_TIMEOUT,
             FRAGMENT_SEND_TIMEOUT=FRAGMENT_SEND_TIMEOUT,
-            SOURCEID_BROKER=SOURCEID_BROKER
+            tpset_sid = next(iter(tps))
         )
         modules += tpg_mods
         queues += tpg_queues

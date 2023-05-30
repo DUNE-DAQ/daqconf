@@ -132,9 +132,9 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
             TA_SOURCE_IDS[conf.region_id] = {"source_id": trigger_sid, "conf": conf}
         elif isinstance(conf, TCInfo):
             TC_SOURCE_ID = {"source_id": trigger_sid, "conf": conf}
-        else:
+        elif isinstance(conf, TPInfo):
             TP_SOURCE_IDS[trigger_sid] = conf
-
+        
     # We always have a TC buffer even when there are no TPs, because we want to put the timing TC in the output file
     modules += [DAQModule(name = 'tc_buf',
                           plugin = 'TCBuffer',
@@ -165,8 +165,9 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
                     ]
 
         # Make one heartbeatmaker per link
-        for tp_sid in TP_SOURCE_IDS.keys():
+        for tp_sid in TP_SOURCE_IDS:
             link_id = f'tplink{tp_sid}'
+
             if USE_CHANNEL_FILTER:
                 modules += [DAQModule(name = f'channelfilter_{link_id}',
                                       plugin = 'TPChannelFilter',
@@ -323,7 +324,6 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
 
         for tp_sid,tp_conf in TP_SOURCE_IDS.items():
             link_id = f'tplink{tp_sid}'
-
             if USE_CHANNEL_FILTER:
                 mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', data_type="TPSet", size_hint=1000)
 
@@ -359,11 +359,12 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
                 # 1 buffer per link
                 link_id=f"tplink{tp_sid}"
                 buf_name=f'buf_{link_id}'
-
+                ru_sid = f'tplink{tp_conf.tp_ru_sid}'
+              
                 if USE_CHANNEL_FILTER:
-                    mgraph.add_endpoint(f"tpsets_{link_id}", f"channelfilter_{link_id}.tpset_source", "TPSet", Direction.IN, is_pubsub=True)
+                    mgraph.add_endpoint(f"tpsets_{ru_sid}", f"channelfilter_{link_id}.tpset_source", "TPSet", Direction.IN, is_pubsub=True)
                 else:
-                    mgraph.add_endpoint(f"tpsets_{link_id}", f'tpsettee_{link_id}.input', "TPSet",            Direction.IN, is_pubsub=True)
+                    mgraph.add_endpoint(f"tpsets_{ru_sid}", f'tpsettee_{link_id}.input', "TPSet",            Direction.IN, is_pubsub=True)
                     
 
                 mgraph.add_fragment_producer(id=tp_sid, subsystem="Trigger",
