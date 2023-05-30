@@ -21,11 +21,12 @@ class TPInfo:
     #     self.card = link.dro_card
     #     self.region_id = link.det_crate
     #     self.dro_source_id = link.dro_source_id
-    def __init__(self, host, iface, crate, src_id):
+    def __init__(self, host, iface, crate, src_id, dro_app_name):
         self.host = host
         self.card = iface
         self.region_id = crate
         self.dro_source_id = src_id
+        self.dro_app_name = dro_app_name
 
 class TAInfo:
     def __init__(self):
@@ -189,7 +190,7 @@ class SourceIDBroker:
                     
                 if tp_mode:
                     sid = self.get_next_source_id("Trigger")
-                    self.register_source_id("Trigger", sid, TPInfo(ru_desc.host_name, ru_desc.iface, stream.geo_id.crate_id, stream.src_id))
+                    self.register_source_id("Trigger", sid, TPInfo(ru_desc.host_name, ru_desc.iface, stream.geo_id.crate_id, stream.src_id, ru_desc.app_name))
             if dro_sends_data:
                 tc_info.ru_count += 1
 
