@@ -59,7 +59,7 @@ def cli(config, disable_k8s, base_command_port, detector_readout_map_file, data_
         debug_dir.mkdir(parents=True)
 
     config_data = config[0]
-    config_file = config[1]
+    config_file = Path(config[1])
 
     if debug:
         console.log(f"Configuration for daqconf: {config_data.pod()}")
@@ -770,7 +770,11 @@ def cli(config, disable_k8s, base_command_port, detector_readout_map_file, data_
 
 
     if readout.thread_pinning_file != "":
-        resolved_thread_pinning_file = Path(os.path.expandvars(readout.thread_pinning_file)).expanduser().absolute()
+
+        resolved_thread_pinning_file = Path(os.path.expandvars(readout.thread_pinning_file)).expanduser()
+        if not resolved_thread_pinning_file.is_absolute():
+            resolved_thread_pinning_file = config_file.parent / resolved_thread_pinning_file
+
         if not resolved_thread_pinning_file.exists():
             raise RuntimeError(f'Cannot find the file {readout.thread_pinning_file} ({resolved_thread_pinning_file})')
 
@@ -780,7 +784,7 @@ def cli(config, disable_k8s, base_command_port, detector_readout_map_file, data_
                     "readout-affinity.py --pinfile ${DUNEDAQ_THREAD_PIN_FILE}"
                 ],
                 "env": {
-                    "DUNEDAQ_THREAD_PIN_FILE": str(resolved_thread_pinning_file),
+                    "DUNEDAQ_THREAD_PIN_FILE": resolved_thread_pinning_file.resolve().as_posix(),
                     "LD_LIBRARY_PATH": "getenv",
                     "PATH": "getenv"
                 }
@@ -793,7 +797,7 @@ def cli(config, disable_k8s, base_command_port, detector_readout_map_file, data_
 
         console.log(f"MDAapp config generated in {output_dir}")
 
-        write_metadata_file(output_dir, "daqconf_multiru_gen", config_file)
+        write_metadata_file(output_dir, "daqconf_multiru_gen", config_file.as_posix())
         write_config_file(
             output_dir,
             basename(config_file) if config_file else "default.json",
