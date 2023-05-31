@@ -481,6 +481,7 @@ def create_det_dhl(
 
     modules = []
     for stream in RU_DESCRIPTOR.streams:
+        geo_id = stream.geo_id
         modules += [DAQModule(
                     name = f"datahandler_{stream.src_id}",
                     plugin = "DataLinkHandler", 
@@ -500,7 +501,11 @@ def create_det_dhl(
                             latency_buffer_preallocation = LATENCY_BUFFER_ALLOCATION_MODE,
                             latency_buffer_intrinsic_allocator = LATENCY_BUFFER_ALLOCATION_MODE,
                         ),
-                        rawdataprocessorconf= rconf.RawDataProcessorConf(),
+                        rawdataprocessorconf= rconf.RawDataProcessorConf(
+                            crate_id = geo_id.crate_id, 
+                            slot_id = geo_id.slot_id, 
+                            link_id = geo_id.stream_id
+                        ),
                         requesthandlerconf= rconf.RequestHandlerConf(
                             latency_buffer_size = LATENCY_BUFFER_SIZE,
                             pop_limit_pct = default_pop_limit_pct,
@@ -545,7 +550,9 @@ def add_tp_processing(
         # Recover the raw data link source id
         # MOOOOOO
         dro_sid = dlh.conf.readoutmodelconf["source_id"]
-
+        geo_cid = dlh.conf.rawdataprocessorconf["crate_id"]
+        geo_sid = dlh.conf.rawdataprocessorconf["slot_id"]
+        geo_lid = dlh.conf.rawdataprocessorconf["link_id"]
         # Re-create the module with an extended configuration
         modules += [DAQModule(
             name = dlh.name,
@@ -556,6 +563,9 @@ def add_tp_processing(
                 requesthandlerconf = dlh.conf.requesthandlerconf,
                 rawdataprocessorconf= rconf.RawDataProcessorConf(
                     source_id = dro_sid,
+                    crate_id = geo_cid,
+                    slot_id = geo_sid,
+                    link_id = geo_lid,
                     enable_tpg = True,
                     tpg_threshold = THRESHOLD_TPG,
                     tpg_algorithm = ALGORITHM_TPG,

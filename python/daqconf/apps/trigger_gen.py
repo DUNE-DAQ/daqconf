@@ -58,9 +58,9 @@ def make_moo_record(conf_dict,name,path='temptypes'):
 
 #===============================================================================
 def get_buffer_conf(source_id, data_request_timeout):
-    return bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 100_000,
+    return bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 10_000_000,
                                                                              source_id = source_id),
-                           requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = 100_000,
+                           requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = 10_000_000,
                                                                                pop_limit_pct = 0.8,
                                                                                pop_size_pct = 0.1,
                                                                                source_id = source_id,
@@ -95,9 +95,9 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
                     CTCM_TYPES: list = [4],
                     CTCM_INTERVAL: list = [62500000],
 
-                    MLT_MERGE_OVERLAPPING_TCS: bool = True,
+                    MLT_MERGE_OVERLAPPING_TCS: bool = False,
                     MLT_BUFFER_TIMEOUT: int = 100,
-                    MLT_SEND_TIMED_OUT_TDS: bool = True,
+                    MLT_SEND_TIMED_OUT_TDS: bool = False,
                     MLT_MAX_TD_LENGTH_MS: int = 1000,
                     MLT_IGNORE_TC: list = [],
                     MLT_USE_READOUT_MAP: bool = False,
@@ -173,7 +173,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
                                       plugin = 'TPChannelFilter',
                                       conf = chfilter.Conf(channel_map_name=CHANNEL_MAP_NAME,
                                                            keep_collection=True,
-                                                           keep_induction=False))]
+                                                           keep_induction=True))]
             modules += [DAQModule(name = f'tpsettee_{link_id}',
                                   plugin = 'TPSetTee'),
 #                        DAQModule(name = f'heartbeatmaker_{link_id}',
