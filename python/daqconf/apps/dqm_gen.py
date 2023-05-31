@@ -29,12 +29,10 @@ from detdataformats._daq_detdataformats_py import *
 
 # Time to wait on pop()
 QUEUE_POP_WAIT_MS = 100
-# local clock speed Hz
-# CLOCK_SPEED_HZ = 50000000;
 
 def get_dqm_app(DQM_IMPL='',
                 DATA_RATE_SLOWDOWN_FACTOR=1,
-                CLOCK_SPEED_HZ=50000000,
+                CLOCK_SPEED_HZ=62500000,
                 DQMIDX=0,
                 MAX_NUM_FRAMES=32768,
                 KAFKA_ADDRESS='',
@@ -51,13 +49,14 @@ def get_dqm_app(DQM_IMPL='',
                 DF_RATE=10,
                 DF_ALGS='raw std fourier_plane',
                 DF_TIME_WINDOW=0,
-                DRO_CONFIG=None,
-                RU_APPNAME_WITH_UNDERSCORE="ru_0",
+                # DRO_CONFIG=None,
+                RU_STREAMS=None,
+                RU_APPNAME="ru_0",
                 TRB_DQM_SOURCEID_OFFSET=0,
                 DEBUG=False,
                 ):
 
-    FRONTEND_TYPE = DetID.subdetector_to_string(DetID.Subdetector(DRO_CONFIG.links[0].det_id))
+    FRONTEND_TYPE = DetID.subdetector_to_string(DetID.Subdetector(RU_STREAMS[0].geo_id.det_id))
     if ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 50000000):
         FRONTEND_TYPE = "wib"
     elif ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 62500000):
@@ -116,7 +115,7 @@ def get_dqm_app(DQM_IMPL='',
     mgraph = ModuleGraph(modules)
 
     if MODE == 'readout':
-        mgraph.add_endpoint(f"timesync_{RU_APPNAME_WITH_UNDERSCORE}_.*", "dqmprocessor.timesync_input", "TimeSync", Direction.IN, is_pubsub=True)
+        mgraph.add_endpoint(f"timesync_{RU_APPNAME}_.*", "dqmprocessor.timesync_input", "TimeSync", Direction.IN, is_pubsub=True)
         mgraph.connect_modules("dqmprocessor.trigger_decision_output", "trb_dqm.trigger_decision_input", "TriggerDecision", 'trigger_decision_q_dqm')
         mgraph.connect_modules('trb_dqm.trigger_record_output', 'dqmprocessor.trigger_record_input', "TriggerRecord", 'trigger_record_q_dqm', toposort=False)  
     else:

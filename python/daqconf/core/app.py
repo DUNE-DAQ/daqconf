@@ -2,6 +2,7 @@ from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Endpoint, Direction, FragmentProducer, Queue
 from daqconf.core.sourceid import SourceID, ensure_subsystem
 import networkx as nx
+from typing import List, Dict
 
 class ModuleGraph:
     """
@@ -19,7 +20,7 @@ class ModuleGraph:
     changed without affecting other applications.
     """
 
-    def combine_queues(self, queues : [Queue]):
+    def combine_queues(self, queues : List[Queue]):
         output_queues = []
 
         for q in queues:
@@ -39,10 +40,10 @@ class ModuleGraph:
 
         return output_queues
 
-    def __init__(self, modules:[DAQModule]=None, endpoints:[Endpoint]=None, fragment_producers:{FragmentProducer}=None, queues:[Queue]=None):
+    def __init__(self, modules:List[DAQModule]=None, endpoints:List[Endpoint]=None, fragment_producers:Dict[int, FragmentProducer]=None, queues: List[Queue]=None):
         self.modules=modules if modules else []
         self.endpoints=endpoints if endpoints else []
-        self.fragment_producers = fragment_producers if  fragment_producers else dict()
+        self.fragment_producers = fragment_producers if fragment_producers else dict()
         self.queues = self.combine_queues(queues) if queues else []
 
     def __repr__(self):
@@ -180,6 +181,15 @@ class ModuleGraph:
     def add_endpoint(self, external_name:str, internal_name:str, data_type:str, inout:Direction, is_pubsub=False, toposort=False, check_endpoints=True):
         if not self.has_endpoint(external_name, internal_name):
             self.endpoints += [Endpoint(external_name, data_type, internal_name, inout, is_pubsub=is_pubsub, toposort=toposort, check_endpoints=check_endpoints)]
+        else:
+            raise KeyError(f"Endpoint {external_name} - {internal_name} already registered")
+        
+    def remove_endpoint(self, external_name):
+        for i, endpoint in enumerate(self.endpoints):
+            if endpoint.external_name == external_name:
+                return self.endpoints.pop(i)
+        
+        raise KeyError(f"Failed to remove endpoint {external_name} - not found")
 
     def connect_modules(self, push_addr:str, pop_addr:str, data_type:str, queue_name:str = "", size_hint:int = 10, toposort = True):
         queue_start = push_addr.split(".")

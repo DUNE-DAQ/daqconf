@@ -45,7 +45,7 @@ class System:
         return all_producers
 
     def make_digraph(self, for_toposort=False):
-        deps = nx.DiGraph()
+        deps = nx.MultiDiGraph()
 
         for app_name in self.apps.keys():
             deps.add_node(app_name)

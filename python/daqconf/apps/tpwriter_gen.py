@@ -31,8 +31,8 @@ def get_tpwriter_app(
                      OPERATIONAL_ENVIRONMENT="swtest",
                      MAX_FILE_SIZE=4*1024*1024*1024,
                      DATA_RATE_SLOWDOWN_FACTOR=1,
-                     CLOCK_SPEED_HZ=50000000,
-                     HARDWARE_MAP='',
+                     CLOCK_SPEED_HZ=62500000,
+                     SRC_GEO_ID_MAP='',
                      SOURCE_IDX=998,
                      HOST="localhost",
                      DEBUG=False):
@@ -53,7 +53,7 @@ def get_tpwriter_app(
                               directory_path = OUTPUT_PATH,
                               max_file_size_bytes = MAX_FILE_SIZE,
                               disable_unique_filename_suffix = False,
-                              hardware_map=HARDWARE_MAP,
+                              srcid_geoid_map=SRC_GEO_ID_MAP,
                               filename_parameters = hdf5ds.FileNameParams(
                                   overall_prefix = "tpstream",
                                   digits_for_run_number = 6,
