@@ -33,11 +33,11 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('--hardware-map-file', default='', help="File containing detector hardware map for configuration to run")
 @click.option('-s', '--data-rate-slowdown-factor', default=0, help="Scale factor for readout internal clock to generate less data")
 @click.option('--enable-dqm', default=False, is_flag=True, help="Enable generation of DQM apps")
-@click.option('--enable-k8s', default=None, is_flag=True, help="Enable Kubernetes (default, use the flag in your configuration file, which is off by default)")
+@click.option('--disable-k8s', default=False, is_flag=True, help="Disable Kubernetes (default, use the flag in your configuration file, which is off by default)")
 @click.option('--op-env', default='', help="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files")
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
-def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor, enable_dqm, enable_k8s, op_env, debug, json_dir):
+def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor, enable_dqm, disable_k8s, op_env, debug, json_dir):
 
     output_dir = Path(json_dir)
     if output_dir.exists():
@@ -92,8 +92,8 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
 
     # Update with command-line options
-    if enable_k8s is not None:
-        boot.enable_k8s = enable_k8s
+    if disable_k8s:
+        boot.use_k8s = False
 
     if base_command_port != -1:
        boot.base_command_port = base_command_port
