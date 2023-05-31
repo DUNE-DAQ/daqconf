@@ -169,7 +169,6 @@ class SourceIDBroker:
         if self.debug: console.log(f"Registering Trigger Source IDs, tp_mode is {tp_mode}, dro_configs are {ru_descrs}")
 
         for ru_name, ru_desc in ru_descrs.items():
-            dro_sends_data = False
             det_id = ru_desc.det_id
             crate_id = ru_desc.streams[0].geo_id.crate_id
 
@@ -187,8 +186,7 @@ class SourceIDBroker:
             ta_infos[taid].region_id = crate_id
             ta_infos[taid].link_count = 1
 
-            if dro_sends_data:
-                tc_info.ru_count += 1
+            tc_info.ru_count += 1
 
         for tp_info in tp_infos.values():
             tpsid = self.get_next_source_id("Trigger")
