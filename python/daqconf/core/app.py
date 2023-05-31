@@ -172,14 +172,14 @@ class ModuleGraph:
         self.modules.append(mod)
         return mod
 
-    def has_endpoint(self, external_name):
+    def has_endpoint(self, external_name, internal_name):
         for endpoint in self.endpoints:
-            if endpoint.external_name == external_name:
+            if endpoint.external_name == external_name and endpoint.internal_name == internal_name:
                 return True
         return False
 
     def add_endpoint(self, external_name:str, internal_name:str, data_type:str, inout:Direction, is_pubsub=False, toposort=False, check_endpoints=True):
-        if not self.has_endpoint(external_name):
+        if not self.has_endpoint(external_name, internal_name):
             self.endpoints += [Endpoint(external_name, data_type, internal_name, inout, is_pubsub=is_pubsub, toposort=toposort, check_endpoints=check_endpoints)]
         else:
             raise KeyError(f"Endpoint {external_name} - {internal_name} already registered")

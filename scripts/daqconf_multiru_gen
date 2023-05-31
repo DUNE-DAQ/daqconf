@@ -767,7 +767,7 @@ def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown
                     "readout-affinity.py --pinfile ${DUNEDAQ_THREAD_PIN_FILE}"
                 ],
                 "env": {
-                    "DUNEDAQ_THREAD_PIN_FILE": wresolved_thread_pinning_file,
+                    "DUNEDAQ_THREAD_PIN_FILE": str(resolved_thread_pinning_file),
                     "LD_LIBRARY_PATH": "getenv",
                     "PATH": "getenv"
                 }

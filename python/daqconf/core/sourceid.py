@@ -12,21 +12,15 @@ from daqdataformats._daq_daqdataformats_py import SourceID
 from detchannelmaps._daq_detchannelmaps_py import *
 
 TAID = namedtuple('TAID', ['detector', 'crate'])
-FWTPID = namedtuple('FWTPID', ['host', 'card', 'slr'])
-FWTPOUTID = namedtuple('FWTPOUTID', ['host', 'card', 'fwtpid'])
+TPID = namedtuple('TPID', ['detector', 'crate'])
+#FWTPID = namedtuple('FWTPID', ['host', 'card', 'slr'])
+#FWTPOUTID = namedtuple('FWTPOUTID', ['host', 'card', 'fwtpid'])
 
 class TPInfo:
-    # def __init__(self, link):
-    #     self.host = link.dro_host
-    #     self.card = link.dro_card
-    #     self.region_id = link.det_crate
-    #     self.dro_source_id = link.dro_source_id
-    def __init__(self, host, iface, crate, src_id, dro_app_name):
-        self.host = host
-        self.card = iface
-        self.region_id = crate
-        self.dro_source_id = src_id
-        self.dro_app_name = dro_app_name
+    def __init__(self):
+        self.region_id = 0
+        self.tp_ru_sid = 0
+        self.link_count = 0
 
 class TAInfo:
     def __init__(self):
@@ -34,7 +28,6 @@ class TAInfo:
         self.link_count = 0
 
 class TCInfo:
-
     def __init__(self):
         self.ru_count = 0
 
@@ -170,34 +163,41 @@ class SourceIDBroker:
     def generate_trigger_source_ids(self, ru_descrs, tp_mode: bool):
         tc_info = TCInfo()
         ta_infos = {}
-        # fw_tp_infos = {}
+        tp_infos = {}
         # dro_sids = self.get_all_source_ids("Detector_Readout")
 
         if self.debug: console.log(f"Registering Trigger Source IDs, tp_mode is {tp_mode}, dro_configs are {ru_descrs}")
 
         for ru_name, ru_desc in ru_descrs.items():
-            dro_sends_data = False
-            for stream in ru_desc.streams:
-                # if stream.det_id != 3: continue # Only HD_TPC for now
-                dro_sends_data = True
-                taid = TAID(stream.geo_id.det_id, stream.geo_id.crate_id)
-                if taid not in ta_infos:
-                    ta_infos[taid] = TAInfo()
-                    ta_infos[taid].region_id = stream.geo_id.crate_id
-                    ta_infos[taid].link_count = 1
-                else:
-                    ta_infos[taid].link_count += 1
-                    
-                if tp_mode:
-                    sid = self.get_next_source_id("Trigger")
-                    self.register_source_id("Trigger", sid, TPInfo(ru_desc.host_name, ru_desc.iface, stream.geo_id.crate_id, stream.src_id, ru_desc.app_name))
-            if dro_sends_data:
-                tc_info.ru_count += 1
+            det_id = ru_desc.det_id
+            crate_id = ru_desc.streams[0].geo_id.crate_id
 
+            tp_ru_sid = self.get_next_source_id("Trigger")
+            self.register_source_id("Trigger", tp_ru_sid, ru_desc),
+
+            tpid = TPID(det_id, crate_id)
+            tp_infos[tpid] = TPInfo()
+            tp_infos[tpid].region_id = crate_id
+            tp_infos[tpid].tp_ru_sid = tp_ru_sid
+            tp_infos[tpid].link_count = 1
+
+            taid = TAID(det_id, crate_id)
+            ta_infos[taid] = TAInfo()
+            ta_infos[taid].region_id = crate_id
+            ta_infos[taid].link_count = 1
+
+            tc_info.ru_count += 1
+
+        for tp_info in tp_infos.values():
+            tpsid = self.get_next_source_id("Trigger")
+            if self.debug: console.log(f"Registering Trigger TP Source IDs {tpsid} for region {tp_info.region_id}")
+            self.register_source_id("Trigger", tpsid, tp_info)
         for ta_info in ta_infos.values():
-            self.register_source_id("Trigger", self.get_next_source_id("Trigger"), ta_info)
+            tasid = self.get_next_source_id("Trigger")
+            if self.debug: console.log(f"Registering Trigger TA Source IDs {tasid} for region {ta_info.region_id}")
+            self.register_source_id("Trigger", tasid, ta_info)
         self.register_source_id("Trigger", self.get_next_source_id("Trigger"), tc_info)
-        
+
 
 # def get_tpg_mode(enable_fw_tpg, enable_tpg):
 #     if enable_fw_tpg and enable_tpg:

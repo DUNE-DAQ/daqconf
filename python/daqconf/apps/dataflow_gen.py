@@ -21,6 +21,7 @@ import dunedaq.dfmodules.datawriter as dw
 import dunedaq.hdf5libs.hdf5filelayout as h5fl
 import dunedaq.dfmodules.hdf5datastore as hdf5ds
 
+from ..core.conf_utils import Direction, Queue
 from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Direction
@@ -47,6 +48,7 @@ def get_dataflow_app(HOSTIDX=0,
     """Generate the json configuration for the readout and DF process"""
 
     modules = []
+    queues = []
 
     if DEBUG: print(f"dataflow{HOSTIDX}: Adding TRB instance")
     modules += [DAQModule(name = 'trb',
@@ -56,6 +58,7 @@ def get_dataflow_app(HOSTIDX=0,
                                                 source_id = HOSTIDX,
                                                 trigger_record_timeout_ms=TRB_TIMEOUT))]
                       
+    queue_size_based_on_number_of_sequences = max(10, int(MAX_EXPECTED_TR_SEQUENCES * TOKEN_COUNT * 1.1))
     for i in range(len(OUTPUT_PATHS)):     
         if DEBUG: print(f"dataflow{HOSTIDX}: Adding datawriter{i} instance")                 
         modules += [DAQModule(name = f'datawriter_{i}',
@@ -95,14 +98,18 @@ def get_dataflow_app(HOSTIDX=0,
                                                         detector_group_name="HSI")
                                     ])))))]
 
-    mgraph=ModuleGraph(modules)
+        queues += [Queue("trb.trigger_record_output",
+                         f"datawriter_{i}.trigger_record_input",
+                         "TriggerRecord", 
+                         "trigger_records",
+                         queue_size_based_on_number_of_sequences)
+                  ]
+                                       
+    mgraph=ModuleGraph(modules, queues = queues)
 
     mgraph.add_endpoint(f"trigger_decision_{HOSTIDX}", "trb.trigger_decision_input", "TriggerDecision", Direction.IN)
 
-    queue_size_based_on_number_of_sequences = max(10, int(MAX_EXPECTED_TR_SEQUENCES * TOKEN_COUNT * 1.1))
     for i in range(len(OUTPUT_PATHS)):
-        mgraph.connect_modules("trb.trigger_record_output", f"datawriter_{i}.trigger_record_input","TriggerRecord", "trigger_records",
-                               queue_size_based_on_number_of_sequences)
         mgraph.add_endpoint("triginh", f"datawriter_{i}.token_output", "TriggerDecisionToken", Direction.OUT, toposort=True)
 
     if HAS_DQM:

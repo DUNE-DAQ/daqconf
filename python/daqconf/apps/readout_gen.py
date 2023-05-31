@@ -481,6 +481,7 @@ def create_det_dhl(
 
     modules = []
     for stream in RU_DESCRIPTOR.streams:
+        geo_id = stream.geo_id
         modules += [DAQModule(
                     name = f"datahandler_{stream.src_id}",
                     plugin = "DataLinkHandler", 
@@ -500,7 +501,11 @@ def create_det_dhl(
                             latency_buffer_preallocation = LATENCY_BUFFER_ALLOCATION_MODE,
                             latency_buffer_intrinsic_allocator = LATENCY_BUFFER_ALLOCATION_MODE,
                         ),
-                        rawdataprocessorconf= rconf.RawDataProcessorConf(),
+                        rawdataprocessorconf= rconf.RawDataProcessorConf(
+                            crate_id = geo_id.crate_id, 
+                            slot_id = geo_id.slot_id, 
+                            link_id = geo_id.stream_id
+                        ),
                         requesthandlerconf= rconf.RequestHandlerConf(
                             latency_buffer_size = LATENCY_BUFFER_SIZE,
                             pop_limit_pct = default_pop_limit_pct,
@@ -530,7 +535,6 @@ def add_tp_processing(
         EMULATOR_MODE,
         CLOCK_SPEED_HZ: int,
         DATA_RATE_SLOWDOWN_FACTOR: int,
-        SOURCEID_BROKER: SourceIDBroker,
     ) -> list:
 
     modules = []
@@ -539,17 +543,16 @@ def add_tp_processing(
     default_error_counter_threshold=100
     default_error_reset_freq=10000
 
+
     # Loop over datalink handlers to re-define the data processor configuration
     for dlh in dlh_list:
 
         # Recover the raw data link source id
         # MOOOOOO
         dro_sid = dlh.conf.readoutmodelconf["source_id"]
-
-        # Reserve a TP source id
-        tp_sid = SOURCEID_BROKER.get_next_source_id("Trigger")
-        SOURCEID_BROKER.register_source_id("Trigger", tp_sid, None)
-
+        geo_cid = dlh.conf.rawdataprocessorconf["crate_id"]
+        geo_sid = dlh.conf.rawdataprocessorconf["slot_id"]
+        geo_lid = dlh.conf.rawdataprocessorconf["link_id"]
         # Re-create the module with an extended configuration
         modules += [DAQModule(
             name = dlh.name,
@@ -560,16 +563,18 @@ def add_tp_processing(
                 requesthandlerconf = dlh.conf.requesthandlerconf,
                 rawdataprocessorconf= rconf.RawDataProcessorConf(
                     source_id = dro_sid,
-                    enable_software_tpg = True,
-                    software_tpg_threshold = THRESHOLD_TPG,
-                    software_tpg_algorithm = ALGORITHM_TPG,
-                    software_tpg_channel_mask = CHANNEL_MASK_TPG,
+                    crate_id = geo_cid,
+                    slot_id = geo_sid,
+                    link_id = geo_lid,
+                    enable_tpg = True,
+                    tpg_threshold = THRESHOLD_TPG,
+                    tpg_algorithm = ALGORITHM_TPG,
+                    tpg_channel_mask = CHANNEL_MASK_TPG,
                     channel_map_name = TPG_CHANNEL_MAP,
                     emulator_mode = EMULATOR_MODE,
                     clock_speed_hz = (CLOCK_SPEED_HZ / DATA_RATE_SLOWDOWN_FACTOR),
                     error_counter_threshold=default_error_counter_threshold,
-                    error_reset_freq=default_error_reset_freq,
-                    tpset_sourceid=tp_sid
+                    error_reset_freq=default_error_reset_freq
                 ),
             )
         )]
@@ -581,47 +586,38 @@ def add_tp_processing(
 ###
 def create_tp_dlhs(
     dlh_list: list,
-    LATENCY_BUFFER_SIZE: int, # To Check
     DATA_REQUEST_TIMEOUT: int, # To Check
     FRAGMENT_SEND_TIMEOUT: int, # To Check
+    tpset_sid: int,
     )-> tuple[list, list]:
     
-
-
     default_pop_limit_pct = 0.8
     default_pop_size_pct = 0.1
-    default_stream_buffer_size = 8388608,
+    default_stream_buffer_size = 8388608
+    default_latency_buffer_size = 4000000
     default_detid = 1
 
-    modules = []
-    queues = []
     
-    for dlh in dlh_list:
-
-        # extract source ids
-        dro_sid = dlh.conf.readoutmodelconf["source_id"]
-        tp_sid = dlh.conf.rawdataprocessorconf["tpset_sourceid"]
-
-        modules += [
-            DAQModule(name = f"tp_datahandler_{tp_sid}",
+    # Create the TP link handler
+    modules = [
+      DAQModule(name = f"tp_datahandler_{tpset_sid}",
                 plugin = "DataLinkHandler",
                 conf = rconf.Conf(
                             readoutmodelconf = rconf.ReadoutModelConf(
                                 source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
-                                source_id = tp_sid
+                                source_id = tpset_sid
                             ),
                             latencybufferconf = rconf.LatencyBufferConf(
-                                latency_buffer_size = LATENCY_BUFFER_SIZE,
-                                source_id =  tp_sid
+                                latency_buffer_size = default_latency_buffer_size,
+                                source_id =  tpset_sid
                             ),
-                            rawdataprocessorconf = rconf.RawDataProcessorConf(),
+                            rawdataprocessorconf = rconf.RawDataProcessorConf(enable_tpg = False),
                             requesthandlerconf= rconf.RequestHandlerConf(
-                                latency_buffer_size = LATENCY_BUFFER_SIZE,
+                                latency_buffer_size = default_latency_buffer_size,
                                 pop_limit_pct = default_pop_limit_pct,
                                 pop_size_pct = default_pop_size_pct,
-                                source_id = tp_sid,
+                                source_id = tpset_sid,
                                 det_id = default_detid,
-                                # output_file = f"output_{idx + MIN_LINK}.out",
                                 stream_buffer_size = default_stream_buffer_size,
                                 request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                 fragment_send_timeout_ms = FRAGMENT_SEND_TIMEOUT,
@@ -630,14 +626,19 @@ def create_tp_dlhs(
                         )
                 )
             ]
+    
+    queues = []
+    for dlh in dlh_list:
+        # extract source ids
+        dro_sid = dlh.conf.readoutmodelconf["source_id"]
 
         # Attach to the detector DLH's tp_out connector
         queues += [
             Queue(
                 f"{dlh.name}.tp_out",
-                f"tp_datahandler_{tp_sid}.raw_input",
+                f"tp_datahandler_{tpset_sid}.raw_input",
                 "TriggerPrimitive",
-                f"sw_tp_link_{dro_sid}",100000 
+                f"tp_link_{tpset_sid}",1000000 
                 )
             ]
 
@@ -675,14 +676,14 @@ def add_dro_eps_and_fps(
         )
 
         # if processing is enabled, add a pubsub endooint for TPSets
-        if dlh.conf.rawdataprocessorconf['enable_software_tpg']:
-            mgraph.add_endpoint(
-                f"tpsets_ru{RUIDX}_link{dro_sid}",
-                f"datahandler_{dro_sid}.tpset_out",
-                "TPSet",
-                Direction.OUT,
-                is_pubsub=True
-            )
+        #if dlh.conf.rawdataprocessorconf['enable_tpg']:
+        #    mgraph.add_endpoint(
+        #        f"tpsets_ru{RUIDX}_link{dro_sid}",
+        #        f"datahandler_{dro_sid}.tpset_out",
+        #        "TPSet",
+        #        Direction.OUT,
+        #        is_pubsub=True
+        #    )
 
 
 ###
@@ -699,23 +700,32 @@ def add_tpg_eps_and_fps(
     for dlh in tpg_dlh_list:
 
         # extract source ids
-        tp_sid = dlh.conf.readoutmodelconf['source_id']
+        tpset_sid = dlh.conf.readoutmodelconf['source_id']
 
-        # Add enpoint with this source id
+        # Add enpointis with this source id for timesync and TPSets
         mgraph.add_endpoint(
-            f"timesync_tp_dlh_ru{RUIDX}_{tp_sid}",
-            f"tp_datahandler_{tp_sid}.timesync_output",
+            f"timesync_tp_dlh_ru{RUIDX}_{tpset_sid}",
+            f"tp_datahandler_{tpset_sid}.timesync_output",
             "TimeSync",
             Direction.OUT,
             is_pubsub=True
         )
 
+        mgraph.add_endpoint(
+                f"tpsets_tplink{tpset_sid}",
+                f"tp_datahandler_{tpset_sid}.tpset_out",
+                "TPSet",
+                Direction.OUT,
+                is_pubsub=True
+            )
+
         # Add Fragment producer with this source id
         mgraph.add_fragment_producer(
-            id = tp_sid, subsystem = "Trigger",
-            requests_in   = f"tp_datahandler_{tp_sid}.request_input",
-            fragments_out = f"tp_datahandler_{tp_sid}.fragment_queue"
+            id = tpset_sid, subsystem = "Trigger",
+            requests_in   = f"tp_datahandler_{tpset_sid}.request_input",
+            fragments_out = f"tp_datahandler_{tpset_sid}.fragment_queue"
         )
+        
 
 # Time to wait on pop()
 QUEUE_POP_WAIT_MS = 10 # This affects stop time, as each link will wait this long before stop
@@ -842,19 +852,23 @@ def create_readout_app(
            TPG_CHANNEL_MAP=TPG_CHANNEL_MAP,
            EMULATOR_MODE=EMULATOR_MODE,
            CLOCK_SPEED_HZ=CLOCK_SPEED_HZ,
-           DATA_RATE_SLOWDOWN_FACTOR=DATA_RATE_SLOWDOWN_FACTOR,
-           SOURCEID_BROKER=SOURCEID_BROKER
+           DATA_RATE_SLOWDOWN_FACTOR=DATA_RATE_SLOWDOWN_FACTOR
         )
 
     modules += dlhs_mods
 
     # Add the TP datalink handlers
-    if TPG_ENABLED and READOUT_SENDS_TP_FRAGMENTS:
+    #if TPG_ENABLED and READOUT_SENDS_TP_FRAGMENTS:
+    if TPG_ENABLED:
+        tps = { k:v for k,v in SOURCEID_BROKER.get_all_source_ids("Trigger").items() if isinstance(v, ReadoutUnitDescriptor ) and v==RU_DESCRIPTOR}
+        if len(tps) != 1:
+            raise RuntimeError(f"Could not retrieve unique element from source id map {tps}")
+
         tpg_mods, tpg_queues = create_tp_dlhs(
             dlh_list=dlhs_mods,
-            LATENCY_BUFFER_SIZE=LATENCY_BUFFER_SIZE,
             DATA_REQUEST_TIMEOUT=DATA_REQUEST_TIMEOUT,
-            FRAGMENT_SEND_TIMEOUT=FRAGMENT_SEND_TIMEOUT
+            FRAGMENT_SEND_TIMEOUT=FRAGMENT_SEND_TIMEOUT,
+            tpset_sid = next(iter(tps))
         )
         modules += tpg_mods
         queues += tpg_queues
@@ -869,7 +883,7 @@ def create_readout_app(
         RUIDX=RU_DESCRIPTOR.label
     )
 
-    if TPG_ENABLED and READOUT_SENDS_TP_FRAGMENTS:
+    if TPG_ENABLED:
        # Add endpoints and frame producers to TP data handlers
         add_tpg_eps_and_fps(
             mgraph=mgraph,
