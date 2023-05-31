@@ -33,25 +33,44 @@ import dunedaq.detchannelmaps.hardwaremapservice as hwms
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(context_settings=CONTEXT_SETTINGS)
 @generate_cli_from_schema('daqconf/confgen.jsonnet', 'daqconf_multiru_gen', 'dataflowapp')
-@click.option('--disable-k8s', default=False, is_flag=True, help="Disable Kubernetes (default, use the flag in your configuration file, which is off by default)")
-@click.option('--base-command-port', type=int, default=-1, help="Base port of application command endpoints")
-@click.option('--detector-readout-map-file', default='', help="File containing detector detector-readout map for configuration to run")
+@click.option('--force-pm', default=None, type=click.Choice(['ssh', 'k8s']), help="Force process manager")
+@click.option('--base-command-port', type=int, default=None, help="Base port of application command endpoints")
+@click.option('--detector-readout-map-file', default=None, help="File containing detector detector-readout map for configuration to run")
 @click.option('-s', '--data-rate-slowdown-factor', default=0, help="Scale factor for readout internal clock to generate less data")
+@click.option('--file-label', default=None, help="File - used for raw data filename prefix")
 @click.option('--enable-dqm', default=False, is_flag=True, help="Enable generation of DQM apps")
-@click.option('--op-env', default='', help="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files")
-@click.option('--file-label', default='', help="File - used for raw data filename prefix")
-@click.option('-a', '--only-check-args', default=False, is_flag=True, help="Dry run, do not generate output files")
+@click.option('-a', '--only-check-args', default=False, is_flag=True, help="Check input arguments and quit")
 @click.option('-n', '--dry-run', default=False, is_flag=True, help="Dry run, do not generate output files")
+@click.option('-f', '--force', default=False, is_flag=True, help="Force configuration generation - delete ")
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
-def cli(config, disable_k8s, base_command_port, detector_readout_map_file, data_rate_slowdown_factor, enable_dqm, file_label, only_check_args, dry_run, debug, json_dir):
+def cli(
+        config,
+        force_pm,
+        base_command_port,
+        detector_readout_map_file,
+        data_rate_slowdown_factor,
+        enable_dqm,
+        file_label,
+        only_check_args,
+        dry_run,
+        force,
+        debug,
+        json_dir
+    ):
 
     if only_check_args:
         return
     
     output_dir = Path(json_dir)
-    if output_dir.exists() and not dry_run:
-        raise RuntimeError(f"Directory {output_dir} already exists")
+    if output_dir.exists():
+        if dry_run:
+            pass
+        elif force:
+            # Delete output folder if it exists
+            shutil.rmtree(output_dir)
+        else:
+            raise RuntimeError(f"Directory {output_dir} already exists")
 
 
     debug_dir = output_dir / 'debug'
@@ -100,15 +119,14 @@ def cli(config, disable_k8s, base_command_port, detector_readout_map_file, data_
     if debug: console.log(f"dpdk_sender configuration object: {dpdk_sender.pod()}")
 
 
-
     # Update with command-line options
-    if disable_k8s:
-        boot.use_k8s = False
+    if force_pm is not None:
+        boot.use_k8s = (force_pm == 'k8s')
 
-    if base_command_port != -1:
+    if base_command_port is not None:
        boot.base_command_port = base_command_port
        
-    if detector_readout_map_file != '':
+    if detector_readout_map_file is not None:
         readout.detector_readout_map_file = detector_readout_map_file
     if data_rate_slowdown_factor != 0:
         readout.data_rate_slowdown_factor = data_rate_slowdown_factor
@@ -117,8 +135,11 @@ def cli(config, disable_k8s, base_command_port, detector_readout_map_file, data_
 
     if dqm.impl == 'pocket':
         dqm.kafka_address = boot.pocket_url + ":30092"
+    
     # if op_env != '':
         # boot.op_env = op_env
+
+    file_label = file_label if file_label is not None else boot.op_env
 
 
 
@@ -558,7 +579,7 @@ def cli(config, disable_k8s, base_command_port, detector_readout_map_file, data_
             OUTPUT_PATHS = df_config.output_paths,
             APP_NAME=app_name,
             OPERATIONAL_ENVIRONMENT = boot.op_env,
-            FILE_LABEL = file_label if file_label else boot.op_env,
+            FILE_LABEL = file_label,
             DATA_STORE_MODE=df_config.data_store_mode,
             MAX_FILE_SIZE = df_config.max_file_size,
             MAX_TRIGGER_RECORD_WINDOW = df_config.max_trigger_record_window,
