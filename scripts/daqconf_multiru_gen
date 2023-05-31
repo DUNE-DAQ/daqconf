@@ -33,10 +33,11 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('--hardware-map-file', default='', help="File containing detector hardware map for configuration to run")
 @click.option('-s', '--data-rate-slowdown-factor', default=0, help="Scale factor for readout internal clock to generate less data")
 @click.option('--enable-dqm', default=False, is_flag=True, help="Enable generation of DQM apps")
+@click.option('--enable-k8s', default=None, is_flag=True, help="Enable Kubernetes (default, use the flag in your configuration file, which is off by default)")
 @click.option('--op-env', default='', help="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files")
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
-def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor, enable_dqm, op_env, debug, json_dir):
+def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor, enable_dqm, enable_k8s, op_env, debug, json_dir):
 
     output_dir = Path(json_dir)
     if output_dir.exists():
@@ -52,6 +53,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
 
     if debug:
         console.log(f"Configuration for daqconf: {config_data.pod()}")
+
 
     # Get our config objects
     # Loading this one another time... (first time in config_file.generate_cli_from_schema)
@@ -87,18 +89,30 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
     dpdk_sender = confgen.dpdk_sender(**config_data.dpdk_sender)
     if debug: console.log(f"dpdk_sender configuration object: {dpdk_sender.pod()}")
 
+
+
     # Update with command-line options
+    if enable_k8s is not None:
+        boot.enable_k8s = enable_k8s
+
     if base_command_port != -1:
        boot.base_command_port = base_command_port
+
     if hardware_map_file != '':
         readout.hardware_map_file = hardware_map_file
+
     if data_rate_slowdown_factor != 0:
         readout.data_rate_slowdown_factor = data_rate_slowdown_factor
+
     dqm.enable_dqm |= enable_dqm
+
     if dqm.impl == 'pocket':
         dqm.kafka_address = boot.pocket_url + ":30092"
+
     if op_env != '':
         boot.op_env = op_env
+
+
 
     console.log("Loading dataflow config generator")
     from daqconf.apps.dataflow_gen import get_dataflow_app
@@ -471,7 +485,7 @@ def cli(config, base_command_port, hardware_map_file, data_rate_slowdown_factor,
                 c = card_override if card_override != -1 else dro_config.card
                 the_system.apps[ru_name].resources = {
                     f"felix.cern/flx{c}-data": "1", # requesting FLX{c}
-                    "memory": "32Gi" # yes bro
+                    "memory": "70Gi" # yes bro
                 }
 
             dir_names = set()
