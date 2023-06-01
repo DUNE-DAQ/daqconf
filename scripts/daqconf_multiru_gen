@@ -67,6 +67,7 @@ def cli(
         if dry_run:
             pass
         elif force:
+            console.log(f"Removing existing {output_dir}")
             # Delete output folder if it exists
             shutil.rmtree(output_dir)
         else:
@@ -122,14 +123,20 @@ def cli(
     # Update with command-line options
     if force_pm is not None:
         boot.use_k8s = (force_pm == 'k8s')
+        console.log(f"boot.use_k8s set to {boot.use_k8s}")
 
     if base_command_port is not None:
-       boot.base_command_port = base_command_port
+        boot.base_command_port = base_command_port
+        console.log(f"boot.base_command_port set to {boot.base_command_port}")
+
        
     if detector_readout_map_file is not None:
         readout.detector_readout_map_file = detector_readout_map_file
+        console.log(f"readout.detector_readout_map_file set to {readout.detector_readout_map_file}")
+
     if data_rate_slowdown_factor != 0:
         readout.data_rate_slowdown_factor = data_rate_slowdown_factor
+        console.log(f"readout.data_rate_slowdown_factor set to {readout.data_rate_slowdown_factor}")
 
     dqm.enable_dqm |= enable_dqm
 
@@ -489,7 +496,6 @@ def cli(
                 LATENCY_BUFFER_SIZE=readout.latency_buffer_size,
                 DATA_REQUEST_TIMEOUT=readout_data_request_timeout,
                 FRAGMENT_SEND_TIMEOUT=readout.fragment_send_timeout_ms,
-                READOUT_SENDS_TP_FRAGMENTS = readout.readout_sends_tp_fragments,
                 EAL_ARGS=readout.eal_args,
                 NUMA_ID = numa_id,
                 LATENCY_BUFFER_NUMA_AWARE = latency_numa,

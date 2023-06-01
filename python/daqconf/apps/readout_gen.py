@@ -752,7 +752,6 @@ def create_readout_app(
     TPG_CHANNEL_MAP= "ProtoDUNESP1ChannelMap",
     DATA_REQUEST_TIMEOUT=1000,
     FRAGMENT_SEND_TIMEOUT=10,
-    READOUT_SENDS_TP_FRAGMENTS=False,
     EAL_ARGS='-l 0-1 -n 3 -- -m [0:1].0 -j',
     NUMA_ID=0,
     LATENCY_BUFFER_SIZE=499968,
@@ -858,7 +857,6 @@ def create_readout_app(
     modules += dlhs_mods
 
     # Add the TP datalink handlers
-    #if TPG_ENABLED and READOUT_SENDS_TP_FRAGMENTS:
     if TPG_ENABLED:
         tps = { k:v for k,v in SOURCEID_BROKER.get_all_source_ids("Trigger").items() if isinstance(v, ReadoutUnitDescriptor ) and v==RU_DESCRIPTOR}
         if len(tps) != 1:

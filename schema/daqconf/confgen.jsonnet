@@ -19,9 +19,10 @@ local cs = {
   monitoring_dest: s.enum(     "MonitoringDest", ["local", "cern", "pocket"]),
   path:            s.string(   "Path", doc="Location on a filesystem"),
   paths:           s.sequence( "Paths",         self.path, doc="Multiple paths"),
-  host:            s.string(   "Host", moo.re.dnshost,          doc="A hostname"),
+  host:            s.string(   "Host",          moo.re.dnshost, doc="A hostname"),
   hosts:           s.sequence( "Hosts",         self.host, "Multiple hosts"),
   string:          s.string(   "Str",           doc="Generic string"),
+  strings:         s.sequence( "Strings",  self.string, doc="List of strings"),
   tpg_channel_map: s.enum(     "TPGChannelMap", ["VDColdboxChannelMap", "ProtoDUNESP1ChannelMap", "PD2HDChannelMap", "HDColdboxChannelMap"]),
   dqm_channel_map: s.enum(     "DQMChannelMap", ['HD', 'VD', 'PD2HD', 'HDCB']),
   dqm_params:      s.sequence( "DQMParams",     self.count, doc="Parameters for DQM (fixme)"),
@@ -32,41 +33,38 @@ local cs = {
   readout_time:    s.number(   "ROTime",        "i8", doc="A readout time in ticks"),
   channel_list:    s.sequence( "ChannelList",   self.count, doc="List of offline channels to be masked out from the TPHandler"),
   
-  numa_exception:  s.record( "NUMAException", [
-    s.field( "host", self.host, default='localhost', doc="Host of exception"),
-    s.field( "card", self.count, default=0, doc="Card ID of exception"),
-    s.field( "numa_id", self.count, default=0, doc="NUMA ID of exception"),
-    s.field( "felix_card_id", self.count, default=-1, doc="CARD ID override, -1 indicates no override"),
-    s.field( "latency_buffer_numa_aware", self.flag, default=false, doc="Enable NUMA-aware mode for the Latency Buffer"),
-    s.field( "latency_buffer_preallocation", self.flag, default=false, doc="Enable Latency Buffer preallocation"),
-  ], doc="Exception to the default NUMA ID for FELIX cards"),
-  numa_exceptions: s.sequence( "NUMAExceptions", self.numa_exception, doc="Exceptions to the default NUMA ID"),
-  numa_config: s.record("numa_config", [
-    s.field( "default_id", self.count, default=0, doc="Default NUMA ID for FELIX cards"),
-    s.field( "default_latency_numa_aware", self.flag, default=false, doc="Default for Latency Buffer NUMA awareness"),
-    s.field( "default_latency_preallocation", self.flag, default=false, doc="Default for Latency Buffer Preallocation"),
-    s.field( "exceptions", self.numa_exceptions, default=[], doc="Exceptions to the default NUMA ID"),
-  ]),
+
 
   boot: s.record("boot", [
+    s.field( "op_env", self.string, default='swtest', doc="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files"),
     s.field( "base_command_port", self.port, default=3333, doc="Base port of application command endpoints"),
+    # Obscure
+    s.field( "RTE_script_settings", self.three_choice, default=0, doc="0 - Use an RTE script iff not in a dev environment, 1 - Always use RTE, 2 - never use RTE"),
+    s.field( "capture_env_vars", self.strings, default=['TIMING_SHARE', 'DETCHANNELMAPS_SHARE'], doc="List of variables to capture from the environment"),
     s.field( "disable_trace", self.flag, false, doc="Do not enable TRACE (default TRACE_FILE is /tmp/trace_buffer_${HOSTNAME}_${USER})"),
     s.field( "opmon_impl", self.monitoring_dest, default='local', doc="Info collector service implementation to use"),
     s.field( "ers_impl", self.monitoring_dest, default='local', doc="ERS destination (Kafka used for cern and pocket)"),
     s.field( "pocket_url", self.host, default='127.0.0.1', doc="URL for connecting to Pocket services"),
-    s.field( "image", self.string, default="dunedaq/c8-minimal", doc="Which docker image to use"),
+
+    # K8S
     s.field( "use_k8s", self.flag, default=false, doc="Whether to use k8s"),
-    s.field( "op_env", self.string, default='swtest', doc="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files"),
-    s.field( "data_request_timeout_ms", self.count, default=1000, doc="The baseline data request timeout that will be used by modules in the Readout and Trigger subsystems (i.e. any module that produces data fragments). Downstream timeouts, such as the trigger-record-building timeout, are derived from this."),
+    s.field( "image", self.string, default="dunedaq/c8-minimal", doc="Which docker image to use"),
+
+    # Connectivity Service
     s.field( "use_connectivity_service", self.flag, default=true, doc="Whether to use the ConnectivityService to manage connections"),
     s.field( "start_connectivity_service", self.flag, default=true, doc="Whether to use the ConnectivityService to manage connections"),
     s.field( "connectivity_service_threads", self.count, default=2, doc="Number of threads for the gunicorn server that serves connection info"),
     s.field( "connectivity_service_host", self.host, default='localhost', doc="Hostname for the ConnectivityService"),
     s.field( "connectivity_service_port", self.port, default=15000, doc="Port for the ConnectivityService"),
     s.field( "connectivity_service_interval", self.count, default=1000, doc="Publish interval for the ConnectivityService"),
-    s.field( "RTE_script_settings", self.three_choice, default=0, doc="0 - Use an RTE script iff not in a dev environment, 1 - Always use RTE, 2 - never use RTE"),
+    
+    # To move away
     s.field( "use_data_network", self.flag, default = false, doc="Whether to use the data network (Won't work with k8s)"),
+    s.field( "data_request_timeout_ms", self.count, default=1000, doc="The baseline data request timeout that will be used by modules in the Readout and Trigger subsystems (i.e. any module that produces data fragments). Downstream timeouts, such as the trigger-record-building timeout, are derived from this."),
   ]),
+
+
+
 
   timing: s.record("timing", [
     s.field( "timing_session_name", self.string, default="", doc="Name of the global timing session to use, for timing commands"),
@@ -108,19 +106,35 @@ local cs = {
     # ctb options
     s.field( "use_ctb_hsi", self.flag, default=false, doc='Flag to control whether CTB HSI config is generated. Default is false'),
     s.field( "host_ctb_hsi", self.host, default='localhost', doc='Host to run the HSI app on'),
-    s.field("hlt_triggers", ctbmodule.Hlt_trigger_seq, []),
-    s.field("beam_llt_triggers", ctbmodule.Llt_mask_trigger_seq, []),
-    s.field("crt_llt_triggers", ctbmodule.Llt_count_trigger_seq, []),
-    s.field("pds_llt_triggers", ctbmodule.Llt_count_trigger_seq, []),
-    s.field("fake_trig_1", ctbmodule.Randomtrigger, ctbmodule.Randomtrigger),
-    s.field("fake_trig_2", ctbmodule.Randomtrigger, ctbmodule.Randomtrigger)
+    s.field( "hlt_triggers", ctbmodule.Hlt_trigger_seq, []),
+    s.field( "beam_llt_triggers", ctbmodule.Llt_mask_trigger_seq, []),
+    s.field( "crt_llt_triggers", ctbmodule.Llt_count_trigger_seq, []),
+    s.field( "pds_llt_triggers", ctbmodule.Llt_count_trigger_seq, []),
+    s.field( "fake_trig_1", ctbmodule.Randomtrigger, ctbmodule.Randomtrigger),
+    s.field( "fake_trig_2", ctbmodule.Randomtrigger, ctbmodule.Randomtrigger)
   ]),
 
   data_file_entry: s.record("data_file_entry", [
-    s.field("data_file", self.path, default='./frames.bin', doc="File containing data frames to be replayed by the fake cards. Former -d. Uses the asset manager, can also be 'asset://checksum/somelonghash', or 'file://somewhere/frames.bin' or 'frames.bin'"),
-    s.field("detector_id", self.count, default=3, doc="Detector ID that this file applies to"),
+    s.field( "data_file", self.path, default='./frames.bin', doc="File containing data frames to be replayed by the fake cards. Former -d. Uses the asset manager, can also be 'asset://checksum/somelonghash', or 'file://somewhere/frames.bin' or 'frames.bin'"),
+    s.field( "detector_id", self.count, default=3, doc="Detector ID that this file applies to"),
   ]),
   data_files: s.sequence("data_files", self.data_file_entry),
+
+  numa_exception:  s.record( "NUMAException", [
+    s.field( "host", self.host, default='localhost', doc="Host of exception"),
+    s.field( "card", self.count, default=0, doc="Card ID of exception"),
+    s.field( "numa_id", self.count, default=0, doc="NUMA ID of exception"),
+    s.field( "felix_card_id", self.count, default=-1, doc="CARD ID override, -1 indicates no override"),
+    s.field( "latency_buffer_numa_aware", self.flag, default=false, doc="Enable NUMA-aware mode for the Latency Buffer"),
+    s.field( "latency_buffer_preallocation", self.flag, default=false, doc="Enable Latency Buffer preallocation"),
+  ], doc="Exception to the default NUMA ID for FELIX cards"),
+  numa_exceptions: s.sequence( "NUMAExceptions", self.numa_exception, doc="Exceptions to the default NUMA ID"),
+  numa_config: s.record("numa_config", [
+    s.field( "default_id", self.count, default=0, doc="Default NUMA ID for FELIX cards"),
+    s.field( "default_latency_numa_aware", self.flag, default=false, doc="Default for Latency Buffer NUMA awareness"),
+    s.field( "default_latency_preallocation", self.flag, default=false, doc="Default for Latency Buffer Preallocation"),
+    s.field( "exceptions", self.numa_exceptions, default=[], doc="Exceptions to the default NUMA ID"),
+  ]),
 
   readout: s.record("readout", [
     s.field( "detector_readout_map_file", self.path, default='./DetectorReadoutMap.json', doc="File containing detector hardware map for configuration to run"),
@@ -130,8 +144,6 @@ local cs = {
     s.field( "clock_speed_hz", self.freq, default=62500000),
     s.field( "default_data_file", self.path, default='asset://?label=ProtoWIB&subsystem=readout', doc="File containing data frames to be replayed by the fake cards. Former -d. Uses the asset manager, can also be 'asset://?checksum=somelonghash', or 'file://somewhere/frames.bin' or 'frames.bin'"),
     s.field( "data_files", self.data_files, default=[], doc="Files to use by detector type"),
-    // s.field( "use_felix", self.flag, default=false, doc="Use real felix cards instead of fake ones. Former -f"),
-    // s.field( "eth_mode", self.flag, default=false, doc="Use ethernet packet format"),
     s.field( "use_fake_cards", self.flag, default=false, doc="Use fake cards"),
     s.field( "latency_buffer_size", self.count, default=499968, doc="Size of the latency buffers (in number of elements)"),
     s.field( "fragment_send_timeout_ms", self.count, default=10, doc="The send timeout that will be used in the readout modules when sending fragments downstream (i.e. to the TRB)."),
@@ -139,14 +151,9 @@ local cs = {
     s.field( "tpg_threshold", self.count, default=120, doc="Select TPG threshold"),
     s.field( "tpg_algorithm", self.string, default="SWTPG", doc="Select TPG algorithm (SWTPG, AbsRS)"),
     s.field( "tpg_channel_mask", self.channel_list, default=[], doc="List of offline channels to be masked out from the TPHandler"),
-    // s.field( "enable_firmware_tpg", self.flag, default=false, doc="Enable firmware TPG"),
-    // s.field( "dtp_connections_file", self.path, default="${DTPCONTROLS_SHARE}/config/dtp_connections.xml", doc="DTP connections file"),
-    // s.field( "firmware_hit_threshold", self.count, default=20, doc="firmware hitfinder threshold"),
     s.field( "enable_raw_recording", self.flag, default=false, doc="Add queues and modules necessary for the record command"),
     s.field( "raw_recording_output_dir", self.path, default='.', doc="Output directory where recorded data is written to. Data for each link is written to a separate file"),
     s.field( "use_fake_data_producers", self.flag, default=false, doc="Use fake data producers that respond with empty fragments immediately instead of (fake) cards and DLHs"),
-    s.field( "readout_sends_tp_fragments",self.flag, default=false, doc="Send TP Fragments from Readout to Dataflow (via enabling TP Fragment links in MLT)"),
-    // s.field( "enable_dpdk_reader", self.flag, default=false, doc="Enable sending frames using DPDK"),
     s.field( "host_dpdk_reader", self.hosts, default=['np04-srv-022'], doc="Which host to use to receive frames"),
     s.field( "eal_args", self.string, default='-l 0-1 -n 3 -- -m [0:1].0 -j', doc='Args passed to the EAL in DPDK'),
     s.field( "base_source_ip", self.string, default='10.73.139.', doc='First part of the IP of the source'),
