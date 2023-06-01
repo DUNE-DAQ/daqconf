@@ -475,7 +475,8 @@ def create_det_dhl(
         DATA_REQUEST_TIMEOUT: int,
         FRAGMENT_SEND_TIMEOUT: int,
         RAW_RECORDING_ENABLED: bool,
-        RU_DESCRIPTOR # ReadoutUnitDescriptor
+        RU_DESCRIPTOR, # ReadoutUnitDescriptor
+        EMULATOR_MODE : bool
  
     ) -> tuple[list, list]:
 
@@ -510,6 +511,7 @@ def create_det_dhl(
                             latency_buffer_intrinsic_allocator = LATENCY_BUFFER_ALLOCATION_MODE,
                         ),
                         rawdataprocessorconf= rconf.RawDataProcessorConf(
+                            emulator_mode = EMULATOR_MODE,
                             crate_id = geo_id.crate_id, 
                             slot_id = geo_id.slot_id, 
                             link_id = geo_id.stream_id
@@ -846,7 +848,8 @@ def create_readout_app(
         DATA_REQUEST_TIMEOUT=DATA_REQUEST_TIMEOUT,
         FRAGMENT_SEND_TIMEOUT=FRAGMENT_SEND_TIMEOUT,
         RAW_RECORDING_ENABLED=RAW_RECORDING_ENABLED,
-        RU_DESCRIPTOR=RU_DESCRIPTOR
+        RU_DESCRIPTOR=RU_DESCRIPTOR,
+        EMULATOR_MODE=EMULATOR_MODE
 
     )
 
