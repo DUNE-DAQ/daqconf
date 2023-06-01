@@ -533,10 +533,7 @@ def update_with_k8s_boot_data(
 
     boot_data.update({"apps": apps_desc})
     boot_data.update({"order": boot_order})
-    if 'rte_script' in boot_data:
-        boot_data['exec']['daq_application_k8s']['cmd'] = ['daq_application']
-    else:
-        boot_data['exec']['daq_application_k8s']['cmd'] = ['/dunedaq/run/app-entrypoint.sh']
+    boot_data['exec']['daq_application_k8s']['cmd'] = ['daq_application']
     boot_data["exec"]["daq_application_k8s"]["image"] = image
 
 
