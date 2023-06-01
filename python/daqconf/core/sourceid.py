@@ -172,19 +172,20 @@ class SourceIDBroker:
             det_id = ru_desc.det_id
             crate_id = ru_desc.streams[0].geo_id.crate_id
 
-            tp_ru_sid = self.get_next_source_id("Trigger")
-            self.register_source_id("Trigger", tp_ru_sid, ru_desc),
+            if tp_mode:
+                tp_ru_sid = self.get_next_source_id("Trigger")
+                self.register_source_id("Trigger", tp_ru_sid, ru_desc),
 
-            tpid = TPID(det_id, crate_id)
-            tp_infos[tpid] = TPInfo()
-            tp_infos[tpid].region_id = crate_id
-            tp_infos[tpid].tp_ru_sid = tp_ru_sid
-            tp_infos[tpid].link_count = 1
+                tpid = TPID(det_id, crate_id)
+                tp_infos[tpid] = TPInfo()
+                tp_infos[tpid].region_id = crate_id
+                tp_infos[tpid].tp_ru_sid = tp_ru_sid
+                tp_infos[tpid].link_count = 1
 
-            taid = TAID(det_id, crate_id)
-            ta_infos[taid] = TAInfo()
-            ta_infos[taid].region_id = crate_id
-            ta_infos[taid].link_count = 1
+                taid = TAID(det_id, crate_id)
+                ta_infos[taid] = TAInfo()
+                ta_infos[taid].region_id = crate_id
+                ta_infos[taid].link_count = 1
 
             tc_info.ru_count += 1
 
