@@ -1,4 +1,9 @@
 # Set moo schema search path
+from rich.console import Console
+
+console = Console()
+
+
 from dunedaq.env import get_moo_model_path
 import moo.io
 moo.io.default_load_path = get_moo_model_path()
@@ -135,6 +140,9 @@ def create_fake_cardreader(
             link_confs = [
                 sec.LinkConfiguration(
                     source_id=s.src_id,
+                        crate_id = s.geo_id.crate_id,
+                        slot_id = s.geo_id.slot_id,
+                        link_id = s.geo_id.stream_id,
                         slowdown=DATA_RATE_SLOWDOWN_FACTOR,
                         queue_name=f"output_{s.src_id}",
                         data_filename = DATA_FILES[s.geo_id.det_id] if s.geo_id.det_id in DATA_FILES.keys() else DEFAULT_DATA_FILE,
@@ -767,7 +775,7 @@ def create_readout_app(
     FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _, _, _ = compute_data_types(RU_DESCRIPTOR.det_id, CLOCK_SPEED_HZ, RU_DESCRIPTOR.kind)
     
     # TPG is automatically disabled for non wib2 frontends
-    TPG_ENABLED = TPG_ENABLED and (FRONTEND_TYPE=='wib2')
+    TPG_ENABLED = TPG_ENABLED and (FRONTEND_TYPE=='wib2' or FRONTEND_TYPE=='wibeth')
     
     modules = []
     queues = []
