@@ -130,6 +130,7 @@ def add_flx(obj, force, src_id, **kwargs):
 @click.option('--eth-rx-host')
 @click.option('--eth-rx-mac')
 @click.option('--eth-rx-ip')
+@click.option('--eth-rx-iface')
 @click.pass_obj
 def add_eth(obj, force, src_id, **kwargs):
     m = obj
