@@ -71,8 +71,7 @@ def get_fake_hsi_app(RUN_NUMBER=333,
                                               trigger_rate=TRIGGER_RATE_HZ,
                                               mean_signal_multiplicity=MEAN_SIGNAL_MULTIPLICITY,
                                               signal_emulation_mode=SIGNAL_EMULATION_MODE,
-                                              enabled_signals=ENABLED_SIGNALS,
-                                              hsievent_connection_name="hsievents"),
+                                              enabled_signals=ENABLED_SIGNALS),
                          extra_commands = {"start": startpars})]
     
     
@@ -104,7 +103,7 @@ def get_fake_hsi_app(RUN_NUMBER=333,
                                          fragments_out = f"hsi_datahandler.fragment_queue")
     mgraph.add_endpoint(f"timesync_fake_hsi", f"hsi_datahandler.timesync_output","TimeSync", Direction.OUT, is_pubsub=True, toposort=False)
 
-    mgraph.add_endpoint("hsievents", None, "HSIEvent", Direction.OUT)
+    mgraph.add_endpoint("hsievents", "fhsig.hsievents", "HSIEvent", Direction.OUT)
     mgraph.add_endpoint(None, None, data_type="TimeSync", inout=Direction.IN, is_pubsub=True)
     fake_hsi_app = App(modulegraph=mgraph, host=HOST, name="FakeHSIApp")
     
