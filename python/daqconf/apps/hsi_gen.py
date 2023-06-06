@@ -67,8 +67,7 @@ def get_timing_hsi_app(RUN_NUMBER = 333,
                         conf = hsir.ConfParams(connections_file=CONNECTIONS_FILE,
                                             readout_period=READOUT_PERIOD_US,
                                             hsi_device_name=HSI_DEVICE_NAME,
-                                            uhal_log_level=UHAL_LOG_LEVEL,
-                                            hsievent_connection_name = "hsievents"))]
+                                            uhal_log_level=UHAL_LOG_LEVEL))]
     
     region_id=0
     element_id=0
@@ -133,9 +132,11 @@ def get_timing_hsi_app(RUN_NUMBER = 333,
         mgraph.add_endpoint("timing_cmds", "hsic.timing_cmds", "TimingHwCmd", Direction.OUT, check_endpoints=False)
         mgraph.add_endpoint(HSI_DEVICE_NAME+"_info", "hsic."+HSI_DEVICE_NAME+"_info", "JSON", Direction.IN, is_pubsub=True, check_endpoints=False)
 
-    mgraph.add_endpoint("hsievents", None, "HSIEvent",    Direction.OUT)
-    mgraph.add_endpoint(None, None, "TimeSync", Direction.IN, is_pubsub=True)
+    mgraph.add_endpoint("hsievents", "hsir.hsievents", "HSIEvent",    Direction.OUT)
     
+    # dummy subscriber
+    mgraph.add_endpoint(None, None, data_type="TimeSync", inout=Direction.IN, is_pubsub=True)
+
     hsi_app = App(modulegraph=mgraph, host=HOST, name="HSIApp")
     
     return hsi_app
