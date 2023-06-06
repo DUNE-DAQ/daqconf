@@ -122,8 +122,10 @@ def cli(
 
     # Update with command-line options
     if force_pm is not None:
-        boot.use_k8s = (force_pm == 'k8s')
-        console.log(f"boot.use_k8s set to {boot.use_k8s}")
+        boot.process_manager = force_pm
+        console.log(f"boot.boot.process_manager set to {boot.process_manager}")
+
+    use_k8s = (boot.process_manager == 'k8s')
 
     if base_command_port is not None:
         boot.base_command_port = base_command_port
@@ -143,9 +145,6 @@ def cli(
     if dqm.impl == 'pocket':
         dqm.kafka_address = boot.pocket_url + ":30092"
     
-    # if op_env != '':
-        # boot.op_env = op_env
-
     file_label = file_label if file_label is not None else boot.op_env
 
 
@@ -208,7 +207,7 @@ def cli(
     for entry in readout.data_files:
         data_file_map[entry["detector_id"]] = resolve_asset_file(entry["data_file"], debug)
 
-    if boot.use_k8s:
+    if use_k8s:
         console.log(f'Using k8s')
         trigger.tpset_output_path = abspath(trigger.tpset_output_path)
         for df_app in appconfig_df.values():
@@ -287,7 +286,7 @@ def cli(
     if hsi.control_hsi_hw and not hsi.use_timing_hsi:
         raise Exception("Timing HSI hardware control can only be enabled if timing HSI hardware is used!")
 
-    if boot.use_k8s and not boot.image:
+    if use_k8s and not boot.image:
         raise Exception("You need to provide an --image if running with k8s")
 
 #    host_id_dict = {}
@@ -504,7 +503,7 @@ def cli(
                 EMULATED_DATA_TIMES_START_WITH_NOW = readout.emulated_data_times_start_with_now,
                 DEBUG=debug)
 
-            if boot.use_k8s:
+            if use_k8s:
                 if ru_desc.kind == 'flx':
                     c = card_override if card_override != -1 else ru_desc.iface
                     the_system.apps[ru_name].resources = {
@@ -597,7 +596,7 @@ def cli(
             SRC_GEO_ID_MAP=dro_map.get_src_geo_map(),
             DEBUG=debug
         )
-        if boot.use_k8s:
+        if use_k8s:
             the_system.apps[app_name].mounted_dirs += [{
                 'name': f'raw-data-{i}',
                 'physical_location': opath,
@@ -652,7 +651,7 @@ def cli(
             SOURCE_IDX=dfidx,
             HOST=trigger.host_tpw,
             DEBUG=debug)
-        if boot.use_k8s: ## TODO schema
+        if use_k8s: ## TODO schema
             the_system.apps[tpw_name].mounted_dirs += [{
                 'name': 'raw-data',
                 'physical_location':trigger.tpset_output_path,
@@ -732,14 +731,14 @@ def cli(
 
     # Arrange per-app command data into the format used by util.write_json_files()
     app_command_datas = {
-        name : make_app_command_data(the_system, app,name, verbose=debug, use_k8s=boot.use_k8s, use_connectivity_service=boot.use_connectivity_service, connectivity_service_interval=boot.connectivity_service_interval)
+        name : make_app_command_data(the_system, app,name, verbose=debug, use_k8s=use_k8s, use_connectivity_service=boot.use_connectivity_service, connectivity_service_interval=boot.connectivity_service_interval)
         for name,app in the_system.apps.items()
     }
 
     ##################################################################################
 
     # Make boot.json config
-    from daqconf.core.conf_utils import make_system_command_datas,generate_boot, write_json_files
+    from daqconf.core.conf_utils import make_system_command_datas, write_json_files
 
     # HACK: Make sure RUs start after trigger
     forced_deps = []
@@ -827,7 +826,7 @@ def cli(
         write_metadata_file(output_dir, "daqconf_multiru_gen", config_file.as_posix())
         write_config_file(
             output_dir,
-            basename(config_file) if config_file else "default.json",
+            config_file.name if config_file else "default.json",
             confgen.daqconf_multiru_gen(  # <facepalm>
                 boot = boot,
                 dataflow = dataflow,

@@ -32,12 +32,14 @@ local cs = {
   tc_intervals:    s.sequence( "TCIntervals",   self.tc_interval, doc="List of TC intervals used by CTCM"),
   readout_time:    s.number(   "ROTime",        "i8", doc="A readout time in ticks"),
   channel_list:    s.sequence( "ChannelList",   self.count, doc="List of offline channels to be masked out from the TPHandler"),
+  pm_kind:         s.enum(     "PMKind", ["k8s", "ssh"]),
   
 
 
   boot: s.record("boot", [
     s.field( "op_env", self.string, default='swtest', doc="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files"),
     s.field( "base_command_port", self.port, default=3333, doc="Base port of application command endpoints"),
+
     # Obscure
     s.field( "RTE_script_settings", self.three_choice, default=0, doc="0 - Use an RTE script iff not in a dev environment, 1 - Always use RTE, 2 - never use RTE"),
     s.field( "capture_env_vars", self.strings, default=['TIMING_SHARE', 'DETCHANNELMAPS_SHARE'], doc="List of variables to capture from the environment"),
@@ -45,9 +47,9 @@ local cs = {
     s.field( "opmon_impl", self.monitoring_dest, default='local', doc="Info collector service implementation to use"),
     s.field( "ers_impl", self.monitoring_dest, default='local', doc="ERS destination (Kafka used for cern and pocket)"),
     s.field( "pocket_url", self.host, default='127.0.0.1', doc="URL for connecting to Pocket services"),
+    s.field( "process_manager", self.pm_kind, default="ssh", doc="Choice of process manager"),
 
     # K8S
-    s.field( "use_k8s", self.flag, default=false, doc="Whether to use k8s"),
     s.field( "image", self.string, default="dunedaq/c8-minimal", doc="Which docker image to use"),
 
     # Connectivity Service

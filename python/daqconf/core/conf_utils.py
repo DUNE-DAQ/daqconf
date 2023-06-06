@@ -504,7 +504,7 @@ def update_with_ssh_boot_data (
 
 
 
-def update_with_k8s_boot_data(
+def add_k8s_app_boot_data(
         boot_data: dict,
         apps: list,
         image: str,
@@ -547,59 +547,76 @@ def resolve_localhost(host):
     return host
 
 def generate_boot(
-        conf,
+        boot_conf,
         system,
         verbose=False,
         control_to_data_network = None) -> dict:
     """
     Generate the dictionary that will become the boot.json file
     """
+
+    info_svc_uri_map = {
+        'cern':  "kafka://monkafka.cern.ch:30092/opmon",
+        'pocket':  f"kafka://{boot_conf.pocket_url}:30092/opmon",
+        'local': "file://info_{APP_NAME}_{APP_PORT}.json"
+    }
+
     ers_settings=dict()
 
-    if conf.ers_impl == 'cern':
+    if boot_conf.ers_impl == 'cern':
         use_kafka = True
         ers_settings["INFO"] =    "erstrace,throttle,lstdout,erskafka(monkafka.cern.ch:30092)"
         ers_settings["WARNING"] = "erstrace,throttle,lstdout,erskafka(monkafka.cern.ch:30092)"
         ers_settings["ERROR"] =   "erstrace,throttle,lstdout,erskafka(monkafka.cern.ch:30092)"
         ers_settings["FATAL"] =   "erstrace,lstdout,erskafka(monkafka.cern.ch:30092)"
-    elif conf.ers_impl == 'pocket':
+    elif boot_conf.ers_impl == 'pocket':
         use_kafka = True
-        ers_settings["INFO"] =    "erstrace,throttle,lstdout,erskafka(" + conf.pocket_url + ":30092)"
-        ers_settings["WARNING"] = "erstrace,throttle,lstdout,erskafka(" + conf.pocket_url + ":30092)"
-        ers_settings["ERROR"] =   "erstrace,throttle,lstdout,erskafka(" + conf.pocket_url + ":30092)"
-        ers_settings["FATAL"] =   "erstrace,lstdout,erskafka(" + conf.pocket_url + ":30092)"
-    else:
+        ers_settings["INFO"] =    "erstrace,throttle,lstdout,erskafka(" + boot_conf.pocket_url + ":30092)"
+        ers_settings["WARNING"] = "erstrace,throttle,lstdout,erskafka(" + boot_conf.pocket_url + ":30092)"
+        ers_settings["ERROR"] =   "erstrace,throttle,lstdout,erskafka(" + boot_conf.pocket_url + ":30092)"
+        ers_settings["FATAL"] =   "erstrace,lstdout,erskafka(" + boot_conf.pocket_url + ":30092)"
+    elif boot_conf.ers_impl == 'local':
         use_kafka = False
         ers_settings["INFO"] =    "erstrace,throttle,lstdout"
         ers_settings["WARNING"] = "erstrace,throttle,lstdout"
         ers_settings["ERROR"] =   "erstrace,throttle,lstdout"
         ers_settings["FATAL"] =   "erstrace,lstdout"
-
-    if conf.opmon_impl == 'cern':
-        info_svc_uri = "kafka://monkafka.cern.ch:30092/opmon"
-    elif conf.opmon_impl == 'pocket':
-        info_svc_uri = "kafka://" + conf.pocket_url + ":30092/opmon"
     else:
-        info_svc_uri = "file://info_{APP_NAME}_{APP_PORT}.json"
+        raise ValueError(f"Unknown boot_conf.ers_impl value {boot_conf.ers_impl}")
 
-    daq_app_exec_name = "daq_application_ssh" if not conf.use_k8s else "daq_application_k8s"
+    info_svc_uri = info_svc_uri_map[boot_conf.opmon_impl]
+
+    daq_app_exec_name = f"daq_application_{boot_conf.process_manager}"
+
+    capture_paths = [
+        'PATH',
+        'LD_LIBRARY_PATH',
+        'CET_PLUGIN_PATH',
+        'DUNEDAQ_SHARE_PATH'
+    ]
+
+    app_env = {
+                "TRACE_FILE": "getenv:/tmp/trace_buffer_{APP_HOST}_{DUNEDAQ_PARTITION}",
+                "CMD_FAC": "rest://localhost:{APP_PORT}",
+                "CONNECTION_SERVER": resolve_localhost(boot_conf.connectivity_service_host),
+                "CONNECTION_PORT": f"{boot_conf.connectivity_service_port}",
+                "INFO_SVC": info_svc_uri,
+            }
+
+    app_env.update({
+        p:'getenv' for p in capture_paths
+    })
+    
+    app_env.update({
+        v:'getenv' for v in boot_conf.capture_env_vars
+    })
+
+
 
     daq_app_specs = {
         daq_app_exec_name : {
             "comment": "Application profile using PATH variables (lower start time)",
-            "env":{
-                "CET_PLUGIN_PATH": "getenv",
-                "DETCHANNELMAPS_SHARE": "getenv",
-                "DUNEDAQ_SHARE_PATH": "getenv",
-                "TIMING_SHARE": "getenv",
-                "LD_LIBRARY_PATH": "getenv",
-                "PATH": "getenv",
-                "TRACE_FILE": "getenv:/tmp/trace_buffer_{APP_HOST}_{DUNEDAQ_PARTITION}",
-                "CMD_FAC": "rest://localhost:{APP_PORT}",
-                "CONNECTION_SERVER": resolve_localhost(conf.connectivity_service_host),
-                "CONNECTION_PORT": f"{conf.connectivity_service_port}",
-                "INFO_SVC": info_svc_uri,
-            },
+            "env": app_env,
             "cmd":"daq_application",
             "args": [
                 "--name",
@@ -633,10 +650,10 @@ def generate_boot(
     if use_kafka:
         boot["env"]["DUNEDAQ_ERS_STREAM_LIBS"] = "erskafka"
 
-    if conf.disable_trace:
+    if boot_conf.disable_trace:
         del boot["exec"][daq_app_exec_name]["env"]["TRACE_FILE"]
 
-    match conf.RTE_script_settings:
+    match boot_conf.RTE_script_settings:
         case 0:
             if (release_or_dev() == 'rel'):
                 boot['rte_script'] = get_rte_script()
@@ -649,38 +666,41 @@ def generate_boot(
 
 
 
-    if not conf.use_k8s:
+    if boot_conf.process_manager == 'ssh':
         for app in system.apps.values():
             app.host = resolve_localhost(app.host)
 
         update_with_ssh_boot_data(
             boot_data = boot,
             apps = system.apps,
-            base_command_port = conf.base_command_port,
+            base_command_port = boot_conf.base_command_port,
             verbose = verbose,
             control_to_data_network = control_to_data_network,
         )
-    else:
+    elif boot_conf.process_manager == 'k8s':
         # ARGGGGG (MASSIVE WARNING SIGN HERE)
         ruapps    = [app for app in system.apps.keys() if app[:2] == 'ru']
         dfapps    = [app for app in system.apps.keys() if app[:2] == 'df']
         otherapps = [app for app in system.apps.keys() if not app in ruapps + dfapps]
         boot_order = ruapps + dfapps + otherapps
 
-        update_with_k8s_boot_data(
+        add_k8s_app_boot_data(
             boot_data = boot,
             apps = system.apps,
             boot_order = boot_order,
-            image = conf.image,
-            base_command_port = conf.base_command_port,
+            image = boot_conf.image,
+            base_command_port = boot_conf.base_command_port,
             verbose = verbose,
             control_to_data_network = control_to_data_network,
         )
+    else:
+        raise ValueError(f"Unknown boot_conf.process_manager value {boot_conf.process_manager}")
 
-    if conf.start_connectivity_service:
-        if conf.use_k8s:
+
+    if boot_conf.start_connectivity_service:
+        if boot_conf.process_manager == 'k8s':
             raise RuntimeError(
-                'Starting connectivity service only supported with ssh.\n')
+                'Starting connectivity service only supported with ssh')
 
         # CONNECTION_PORT will be updatd by nanorc remove this entry
         daq_app_specs[daq_app_exec_name]["env"].pop("CONNECTION_PORT")
@@ -688,7 +708,7 @@ def generate_boot(
             "connectionservice": {
                 "exec": "consvc_ssh",
                 "host": "connectionservice",
-                "port": conf.connectivity_service_port,
+                "port": boot_conf.connectivity_service_port,
                 "update-env": {
                     "CONNECTION_PORT": "{APP_PORT}"
                 }
@@ -700,7 +720,7 @@ def generate_boot(
                     "--bind=0.0.0.0:{APP_PORT}",
                     "--workers=1",
                     "--worker-class=gthread",
-                    f"--threads={conf.connectivity_service_threads}",
+                    f"--threads={boot_conf.connectivity_service_threads}",
                     "--timeout=0",
                     "--pid={APP_NAME}_{APP_PORT}.pid",
                     "connection-service.connection-flask:app"
@@ -717,9 +737,9 @@ def generate_boot(
             boot["services"]={}
         boot["services"].update(consvc)
         boot["exec"].update(consvc_exec)
-        conf.connectivity_service_host = resolve_localhost(conf.connectivity_service_host)
+        boot_conf.connectivity_service_host = resolve_localhost(boot_conf.connectivity_service_host)
         boot["hosts-ctrl"].update({"connectionservice":
-                                   conf.connectivity_service_host})
+                                   boot_conf.connectivity_service_host})
     return boot
 
 
@@ -768,7 +788,7 @@ def make_app_json(app_name, app_command_data, data_dir, verbose=False):
         with open(data_dir / f'{app_name}_{c}.json', 'w') as f:
             json.dump(app_command_data[c].pod(), f, indent=4, sort_keys=True)
 
-def make_system_command_datas(daqconf:dict, the_system, forced_deps=[], verbose:bool=False, control_to_data_network:Callable[[str],str]=None) -> dict:
+def make_system_command_datas(boot_conf:dict, the_system, forced_deps=[], verbose:bool=False, control_to_data_network:Callable[[str],str]=None) -> dict:
     """Generate the dictionary of commands and their data for the entire system"""
 
     # if the_system.app_start_order is None:
@@ -782,11 +802,6 @@ def make_system_command_datas(daqconf:dict, the_system, forced_deps=[], verbose:
         cfg = {
             "apps": {app_name: f'data/{app_name}_{c}' for app_name in the_system.apps.keys()}
         }
-        # if c == 'start':
-        #     cfg['order'] = the_system.app_start_order
-        # elif c == 'stop':
-        #     cfg['order'] = the_system.app_start_order[::-1]
-
         system_command_datas[c]=cfg
 
         if verbose:
@@ -794,7 +809,7 @@ def make_system_command_datas(daqconf:dict, the_system, forced_deps=[], verbose:
 
     console.log(f"Generating boot json file")
     system_command_datas['boot'] = generate_boot(
-        conf = daqconf,
+        boot_conf = boot_conf,
         system = the_system,
         verbose = verbose,
         control_to_data_network=control_to_data_network
