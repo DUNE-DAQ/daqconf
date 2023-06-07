@@ -140,6 +140,7 @@ local cs = {
 
   readout: s.record("readout", [
     s.field( "detector_readout_map_file", self.path, default='./DetectorReadoutMap.json', doc="File containing detector hardware map for configuration to run"),
+    s.field( "use_fake_data_producers", self.flag, default=false, doc="Use fake data producers that respond with empty fragments immediately instead of (fake) cards and DLHs"),
     s.field( "emulator_mode", self.flag, default=false, doc="If active, timestamps of data frames are overwritten when processed by the readout. This is necessary if the felix card does not set correct timestamps. Former -e"),
     s.field( "thread_pinning_file", self.path, default="", doc="A thread pinning configuration file that gets executed after conf."),
     s.field( "data_rate_slowdown_factor",self.count, default=1, doc="Factor by which to suppress data generation. Former -s"),
@@ -155,7 +156,6 @@ local cs = {
     s.field( "tpg_channel_mask", self.channel_list, default=[], doc="List of offline channels to be masked out from the TPHandler"),
     s.field( "enable_raw_recording", self.flag, default=false, doc="Add queues and modules necessary for the record command"),
     s.field( "raw_recording_output_dir", self.path, default='.', doc="Output directory where recorded data is written to. Data for each link is written to a separate file"),
-    s.field( "use_fake_data_producers", self.flag, default=false, doc="Use fake data producers that respond with empty fragments immediately instead of (fake) cards and DLHs"),
     s.field( "host_dpdk_reader", self.hosts, default=['np04-srv-022'], doc="Which host to use to receive frames"),
     s.field( "eal_args", self.string, default='-l 0-1 -n 3 -- -m [0:1].0 -j', doc='Args passed to the EAL in DPDK'),
     s.field( "base_source_ip", self.string, default='10.73.139.', doc='First part of the IP of the source'),

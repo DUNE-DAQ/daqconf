@@ -39,6 +39,7 @@ import dunedaq.dpdklibs.nicreader as nrc
 
 # from appfwk.utils import acmd, mcmd, mrccmd, mspec
 from os import path
+from pathlib import Path
 
 from ..core.conf_utils import Direction, Queue
 from ..core.sourceid import  SourceIDBroker
@@ -121,52 +122,52 @@ def compute_data_types(
 ###
 # Fake Card Reader creator
 ###
-def create_fake_cardreader(
-    FRONTEND_TYPE: str,
-    QUEUE_FRAGMENT_TYPE: str,
-    DATA_RATE_SLOWDOWN_FACTOR: int,
-    DATA_FILES: dict,
-    DEFAULT_DATA_FILE: str,
-    CLOCK_SPEED_HZ: int,
-    EMULATED_DATA_TIMES_START_WITH_NOW: bool,
-    RU_DESCRIPTOR # ReadoutUnitDescriptor
+# def create_fake_cardreader(
+#     FRONTEND_TYPE: str,
+#     QUEUE_FRAGMENT_TYPE: str,
+#     DATA_RATE_SLOWDOWN_FACTOR: int,
+#     DATA_FILES: dict,
+#     DEFAULT_DATA_FILE: str,
+#     CLOCK_SPEED_HZ: int,
+#     EMULATED_DATA_TIMES_START_WITH_NOW: bool,
+#     RU_DESCRIPTOR # ReadoutUnitDescriptor
 
-) -> tuple[list, list]:
-    """
-    Create a FAKE Card reader module
-    """
+# ) -> tuple[list, list]:
+#     """
+#     Create a FAKE Card reader module
+#     """
 
-    conf = sec.Conf(
-            link_confs = [
-                sec.LinkConfiguration(
-                    source_id=s.src_id,
-                        crate_id = s.geo_id.crate_id,
-                        slot_id = s.geo_id.slot_id,
-                        link_id = s.geo_id.stream_id,
-                        slowdown=DATA_RATE_SLOWDOWN_FACTOR,
-                        queue_name=f"output_{s.src_id}",
-                        data_filename = DATA_FILES[s.geo_id.det_id] if s.geo_id.det_id in DATA_FILES.keys() else DEFAULT_DATA_FILE,
-                        emu_frame_error_rate=0
-                    ) for s in RU_DESCRIPTOR.streams],
-            use_now_as_first_data_time=EMULATED_DATA_TIMES_START_WITH_NOW,
-            clock_speed_hz=CLOCK_SPEED_HZ,
-            queue_timeout_ms = QUEUE_POP_WAIT_MS
-            )
+#     conf = sec.Conf(
+#             link_confs = [
+#                 sec.LinkConfiguration(
+#                     source_id=s.src_id,
+#                         crate_id = s.geo_id.crate_id,
+#                         slot_id = s.geo_id.slot_id,
+#                         link_id = s.geo_id.stream_id,
+#                         slowdown=DATA_RATE_SLOWDOWN_FACTOR,
+#                         queue_name=f"output_{s.src_id}",
+#                         data_filename = DATA_FILES[s.geo_id.det_id] if s.geo_id.det_id in DATA_FILES.keys() else DEFAULT_DATA_FILE,
+#                         emu_frame_error_rate=0
+#                     ) for s in RU_DESCRIPTOR.streams],
+#             use_now_as_first_data_time=EMULATED_DATA_TIMES_START_WITH_NOW,
+#             clock_speed_hz=CLOCK_SPEED_HZ,
+#             queue_timeout_ms = QUEUE_POP_WAIT_MS
+#             )
 
 
-    modules = [DAQModule(name = "fake_source",
-                            plugin = "FakeCardReader",
-                            conf = conf)]
-    queues = [
-        Queue(
-            f"fake_source.output_{s.src_id}",
-            f"datahandler_{s.src_id}.raw_input",
-            QUEUE_FRAGMENT_TYPE,
-            f'{FRONTEND_TYPE}_link_{s.src_id}', 100000
-        ) for s in RU_DESCRIPTOR.streams
-    ]
+#     modules = [DAQModule(name = "fake_source",
+#                             plugin = "FakeCardReader",
+#                             conf = conf)]
+#     queues = [
+#         Queue(
+#             f"fake_source.output_{s.src_id}",
+#             f"datahandler_{s.src_id}.raw_input",
+#             QUEUE_FRAGMENT_TYPE,
+#             f'{FRONTEND_TYPE}_link_{s.src_id}', 100000
+#         ) for s in RU_DESCRIPTOR.streams
+#     ]
     
-    return modules, queues
+#     return modules, queues
 
 
 ###
@@ -685,15 +686,6 @@ def add_dro_eps_and_fps(
             toposort=False
         )
 
-        # if processing is enabled, add a pubsub endooint for TPSets
-        #if dlh.conf.rawdataprocessorconf['enable_tpg']:
-        #    mgraph.add_endpoint(
-        #        f"tpsets_ru{RUIDX}_link{dro_sid}",
-        #        f"datahandler_{dro_sid}.tpset_out",
-        #        "TPSet",
-        #        Direction.OUT,
-        #        is_pubsub=True
-        #    )
 
 
 ###
@@ -741,171 +733,400 @@ def add_tpg_eps_and_fps(
 QUEUE_POP_WAIT_MS = 10 # This affects stop time, as each link will wait this long before stop
 
 
-###
-# Create Readout Application
-###
-def create_readout_app(
-    RU_DESCRIPTOR,
-    SOURCEID_BROKER : SourceIDBroker = None,
-    EMULATOR_MODE=False,
-    DATA_RATE_SLOWDOWN_FACTOR=1,
-    DEFAULT_DATA_FILE="./frames.bin",
-    DATA_FILES={},
-    USE_FAKE_CARDS=True,
-    CLOCK_SPEED_HZ=62500000,
-    RAW_RECORDING_ENABLED=False,
-    RAW_RECORDING_OUTPUT_DIR=".",
-    CHANNEL_MASK_TPG: list = [],
-    THRESHOLD_TPG=120,
-    ALGORITHM_TPG="SWTPG",
-    TPG_ENABLED=False,                                        
-    TPG_CHANNEL_MAP= "ProtoDUNESP1ChannelMap",
-    DATA_REQUEST_TIMEOUT=1000,
-    FRAGMENT_SEND_TIMEOUT=10,
-    EAL_ARGS='-l 0-1 -n 3 -- -m [0:1].0 -j',
-    NUMA_ID=0,
-    LATENCY_BUFFER_SIZE=499968,
-    LATENCY_BUFFER_NUMA_AWARE = False,
-    LATENCY_BUFFER_ALLOCATION_MODE = False,
+class ReadoutAppGenerator:
+    """Utility class to generate readout applications"""
 
-    CARD_ID_OVERRIDE = -1,
-    EMULATED_DATA_TIMES_START_WITH_NOW = False,
-    DEBUG=False
-) -> App:
-    
-    FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _, _, _ = compute_data_types(RU_DESCRIPTOR.det_id, CLOCK_SPEED_HZ, RU_DESCRIPTOR.kind)
-    
-    # TPG is automatically disabled for non wib2 frontends
-    TPG_ENABLED = TPG_ENABLED and (FRONTEND_TYPE=='wib2' or FRONTEND_TYPE=='wibeth')
-    
-    modules = []
-    queues = []
+    def __init__(self, readout_cfg):
+
+        self.config = readout_cfg
+
+        excpt = {}
+        for ex in self.config.numa_config['exceptions']:
+            excpt[(ex['host'], ex['card'])] = ex
 
 
-    # Create the card readers
-    cr_mods = []
-    cr_queues = []
+    def get_numa_cfg(self, RU_DESCRIPTOR):
+
+        cfg = self.config
+        try:
+            ex = self.excpt[(RU_DESCRIPTOR.host_name, RU_DESCRIPTOR.iface)]
+            numa_id = ex['numa_id']
+            latency_numa = ex['latency_buffer_numa_aware']
+            latency_preallocate = ex['latency_buffer_preallocation']
+            flx_card_override = ex['felix_card_id']
+        except KeyError:
+            numa_id = cfg.numa_config['default_id']
+            latency_numa = cfg.numa_config['default_latency_numa_aware']
+            latency_preallocate = cfg.numa_config['default_latency_preallocation']
+            flx_card_override = -1
+        return (numa_id, latency_numa, latency_preallocate, flx_card_override)
 
 
-    # Create the card readers
-    if USE_FAKE_CARDS:
-        fakecr_mods, fakecr_queues = create_fake_cardreader(
-            FRONTEND_TYPE=FRONTEND_TYPE,
-            QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
-            DATA_RATE_SLOWDOWN_FACTOR=DATA_RATE_SLOWDOWN_FACTOR,
-            DATA_FILES=DATA_FILES,
-            DEFAULT_DATA_FILE=DEFAULT_DATA_FILE,
-            CLOCK_SPEED_HZ=CLOCK_SPEED_HZ,
-            EMULATED_DATA_TIMES_START_WITH_NOW=EMULATED_DATA_TIMES_START_WITH_NOW,
-            RU_DESCRIPTOR=RU_DESCRIPTOR
-        )
-        cr_mods += fakecr_mods
-        cr_queues += fakecr_queues
-    else:
-        if RU_DESCRIPTOR.kind == 'flx':
-            flx_mods, flx_queues = create_felix_cardreader(
+    def generate(
+            self,
+            RU_DESCRIPTOR,
+            SOURCEID_BROKER,
+            data_file_map,
+            tpg_channel_map,
+            data_timeout_requests,
+            ):
+        """Generate the readout applicaton
+
+        Args:
+            RU_DESCRIPTOR (_type_): _description_
+            SOURCEID_BROKER (SourceIDBroker): _description_
+            data_file_map (_type_): _description_
+            tpg_channel_map (_type_): _description_
+            data_timeout_requests (_type_): _description_
+
+        Raises:
+            RuntimeError: _description_
+
+        Returns:
+            _type_: _description_
+        """
+
+
+
+        numa_id, latency_numa, latency_preallocate, card_override = self.get_numa_cfg(RU_DESCRIPTOR)
+        cfg = self.config
+        TPG_ENABLED = cfg.enable_tpg,
+        DATA_FILES = data_file_map,
+        # TPG_CHANNEL_MAP = tpg_channel_map,
+        DATA_REQUEST_TIMEOUT=data_timeout_requests,
+
+        FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _, _, _ = compute_data_types(RU_DESCRIPTOR.det_id, cfg.clock_speed_hz, RU_DESCRIPTOR.kind)
+        
+        # TPG is automatically disabled for non wib2 frontends
+        TPG_ENABLED = TPG_ENABLED and (FRONTEND_TYPE=='wib2' or FRONTEND_TYPE=='wibeth')
+        
+        modules = []
+        queues = []
+
+
+        # Create the card readers
+        cr_mods = []
+        cr_queues = []
+
+
+        # Create the card readers
+        if cfg.use_fake_cards:
+            fakecr_mods, fakecr_queues = create_fake_cardreader(
                 FRONTEND_TYPE=FRONTEND_TYPE,
                 QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
-                CARD_ID_OVERRIDE=CARD_ID_OVERRIDE,
-                NUMA_ID=NUMA_ID,
+                DATA_RATE_SLOWDOWN_FACTOR=cfg.data_rate_slowdown_factor,
+                DATA_FILES=DATA_FILES,
+                DEFAULT_DATA_FILE=cfg.default_data_file,
+                CLOCK_SPEED_HZ=cfg.clock_speed_hz,
+                EMULATED_DATA_TIMES_START_WITH_NOW=cfg.emulated_data_times_start_with_now,
                 RU_DESCRIPTOR=RU_DESCRIPTOR
             )
-            cr_mods += flx_mods
-            cr_queues += flx_queues
+            cr_mods += fakecr_mods
+            cr_queues += fakecr_queues
+        else:
+            if RU_DESCRIPTOR.kind == 'flx':
+                flx_mods, flx_queues = create_felix_cardreader(
+                    FRONTEND_TYPE=FRONTEND_TYPE,
+                    QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
+                    CARD_ID_OVERRIDE=card_override,
+                    NUMA_ID=numa_id,
+                    RU_DESCRIPTOR=RU_DESCRIPTOR
+                )
+                cr_mods += flx_mods
+                cr_queues += flx_queues
 
-        elif RU_DESCRIPTOR.kind == 'eth' and RU_DESCRIPTOR.streams[0].parameters.protocol == "udp":
-            dpdk_mods, dpdk_queues = create_dpdk_cardreader(
-                FRONTEND_TYPE=FRONTEND_TYPE,
-                QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
-                EAL_ARGS=EAL_ARGS,
-                RU_DESCRIPTOR=RU_DESCRIPTOR
-            )
-            cr_mods += dpdk_mods
-            cr_queues += dpdk_queues
+            elif RU_DESCRIPTOR.kind == 'eth' and RU_DESCRIPTOR.streams[0].parameters.protocol == "udp":
+                dpdk_mods, dpdk_queues = create_dpdk_cardreader(
+                    FRONTEND_TYPE=FRONTEND_TYPE,
+                    QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
+                    EAL_ARGS=cfg.eal_args,
+                    RU_DESCRIPTOR=RU_DESCRIPTOR
+                )
+                cr_mods += dpdk_mods
+                cr_queues += dpdk_queues
 
-        elif RU_DESCRIPTOR.kind == 'eth' and RU_DESCRIPTOR.streams[0].parameters.protocol == "zmq":
+            elif RU_DESCRIPTOR.kind == 'eth' and RU_DESCRIPTOR.streams[0].parameters.protocol == "zmq":
 
-            pac_mods, pac_queues = create_pacman_cardreader(
-                FRONTEND_TYPE=FRONTEND_TYPE,
-                QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
-                RU_DESCRIPTOR=RU_DESCRIPTOR
-            )
-            cr_mods += pac_mods
-            cr_queues += pac_queues
+                pac_mods, pac_queues = create_pacman_cardreader(
+                    FRONTEND_TYPE=FRONTEND_TYPE,
+                    QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
+                    RU_DESCRIPTOR=RU_DESCRIPTOR
+                )
+                cr_mods += pac_mods
+                cr_queues += pac_queues
 
-    modules += cr_mods
-    queues += cr_queues
+        modules += cr_mods
+        queues += cr_queues
 
-    # Create the data-link handlers
-    dlhs_mods, _ = create_det_dhl(
-        LATENCY_BUFFER_SIZE=LATENCY_BUFFER_SIZE,
-        LATENCY_BUFFER_NUMA_AWARE=LATENCY_BUFFER_NUMA_AWARE,
-        LATENCY_BUFFER_ALLOCATION_MODE=LATENCY_BUFFER_ALLOCATION_MODE,
-        NUMA_ID=NUMA_ID,
-        SEND_PARTIAL_FRAGMENTS=False,
-        RAW_RECORDING_OUTPUT_DIR=RAW_RECORDING_OUTPUT_DIR,
-        DATA_REQUEST_TIMEOUT=DATA_REQUEST_TIMEOUT,
-        FRAGMENT_SEND_TIMEOUT=FRAGMENT_SEND_TIMEOUT,
-        RAW_RECORDING_ENABLED=RAW_RECORDING_ENABLED,
-        RU_DESCRIPTOR=RU_DESCRIPTOR,
-        EMULATOR_MODE=EMULATOR_MODE
-
-    )
-
-    # Configure the TP processing if requrested
-    if TPG_ENABLED:
-        dlhs_mods = add_tp_processing(
-           dlh_list=dlhs_mods,
-           THRESHOLD_TPG=THRESHOLD_TPG,
-           ALGORITHM_TPG=ALGORITHM_TPG,
-           CHANNEL_MASK_TPG=CHANNEL_MASK_TPG,
-           TPG_CHANNEL_MAP=TPG_CHANNEL_MAP,
-           EMULATOR_MODE=EMULATOR_MODE,
-           CLOCK_SPEED_HZ=CLOCK_SPEED_HZ,
-           DATA_RATE_SLOWDOWN_FACTOR=DATA_RATE_SLOWDOWN_FACTOR
-        )
-
-    modules += dlhs_mods
-
-    # Add the TP datalink handlers
-    if TPG_ENABLED:
-        tps = { k:v for k,v in SOURCEID_BROKER.get_all_source_ids("Trigger").items() if isinstance(v, ReadoutUnitDescriptor ) and v==RU_DESCRIPTOR}
-        if len(tps) != 1:
-            raise RuntimeError(f"Could not retrieve unique element from source id map {tps}")
-
-        tpg_mods, tpg_queues = create_tp_dlhs(
-            dlh_list=dlhs_mods,
+        # Create the data-link handlers
+        dlhs_mods, _ = create_det_dhl(
+            LATENCY_BUFFER_SIZE=cfg.latency_buffer_size,
+            LATENCY_BUFFER_NUMA_AWARE=latency_numa,
+            LATENCY_BUFFER_ALLOCATION_MODE=latency_preallocate,
+            NUMA_ID=numa_id,
+            SEND_PARTIAL_FRAGMENTS=False,
+            RAW_RECORDING_OUTPUT_DIR=cfg.raw_recording_output_dir,
             DATA_REQUEST_TIMEOUT=DATA_REQUEST_TIMEOUT,
-            FRAGMENT_SEND_TIMEOUT=FRAGMENT_SEND_TIMEOUT,
-            tpset_sid = next(iter(tps))
+            FRAGMENT_SEND_TIMEOUT=cfg.fragment_send_timeout_ms,
+            RAW_RECORDING_ENABLED=cfg.enable_raw_recording,
+            RU_DESCRIPTOR=RU_DESCRIPTOR,
+            EMULATOR_MODE=cfg.emulator_mode
+
         )
-        modules += tpg_mods
-        queues += tpg_queues
 
-    # Create the Module graphs
-    mgraph = ModuleGraph(modules, queues=queues)
+        # Configure the TP processing if requrested
+        if TPG_ENABLED:
+            dlhs_mods = add_tp_processing(
+            dlh_list=dlhs_mods,
+            THRESHOLD_TPG=cfg.tpg_threshold,
+            ALGORITHM_TPG=cfg.tpg_algorithm,
+            CHANNEL_MASK_TPG=cfg.tpg_channel_mask,
+            TPG_CHANNEL_MAP=tpg_channel_map,
+            EMULATOR_MODE=cfg.emulator_mode,
+            CLOCK_SPEED_HZ=cfg.clock_speed_hz,
+            DATA_RATE_SLOWDOWN_FACTOR=cfg.data_rate_slowdown_factor
+            )
 
-    # Add endpoints and frame producers to DRO data handlers
-    add_dro_eps_and_fps(
-        mgraph=mgraph,
-        dlh_list=dlhs_mods,
-        RUIDX=RU_DESCRIPTOR.label
-    )
+        modules += dlhs_mods
 
-    if TPG_ENABLED:
-       # Add endpoints and frame producers to TP data handlers
-        add_tpg_eps_and_fps(
+        # Add the TP datalink handlers
+        if TPG_ENABLED:
+            tps = { k:v for k,v in SOURCEID_BROKER.get_all_source_ids("Trigger").items() if isinstance(v, ReadoutUnitDescriptor ) and v==RU_DESCRIPTOR}
+            if len(tps) != 1:
+                raise RuntimeError(f"Could not retrieve unique element from source id map {tps}")
+
+            tpg_mods, tpg_queues = create_tp_dlhs(
+                dlh_list=dlhs_mods,
+                DATA_REQUEST_TIMEOUT=DATA_REQUEST_TIMEOUT,
+                FRAGMENT_SEND_TIMEOUT=cfg.fragment_send_timeout_ms,
+                tpset_sid = next(iter(tps))
+            )
+            modules += tpg_mods
+            queues += tpg_queues
+
+        # Create the Module graphs
+        mgraph = ModuleGraph(modules, queues=queues)
+
+        # Add endpoints and frame producers to DRO data handlers
+        add_dro_eps_and_fps(
             mgraph=mgraph,
-            # dlh_list=dlhs_mods,
-            tpg_dlh_list=tpg_mods,
+            dlh_list=dlhs_mods,
             RUIDX=RU_DESCRIPTOR.label
         )
 
-    # Create the application
-    readout_app = App(mgraph, host=RU_DESCRIPTOR.host_name)
+        if TPG_ENABLED:
+        # Add endpoints and frame producers to TP data handlers
+            add_tpg_eps_and_fps(
+                mgraph=mgraph,
+                # dlh_list=dlhs_mods,
+                tpg_dlh_list=tpg_mods,
+                RUIDX=RU_DESCRIPTOR.label
+            )
 
-    # All done
-    return readout_app
+        # Create the application
+        readout_app = App(mgraph, host=RU_DESCRIPTOR.host_name)
+
+
+
+        if RU_DESCRIPTOR.kind == 'flx':
+            c = card_override if card_override != -1 else RU_DESCRIPTOR.iface
+            readout_app.resources = {
+                f"felix.cern/flx{c}-data": "1", # requesting FLX{c}
+                "memory": "64Gi" # yes bro
+            }
+
+        dir_names = set()
+
+        cvmfs = Path('/cvmfs')
+        ddf_path = Path(cfg.default_data_file)
+        if not cvmfs in ddf_path.parents:
+            dir_name.add(ddf_path.parent)
+
+        for _,file in data_file_map:
+            f = Path(file)
+            if not cvmfs in f.parents:
+                dir_names.add(f.parent)
+
+        for dir_idx, dir_name in enumerate(dir_names):
+            readout_app.mounted_dirs += [{
+                'name': f'data-file-{dir_idx}',
+                'physical_location': dir_name,
+                'in_pod_location':   dir_name,
+                'read_only': True,
+            }]
+
+        # All done
+        return readout_app
+    
+
+
+
+
+# ###
+# # Create Readout Application
+# ###
+# def create_readout_app(
+#     RU_DESCRIPTOR,
+#     SOURCEID_BROKER : SourceIDBroker = None,
+#     EMULATOR_MODE=False,
+#     DATA_RATE_SLOWDOWN_FACTOR=1,
+#     DEFAULT_DATA_FILE="./frames.bin",
+#     DATA_FILES={},
+#     USE_FAKE_CARDS=True,
+#     CLOCK_SPEED_HZ=62500000,
+#     RAW_RECORDING_ENABLED=False,
+#     RAW_RECORDING_OUTPUT_DIR=".",
+#     CHANNEL_MASK_TPG: list = [],
+#     THRESHOLD_TPG=120,
+#     ALGORITHM_TPG="SWTPG",
+#     TPG_ENABLED=False,                                        
+#     TPG_CHANNEL_MAP= "ProtoDUNESP1ChannelMap",
+#     DATA_REQUEST_TIMEOUT=1000,
+#     FRAGMENT_SEND_TIMEOUT=10,
+#     EAL_ARGS='-l 0-1 -n 3 -- -m [0:1].0 -j',
+#     NUMA_ID=0,
+#     LATENCY_BUFFER_SIZE=499968,
+#     LATENCY_BUFFER_NUMA_AWARE = False,
+#     LATENCY_BUFFER_ALLOCATION_MODE = False,
+
+#     CARD_ID_OVERRIDE = -1,
+#     EMULATED_DATA_TIMES_START_WITH_NOW = False,
+#     DEBUG=False
+# ) -> App:
+    
+#     FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _, _, _ = compute_data_types(RU_DESCRIPTOR.det_id, CLOCK_SPEED_HZ, RU_DESCRIPTOR.kind)
+    
+#     # TPG is automatically disabled for non wib2 frontends
+#     TPG_ENABLED = TPG_ENABLED and (FRONTEND_TYPE=='wib2' or FRONTEND_TYPE=='wibeth')
+    
+#     modules = []
+#     queues = []
+
+
+#     # Create the card readers
+#     cr_mods = []
+#     cr_queues = []
+
+
+#     # Create the card readers
+#     if USE_FAKE_CARDS:
+#         fakecr_mods, fakecr_queues = create_fake_cardreader(
+#             FRONTEND_TYPE=FRONTEND_TYPE,
+#             QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
+#             DATA_RATE_SLOWDOWN_FACTOR=DATA_RATE_SLOWDOWN_FACTOR,
+#             DATA_FILES=DATA_FILES,
+#             DEFAULT_DATA_FILE=DEFAULT_DATA_FILE,
+#             CLOCK_SPEED_HZ=CLOCK_SPEED_HZ,
+#             EMULATED_DATA_TIMES_START_WITH_NOW=EMULATED_DATA_TIMES_START_WITH_NOW,
+#             RU_DESCRIPTOR=RU_DESCRIPTOR
+#         )
+#         cr_mods += fakecr_mods
+#         cr_queues += fakecr_queues
+#     else:
+#         if RU_DESCRIPTOR.kind == 'flx':
+#             flx_mods, flx_queues = create_felix_cardreader(
+#                 FRONTEND_TYPE=FRONTEND_TYPE,
+#                 QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
+#                 CARD_ID_OVERRIDE=CARD_ID_OVERRIDE,
+#                 NUMA_ID=NUMA_ID,
+#                 RU_DESCRIPTOR=RU_DESCRIPTOR
+#             )
+#             cr_mods += flx_mods
+#             cr_queues += flx_queues
+
+#         elif RU_DESCRIPTOR.kind == 'eth' and RU_DESCRIPTOR.streams[0].parameters.protocol == "udp":
+#             dpdk_mods, dpdk_queues = create_dpdk_cardreader(
+#                 FRONTEND_TYPE=FRONTEND_TYPE,
+#                 QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
+#                 EAL_ARGS=EAL_ARGS,
+#                 RU_DESCRIPTOR=RU_DESCRIPTOR
+#             )
+#             cr_mods += dpdk_mods
+#             cr_queues += dpdk_queues
+
+#         elif RU_DESCRIPTOR.kind == 'eth' and RU_DESCRIPTOR.streams[0].parameters.protocol == "zmq":
+
+#             pac_mods, pac_queues = create_pacman_cardreader(
+#                 FRONTEND_TYPE=FRONTEND_TYPE,
+#                 QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
+#                 RU_DESCRIPTOR=RU_DESCRIPTOR
+#             )
+#             cr_mods += pac_mods
+#             cr_queues += pac_queues
+
+#     modules += cr_mods
+#     queues += cr_queues
+
+#     # Create the data-link handlers
+#     dlhs_mods, _ = create_det_dhl(
+#         LATENCY_BUFFER_SIZE=LATENCY_BUFFER_SIZE,
+#         LATENCY_BUFFER_NUMA_AWARE=LATENCY_BUFFER_NUMA_AWARE,
+#         LATENCY_BUFFER_ALLOCATION_MODE=LATENCY_BUFFER_ALLOCATION_MODE,
+#         NUMA_ID=NUMA_ID,
+#         SEND_PARTIAL_FRAGMENTS=False,
+#         RAW_RECORDING_OUTPUT_DIR=RAW_RECORDING_OUTPUT_DIR,
+#         DATA_REQUEST_TIMEOUT=DATA_REQUEST_TIMEOUT,
+#         FRAGMENT_SEND_TIMEOUT=FRAGMENT_SEND_TIMEOUT,
+#         RAW_RECORDING_ENABLED=RAW_RECORDING_ENABLED,
+#         RU_DESCRIPTOR=RU_DESCRIPTOR,
+#         EMULATOR_MODE=EMULATOR_MODE
+
+#     )
+
+#     # Configure the TP processing if requrested
+#     if TPG_ENABLED:
+#         dlhs_mods = add_tp_processing(
+#            dlh_list=dlhs_mods,
+#            THRESHOLD_TPG=THRESHOLD_TPG,
+#            ALGORITHM_TPG=ALGORITHM_TPG,
+#            CHANNEL_MASK_TPG=CHANNEL_MASK_TPG,
+#            TPG_CHANNEL_MAP=TPG_CHANNEL_MAP,
+#            EMULATOR_MODE=EMULATOR_MODE,
+#            CLOCK_SPEED_HZ=CLOCK_SPEED_HZ,
+#            DATA_RATE_SLOWDOWN_FACTOR=DATA_RATE_SLOWDOWN_FACTOR
+#         )
+
+#     modules += dlhs_mods
+
+#     # Add the TP datalink handlers
+#     if TPG_ENABLED:
+#         tps = { k:v for k,v in SOURCEID_BROKER.get_all_source_ids("Trigger").items() if isinstance(v, ReadoutUnitDescriptor ) and v==RU_DESCRIPTOR}
+#         if len(tps) != 1:
+#             raise RuntimeError(f"Could not retrieve unique element from source id map {tps}")
+
+#         tpg_mods, tpg_queues = create_tp_dlhs(
+#             dlh_list=dlhs_mods,
+#             DATA_REQUEST_TIMEOUT=DATA_REQUEST_TIMEOUT,
+#             FRAGMENT_SEND_TIMEOUT=FRAGMENT_SEND_TIMEOUT,
+#             tpset_sid = next(iter(tps))
+#         )
+#         modules += tpg_mods
+#         queues += tpg_queues
+
+#     # Create the Module graphs
+#     mgraph = ModuleGraph(modules, queues=queues)
+
+#     # Add endpoints and frame producers to DRO data handlers
+#     add_dro_eps_and_fps(
+#         mgraph=mgraph,
+#         dlh_list=dlhs_mods,
+#         RUIDX=RU_DESCRIPTOR.label
+#     )
+
+#     if TPG_ENABLED:
+#        # Add endpoints and frame producers to TP data handlers
+#         add_tpg_eps_and_fps(
+#             mgraph=mgraph,
+#             # dlh_list=dlhs_mods,
+#             tpg_dlh_list=tpg_mods,
+#             RUIDX=RU_DESCRIPTOR.label
+#         )
+
+#     # Create the application
+#     readout_app = App(mgraph, host=RU_DESCRIPTOR.host_name)
+
+#     # All done
+#     return readout_app
 
 
 
