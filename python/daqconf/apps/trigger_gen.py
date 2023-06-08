@@ -102,6 +102,8 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
                     MLT_IGNORE_TC: list = [],
                     MLT_USE_READOUT_MAP: bool = False,
                     MLT_READOUT_MAP: dict = {},
+                    MLT_USE_BITWORDS: bool = False,
+                    MLT_TRIGGER_BITWORDS: dict = {},
 
                     USE_CHANNEL_FILTER: bool = True,
 
@@ -306,7 +308,9 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
                                               ignore_tc=MLT_IGNORE_TC,
                                               td_readout_limit=max_td_length_ticks,
                                               use_readout_map=MLT_USE_READOUT_MAP,
-                                              td_readout_map=MLT_READOUT_MAP))]
+                                              td_readout_map=MLT_READOUT_MAP,
+					      use_bitwords=MLT_USE_BITWORDS,
+					      trigger_bitwords=MLT_TRIGGER_BITWORDS))]
 
     mgraph = ModuleGraph(modules)
 

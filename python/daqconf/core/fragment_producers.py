@@ -40,12 +40,14 @@ def set_mlt_links(the_system, mlt_app_name="trigger", verbose=False):
     mgraph.reset_module_conf("mlt", mlt.ConfParams(links=mlt_links, 
                                                    hsi_trigger_type_passthrough=old_mlt_conf.hsi_trigger_type_passthrough,
                                                    merge_overlapping_tcs=old_mlt_conf.merge_overlapping_tcs,
-						                           buffer_timeout=old_mlt_conf.buffer_timeout,
+						   buffer_timeout=old_mlt_conf.buffer_timeout,
                                                    td_out_of_timeout=old_mlt_conf.td_out_of_timeout,
                                                    td_readout_limit=old_mlt_conf.td_readout_limit,
                                                    ignore_tc=old_mlt_conf.ignore_tc,
                                                    use_readout_map=old_mlt_conf.use_readout_map,
-                                                   td_readout_map=old_mlt_conf.td_readout_map))
+                                                   td_readout_map=old_mlt_conf.td_readout_map,
+						   use_bitwords=old_mlt_conf.use_bitwords,
+						   trigger_bitwords=old_mlt_conf.trigger_bitwords))
 
 def remove_mlt_link(the_system, source_id, mlt_app_name="trigger"):
     """
@@ -65,7 +67,9 @@ def remove_mlt_link(the_system, source_id, mlt_app_name="trigger"):
                                                    td_readout_limit=old_mlt_conf.td_readout_limit,
                                                    ignore_tc=old_mlt_conf.ignore_tc,
                                                    use_readout_map=old_mlt_conf.use_readout_map,
-                                                   td_readout_map=old_mlt_conf.td_readout_map))
+                                                   td_readout_map=old_mlt_conf.td_readout_map,
+                                                   use_bitwords=old_mlt_conf.use_bitwords,
+                                                   trigger_bitwords=old_mlt_conf.trigger_bitwords))
  
 def connect_fragment_producers(app_name, the_system, verbose=False):
     """Connect the data request and fragment sending queues from all of

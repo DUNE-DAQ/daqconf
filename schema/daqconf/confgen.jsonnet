@@ -31,6 +31,9 @@ local cs = {
   tc_intervals:    s.sequence( "TCIntervals",   self.tc_interval, doc="List of TC intervals used by CTCM"),
   readout_time:    s.number(   "ROTime",        "i8", doc="A readout time in ticks"),
   channel_list:    s.sequence( "ChannelList",   self.count, doc="List of offline channels to be masked out from the TPHandler"),
+  bitword:	   s.string(   "Bitword", doc="123"),
+  bitword_list:    s.sequence( "BitwordList",   self.bitword, doc="123"),
+  bitwords:        s.sequence( "Bitwords",      self.bitword_list, doc="List of bitwords to use when forming trigger decisions in MLT" ),
   
   numa_exception:  s.record( "NUMAException", [
     s.field( "host", self.host, default='localhost', doc="Host of exception"),
@@ -259,6 +262,8 @@ local cs = {
     s.field( "mlt_ignore_tc", self.tc_types, default=[], doc="Optional list of TC types to be ignored in MLT"),
     s.field( "mlt_use_readout_map", self.flag, default=false, doc="Option to use custom readout map in MLT"),
     s.field( "mlt_td_readout_map", self.tc_readout_map, default=self.tc_readout_map, doc="The readout windows assigned to TDs in MLT, based on TC type."),
+    s.field( "mlt_use_bitwords", self.flag, default=false, doc="Option to use bitwords (ie trigger types, coincidences) when forming trigger decisions in MLT" ),
+    s.field( "mlt_trigger_bitwords", self.bitwords, default=[], doc="Optional dictionary of bitwords to use when forming trigger decisions in MLT" ),
     s.field( "use_custom_maker", self.flag, default=false, doc="Option to use a Custom Trigger Candidate Maker (plugin)"),
     s.field( "ctcm_trigger_types", self.tc_types, default=[4], doc="Optional list of TC types to be used by the Custom Trigger Candidate Maker (plugin)"),
     s.field( "ctcm_trigger_intervals", self.tc_intervals, default=[10000000], doc="Optional list of intervals (clock ticks) for the TC types to be used by the Custom Trigger Candidate Maker (plugin)"),
