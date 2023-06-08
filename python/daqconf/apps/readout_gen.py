@@ -119,9 +119,9 @@ def compute_data_types(
     return fe_type, queue_frag_type, fakedata_frag_type, fakedata_time_tick, fakedata_frame_size
 
 
-###
-# Fake Card Reader creator
-###
+# ###
+# # Fake Card Reader creator
+# ###
 # def create_fake_cardreader(
 #     FRONTEND_TYPE: str,
 #     QUEUE_FRAGMENT_TYPE: str,
@@ -170,90 +170,90 @@ def compute_data_types(
 #     return modules, queues
 
 
-###
-# FELIX Card Reader creator
-###
-def create_felix_cardreader(
-        FRONTEND_TYPE: str,
-        QUEUE_FRAGMENT_TYPE: str,
-        CARD_ID_OVERRIDE: int,
-        NUMA_ID: int,
-        RU_DESCRIPTOR # ReadoutUnitDescriptor
-    ) -> tuple[list, list]:
-    """
-    Create a FELIX Card Reader (and reader->DHL Queues?)
+# ###
+# # FELIX Card Reader creator
+# ###
+# def create_felix_cardreader(
+#         FRONTEND_TYPE: str,
+#         QUEUE_FRAGMENT_TYPE: str,
+#         CARD_ID_OVERRIDE: int,
+#         NUMA_ID: int,
+#         RU_DESCRIPTOR # ReadoutUnitDescriptor
+#     ) -> tuple[list, list]:
+#     """
+#     Create a FELIX Card Reader (and reader->DHL Queues?)
 
-    [CR]->queues
-    """
-    links_slr0 = []
-    links_slr1 = []
-    sids_slr0 = []
-    sids_slr1 = []
-    for stream in RU_DESCRIPTOR.streams:
-        if stream.parameters.slr == 0:
-            links_slr0.append(stream.parameters.link)
-            sids_slr0.append(stream.src_id)
-        if stream.parameters.slr == 1:
-            links_slr1.append(stream.parameters.link)
-            sids_slr1.append(stream.src_id)
+#     [CR]->queues
+#     """
+#     links_slr0 = []
+#     links_slr1 = []
+#     sids_slr0 = []
+#     sids_slr1 = []
+#     for stream in RU_DESCRIPTOR.streams:
+#         if stream.parameters.slr == 0:
+#             links_slr0.append(stream.parameters.link)
+#             sids_slr0.append(stream.src_id)
+#         if stream.parameters.slr == 1:
+#             links_slr1.append(stream.parameters.link)
+#             sids_slr1.append(stream.src_id)
 
-    links_slr0.sort()
-    links_slr1.sort()
+#     links_slr0.sort()
+#     links_slr1.sort()
 
-    card_id = RU_DESCRIPTOR.iface if CARD_ID_OVERRIDE == -1 else CARD_ID_OVERRIDE
+#     card_id = RU_DESCRIPTOR.iface if CARD_ID_OVERRIDE == -1 else CARD_ID_OVERRIDE
 
-    modules = []
-    queues = []
-    if len(links_slr0) > 0:
-        modules += [DAQModule(name = 'flxcard_0',
-                        plugin = 'FelixCardReader',
-                        conf = flxcr.Conf(card_id = card_id,
-                                            logical_unit = 0,
-                                            dma_id = 0,
-                                            chunk_trailer_size = 32,
-                                            dma_block_size_kb = 4,
-                                            dma_memory_size_gb = 4,
-                                            numa_id = NUMA_ID,
-                                            links_enabled = links_slr0
-                                        )
-                    )]
+#     modules = []
+#     queues = []
+#     if len(links_slr0) > 0:
+#         modules += [DAQModule(name = 'flxcard_0',
+#                         plugin = 'FelixCardReader',
+#                         conf = flxcr.Conf(card_id = card_id,
+#                                             logical_unit = 0,
+#                                             dma_id = 0,
+#                                             chunk_trailer_size = 32,
+#                                             dma_block_size_kb = 4,
+#                                             dma_memory_size_gb = 4,
+#                                             numa_id = NUMA_ID,
+#                                             links_enabled = links_slr0
+#                                         )
+#                     )]
     
-    if len(links_slr1) > 0:
-        modules += [DAQModule(name = "flxcard_1",
-                            plugin = "FelixCardReader",
-                            conf = flxcr.Conf(card_id = card_id,
-                                                logical_unit = 1,
-                                                dma_id = 0,
-                                                chunk_trailer_size = 32,
-                                                dma_block_size_kb = 4,
-                                                dma_memory_size_gb = 4,
-                                                numa_id = NUMA_ID,
-                                                links_enabled = links_slr1
-                                            )
-                    )]
+#     if len(links_slr1) > 0:
+#         modules += [DAQModule(name = "flxcard_1",
+#                             plugin = "FelixCardReader",
+#                             conf = flxcr.Conf(card_id = card_id,
+#                                                 logical_unit = 1,
+#                                                 dma_id = 0,
+#                                                 chunk_trailer_size = 32,
+#                                                 dma_block_size_kb = 4,
+#                                                 dma_memory_size_gb = 4,
+#                                                 numa_id = NUMA_ID,
+#                                                 links_enabled = links_slr1
+#                                             )
+#                     )]
     
-    # Queues for card reader 1
-    queues += [
-        Queue(
-            f'flxcard_0.output_{idx}',
-            f"datahandler_{idx}.raw_input",
-            QUEUE_FRAGMENT_TYPE,
-            f'{FRONTEND_TYPE}_link_{idx}',
-            100000 
-        ) for idx in sids_slr0
-    ]
-    # Queues for card reader 2
-    queues += [
-        Queue(
-            f'flxcard_1.output_{idx}',
-            f"datahandler_{idx}.raw_input",
-            QUEUE_FRAGMENT_TYPE,
-            f'{FRONTEND_TYPE}_link_{idx}',
-            100000 
-        ) for idx in sids_slr1
-    ]
+#     # Queues for card reader 1
+#     queues += [
+#         Queue(
+#             f'flxcard_0.output_{idx}',
+#             f"datahandler_{idx}.raw_input",
+#             QUEUE_FRAGMENT_TYPE,
+#             f'{FRONTEND_TYPE}_link_{idx}',
+#             100000 
+#         ) for idx in sids_slr0
+#     ]
+#     # Queues for card reader 2
+#     queues += [
+#         Queue(
+#             f'flxcard_1.output_{idx}',
+#             f"datahandler_{idx}.raw_input",
+#             QUEUE_FRAGMENT_TYPE,
+#             f'{FRONTEND_TYPE}_link_{idx}',
+#             100000 
+#         ) for idx in sids_slr1
+#     ]
    
-    return modules, queues
+#     return modules, queues
 
 
 
@@ -389,344 +389,344 @@ class NICReceiverBuilder:
 
         return conf
 
-def create_dpdk_cardreader(
-        FRONTEND_TYPE: str,
-        QUEUE_FRAGMENT_TYPE: str,
-        EAL_ARGS: str,
-        RU_DESCRIPTOR # ReadoutUnitDescriptor
-    ) -> tuple[list, list]:
-    """
-    Create a DPDK Card Reader (and reader->DHL Queues?)
+# def create_dpdk_cardreader(
+#         FRONTEND_TYPE: str,
+#         QUEUE_FRAGMENT_TYPE: str,
+#         EAL_ARGS: str,
+#         RU_DESCRIPTOR # ReadoutUnitDescriptor
+#     ) -> tuple[list, list]:
+#     """
+#     Create a DPDK Card Reader (and reader->DHL Queues?)
 
-    [CR]->queues
-    """
+#     [CR]->queues
+#     """
 
-    eth_ru_bldr = NICReceiverBuilder(RU_DESCRIPTOR)
+#     eth_ru_bldr = NICReceiverBuilder(RU_DESCRIPTOR)
 
-    nic_reader_name = f"nic_reader_{RU_DESCRIPTOR.iface}"
+#     nic_reader_name = f"nic_reader_{RU_DESCRIPTOR.iface}"
 
-    modules = [DAQModule(
-                name=nic_reader_name,
-                plugin="NICReceiver",
-                conf=eth_ru_bldr.build_conf(eal_arg_list=EAL_ARGS),
-            )]
+#     modules = [DAQModule(
+#                 name=nic_reader_name,
+#                 plugin="NICReceiver",
+#                 conf=eth_ru_bldr.build_conf(eal_arg_list=EAL_ARGS),
+#             )]
 
-    # Queues
-    queues = [
-        Queue(
-            f"{nic_reader_name}.output_{stream.src_id}",
-            f"datahandler_{stream.src_id}.raw_input", QUEUE_FRAGMENT_TYPE,
-            f'{FRONTEND_TYPE}_stream_{stream.src_id}', 100000
-        ) 
-        for stream in RU_DESCRIPTOR.streams
-    ]
+#     # Queues
+#     queues = [
+#         Queue(
+#             f"{nic_reader_name}.output_{stream.src_id}",
+#             f"datahandler_{stream.src_id}.raw_input", QUEUE_FRAGMENT_TYPE,
+#             f'{FRONTEND_TYPE}_stream_{stream.src_id}', 100000
+#         ) 
+#         for stream in RU_DESCRIPTOR.streams
+#     ]
     
-    return modules, queues
+#     return modules, queues
 
-def create_pacman_cardreader(
-    FRONTEND_TYPE: str,
-    QUEUE_FRAGMENT_TYPE: str,
-    RU_DESCRIPTOR # ReadoutUnitDescriptor
-    ) -> tuple[list, list]:
-    """
-    Create a Pacman Cardeader 
-    """
+# def create_pacman_cardreader(
+#     FRONTEND_TYPE: str,
+#     QUEUE_FRAGMENT_TYPE: str,
+#     RU_DESCRIPTOR # ReadoutUnitDescriptor
+#     ) -> tuple[list, list]:
+#     """
+#     Create a Pacman Cardeader 
+#     """
 
-    reader_name = "nd_reader" 
-    if FRONTEND_TYPE == 'pacman':
-        reader_name = "pacman_source"
+#     reader_name = "nd_reader" 
+#     if FRONTEND_TYPE == 'pacman':
+#         reader_name = "pacman_source"
 
-    elif FRONTEND_TYPE == 'mpd':
-        reader_name = "mpd_source"
+#     elif FRONTEND_TYPE == 'mpd':
+#         reader_name = "mpd_source"
 
-    else:
-        raise RuntimeError(f"Pacman Cardreader for {FRONTEND_TYPE} not supported")
+#     else:
+#         raise RuntimeError(f"Pacman Cardreader for {FRONTEND_TYPE} not supported")
 
-    modules = [DAQModule(
-                name=reader_name,
-                plugin="PacmanCardReader",
-                conf=pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=stream.src_id)
-                                    for stream in RU_DESCRIPTOR.streams],
-                    zmq_receiver_timeout = 10000)
-            )]
+#     modules = [DAQModule(
+#                 name=reader_name,
+#                 plugin="PacmanCardReader",
+#                 conf=pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=stream.src_id)
+#                                     for stream in RU_DESCRIPTOR.streams],
+#                     zmq_receiver_timeout = 10000)
+#             )]
     
-    # Queues
-    queues = [
-        Queue(
-            f"{reader_name}.output_{stream.src_id}",
-            f"datahandler_{stream.src_id}.raw_input", QUEUE_FRAGMENT_TYPE,
-            f'{FRONTEND_TYPE}_stream_{stream.src_id}', 100000
-        ) 
-        for stream in RU_DESCRIPTOR.streams
-    ]
+#     # Queues
+#     queues = [
+#         Queue(
+#             f"{reader_name}.output_{stream.src_id}",
+#             f"datahandler_{stream.src_id}.raw_input", QUEUE_FRAGMENT_TYPE,
+#             f'{FRONTEND_TYPE}_stream_{stream.src_id}', 100000
+#         ) 
+#         for stream in RU_DESCRIPTOR.streams
+#     ]
 
-    return modules, queues
+#     return modules, queues
     
 
-###
-# Create detector datalink handlers
-###
-def create_det_dhl(
-        LATENCY_BUFFER_SIZE: int,
-        LATENCY_BUFFER_NUMA_AWARE: int,
-        LATENCY_BUFFER_ALLOCATION_MODE: int,
-        NUMA_ID: int,
-        SEND_PARTIAL_FRAGMENTS: bool,
-        RAW_RECORDING_OUTPUT_DIR: str,
-        DATA_REQUEST_TIMEOUT: int,
-        FRAGMENT_SEND_TIMEOUT: int,
-        RAW_RECORDING_ENABLED: bool,
-        RU_DESCRIPTOR, # ReadoutUnitDescriptor
-        EMULATOR_MODE : bool
+# ###
+# # Create detector datalink handlers
+# ###
+# def create_det_dhl(
+#         LATENCY_BUFFER_SIZE: int,
+#         LATENCY_BUFFER_NUMA_AWARE: int,
+#         LATENCY_BUFFER_ALLOCATION_MODE: int,
+#         NUMA_ID: int,
+#         SEND_PARTIAL_FRAGMENTS: bool,
+#         RAW_RECORDING_OUTPUT_DIR: str,
+#         DATA_REQUEST_TIMEOUT: int,
+#         FRAGMENT_SEND_TIMEOUT: int,
+#         RAW_RECORDING_ENABLED: bool,
+#         RU_DESCRIPTOR, # ReadoutUnitDescriptor
+#         EMULATOR_MODE : bool
  
-    ) -> tuple[list, list]:
+#     ) -> tuple[list, list]:
 
 
-    # defaults hardcoded values
-    default_latency_buffer_alignment_size = 4096
-    default_pop_limit_pct = 0.8
-    default_pop_size_pct = 0.1
-    default_stream_buffer_size = 8388608
+#     # defaults hardcoded values
+#     default_latency_buffer_alignment_size = 4096
+#     default_pop_limit_pct = 0.8
+#     default_pop_size_pct = 0.1
+#     default_stream_buffer_size = 8388608
 
 
-    modules = []
-    for stream in RU_DESCRIPTOR.streams:
-        geo_id = stream.geo_id
-        modules += [DAQModule(
-                    name = f"datahandler_{stream.src_id}",
-                    plugin = "DataLinkHandler", 
-                    conf = rconf.Conf(
-                        readoutmodelconf= rconf.ReadoutModelConf(
-                            source_queue_timeout_ms= QUEUE_POP_WAIT_MS,
-                            # fake_trigger_flag=0, # default
-                            source_id =  stream.src_id,
-                            send_partial_fragment_if_available = SEND_PARTIAL_FRAGMENTS
-                        ),
-                        latencybufferconf= rconf.LatencyBufferConf(
-                            latency_buffer_alignment_size = default_latency_buffer_alignment_size,
-                            latency_buffer_size = LATENCY_BUFFER_SIZE,
-                            source_id =  stream.src_id,
-                            latency_buffer_numa_aware = LATENCY_BUFFER_NUMA_AWARE,
-                            latency_buffer_numa_node = NUMA_ID,
-                            latency_buffer_preallocation = LATENCY_BUFFER_ALLOCATION_MODE,
-                            latency_buffer_intrinsic_allocator = LATENCY_BUFFER_ALLOCATION_MODE,
-                        ),
-                        rawdataprocessorconf= rconf.RawDataProcessorConf(
-                            emulator_mode = EMULATOR_MODE,
-                            crate_id = geo_id.crate_id, 
-                            slot_id = geo_id.slot_id, 
-                            link_id = geo_id.stream_id
-                        ),
-                        requesthandlerconf= rconf.RequestHandlerConf(
-                            latency_buffer_size = LATENCY_BUFFER_SIZE,
-                            pop_limit_pct = default_pop_limit_pct,
-                            pop_size_pct = default_pop_size_pct,
-                            source_id = stream.src_id,
-                            det_id = RU_DESCRIPTOR.det_id,
-                            output_file = path.join(RAW_RECORDING_OUTPUT_DIR, f"output_{RU_DESCRIPTOR.label}_{stream.src_id}.out"),
-                            stream_buffer_size = default_stream_buffer_size,
-                            request_timeout_ms = DATA_REQUEST_TIMEOUT,
-                            fragment_send_timeout_ms = FRAGMENT_SEND_TIMEOUT,
-                            enable_raw_recording = RAW_RECORDING_ENABLED,
-                        ))
-                )]
-    queues = []
-    return modules, queues
+#     modules = []
+#     for stream in RU_DESCRIPTOR.streams:
+#         geo_id = stream.geo_id
+#         modules += [DAQModule(
+#                     name = f"datahandler_{stream.src_id}",
+#                     plugin = "DataLinkHandler", 
+#                     conf = rconf.Conf(
+#                         readoutmodelconf= rconf.ReadoutModelConf(
+#                             source_queue_timeout_ms= QUEUE_POP_WAIT_MS,
+#                             # fake_trigger_flag=0, # default
+#                             source_id =  stream.src_id,
+#                             send_partial_fragment_if_available = SEND_PARTIAL_FRAGMENTS
+#                         ),
+#                         latencybufferconf= rconf.LatencyBufferConf(
+#                             latency_buffer_alignment_size = default_latency_buffer_alignment_size,
+#                             latency_buffer_size = LATENCY_BUFFER_SIZE,
+#                             source_id =  stream.src_id,
+#                             latency_buffer_numa_aware = LATENCY_BUFFER_NUMA_AWARE,
+#                             latency_buffer_numa_node = NUMA_ID,
+#                             latency_buffer_preallocation = LATENCY_BUFFER_ALLOCATION_MODE,
+#                             latency_buffer_intrinsic_allocator = LATENCY_BUFFER_ALLOCATION_MODE,
+#                         ),
+#                         rawdataprocessorconf= rconf.RawDataProcessorConf(
+#                             emulator_mode = EMULATOR_MODE,
+#                             crate_id = geo_id.crate_id, 
+#                             slot_id = geo_id.slot_id, 
+#                             link_id = geo_id.stream_id
+#                         ),
+#                         requesthandlerconf= rconf.RequestHandlerConf(
+#                             latency_buffer_size = LATENCY_BUFFER_SIZE,
+#                             pop_limit_pct = default_pop_limit_pct,
+#                             pop_size_pct = default_pop_size_pct,
+#                             source_id = stream.src_id,
+#                             det_id = RU_DESCRIPTOR.det_id,
+#                             output_file = path.join(RAW_RECORDING_OUTPUT_DIR, f"output_{RU_DESCRIPTOR.label}_{stream.src_id}.out"),
+#                             stream_buffer_size = default_stream_buffer_size,
+#                             request_timeout_ms = DATA_REQUEST_TIMEOUT,
+#                             fragment_send_timeout_ms = FRAGMENT_SEND_TIMEOUT,
+#                             enable_raw_recording = RAW_RECORDING_ENABLED,
+#                         ))
+#                 )]
+#     queues = []
+#     return modules, queues
 
 
-###
-# Enable processing in DHLs
-###
-def add_tp_processing(
-        dlh_list: list,
-        THRESHOLD_TPG: int,
-        ALGORITHM_TPG: int,
-        CHANNEL_MASK_TPG: list,
-        TPG_CHANNEL_MAP: str,
-        EMULATOR_MODE,
-        CLOCK_SPEED_HZ: int,
-        DATA_RATE_SLOWDOWN_FACTOR: int,
-    ) -> list:
+# ###
+# # Enable processing in DHLs
+# ###
+# def add_tp_processing(
+#         dlh_list: list,
+#         THRESHOLD_TPG: int,
+#         ALGORITHM_TPG: int,
+#         CHANNEL_MASK_TPG: list,
+#         TPG_CHANNEL_MAP: str,
+#         EMULATOR_MODE,
+#         CLOCK_SPEED_HZ: int,
+#         DATA_RATE_SLOWDOWN_FACTOR: int,
+#     ) -> list:
 
-    modules = []
+#     modules = []
 
-    # defaults hardcoded values
-    default_error_counter_threshold=100
-    default_error_reset_freq=10000
+#     # defaults hardcoded values
+#     default_error_counter_threshold=100
+#     default_error_reset_freq=10000
 
 
-    # Loop over datalink handlers to re-define the data processor configuration
-    for dlh in dlh_list:
+#     # Loop over datalink handlers to re-define the data processor configuration
+#     for dlh in dlh_list:
 
-        # Recover the raw data link source id
-        # MOOOOOO
-        dro_sid = dlh.conf.readoutmodelconf["source_id"]
-        geo_cid = dlh.conf.rawdataprocessorconf["crate_id"]
-        geo_sid = dlh.conf.rawdataprocessorconf["slot_id"]
-        geo_lid = dlh.conf.rawdataprocessorconf["link_id"]
-        # Re-create the module with an extended configuration
-        modules += [DAQModule(
-            name = dlh.name,
-            plugin = dlh.plugin,
-            conf = rconf.Conf(
-                readoutmodelconf = dlh.conf.readoutmodelconf,
-                latencybufferconf = dlh.conf.latencybufferconf,
-                requesthandlerconf = dlh.conf.requesthandlerconf,
-                rawdataprocessorconf= rconf.RawDataProcessorConf(
-                    source_id = dro_sid,
-                    crate_id = geo_cid,
-                    slot_id = geo_sid,
-                    link_id = geo_lid,
-                    enable_tpg = True,
-                    tpg_threshold = THRESHOLD_TPG,
-                    tpg_algorithm = ALGORITHM_TPG,
-                    tpg_channel_mask = CHANNEL_MASK_TPG,
-                    channel_map_name = TPG_CHANNEL_MAP,
-                    emulator_mode = EMULATOR_MODE,
-                    clock_speed_hz = (CLOCK_SPEED_HZ / DATA_RATE_SLOWDOWN_FACTOR),
-                    error_counter_threshold=default_error_counter_threshold,
-                    error_reset_freq=default_error_reset_freq
-                ),
-            )
-        )]
+#         # Recover the raw data link source id
+#         # MOOOOOO
+#         dro_sid = dlh.conf.readoutmodelconf["source_id"]
+#         geo_cid = dlh.conf.rawdataprocessorconf["crate_id"]
+#         geo_sid = dlh.conf.rawdataprocessorconf["slot_id"]
+#         geo_lid = dlh.conf.rawdataprocessorconf["link_id"]
+#         # Re-create the module with an extended configuration
+#         modules += [DAQModule(
+#             name = dlh.name,
+#             plugin = dlh.plugin,
+#             conf = rconf.Conf(
+#                 readoutmodelconf = dlh.conf.readoutmodelconf,
+#                 latencybufferconf = dlh.conf.latencybufferconf,
+#                 requesthandlerconf = dlh.conf.requesthandlerconf,
+#                 rawdataprocessorconf= rconf.RawDataProcessorConf(
+#                     source_id = dro_sid,
+#                     crate_id = geo_cid,
+#                     slot_id = geo_sid,
+#                     link_id = geo_lid,
+#                     enable_tpg = True,
+#                     tpg_threshold = THRESHOLD_TPG,
+#                     tpg_algorithm = ALGORITHM_TPG,
+#                     tpg_channel_mask = CHANNEL_MASK_TPG,
+#                     channel_map_name = TPG_CHANNEL_MAP,
+#                     emulator_mode = EMULATOR_MODE,
+#                     clock_speed_hz = (CLOCK_SPEED_HZ / DATA_RATE_SLOWDOWN_FACTOR),
+#                     error_counter_threshold=default_error_counter_threshold,
+#                     error_reset_freq=default_error_reset_freq
+#                 ),
+#             )
+#         )]
         
-    return modules
+#     return modules
 
-###
-# Create TP data link handlers
-###
-def create_tp_dlhs(
-    dlh_list: list,
-    DATA_REQUEST_TIMEOUT: int, # To Check
-    FRAGMENT_SEND_TIMEOUT: int, # To Check
-    tpset_sid: int,
-    )-> tuple[list, list]:
+# ###
+# # Create TP data link handlers
+# ###
+# def create_tp_dlhs(
+#     dlh_list: list,
+#     DATA_REQUEST_TIMEOUT: int, # To Check
+#     FRAGMENT_SEND_TIMEOUT: int, # To Check
+#     tpset_sid: int,
+#     )-> tuple[list, list]:
     
-    default_pop_limit_pct = 0.8
-    default_pop_size_pct = 0.1
-    default_stream_buffer_size = 8388608
-    default_latency_buffer_size = 4000000
-    default_detid = 1
+#     default_pop_limit_pct = 0.8
+#     default_pop_size_pct = 0.1
+#     default_stream_buffer_size = 8388608
+#     default_latency_buffer_size = 4000000
+#     default_detid = 1
 
     
-    # Create the TP link handler
-    modules = [
-      DAQModule(name = f"tp_datahandler_{tpset_sid}",
-                plugin = "DataLinkHandler",
-                conf = rconf.Conf(
-                            readoutmodelconf = rconf.ReadoutModelConf(
-                                source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
-                                source_id = tpset_sid
-                            ),
-                            latencybufferconf = rconf.LatencyBufferConf(
-                                latency_buffer_size = default_latency_buffer_size,
-                                source_id =  tpset_sid
-                            ),
-                            rawdataprocessorconf = rconf.RawDataProcessorConf(enable_tpg = False),
-                            requesthandlerconf= rconf.RequestHandlerConf(
-                                latency_buffer_size = default_latency_buffer_size,
-                                pop_limit_pct = default_pop_limit_pct,
-                                pop_size_pct = default_pop_size_pct,
-                                source_id = tpset_sid,
-                                det_id = default_detid,
-                                stream_buffer_size = default_stream_buffer_size,
-                                request_timeout_ms = DATA_REQUEST_TIMEOUT,
-                                fragment_send_timeout_ms = FRAGMENT_SEND_TIMEOUT,
-                                enable_raw_recording = False
-                            )
-                        )
-                )
-            ]
+#     # Create the TP link handler
+#     modules = [
+#       DAQModule(name = f"tp_datahandler_{tpset_sid}",
+#                 plugin = "DataLinkHandler",
+#                 conf = rconf.Conf(
+#                             readoutmodelconf = rconf.ReadoutModelConf(
+#                                 source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
+#                                 source_id = tpset_sid
+#                             ),
+#                             latencybufferconf = rconf.LatencyBufferConf(
+#                                 latency_buffer_size = default_latency_buffer_size,
+#                                 source_id =  tpset_sid
+#                             ),
+#                             rawdataprocessorconf = rconf.RawDataProcessorConf(enable_tpg = False),
+#                             requesthandlerconf= rconf.RequestHandlerConf(
+#                                 latency_buffer_size = default_latency_buffer_size,
+#                                 pop_limit_pct = default_pop_limit_pct,
+#                                 pop_size_pct = default_pop_size_pct,
+#                                 source_id = tpset_sid,
+#                                 det_id = default_detid,
+#                                 stream_buffer_size = default_stream_buffer_size,
+#                                 request_timeout_ms = DATA_REQUEST_TIMEOUT,
+#                                 fragment_send_timeout_ms = FRAGMENT_SEND_TIMEOUT,
+#                                 enable_raw_recording = False
+#                             )
+#                         )
+#                 )
+#             ]
     
-    queues = []
-    for dlh in dlh_list:
-        # extract source ids
-        dro_sid = dlh.conf.readoutmodelconf["source_id"]
+#     queues = []
+#     for dlh in dlh_list:
+#         # extract source ids
+#         dro_sid = dlh.conf.readoutmodelconf["source_id"]
 
-        # Attach to the detector DLH's tp_out connector
-        queues += [
-            Queue(
-                f"{dlh.name}.tp_out",
-                f"tp_datahandler_{tpset_sid}.raw_input",
-                "TriggerPrimitive",
-                f"tp_link_{tpset_sid}",1000000 
-                )
-            ]
+#         # Attach to the detector DLH's tp_out connector
+#         queues += [
+#             Queue(
+#                 f"{dlh.name}.tp_out",
+#                 f"tp_datahandler_{tpset_sid}.raw_input",
+#                 "TriggerPrimitive",
+#                 f"tp_link_{tpset_sid}",1000000 
+#                 )
+#             ]
 
-    return modules, queues
+#     return modules, queues
 
-###
-# Add detector endpoints and fragment producers
-###
-def add_dro_eps_and_fps(
-    mgraph: ModuleGraph,
-    dlh_list: list,
-    RUIDX: str,
+# ###
+# # Add detector endpoints and fragment producers
+# ###
+# def add_dro_eps_and_fps(
+#     mgraph: ModuleGraph,
+#     dlh_list: list,
+#     RUIDX: str,
         
-) -> None: 
-    """Adds detector readout endpoints and fragment producers"""
-    for dlh in dlh_list:
-        # print(dlh)
+# ) -> None: 
+#     """Adds detector readout endpoints and fragment producers"""
+#     for dlh in dlh_list:
+#         # print(dlh)
 
-        # extract source ids
-        dro_sid = dlh.conf.readoutmodelconf['source_id']
-        # tp_sid = dlh.conf.rawdataprocessorconf.tpset_sourceid
+#         # extract source ids
+#         dro_sid = dlh.conf.readoutmodelconf['source_id']
+#         # tp_sid = dlh.conf.rawdataprocessorconf.tpset_sourceid
 
-        mgraph.add_fragment_producer(
-            id = dro_sid, 
-            subsystem = "Detector_Readout",
-            requests_in   = f"datahandler_{dro_sid}.request_input",
-            fragments_out = f"datahandler_{dro_sid}.fragment_queue"
-        )
-        mgraph.add_endpoint(
-            f"timesync_ru{RUIDX}_{dro_sid}",
-            f"datahandler_{dro_sid}.timesync_output",
-            "TimeSync",   Direction.OUT,
-            is_pubsub=True,
-            toposort=False
-        )
+#         mgraph.add_fragment_producer(
+#             id = dro_sid, 
+#             subsystem = "Detector_Readout",
+#             requests_in   = f"datahandler_{dro_sid}.request_input",
+#             fragments_out = f"datahandler_{dro_sid}.fragment_queue"
+#         )
+#         mgraph.add_endpoint(
+#             f"timesync_ru_{dro_sid}",
+#             f"datahandler_{dro_sid}.timesync_output",
+#             "TimeSync",   Direction.OUT,
+#             is_pubsub=True,
+#             toposort=False
+#         )
 
 
 
-###
-# Add tpg endpoints and fragment producers
-###
-def add_tpg_eps_and_fps(
-    mgraph: ModuleGraph,
-    tpg_dlh_list: list,
-    RUIDX: str,
+# ###
+# # Add tpg endpoints and fragment producers
+# ###
+# def add_tpg_eps_and_fps(
+#     mgraph: ModuleGraph,
+#     tpg_dlh_list: list,
+#     RUIDX: str,
         
-) -> None: 
-    """Adds detector readout endpoints and fragment producers"""
+# ) -> None: 
+#     """Adds detector readout endpoints and fragment producers"""
 
-    for dlh in tpg_dlh_list:
+#     for dlh in tpg_dlh_list:
 
-        # extract source ids
-        tpset_sid = dlh.conf.readoutmodelconf['source_id']
+#         # extract source ids
+#         tpset_sid = dlh.conf.readoutmodelconf['source_id']
 
-        # Add enpointis with this source id for timesync and TPSets
-        mgraph.add_endpoint(
-            f"timesync_tp_dlh_ru{RUIDX}_{tpset_sid}",
-            f"tp_datahandler_{tpset_sid}.timesync_output",
-            "TimeSync",
-            Direction.OUT,
-            is_pubsub=True
-        )
+#         # Add enpointis with this source id for timesync and TPSets
+#         mgraph.add_endpoint(
+#             f"timesync_tp_{tpset_sid}",
+#             f"tp_datahandler_{tpset_sid}.timesync_output",
+#             "TimeSync",
+#             Direction.OUT,
+#             is_pubsub=True
+#         )
 
-        mgraph.add_endpoint(
-                f"tpsets_tplink{tpset_sid}",
-                f"tp_datahandler_{tpset_sid}.tpset_out",
-                "TPSet",
-                Direction.OUT,
-                is_pubsub=True
-            )
+#         mgraph.add_endpoint(
+#                 f"tpsets_tplink{tpset_sid}",
+#                 f"tp_datahandler_{tpset_sid}.tpset_out",
+#                 "TPSet",
+#                 Direction.OUT,
+#                 is_pubsub=True
+#             )
 
-        # Add Fragment producer with this source id
-        mgraph.add_fragment_producer(
-            id = tpset_sid, subsystem = "Trigger",
-            requests_in   = f"tp_datahandler_{tpset_sid}.request_input",
-            fragments_out = f"tp_datahandler_{tpset_sid}.fragment_queue"
-        )
+#         # Add Fragment producer with this source id
+#         mgraph.add_fragment_producer(
+#             id = tpset_sid, subsystem = "Trigger",
+#             requests_in   = f"tp_datahandler_{tpset_sid}.request_input",
+#             fragments_out = f"tp_datahandler_{tpset_sid}.fragment_queue"
+#         )
         
 
 # Time to wait on pop()
@@ -743,6 +743,7 @@ class ReadoutAppGenerator:
         excpt = {}
         for ex in self.config.numa_config['exceptions']:
             excpt[(ex['host'], ex['card'])] = ex
+        self.excpt = excpt
 
 
     def get_numa_cfg(self, RU_DESCRIPTOR):
@@ -762,9 +763,488 @@ class ReadoutAppGenerator:
         return (numa_id, latency_numa, latency_preallocate, flx_card_override)
 
 
+    ###
+    # Fake Card Reader creator
+    ###
+    def create_fake_cardreader(
+        self,
+        FRONTEND_TYPE: str,
+        QUEUE_FRAGMENT_TYPE: str,
+        DATA_FILES: dict,
+        RU_DESCRIPTOR # ReadoutUnitDescriptor
+
+    ) -> tuple[list, list]:
+        """
+        Create a FAKE Card reader module
+        """
+        cfg = self.config
+
+        conf = sec.Conf(
+                link_confs = [
+                    sec.LinkConfiguration(
+                        source_id=s.src_id,
+                            crate_id = s.geo_id.crate_id,
+                            slot_id = s.geo_id.slot_id,
+                            link_id = s.geo_id.stream_id,
+                            slowdown=cfg.data_rate_slowdown_factor,
+                            queue_name=f"output_{s.src_id}",
+                            data_filename = DATA_FILES[s.geo_id.det_id] if s.geo_id.det_id in DATA_FILES.keys() else cfg.default_data_file,
+                            emu_frame_error_rate=0
+                        ) for s in RU_DESCRIPTOR.streams],
+                use_now_as_first_data_time=cfg.emulated_data_times_start_with_now,
+                clock_speed_hz=cfg.clock_speed_hz,
+                queue_timeout_ms = QUEUE_POP_WAIT_MS
+                )
+
+
+        modules = [DAQModule(name = "fake_source",
+                                plugin = "FakeCardReader",
+                                conf = conf)]
+        queues = [
+            Queue(
+                f"fake_source.output_{s.src_id}",
+                f"datahandler_{s.src_id}.raw_input",
+                QUEUE_FRAGMENT_TYPE,
+                f'{FRONTEND_TYPE}_link_{s.src_id}', 100000
+            ) for s in RU_DESCRIPTOR.streams
+        ]
+        
+        return modules, queues
+
+
+    ###
+    # FELIX Card Reader creator
+    ###
+    def create_felix_cardreader(
+            self,
+            FRONTEND_TYPE: str,
+            QUEUE_FRAGMENT_TYPE: str,
+            CARD_ID_OVERRIDE: int,
+            NUMA_ID: int,
+            RU_DESCRIPTOR # ReadoutUnitDescriptor
+        ) -> tuple[list, list]:
+        """
+        Create a FELIX Card Reader (and reader->DHL Queues?)
+
+        [CR]->queues
+        """
+        links_slr0 = []
+        links_slr1 = []
+        sids_slr0 = []
+        sids_slr1 = []
+        for stream in RU_DESCRIPTOR.streams:
+            if stream.parameters.slr == 0:
+                links_slr0.append(stream.parameters.link)
+                sids_slr0.append(stream.src_id)
+            if stream.parameters.slr == 1:
+                links_slr1.append(stream.parameters.link)
+                sids_slr1.append(stream.src_id)
+
+        links_slr0.sort()
+        links_slr1.sort()
+
+        card_id = RU_DESCRIPTOR.iface if CARD_ID_OVERRIDE == -1 else CARD_ID_OVERRIDE
+
+        modules = []
+        queues = []
+        if len(links_slr0) > 0:
+            modules += [DAQModule(name = 'flxcard_0',
+                            plugin = 'FelixCardReader',
+                            conf = flxcr.Conf(card_id = card_id,
+                                                logical_unit = 0,
+                                                dma_id = 0,
+                                                chunk_trailer_size = 32,
+                                                dma_block_size_kb = 4,
+                                                dma_memory_size_gb = 4,
+                                                numa_id = NUMA_ID,
+                                                links_enabled = links_slr0
+                                            )
+                        )]
+        
+        if len(links_slr1) > 0:
+            modules += [DAQModule(name = "flxcard_1",
+                                plugin = "FelixCardReader",
+                                conf = flxcr.Conf(card_id = card_id,
+                                                    logical_unit = 1,
+                                                    dma_id = 0,
+                                                    chunk_trailer_size = 32,
+                                                    dma_block_size_kb = 4,
+                                                    dma_memory_size_gb = 4,
+                                                    numa_id = NUMA_ID,
+                                                    links_enabled = links_slr1
+                                                )
+                        )]
+        
+        # Queues for card reader 1
+        queues += [
+            Queue(
+                f'flxcard_0.output_{idx}',
+                f"datahandler_{idx}.raw_input",
+                QUEUE_FRAGMENT_TYPE,
+                f'{FRONTEND_TYPE}_link_{idx}',
+                100000 
+            ) for idx in sids_slr0
+        ]
+        # Queues for card reader 2
+        queues += [
+            Queue(
+                f'flxcard_1.output_{idx}',
+                f"datahandler_{idx}.raw_input",
+                QUEUE_FRAGMENT_TYPE,
+                f'{FRONTEND_TYPE}_link_{idx}',
+                100000 
+            ) for idx in sids_slr1
+        ]
+    
+        return modules, queues
+
+
+    def create_dpdk_cardreader(
+            self,
+            FRONTEND_TYPE: str,
+            QUEUE_FRAGMENT_TYPE: str,
+            RU_DESCRIPTOR # ReadoutUnitDescriptor
+        ) -> tuple[list, list]:
+        """
+        Create a DPDK Card Reader (and reader->DHL Queues?)
+
+        [CR]->queues
+        """
+
+        cfg = self.config
+
+        eth_ru_bldr = NICReceiverBuilder(RU_DESCRIPTOR)
+
+        nic_reader_name = f"nic_reader_{RU_DESCRIPTOR.iface}"
+
+        modules = [DAQModule(
+                    name=nic_reader_name,
+                    plugin="NICReceiver",
+                    conf=eth_ru_bldr.build_conf(eal_arg_list=cfg.eal_args),
+                )]
+
+        # Queues
+        queues = [
+            Queue(
+                f"{nic_reader_name}.output_{stream.src_id}",
+                f"datahandler_{stream.src_id}.raw_input", QUEUE_FRAGMENT_TYPE,
+                f'{FRONTEND_TYPE}_stream_{stream.src_id}', 100000
+            ) 
+            for stream in RU_DESCRIPTOR.streams
+        ]
+        
+        return modules, queues
+    
+
+    def create_pacman_cardreader(
+            self,
+            FRONTEND_TYPE: str,
+            QUEUE_FRAGMENT_TYPE: str,
+            RU_DESCRIPTOR # ReadoutUnitDescriptor
+        ) -> tuple[list, list]:
+        """
+        Create a Pacman Cardeader 
+        """
+
+        reader_name = "nd_reader" 
+        if FRONTEND_TYPE == 'pacman':
+            reader_name = "pacman_source"
+
+        elif FRONTEND_TYPE == 'mpd':
+            reader_name = "mpd_source"
+
+        else:
+            raise RuntimeError(f"Pacman Cardreader for {FRONTEND_TYPE} not supported")
+
+        modules = [DAQModule(
+                    name=reader_name,
+                    plugin="PacmanCardReader",
+                    conf=pcr.Conf(link_confs = [pcr.LinkConfiguration(Source_ID=stream.src_id)
+                                        for stream in RU_DESCRIPTOR.streams],
+                        zmq_receiver_timeout = 10000)
+                )]
+        
+        # Queues
+        queues = [
+            Queue(
+                f"{reader_name}.output_{stream.src_id}",
+                f"datahandler_{stream.src_id}.raw_input", QUEUE_FRAGMENT_TYPE,
+                f'{FRONTEND_TYPE}_stream_{stream.src_id}', 100000
+            ) 
+            for stream in RU_DESCRIPTOR.streams
+        ]
+
+        return modules, queues
+
+
+
+
+
+    ###
+    # Create detector datalink handlers
+    ###
+    def create_det_dhl(
+            self,
+            # LATENCY_BUFFER_SIZE: int,
+            LATENCY_BUFFER_NUMA_AWARE: int,
+            LATENCY_BUFFER_ALLOCATION_MODE: int,
+            NUMA_ID: int,
+            SEND_PARTIAL_FRAGMENTS: bool,
+            # RAW_RECORDING_OUTPUT_DIR: str,
+            DATA_REQUEST_TIMEOUT: int,
+            # FRAGMENT_SEND_TIMEOUT: int,
+            # RAW_RECORDING_ENABLED: bool,
+            RU_DESCRIPTOR, # ReadoutUnitDescriptor
+            # EMULATOR_MODE : bool
+    
+        ) -> tuple[list, list]:
+
+        cfg = self.config
+
+        # defaults hardcoded values
+        default_latency_buffer_alignment_size = 4096
+        default_pop_limit_pct = 0.8
+        default_pop_size_pct = 0.1
+        default_stream_buffer_size = 8388608
+
+
+        modules = []
+        for stream in RU_DESCRIPTOR.streams:
+            geo_id = stream.geo_id
+            modules += [DAQModule(
+                        name = f"datahandler_{stream.src_id}",
+                        plugin = "DataLinkHandler", 
+                        conf = rconf.Conf(
+                            readoutmodelconf= rconf.ReadoutModelConf(
+                                source_queue_timeout_ms= QUEUE_POP_WAIT_MS,
+                                # fake_trigger_flag=0, # default
+                                source_id =  stream.src_id,
+                                send_partial_fragment_if_available = SEND_PARTIAL_FRAGMENTS
+                            ),
+                            latencybufferconf= rconf.LatencyBufferConf(
+                                latency_buffer_alignment_size = default_latency_buffer_alignment_size,
+                                latency_buffer_size = cfg.latency_buffer_size,
+                                source_id =  stream.src_id,
+                                latency_buffer_numa_aware = LATENCY_BUFFER_NUMA_AWARE,
+                                latency_buffer_numa_node = NUMA_ID,
+                                latency_buffer_preallocation = LATENCY_BUFFER_ALLOCATION_MODE,
+                                latency_buffer_intrinsic_allocator = LATENCY_BUFFER_ALLOCATION_MODE,
+                            ),
+                            rawdataprocessorconf= rconf.RawDataProcessorConf(
+                                emulator_mode = cfg.emulator_mode,
+                                crate_id = geo_id.crate_id, 
+                                slot_id = geo_id.slot_id, 
+                                link_id = geo_id.stream_id
+                            ),
+                            requesthandlerconf= rconf.RequestHandlerConf(
+                                latency_buffer_size = cfg.latency_buffer_size,
+                                pop_limit_pct = default_pop_limit_pct,
+                                pop_size_pct = default_pop_size_pct,
+                                source_id = stream.src_id,
+                                det_id = RU_DESCRIPTOR.det_id,
+                                output_file = path.join(cfg.raw_recording_output_dir, f"output_{RU_DESCRIPTOR.label}_{stream.src_id}.out"),
+                                stream_buffer_size = default_stream_buffer_size,
+                                request_timeout_ms = DATA_REQUEST_TIMEOUT,
+                                fragment_send_timeout_ms = cfg.fragment_send_timeout_ms,
+                                enable_raw_recording = cfg.enable_raw_recording,
+                            ))
+                    )]
+        queues = []
+        return modules, queues
+
+
+    ###
+    # Enable processing in DHLs
+    ###
+    def add_tp_processing(
+            self,
+            dlh_list: list,
+            TPG_CHANNEL_MAP: str,
+        ) -> list:
+
+        cfg = self.config
+
+        modules = []
+
+        # defaults hardcoded values
+        default_error_counter_threshold=100
+        default_error_reset_freq=10000
+
+
+        # Loop over datalink handlers to re-define the data processor configuration
+        for dlh in dlh_list:
+
+            # Recover the raw data link source id
+            # MOOOOOO
+            dro_sid = dlh.conf.readoutmodelconf["source_id"]
+            geo_cid = dlh.conf.rawdataprocessorconf["crate_id"]
+            geo_sid = dlh.conf.rawdataprocessorconf["slot_id"]
+            geo_lid = dlh.conf.rawdataprocessorconf["link_id"]
+            # Re-create the module with an extended configuration
+            modules += [DAQModule(
+                name = dlh.name,
+                plugin = dlh.plugin,
+                conf = rconf.Conf(
+                    readoutmodelconf = dlh.conf.readoutmodelconf,
+                    latencybufferconf = dlh.conf.latencybufferconf,
+                    requesthandlerconf = dlh.conf.requesthandlerconf,
+                    rawdataprocessorconf= rconf.RawDataProcessorConf(
+                        source_id = dro_sid,
+                        crate_id = geo_cid,
+                        slot_id = geo_sid,
+                        link_id = geo_lid,
+                        enable_tpg = True,
+                        tpg_threshold = cfg.tpg_threshold,
+                        tpg_algorithm = cfg.tpg_algorithm,
+                        tpg_channel_mask = cfg.tpg_channel_mask,
+                        channel_map_name = TPG_CHANNEL_MAP,
+                        emulator_mode = cfg.emulator_mode,
+                        clock_speed_hz = (cfg.clock_speed_hz / cfg.data_rate_slowdown_factor),
+                        error_counter_threshold=default_error_counter_threshold,
+                        error_reset_freq=default_error_reset_freq
+                    ),
+                )
+            )]
+            
+        return modules
+
+    ###
+    # Create TP data link handlers
+    ###
+    def create_tp_dlhs(
+        self,    
+        dlh_list: list,
+        DATA_REQUEST_TIMEOUT: int, # To Check
+        FRAGMENT_SEND_TIMEOUT: int, # To Check
+        tpset_sid: int,
+        )-> tuple[list, list]:
+        
+        default_pop_limit_pct = 0.8
+        default_pop_size_pct = 0.1
+        default_stream_buffer_size = 8388608
+        default_latency_buffer_size = 4000000
+        default_detid = 1
+
+        
+        # Create the TP link handler
+        modules = [
+        DAQModule(name = f"tp_datahandler_{tpset_sid}",
+                    plugin = "DataLinkHandler",
+                    conf = rconf.Conf(
+                                readoutmodelconf = rconf.ReadoutModelConf(
+                                    source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
+                                    source_id = tpset_sid
+                                ),
+                                latencybufferconf = rconf.LatencyBufferConf(
+                                    latency_buffer_size = default_latency_buffer_size,
+                                    source_id =  tpset_sid
+                                ),
+                                rawdataprocessorconf = rconf.RawDataProcessorConf(enable_tpg = False),
+                                requesthandlerconf= rconf.RequestHandlerConf(
+                                    latency_buffer_size = default_latency_buffer_size,
+                                    pop_limit_pct = default_pop_limit_pct,
+                                    pop_size_pct = default_pop_size_pct,
+                                    source_id = tpset_sid,
+                                    det_id = default_detid,
+                                    stream_buffer_size = default_stream_buffer_size,
+                                    request_timeout_ms = DATA_REQUEST_TIMEOUT,
+                                    fragment_send_timeout_ms = FRAGMENT_SEND_TIMEOUT,
+                                    enable_raw_recording = False
+                                )
+                            )
+                    )
+                ]
+        
+        queues = []
+        for dlh in dlh_list:
+            # Attach to the detector DLH's tp_out connector
+            queues += [
+                Queue(
+                    f"{dlh.name}.tp_out",
+                    f"tp_datahandler_{tpset_sid}.raw_input",
+                    "TriggerPrimitive",
+                    f"tp_link_{tpset_sid}",1000000 
+                    )
+                ]
+
+        return modules, queues
+
+    ###
+    # Add detector endpoints and fragment producers
+    ###
+    def add_dro_eps_and_fps(
+            self,
+            mgraph: ModuleGraph,
+            dlh_list: list,
+        ) -> None: 
+        """Adds detector readout endpoints and fragment producers"""
+        for dlh in dlh_list:
+            # print(dlh)
+
+            # extract source ids
+            dro_sid = dlh.conf.readoutmodelconf['source_id']
+            # tp_sid = dlh.conf.rawdataprocessorconf.tpset_sourceid
+
+            mgraph.add_fragment_producer(
+                id = dro_sid, 
+                subsystem = "Detector_Readout",
+                requests_in   = f"datahandler_{dro_sid}.request_input",
+                fragments_out = f"datahandler_{dro_sid}.fragment_queue"
+            )
+            mgraph.add_endpoint(
+                f"timesync_ru_{dro_sid}",
+                f"datahandler_{dro_sid}.timesync_output",
+                "TimeSync",   Direction.OUT,
+                is_pubsub=True,
+                toposort=False
+            )
+
+
+
+    ###
+    # Add tpg endpoints and fragment producers
+    ###
+    def add_tpg_eps_and_fps(
+            self,
+            mgraph: ModuleGraph,
+            tpg_dlh_list: list,
+                
+        ) -> None: 
+        """Adds detector readout endpoints and fragment producers"""
+
+        for dlh in tpg_dlh_list:
+
+            # extract source ids
+            tpset_sid = dlh.conf.readoutmodelconf['source_id']
+
+            # Add enpointis with this source id for timesync and TPSets
+            mgraph.add_endpoint(
+                f"timesync_tp_{tpset_sid}",
+                f"tp_datahandler_{tpset_sid}.timesync_output",
+                "TimeSync",
+                Direction.OUT,
+                is_pubsub=True
+            )
+
+            mgraph.add_endpoint(
+                    f"tpsets_tplink{tpset_sid}",
+                    f"tp_datahandler_{tpset_sid}.tpset_out",
+                    "TPSet",
+                    Direction.OUT,
+                    is_pubsub=True
+                )
+
+            # Add Fragment producer with this source id
+            mgraph.add_fragment_producer(
+                id = tpset_sid, subsystem = "Trigger",
+                requests_in   = f"tp_datahandler_{tpset_sid}.request_input",
+                fragments_out = f"tp_datahandler_{tpset_sid}.fragment_queue"
+            )
+        
+
     def generate(
             self,
-            RU_DESCRIPTOR,
+            RU_DESCRIPTOR, 
             SOURCEID_BROKER,
             data_file_map,
             tpg_channel_map,
@@ -790,10 +1270,10 @@ class ReadoutAppGenerator:
 
         numa_id, latency_numa, latency_preallocate, card_override = self.get_numa_cfg(RU_DESCRIPTOR)
         cfg = self.config
-        TPG_ENABLED = cfg.enable_tpg,
-        DATA_FILES = data_file_map,
+        TPG_ENABLED = cfg.enable_tpg
+        DATA_FILES = data_file_map
         # TPG_CHANNEL_MAP = tpg_channel_map,
-        DATA_REQUEST_TIMEOUT=data_timeout_requests,
+        DATA_REQUEST_TIMEOUT=data_timeout_requests
 
         FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _, _, _ = compute_data_types(RU_DESCRIPTOR.det_id, cfg.clock_speed_hz, RU_DESCRIPTOR.kind)
         
@@ -811,21 +1291,17 @@ class ReadoutAppGenerator:
 
         # Create the card readers
         if cfg.use_fake_cards:
-            fakecr_mods, fakecr_queues = create_fake_cardreader(
+            fakecr_mods, fakecr_queues = self.create_fake_cardreader(
                 FRONTEND_TYPE=FRONTEND_TYPE,
                 QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
-                DATA_RATE_SLOWDOWN_FACTOR=cfg.data_rate_slowdown_factor,
                 DATA_FILES=DATA_FILES,
-                DEFAULT_DATA_FILE=cfg.default_data_file,
-                CLOCK_SPEED_HZ=cfg.clock_speed_hz,
-                EMULATED_DATA_TIMES_START_WITH_NOW=cfg.emulated_data_times_start_with_now,
                 RU_DESCRIPTOR=RU_DESCRIPTOR
             )
             cr_mods += fakecr_mods
             cr_queues += fakecr_queues
         else:
             if RU_DESCRIPTOR.kind == 'flx':
-                flx_mods, flx_queues = create_felix_cardreader(
+                flx_mods, flx_queues = self.create_felix_cardreader(
                     FRONTEND_TYPE=FRONTEND_TYPE,
                     QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
                     CARD_ID_OVERRIDE=card_override,
@@ -836,10 +1312,9 @@ class ReadoutAppGenerator:
                 cr_queues += flx_queues
 
             elif RU_DESCRIPTOR.kind == 'eth' and RU_DESCRIPTOR.streams[0].parameters.protocol == "udp":
-                dpdk_mods, dpdk_queues = create_dpdk_cardreader(
+                dpdk_mods, dpdk_queues = self.create_dpdk_cardreader(
                     FRONTEND_TYPE=FRONTEND_TYPE,
                     QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
-                    EAL_ARGS=cfg.eal_args,
                     RU_DESCRIPTOR=RU_DESCRIPTOR
                 )
                 cr_mods += dpdk_mods
@@ -847,7 +1322,7 @@ class ReadoutAppGenerator:
 
             elif RU_DESCRIPTOR.kind == 'eth' and RU_DESCRIPTOR.streams[0].parameters.protocol == "zmq":
 
-                pac_mods, pac_queues = create_pacman_cardreader(
+                pac_mods, pac_queues = self.create_pacman_cardreader(
                     FRONTEND_TYPE=FRONTEND_TYPE,
                     QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
                     RU_DESCRIPTOR=RU_DESCRIPTOR
@@ -859,32 +1334,22 @@ class ReadoutAppGenerator:
         queues += cr_queues
 
         # Create the data-link handlers
-        dlhs_mods, _ = create_det_dhl(
-            LATENCY_BUFFER_SIZE=cfg.latency_buffer_size,
+        dlhs_mods, _ = self.create_det_dhl(
+            # LATENCY_BUFFER_SIZE=cfg.latency_buffer_size,
             LATENCY_BUFFER_NUMA_AWARE=latency_numa,
             LATENCY_BUFFER_ALLOCATION_MODE=latency_preallocate,
             NUMA_ID=numa_id,
             SEND_PARTIAL_FRAGMENTS=False,
-            RAW_RECORDING_OUTPUT_DIR=cfg.raw_recording_output_dir,
             DATA_REQUEST_TIMEOUT=DATA_REQUEST_TIMEOUT,
-            FRAGMENT_SEND_TIMEOUT=cfg.fragment_send_timeout_ms,
-            RAW_RECORDING_ENABLED=cfg.enable_raw_recording,
             RU_DESCRIPTOR=RU_DESCRIPTOR,
-            EMULATOR_MODE=cfg.emulator_mode
 
         )
 
         # Configure the TP processing if requrested
         if TPG_ENABLED:
-            dlhs_mods = add_tp_processing(
+            dlhs_mods = self.add_tp_processing(
             dlh_list=dlhs_mods,
-            THRESHOLD_TPG=cfg.tpg_threshold,
-            ALGORITHM_TPG=cfg.tpg_algorithm,
-            CHANNEL_MASK_TPG=cfg.tpg_channel_mask,
             TPG_CHANNEL_MAP=tpg_channel_map,
-            EMULATOR_MODE=cfg.emulator_mode,
-            CLOCK_SPEED_HZ=cfg.clock_speed_hz,
-            DATA_RATE_SLOWDOWN_FACTOR=cfg.data_rate_slowdown_factor
             )
 
         modules += dlhs_mods
@@ -895,7 +1360,7 @@ class ReadoutAppGenerator:
             if len(tps) != 1:
                 raise RuntimeError(f"Could not retrieve unique element from source id map {tps}")
 
-            tpg_mods, tpg_queues = create_tp_dlhs(
+            tpg_mods, tpg_queues = self.create_tp_dlhs(
                 dlh_list=dlhs_mods,
                 DATA_REQUEST_TIMEOUT=DATA_REQUEST_TIMEOUT,
                 FRAGMENT_SEND_TIMEOUT=cfg.fragment_send_timeout_ms,
@@ -908,19 +1373,16 @@ class ReadoutAppGenerator:
         mgraph = ModuleGraph(modules, queues=queues)
 
         # Add endpoints and frame producers to DRO data handlers
-        add_dro_eps_and_fps(
+        self.add_dro_eps_and_fps(
             mgraph=mgraph,
             dlh_list=dlhs_mods,
-            RUIDX=RU_DESCRIPTOR.label
         )
 
         if TPG_ENABLED:
         # Add endpoints and frame producers to TP data handlers
-            add_tpg_eps_and_fps(
+            self.add_tpg_eps_and_fps(
                 mgraph=mgraph,
-                # dlh_list=dlhs_mods,
                 tpg_dlh_list=tpg_mods,
-                RUIDX=RU_DESCRIPTOR.label
             )
 
         # Create the application

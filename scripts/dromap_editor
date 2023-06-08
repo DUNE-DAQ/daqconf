@@ -27,11 +27,12 @@ def cli(obj):
 
 @cli.command('load', help="Load map from file")
 @click.argument('path', type=click.Path(exists=True))
-@click.option('--merge', is_flag=True, type=bool, default=False)
+@click.option('-m', '--merge', is_flag=True, type=bool, default=False)
+@click.option('-o', '--offset', type=int, default=0)
 @click.pass_obj
-def load(obj, path, merge):
+def load(obj, path, merge, offset):
     m = obj
-    m.load(path, merge)
+    m.load(path, merge, offset)
 
     console.print(m.as_table())
 

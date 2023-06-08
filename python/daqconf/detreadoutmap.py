@@ -92,21 +92,6 @@ StreamKindTraits = namedtuple("StreamKindTraits", [
 class DetReadoutMapService:
     """Detector - Readout Link mapping"""
 
-    # _tech_map =  {
-        # 'flx': (FelixStreamParameters, dromap.FelixStreamParameters),
-        # 'eth': (EthStreamParameters, dromap.EthStreamParameters),
-    # }
-
-    # _host_label_map = {
-    #     'flx': 'host',
-    #     'eth': 'rx_host',
-    # }
-
-    # _iflabel_map = {
-    #     'flx': 'card',
-    #     'eth': 'rx_iface',
-    # }
-
     _traits_map = {
         'flx': StreamKindTraits(FelixStreamParameters, dromap.FelixStreamParameters, 'host', 'card'),
         'eth': StreamKindTraits(EthStreamParameters, dromap.EthStreamParameters, 'rx_host', 'rx_iface'),
@@ -134,7 +119,7 @@ class DetReadoutMapService:
         self._map = {}
 
 
-    def load(self, map_path: str, merge: bool = False) -> None:
+    def load(self, map_path: str, merge: bool = False, offset: int = 0) -> None:
         
         map_fp = pathlib.Path(map_path)
 
@@ -147,7 +132,12 @@ class DetReadoutMapService:
 
         self._validate_json(data)
         
+
         streams = self._build_streams(data)
+
+        print(f"Offset = {offset}")
+        if offset:
+            streams = [s._replace(src_id = s.src_id + offset) for s in streams]
 
         if merge:
             src_id_max = max(self.get())+1 if self.get() else 0
