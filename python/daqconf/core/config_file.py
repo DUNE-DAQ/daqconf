@@ -2,12 +2,12 @@ import os
 import math
 import sys
 import glob
-import rich.traceback
 from rich.console import Console
 from collections import defaultdict
 from os.path import exists, join
-import random
+import json
 import string
+from pathlib import Path
 
 console = Console()
 # Set moo schema search path
@@ -40,22 +40,48 @@ def _strict_recursive_update(dico1, dico2):
 def parse_json(filename, schemed_object):
     console.log(f"Parsing config json file {filename}")
 
-    with open(filename, 'r') as f:
-        try:
-            import json
-            try:
-                new_parameters = json.load(f)
-                # Validate the heck out of this but that doesn't change the object itself (ARG)
-                _strict_recursive_update(schemed_object.pod(), new_parameters)
-                # now its validated, update the object with moo
-                schemed_object.update(new_parameters)
-            except Exception as e:
-                raise RuntimeError(f'Couldn\'t update the object {schemed_object} with the file {filename},\nError: {e}')
-        except Exception as e:
-            raise RuntimeError(f"Couldn't parse {filename}, error: {str(e)}")
-        return schemed_object
 
-    raise RuntimeError(f"Couldn't find file {filename}")
+    filepath = Path(filename)
+    basepath = filepath.parent
+
+    # First pass, load the main json file
+    with open(filepath, 'r') as f:
+        try:
+            new_parameters = json.load(f)
+        except Exception as e:
+            raise RuntimeError(f"Couldn't parse {filepath}, error: {str(e)}")
+        
+    # second pass, look for references
+    subkeys = [ k for k,v in schemed_object.pod().items() if isinstance(v,dict) ]
+    for k in new_parameters:
+        # look for keys that are associated to dicts in the schemed_obj but here are strings
+        v = new_parameters[k]
+        if isinstance(v,str) and k in subkeys:
+            # It's a string! It's a reference! Try loading it
+            subfile_path = Path(os.path.expandvars(v)).expanduser()
+            if not subfile_path.is_absolute():
+                subfile_path = filepath.parent / subfile_path
+            if not subfile_path.exists():
+                raise RuntimeError(f'Cannot find the file {v} ({subfile_path})')
+        
+            console.log(f"Detected subconfiguration for {k} {v} - loading {subfile_path}")
+            with open(subfile_path, 'r') as f:
+                try:
+                    new_subpars = json.load(f)
+                except Exception as e:
+                    raise RuntimeError(f"Couldn't parse {subfile_path}, error: {str(e)}")
+                new_parameters[k] = new_subpars
+
+
+    try:
+        # Validate the heck out of this but that doesn't change the object itself (ARG)
+        _strict_recursive_update(schemed_object.pod(), new_parameters)
+        # now its validated, update the object with moo
+        schemed_object.update(new_parameters)
+    except Exception as e:
+        raise RuntimeError(f'Couldn\'t update the object {schemed_object} with the file {filename},\nError: {e}')
+
+    return schemed_object
 
 
 # def _recursive_section(sections, data):
