@@ -286,8 +286,8 @@ def cli(
     if hsi.control_hsi_hw and not hsi.use_timing_hsi:
         raise Exception("Timing HSI hardware control can only be enabled if timing HSI hardware is used!")
 
-    if use_k8s and not boot.image:
-        raise Exception("You need to provide an --image if running with k8s")
+    if use_k8s and not boot.k8s_image:
+        raise Exception("You need to define k8s_image if running with k8s")
 
 #    host_id_dict = {}
 #    ru_configs = []

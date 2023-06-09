@@ -653,15 +653,15 @@ def generate_boot(
     if boot_conf.disable_trace:
         del boot["exec"][daq_app_exec_name]["env"]["TRACE_FILE"]
 
-    match boot_conf.RTE_script_settings:
-        case 0:
+    match boot_conf.k8s_rte:
+        case 'auto':
             if (release_or_dev() == 'rel'):
                 boot['rte_script'] = get_rte_script()
 
-        case 1:
+        case 'release':
             boot['rte_script'] = get_rte_script()
 
-        case 2:
+        case 'devarea':
             pass
 
 
@@ -688,7 +688,7 @@ def generate_boot(
             boot_data = boot,
             apps = system.apps,
             boot_order = boot_order,
-            image = boot_conf.image,
+            image = boot_conf.k8s_image,
             base_command_port = boot_conf.base_command_port,
             verbose = verbose,
             control_to_data_network = control_to_data_network,

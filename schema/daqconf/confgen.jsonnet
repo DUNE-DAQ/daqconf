@@ -32,7 +32,8 @@ local cs = {
   tc_intervals:    s.sequence( "TCIntervals",   self.tc_interval, doc="List of TC intervals used by CTCM"),
   readout_time:    s.number(   "ROTime",        "i8", doc="A readout time in ticks"),
   channel_list:    s.sequence( "ChannelList",   self.count, doc="List of offline channels to be masked out from the TPHandler"),
-  pm_kind:         s.enum(     "PMKind", ["k8s", "ssh"]),
+  pm_choice:       s.enum(     "PMChoice", ["k8s", "ssh"], doc="Process Manager choice: ssh or Kubernetes"),
+  rte_choice:      s.enum(     "RTEChoice", ["auto", "release", "devarea"], doc="Kubernetes DAQ application RTC choice"),
   
 
 
@@ -41,16 +42,16 @@ local cs = {
     s.field( "base_command_port", self.port, default=3333, doc="Base port of application command endpoints"),
 
     # Obscure
-    s.field( "RTE_script_settings", self.three_choice, default=0, doc="0 - Use an RTE script iff not in a dev environment, 1 - Always use RTE, 2 - never use RTE"),
     s.field( "capture_env_vars", self.strings, default=['TIMING_SHARE', 'DETCHANNELMAPS_SHARE'], doc="List of variables to capture from the environment"),
     s.field( "disable_trace", self.flag, false, doc="Do not enable TRACE (default TRACE_FILE is /tmp/trace_buffer_${HOSTNAME}_${USER})"),
     s.field( "opmon_impl", self.monitoring_dest, default='local', doc="Info collector service implementation to use"),
     s.field( "ers_impl", self.monitoring_dest, default='local', doc="ERS destination (Kafka used for cern and pocket)"),
     s.field( "pocket_url", self.host, default='127.0.0.1', doc="URL for connecting to Pocket services"),
-    s.field( "process_manager", self.pm_kind, default="ssh", doc="Choice of process manager"),
+    s.field( "process_manager", self.pm_choice, default="ssh", doc="Choice of process manager"),
 
     # K8S
-    s.field( "image", self.string, default="dunedaq/c8-minimal", doc="Which docker image to use"),
+    s.field( "k8s_image", self.string, default="dunedaq/c8-minimal", doc="Which docker image to use"),
+    s.field( "k8s_rte", self.rte_choice, default="auto", doc="0 - Use an RTE script if not in a dev environment, 1 - Always use RTE, 2 - never use RTE"),
 
     # Connectivity Service
     s.field( "use_connectivity_service", self.flag, default=true, doc="Whether to use the ConnectivityService to manage connections"),
@@ -66,7 +67,15 @@ local cs = {
   ]),
 
 
+  daq :  s.record("daq", [
+    s.field( "data_request_timeout_ms", self.count, default=1000, doc="The baseline data request timeout that will be used by modules in the Readout and Trigger subsystems (i.e. any module that produces data fragments). Downstream timeouts, such as the trigger-record-building timeout, are derived from this."),
+    s.field( "use_data_network", self.flag, default = false, doc="Whether to use the data network (Won't work with k8s)"),
+  ], doc="Cmmon daq settings"),
 
+  detector :  s.record("detector", [
+    s.field( "clock_speed_hz", self.freq, default=62500000),
+    s.field( "tpg_channel_map", self.tpg_channel_map, default="ProtoDUNESP1ChannelMap", doc="Channel map for TPG"),
+  ], doc="Global common settings"),
 
   timing: s.record("timing", [
     s.field( "timing_session_name", self.string, default="", doc="Name of the global timing session to use, for timing commands"),

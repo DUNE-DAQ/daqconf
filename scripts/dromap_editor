@@ -156,6 +156,11 @@ def add_eth(obj, force, src_id, **kwargs):
     print(m.as_table())
 
 
+
+@cli.command("add-wib-crate")
+def add_wib_crate():
+    pass
+
 @cli.command("save", help="Save the map to json file")
 @click.argument('path', type=click.Path())
 @click.pass_obj
