@@ -1,0 +1,73 @@
+import asyncio
+import httpx
+
+from textual import log, events
+from textual.app import App, ComposeResult
+from textual.containers import Horizontal, Content, Container, Vertical
+from textual.widget import Widget
+from textual.widgets import Button, Header, Footer, Static, Input, Label, ListView, ListItem
+from textual.reactive import reactive, Reactive
+from textual.message import Message, MessageTarget
+from textual.screen import Screen
+
+class ConfDisplay(Static): pass
+
+class Configs(Static):
+    def __init__(self, hostname, **kwargs):
+        super().__init__(**kwargs)
+        self.hostname = hostname
+        self.conf_list = []
+
+    def on_mount(self) -> None:
+        self.set_interval(0.1, self.update_configs)
+
+    def compose(self) -> ComposeResult:
+        yield Vertical (
+            ListView(
+                ListItem(Static("hello")),
+                ListItem(Static("hello2")),
+                ListItem(Static("hello3"))
+            ),
+            id="verticalconf"
+        )
+    
+    async def update_configs(self) -> None:
+        pass
+        #async with httpx.AsyncClient() as client:
+            #r = await client.post(f'{self.hostname}/nanorcrest/command', auth=auth, data=payload, timeout=60)
+        
+class Versions(Static):
+    def __init__(self, hostname, **kwargs):
+        super().__init__(**kwargs)
+        self.hostname = hostname
+        self.version_list = []  
+
+class Display(Static):
+    def __init__(self, hostname, **kwargs):
+        super().__init__(**kwargs)
+        self.hostname = hostname
+
+
+class ConfViewer(App):
+    CSS_PATH = "daqconf_viewer.css"
+    #BINDINGS = [("d", "toggle_dark", "Toggle dark mode")]
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.hostname = "http://np04-srv-023:31011/ListConfigs"
+
+    def compose(self) -> ComposeResult:
+        """Create child widgets for the app."""
+        yield Container(    
+            Configs(hostname=self.hostname, classes='container', id='configs'),
+            Versions(hostname=self.hostname, classes='container', id='versions'),
+            Display(hostname=self.hostname, classes='container', id='display'),
+            id = 'app-grid'
+        )
+
+        yield Header(show_clock=True)
+        yield Footer()
+
+if __name__ == "__main__":
+    app = ConfViewer()
+    app.run()

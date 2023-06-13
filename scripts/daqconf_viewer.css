@@ -1,0 +1,31 @@
+#app-grid {
+    layout: grid;
+    grid-size: 4 10;
+    grid-columns: 1fr;
+    grid-rows: 1fr;
+    grid-gutter: 1;
+}
+
+#configs {
+    column-span: 1;
+    row-span: 10;
+}
+
+#versions {
+    column-span: 3;
+    row-span: 2;
+}
+
+#display {
+    column-span: 3;
+    row-span: 8;
+}
+
+#verticalconf {
+    height: 20;
+}
+
+.container{
+    margin: 1;
+    border: wide red;
+}
