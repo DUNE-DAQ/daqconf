@@ -16,6 +16,7 @@ moo.otypes.load_types('trigger/faketpcreatorheartbeatmaker.jsonnet')
 moo.otypes.load_types('trigger/txbuffer.jsonnet')
 moo.otypes.load_types('readoutlibs/readoutconfig.jsonnet')
 moo.otypes.load_types('trigger/tpchannelfilter.jsonnet')
+moo.otypes.load_types('trigger/triggerbitwords.jsonnet')
 
 # Import new types
 import dunedaq.trigger.triggeractivitymaker as tam
@@ -28,6 +29,7 @@ import dunedaq.trigger.faketpcreatorheartbeatmaker as heartbeater
 import dunedaq.trigger.txbufferconfig as bufferconf
 import dunedaq.readoutlibs.readoutconfig as readoutconf
 import dunedaq.trigger.tpchannelfilter as chfilter
+import dunedaq.trigger.triggerbitwords as tbw
 
 from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
@@ -70,6 +72,25 @@ def get_buffer_conf(source_id, data_request_timeout):
                                                                                request_timeout_ms = data_request_timeout,
                                                                                warn_on_timeout = False,
                                                                                enable_raw_recording = False))
+
+#===============================================================================
+def get_trigger_bitwords(bitwords, bitwords_map):
+    # process map
+    map_bits = []
+    for item in bitwords_map.items():
+        tmp_pair = (item[1]['tc_type'], item[1]['tc_name'])
+        map_bits.append(tmp_pair)
+    # create bitwords flags
+    final_bit_flags = []
+    for bitword in bitwords:
+        tmp_bit = []
+        for bit_name in bitword:
+             for map_bit in map_bits:
+                 if bit_name == map_bit[1]: 
+                     tmp_bit.append(map_bit[0])
+                     break
+        final_bit_flags.append(tmp_bit) 
+    return final_bit_flags
     
 #===============================================================================
 def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
@@ -104,6 +125,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
                     MLT_READOUT_MAP: dict = {},
                     MLT_USE_BITWORDS: bool = False,
                     MLT_TRIGGER_BITWORDS: dict = {},
+                    MLT_TRIGGER_BITWORDS_MAP: dict = {},
 
                     USE_CHANNEL_FILTER: bool = True,
 
@@ -111,7 +133,12 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
                     DATA_REQUEST_TIMEOUT = 1000,
                     HOST="localhost",
                     DEBUG=False):
-    
+  
+    print("LE HERE")
+    MLT_TRIGGER_FLAGS = get_trigger_bitwords(MLT_TRIGGER_BITWORDS, MLT_TRIGGER_BITWORDS_MAP)
+    print(MLT_TRIGGER_BITWORDS)
+    print(MLT_TRIGGER_FLAGS)
+ 
     # Generate schema for the maker plugins on the fly in the temptypes module
     make_moo_record(ACTIVITY_CONFIG , 'ActivityConf' , 'temptypes')
     make_moo_record(CANDIDATE_CONFIG, 'CandidateConf', 'temptypes')

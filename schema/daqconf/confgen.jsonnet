@@ -6,6 +6,9 @@ local moo = import "moo.jsonnet";
 local sctb = import "ctbmodules/ctbmodule.jsonnet";
 local ctbmodule = moo.oschema.hier(sctb).dunedaq.ctbmodules.ctbmodule;
 
+local tbw = import "trigger/triggerbitwords.jsonnet";
+local tbw_data = moo.oschema.hier(tbw).dunedaq.trigger.triggerbitwords;
+
 local s = moo.oschema.schema("dunedaq.daqconf.confgen");
 local nc = moo.oschema.numeric_constraints;
 // A temporary schema construction context.
@@ -264,6 +267,7 @@ local cs = {
     s.field( "mlt_td_readout_map", self.tc_readout_map, default=self.tc_readout_map, doc="The readout windows assigned to TDs in MLT, based on TC type."),
     s.field( "mlt_use_bitwords", self.flag, default=false, doc="Option to use bitwords (ie trigger types, coincidences) when forming trigger decisions in MLT" ),
     s.field( "mlt_trigger_bitwords", self.bitwords, default=[], doc="Optional dictionary of bitwords to use when forming trigger decisions in MLT" ),
+    s.field( "mlt_trigger_bitwords_map", tbw_data.bitwords_map, [], doc="12345"),
     s.field( "use_custom_maker", self.flag, default=false, doc="Option to use a Custom Trigger Candidate Maker (plugin)"),
     s.field( "ctcm_trigger_types", self.tc_types, default=[4], doc="Optional list of TC types to be used by the Custom Trigger Candidate Maker (plugin)"),
     s.field( "ctcm_trigger_intervals", self.tc_intervals, default=[10000000], doc="Optional list of intervals (clock ticks) for the TC types to be used by the Custom Trigger Candidate Maker (plugin)"),

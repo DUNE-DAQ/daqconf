@@ -29,6 +29,9 @@ import moo.otypes
 moo.otypes.load_types('detchannelmaps/hardwaremapservice.jsonnet')
 import dunedaq.detchannelmaps.hardwaremapservice as hwms
 
+moo.otypes.load_types('trigger/triggerbitwords.jsonnet')
+import dunedaq.trigger.triggerbitwords as tbw
+
 # Add -h as default help option
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(context_settings=CONTEXT_SETTINGS)
@@ -95,7 +98,7 @@ def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown
 
     dpdk_sender = confgen.dpdk_sender(**config_data.dpdk_sender)
     if debug: console.log(f"dpdk_sender configuration object: {dpdk_sender.pod()}")
-
+  
     # Update with command-line options
     if base_command_port != -1:
        boot.base_command_port = base_command_port
@@ -404,7 +407,7 @@ def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown
         MLT_READOUT_MAP = trigger.mlt_td_readout_map,
         MLT_USE_BITWORDS = trigger.mlt_use_bitwords,
         MLT_TRIGGER_BITWORDS = trigger.mlt_trigger_bitwords,
-
+        MLT_TRIGGER_BITWORDS_MAP = trigger.mlt_trigger_bitwords_map,
         USE_CUSTOM_MAKER = trigger.use_custom_maker,
         CTCM_TYPES = trigger.ctcm_trigger_types,
         CTCM_INTERVAL = trigger.ctcm_trigger_intervals,
