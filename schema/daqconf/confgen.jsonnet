@@ -137,7 +137,7 @@ local cs = {
     s.field( "fragment_send_timeout_ms", self.count, default=10, doc="The send timeout that will be used in the readout modules when sending fragments downstream (i.e. to the TRB)."),
     s.field( "enable_tpg", self.flag, default=false, doc="Enable TPG"),
     s.field( "tpg_threshold", self.count, default=120, doc="Select TPG threshold"),
-    s.field( "tpg_algorithm", self.string, default="SWTPG", doc="Select TPG algorithm (SWTPG, AbsRS)"),
+    s.field( "tpg_algorithm", self.string, default="SimpleThreshold", doc="Select TPG algorithm (SimpleThreshold, AbsRS)"),
     s.field( "tpg_channel_mask", self.channel_list, default=[], doc="List of offline channels to be masked out from the TPHandler"),
     // s.field( "enable_firmware_tpg", self.flag, default=false, doc="Enable firmware TPG"),
     // s.field( "dtp_connections_file", self.path, default="${DTPCONTROLS_SHARE}/config/dtp_connections.xml", doc="DTP connections file"),
