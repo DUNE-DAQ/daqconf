@@ -1,24 +1,29 @@
-#app-grid {
+/* 4 columns 10 rows */
+Screen {
     layout: grid;
     grid-size: 4 10;
-    grid-columns: 1fr;
-    grid-rows: 1fr;
     grid-gutter: 1;
 }
 
 #configs {
-    column-span: 1;
     row-span: 10;
+    column-span: 1;
+    height: 100%;
 }
 
 #versions {
-    column-span: 3;
     row-span: 2;
+    column-span: 3;
+    height: 100%;
+    background: green;
 }
 
 #display {
-    column-span: 3;
     row-span: 8;
+    column-span: 3;
+    height: 100%;
+    background: purple;
+    overflow-y: auto;
 }
 
 #verticalconf {
@@ -26,6 +31,13 @@
 }
 
 .container{
-    margin: 1;
     border: wide red;
 }
+
+.vbuttons {
+    align-vertical: middle;
+    width: 5%;
+    margin: 1;
+}
+
+

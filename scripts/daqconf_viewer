@@ -1,5 +1,6 @@
 import asyncio
 import httpx
+import json
 
 from textual import log, events
 from textual.app import App, ComposeResult
@@ -10,42 +11,111 @@ from textual.reactive import reactive, Reactive
 from textual.message import Message, MessageTarget
 from textual.screen import Screen
 
-class ConfDisplay(Static): pass
+auth = ("fooUsr", "barPass")
+
+class LabelItem(ListItem):
+    def __init__(self, label: str) -> None:
+        super().__init__()
+        self.label = label
+
+    def compose( self ) -> ComposeResult:
+        yield Label(self.label)
 
 class Configs(Static):
+    conflist = reactive([])
+
     def __init__(self, hostname, **kwargs):
         super().__init__(**kwargs)
         self.hostname = hostname
-        self.conf_list = []
 
     def on_mount(self) -> None:
         self.set_interval(0.1, self.update_configs)
 
     def compose(self) -> ComposeResult:
-        yield Vertical (
-            ListView(
-                ListItem(Static("hello")),
-                ListItem(Static("hello2")),
-                ListItem(Static("hello3"))
-            ),
-            id="verticalconf"
-        )
-    
-    async def update_configs(self) -> None:
-        pass
-        #async with httpx.AsyncClient() as client:
-            #r = await client.post(f'{self.hostname}/nanorcrest/command', auth=auth, data=payload, timeout=60)
-        
-class Versions(Static):
-    def __init__(self, hostname, **kwargs):
-        super().__init__(**kwargs)
-        self.hostname = hostname
-        self.version_list = []  
+       yield ListView(LabelItem("asfas"))
 
-class Display(Static):
+    async def update_configs(self) -> None:
+        async with httpx.AsyncClient() as client:
+            r = await client.get(f'{self.hostname}/listConfigs', auth=auth, timeout=60)
+        self.conflist = r.json()['configs']
+
+    def watch_conflist(self, conflist:list[str]):
+        label_list = [LabelItem(c) for c in conflist]
+        the_list = self.query_one(ListView)
+        the_list.clear()
+        for item in label_list:
+            the_list.append(item)
+
+    def on_list_view_selected(self, event: ListView.Selected):
+        '''The query gets all children of the app, then we choose Versions.'''
+        confname = event.item.label
+        versions = self.app.query_one(Horizontal)
+        versions.new_conf(confname)
+
+class Versions(Horizontal):
+    vlist = reactive([])
+
     def __init__(self, hostname, **kwargs):
         super().__init__(**kwargs)
         self.hostname = hostname
+        self.current_conf = None
+
+    def on_mount(self) -> None:
+        self.set_interval(0.1, self.update_versions)
+
+    def new_conf(self, conf) -> None:
+        self.current_conf = conf
+
+    async def update_versions(self) -> None:
+        if self.current_conf:
+            async with httpx.AsyncClient() as client:
+                payload = {'name': self.current_conf}
+                r = await client.get(f'{self.hostname}/listVersions', auth=auth, params=payload, timeout=60)
+            self.vlist = r.json()['versions']            #This is a list of ints
+
+    def watch_vlist(self, vlist:list[int]) -> None:
+        old_buttons = self.query(Button)
+        for b in old_buttons:
+           b.remove()
+        for v in vlist:
+            b_id = 'v' + str(v)    #An id can't be just a number for some reason
+            self.mount(Button(str(v), id=b_id, classes='vbuttons', variant='primary'))
+
+    #TODO make buttons smaller, and force them to be in the centre (current position is a coincidence due to the margin)
+    async def on_button_pressed (self, event: Button.Pressed) -> None:
+        button_id = event.button.id
+        version = int(button_id[1:])
+        for v in self.app.query(Vertical):
+            if isinstance(v, Display):
+                await v.get_json(self.current_conf, version)
+                break
+
+class Display(Vertical):
+    confdata = reactive(None)
+
+    def __init__(self, hostname, **kwargs):
+        super().__init__(**kwargs)
+        self.hostname = hostname
+        self.confname = None
+        self.version = None 
+
+    def compose(self) -> ComposeResult:
+       yield Static()
+
+    async def get_json(self, conf, ver) -> None:
+        self.confname = conf
+        self.version = ver
+        if self.confname and self.version:
+            async with httpx.AsyncClient() as client:
+                payload = {'name': self.confname, 'version': self.version}
+                r = await client.get(f'{self.hostname}/retrieveVersion', auth=auth, params=payload, timeout=60)
+            self.confdata = r.json()
+
+    #TODO the output could possibly be made nice with rich.print_json. It should also be able to collapse sections.
+    def watch_confdata(self, confdata:dict) -> None:
+        box = self.query_one(Static)
+        json_str = json.dumps(confdata, indent=2)
+        box.update(json_str)
 
 
 class ConfViewer(App):
@@ -54,16 +124,13 @@ class ConfViewer(App):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.hostname = "http://np04-srv-023:31011/ListConfigs"
+        self.hostname = "http://np04-srv-023:31011"
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
-        yield Container(    
-            Configs(hostname=self.hostname, classes='container', id='configs'),
-            Versions(hostname=self.hostname, classes='container', id='versions'),
-            Display(hostname=self.hostname, classes='container', id='display'),
-            id = 'app-grid'
-        )
+        yield Configs(hostname=self.hostname, classes='container', id='configs')
+        yield Versions(hostname=self.hostname, classes='container', id='versions')
+        yield Display(hostname=self.hostname, classes='container', id='display')
 
         yield Header(show_clock=True)
         yield Footer()
