@@ -1,5 +1,5 @@
 
-from os.path import exists,abspath,dirname
+from os.path import exists,abspath,dirname,expandvars
 from rich.console import Console
 console = Console()
 
@@ -48,7 +48,7 @@ def resolve_asset_file(data_file, verbose):
 
         return filename
 
-    resolved_data_file = Path(os.path.expandvars(data_file)).expanduser().absolute()
+    resolved_data_file = abspath(expandvars(data_file))
     if resolved_data_file != '' and not exists(resolved_data_file):
         raise RuntimeError(f'Cannot find the frames.bin file {data_file}')
 
