@@ -42,28 +42,46 @@ from daqconf.core.conf_utils import Direction, Queue
 import math
 
 #===============================================================================
-def get_fake_hsi_app(RUN_NUMBER=333,
-                     CLOCK_SPEED_HZ: int=62500000,
-                     DATA_RATE_SLOWDOWN_FACTOR: int=1,
-                     TRIGGER_RATE_HZ: int=1,
-                     HSI_SOURCE_ID: int=0,
-                     MEAN_SIGNAL_MULTIPLICITY: int=0,
-                     SIGNAL_EMULATION_MODE: int=0,
-                     ENABLED_SIGNALS: int=0b00000001,
+def get_fake_hsi_app(
+        detector,
+        hsi,
+        daq_common,
+        source_id,
+        # TRIGGER_RATE_HZ: int=1,
+
+                    #  CLOCK_SPEED_HZ: int=62500000,
+                    #  DATA_RATE_SLOWDOWN_FACTOR: int=1,
+                    #  TRIGGER_RATE_HZ: int=1,
+                    #  HSI_SOURCE_ID: int=0,
+                    #  MEAN_SIGNAL_MULTIPLICITY: int=0,
+                    #  SIGNAL_EMULATION_MODE: int=0,
+                    #  ENABLED_SIGNALS: int=0b00000001,
                      QUEUE_POP_WAIT_MS=10,
                      LATENCY_BUFFER_SIZE=100000,
                      DATA_REQUEST_TIMEOUT=1000,
-                     HOST="localhost",
+                    #  HOST="localhost",
                      DEBUG=False):
     
-    region_id=0
-    element_id=0
-    
-    trigger_interval_ticks = 0
-    if TRIGGER_RATE_HZ > 0:
-        trigger_interval_ticks = math.floor((1 / TRIGGER_RATE_HZ) * CLOCK_SPEED_HZ / DATA_RATE_SLOWDOWN_FACTOR)
 
-    startpars = rccmd.StartParams(run=RUN_NUMBER, trigger_rate = TRIGGER_RATE_HZ)
+    CLOCK_SPEED_HZ = detector.clock_speed_hz
+    DATA_RATE_SLOWDOWN_FACTOR = daq_common.data_rate_slowdown_factor
+    # TRIGGER_RATE_HZ = trigger.trigger_rate_hz
+    HSI_SOURCE_ID=source_id
+    MEAN_SIGNAL_MULTIPLICITY = hsi.mean_hsi_signal_multiplicity
+    SIGNAL_EMULATION_MODE = hsi.hsi_signal_emulation_mode
+    ENABLED_SIGNALS =  hsi.enabled_hsi_signals
+    HOST=hsi.host_fake_hsi
+
+    TRIGGER_RATE_HZ: int=1
+
+    # region_id=0
+    # element_id=0
+    
+    # trigger_interval_ticks = 0
+    # if TRIGGER_RATE_HZ > 0:
+    #     trigger_interval_ticks = math.floor((1 / TRIGGER_RATE_HZ) * CLOCK_SPEED_HZ / DATA_RATE_SLOWDOWN_FACTOR)
+
+    # startpars = rccmd.StartParams(run=RUN_NUMBER, trigger_rate = TRIGGER_RATE_HZ)
 
     modules = [DAQModule(name   = 'fhsig',
                          plugin = "FakeHSIEventGenerator",
@@ -72,7 +90,8 @@ def get_fake_hsi_app(RUN_NUMBER=333,
                                               mean_signal_multiplicity=MEAN_SIGNAL_MULTIPLICITY,
                                               signal_emulation_mode=SIGNAL_EMULATION_MODE,
                                               enabled_signals=ENABLED_SIGNALS),
-                         extra_commands = {"start": startpars})]
+                        #  extra_commands = {"start": startpars}
+                        )]
     
     
     modules += [DAQModule(name = f"hsi_datahandler",

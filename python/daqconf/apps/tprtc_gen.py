@@ -30,14 +30,27 @@ from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Direction
 
 #===============================================================================
-def get_tprtc_app(MASTER_DEVICE_NAME="",
-                  TIMING_PARTITION_ID=0,
-                  TRIGGER_MASK=0xff,
-                  RATE_CONTROL_ENABLED=True,
-                  SPILL_GATE_ENABLED=False,
-                  TIMING_SESSION="",
-                  HOST="localhost",
-                  DEBUG=False):
+def get_tprtc_app(
+        timing,
+        # MASTER_DEVICE_NAME="",
+        #   TIMING_PARTITION_ID=0,
+        #   TRIGGER_MASK=0xff,
+        #   RATE_CONTROL_ENABLED=True,
+        #   SPILL_GATE_ENABLED=False,
+        #   TIMING_SESSION="",
+        #   HOST="localhost",                  
+        DEBUG=False
+    ):
+    
+
+    MASTER_DEVICE_NAME=timing.timing_partition_master_device_name
+    TIMING_PARTITION_ID=timing.timing_partition_id
+    TRIGGER_MASK=timing.timing_partition_trigger_mask
+    RATE_CONTROL_ENABLED=timing.timing_partition_rate_control_enabled
+    SPILL_GATE_ENABLED=timing.timing_partition_spill_gate_enabled
+    TIMING_SESSION=timing.timing_session_name
+    HOST=timing.host_tprtc
+
     
     modules = {}
 

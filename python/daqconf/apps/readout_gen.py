@@ -261,19 +261,21 @@ QUEUE_POP_WAIT_MS = 10 # This affects stop time, as each link will wait this lon
 class ReadoutAppGenerator:
     """Utility class to generate readout applications"""
 
-    def __init__(self, readout_cfg):
+    def __init__(self, readout_cfg, det_cfg, daq_cfg):
 
-        self.config = readout_cfg
+        self.ro_cfg = readout_cfg
+        self.det_cfg = det_cfg
+        self.daq_cfg = daq_cfg
 
         excpt = {}
-        for ex in self.config.numa_config['exceptions']:
+        for ex in self.ro_cfg.numa_config['exceptions']:
             excpt[(ex['host'], ex['card'])] = ex
         self.excpt = excpt
 
 
     def get_numa_cfg(self, RU_DESCRIPTOR):
 
-        cfg = self.config
+        cfg = self.ro_cfg
         try:
             ex = self.excpt[(RU_DESCRIPTOR.host_name, RU_DESCRIPTOR.iface)]
             numa_id = ex['numa_id']
@@ -302,7 +304,7 @@ class ReadoutAppGenerator:
         """
         Create a FAKE Card reader module
         """
-        cfg = self.config
+        cfg = self.ro_cfg
 
         conf = sec.Conf(
                 link_confs = [
@@ -311,13 +313,13 @@ class ReadoutAppGenerator:
                             crate_id = s.geo_id.crate_id,
                             slot_id = s.geo_id.slot_id,
                             link_id = s.geo_id.stream_id,
-                            slowdown=cfg.data_rate_slowdown_factor,
+                            slowdown=self.daq_cfg.data_rate_slowdown_factor,
                             queue_name=f"output_{s.src_id}",
                             data_filename = DATA_FILES[s.geo_id.det_id] if s.geo_id.det_id in DATA_FILES.keys() else cfg.default_data_file,
                             emu_frame_error_rate=0
                         ) for s in RU_DESCRIPTOR.streams],
                 use_now_as_first_data_time=cfg.emulated_data_times_start_with_now,
-                clock_speed_hz=cfg.clock_speed_hz,
+                clock_speed_hz=self.det_cfg.clock_speed_hz,
                 queue_timeout_ms = QUEUE_POP_WAIT_MS
                 )
 
@@ -436,7 +438,7 @@ class ReadoutAppGenerator:
         [CR]->queues
         """
 
-        cfg = self.config
+        cfg = self.ro_cfg
 
         eth_ru_bldr = NICReceiverBuilder(RU_DESCRIPTOR)
 
@@ -527,7 +529,7 @@ class ReadoutAppGenerator:
     
         ) -> tuple[list, list]:
 
-        cfg = self.config
+        cfg = self.ro_cfg
 
         # defaults hardcoded values
         default_latency_buffer_alignment_size = 4096
@@ -590,7 +592,7 @@ class ReadoutAppGenerator:
             TPG_CHANNEL_MAP: str,
         ) -> list:
 
-        cfg = self.config
+        cfg = self.ro_cfg
 
         modules = []
 
@@ -627,7 +629,7 @@ class ReadoutAppGenerator:
                         tpg_channel_mask = cfg.tpg_channel_mask,
                         channel_map_name = TPG_CHANNEL_MAP,
                         emulator_mode = cfg.emulator_mode,
-                        clock_speed_hz = (cfg.clock_speed_hz / cfg.data_rate_slowdown_factor),
+                        clock_speed_hz = (self.det_cfg.clock_speed_hz / self.daq_cfg.data_rate_slowdown_factor),
                         error_counter_threshold=default_error_counter_threshold,
                         error_reset_freq=default_error_reset_freq
                     ),
@@ -797,13 +799,12 @@ class ReadoutAppGenerator:
 
 
         numa_id, latency_numa, latency_preallocate, card_override = self.get_numa_cfg(RU_DESCRIPTOR)
-        cfg = self.config
+        cfg = self.ro_cfg
         TPG_ENABLED = cfg.enable_tpg
         DATA_FILES = data_file_map
-        # TPG_CHANNEL_MAP = tpg_channel_map,
         DATA_REQUEST_TIMEOUT=data_timeout_requests
 
-        FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _, _, _ = compute_data_types(RU_DESCRIPTOR.det_id, cfg.clock_speed_hz, RU_DESCRIPTOR.kind)
+        FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _, _, _ = compute_data_types(RU_DESCRIPTOR.det_id, self.det_cfg.clock_speed_hz, RU_DESCRIPTOR.kind)
         
         # TPG is automatically disabled for non wib2 frontends
         TPG_ENABLED = TPG_ENABLED and (FRONTEND_TYPE=='wib2' or FRONTEND_TYPE=='wibeth')
@@ -922,7 +923,7 @@ class ReadoutAppGenerator:
             c = card_override if card_override != -1 else RU_DESCRIPTOR.iface
             readout_app.resources = {
                 f"felix.cern/flx{c}-data": "1", # requesting FLX{c}
-                "memory": "64Gi" # yes bro
+                # "memory": f"{}Gi" # yes bro
             }
 
         dir_names = set()

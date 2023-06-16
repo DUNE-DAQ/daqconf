@@ -29,6 +29,7 @@ def get_tpwriter_app(
                      OUTPUT_PATH=".",
                      APP_NAME="tpwriter",
                      OPERATIONAL_ENVIRONMENT="swtest",
+                     FILE_LABEL = "swtest",
                      MAX_FILE_SIZE=4*1024*1024*1024,
                      DATA_RATE_SLOWDOWN_FACTOR=1,
                      CLOCK_SPEED_HZ=62500000,

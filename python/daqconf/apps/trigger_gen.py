@@ -72,43 +72,82 @@ def get_buffer_conf(source_id, data_request_timeout):
                                                                                enable_raw_recording = False))
     
 #===============================================================================
-def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
-                    DATA_RATE_SLOWDOWN_FACTOR: float = 1,
-                    TP_CONFIG: dict = {},
-                    TOLERATE_INCOMPLETENESS=False,
-                    COMPLETENESS_TOLERANCE=1,
+def get_trigger_app(
+        trigger,
+        detector,
+        daq_common,
+        tp_infos,
+        trigger_data_request_timeout,
+        # CLOCK_SPEED_HZ: int = 62_500_000,
+        # DATA_RATE_SLOWDOWN_FACTOR: float = 1,
+        # TP_CONFIG: dict = {},
+        # TOLERATE_INCOMPLETENESS=False,
+        # COMPLETENESS_TOLERANCE=1,
 
-                    ACTIVITY_PLUGIN: str = 'TriggerActivityMakerPrescalePlugin',
-                    ACTIVITY_CONFIG: dict = dict(prescale=10000),
+        # ACTIVITY_PLUGIN: str = 'TriggerActivityMakerPrescalePlugin',
+        # ACTIVITY_CONFIG: dict = dict(prescale=10000),
 
-                    CANDIDATE_PLUGIN: str = 'TriggerCandidateMakerPrescalePlugin',
-                    CANDIDATE_CONFIG: int = dict(prescale=10),
+        # CANDIDATE_PLUGIN: str = 'TriggerCandidateMakerPrescalePlugin',
+        # CANDIDATE_CONFIG: int = dict(prescale=10),
 
-                    USE_HSI_INPUT = True,
-                    TTCM_S1: int = 1,
-                    TTCM_S2: int = 2,
-                    TRIGGER_WINDOW_BEFORE_TICKS: int = 1000,
-                    TRIGGER_WINDOW_AFTER_TICKS: int = 1000,
-                    HSI_TRIGGER_TYPE_PASSTHROUGH: bool = False,
+        USE_HSI_INPUT = True,
+        # TTCM_S1: int = 1,
+        # TTCM_S2: int = 2,
+        # TRIGGER_WINDOW_BEFORE_TICKS: int = 1000,
+        # TRIGGER_WINDOW_AFTER_TICKS: int = 1000,
+        # HSI_TRIGGER_TYPE_PASSTHROUGH: bool = False,
 
-                    USE_CUSTOM_MAKER: bool = False,
-                    CTCM_TYPES: list = [4],
-                    CTCM_INTERVAL: list = [62500000],
+        # USE_CUSTOM_MAKER: bool = False,
+        # CTCM_TYPES: list = [4],
+        # CTCM_INTERVAL: list = [62500000],
 
-                    MLT_MERGE_OVERLAPPING_TCS: bool = False,
-                    MLT_BUFFER_TIMEOUT: int = 100,
-                    MLT_SEND_TIMED_OUT_TDS: bool = False,
-                    MLT_MAX_TD_LENGTH_MS: int = 1000,
-                    MLT_IGNORE_TC: list = [],
-                    MLT_USE_READOUT_MAP: bool = False,
-                    MLT_READOUT_MAP: dict = {},
+        # MLT_MERGE_OVERLAPPING_TCS: bool = False,
+        # MLT_BUFFER_TIMEOUT: int = 100,
+        # MLT_SEND_TIMED_OUT_TDS: bool = False,
+        # MLT_MAX_TD_LENGTH_MS: int = 1000,
+        # MLT_IGNORE_TC: list = [],
+        # MLT_USE_READOUT_MAP: bool = False,
+        # MLT_READOUT_MAP: dict = {},
 
-                    USE_CHANNEL_FILTER: bool = True,
+        USE_CHANNEL_FILTER: bool = True,
 
-                    CHANNEL_MAP_NAME = "ProtoDUNESP1ChannelMap",
-                    DATA_REQUEST_TIMEOUT = 1000,
-                    HOST="localhost",
-                    DEBUG=False):
+        # CHANNEL_MAP_NAME = "ProtoDUNESP1ChannelMap",
+        # DATA_REQUEST_TIMEOUT = 1000,
+        # HOST="localhost",
+        DEBUG=False
+    ):
+
+    # To cleanup
+    DATA_RATE_SLOWDOWN_FACTOR = daq_common.data_rate_slowdown_factor
+    CLOCK_SPEED_HZ = detector.clock_speed_hz
+    TP_CONFIG = tp_infos
+    TOLERATE_INCOMPLETENESS=trigger.tolerate_incompleteness
+    COMPLETENESS_TOLERANCE=trigger.completeness_tolerance
+    ACTIVITY_PLUGIN = trigger.trigger_activity_plugin
+    ACTIVITY_CONFIG = trigger.trigger_activity_config
+    CANDIDATE_PLUGIN = trigger.trigger_candidate_plugin
+    CANDIDATE_CONFIG = trigger.trigger_candidate_config
+    TTCM_S1=trigger.ttcm_s1
+    TTCM_S2=trigger.ttcm_s2
+    TRIGGER_WINDOW_BEFORE_TICKS = trigger.trigger_window_before_ticks
+    TRIGGER_WINDOW_AFTER_TICKS = trigger.trigger_window_after_ticks
+    HSI_TRIGGER_TYPE_PASSTHROUGH = trigger.hsi_trigger_type_passthrough
+    MLT_MERGE_OVERLAPPING_TCS = trigger.mlt_merge_overlapping_tcs
+    MLT_BUFFER_TIMEOUT = trigger.mlt_buffer_timeout
+    MLT_MAX_TD_LENGTH_MS = trigger.mlt_max_td_length_ms
+    MLT_SEND_TIMED_OUT_TDS = trigger.mlt_send_timed_out_tds
+    MLT_IGNORE_TC = trigger.mlt_ignore_tc
+    MLT_USE_READOUT_MAP = trigger.mlt_use_readout_map
+    MLT_READOUT_MAP = trigger.mlt_td_readout_map
+    USE_CUSTOM_MAKER = trigger.use_custom_maker
+    CTCM_TYPES = trigger.ctcm_trigger_types
+    CTCM_INTERVAL = trigger.ctcm_trigger_intervals
+    CHANNEL_MAP_NAME = detector.tpg_channel_map
+    DATA_REQUEST_TIMEOUT=trigger_data_request_timeout
+    HOST=trigger.host_trigger
+
+
+
     
     # Generate schema for the maker plugins on the fly in the temptypes module
     make_moo_record(ACTIVITY_CONFIG , 'ActivityConf' , 'temptypes')

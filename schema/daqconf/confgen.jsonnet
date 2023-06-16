@@ -32,13 +32,14 @@ local cs = {
   tc_intervals:    s.sequence( "TCIntervals",   self.tc_interval, doc="List of TC intervals used by CTCM"),
   readout_time:    s.number(   "ROTime",        "i8", doc="A readout time in ticks"),
   channel_list:    s.sequence( "ChannelList",   self.count, doc="List of offline channels to be masked out from the TPHandler"),
+  tpg_algo_choice: s.enum(     "TPGAlgoChoice", ["SimpleThreshold", "AbsRS"], doc="Trigger algorithm choice"),
   pm_choice:       s.enum(     "PMChoice", ["k8s", "ssh"], doc="Process Manager choice: ssh or Kubernetes"),
-  rte_choice:      s.enum(     "RTEChoice", ["auto", "release", "devarea"], doc="Kubernetes DAQ application RTC choice"),
+  rte_choice:      s.enum(     "RTEChoice", ["auto", "release", "devarea"], doc="Kubernetes DAQ application RTE choice"),
   
 
 
   boot: s.record("boot", [
-    s.field( "op_env", self.string, default='swtest', doc="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files"),
+    // s.field( "op_env", self.string, default='swtest', doc="Operational environment - used for raw data filename prefix and HDF5 Attribute inside the files"),
     s.field( "base_command_port", self.port, default=3333, doc="Base port of application command endpoints"),
 
     # Obscure
@@ -59,22 +60,20 @@ local cs = {
     s.field( "connectivity_service_threads", self.count, default=2, doc="Number of threads for the gunicorn server that serves connection info"),
     s.field( "connectivity_service_host", self.host, default='localhost', doc="Hostname for the ConnectivityService"),
     s.field( "connectivity_service_port", self.port, default=15000, doc="Port for the ConnectivityService"),
-    s.field( "connectivity_service_interval", self.count, default=1000, doc="Publish interval for the ConnectivityService"),
-    
-    # To move away
-    s.field( "use_data_network", self.flag, default = false, doc="Whether to use the data network (Won't work with k8s)"),
-    s.field( "data_request_timeout_ms", self.count, default=1000, doc="The baseline data request timeout that will be used by modules in the Readout and Trigger subsystems (i.e. any module that produces data fragments). Downstream timeouts, such as the trigger-record-building timeout, are derived from this."),
-  ]),
+    s.field( "connectivity_service_interval", self.count, default=1000, doc="Publish interval for the ConnectivityService")
+    ]),
 
 
-  daq :  s.record("daq", [
+  daq_common :  s.record("daq_common", [
     s.field( "data_request_timeout_ms", self.count, default=1000, doc="The baseline data request timeout that will be used by modules in the Readout and Trigger subsystems (i.e. any module that produces data fragments). Downstream timeouts, such as the trigger-record-building timeout, are derived from this."),
     s.field( "use_data_network", self.flag, default = false, doc="Whether to use the data network (Won't work with k8s)"),
-  ], doc="Cmmon daq settings"),
+    s.field( "data_rate_slowdown_factor",self.count, default=1, doc="Factor by which to suppress data generation. Former -s"),
+  ], doc="Cmmon daq_common settings"),
 
   detector :  s.record("detector", [
+    s.field( "op_env", self.string, default='swtest', doc="Operational environment - used for HDF5 Attribute inside the files"),
     s.field( "clock_speed_hz", self.freq, default=62500000),
-    s.field( "tpg_channel_map", self.tpg_channel_map, default="ProtoDUNESP1ChannelMap", doc="Channel map for TPG"),
+    s.field( "tpg_channel_map", self.tpg_channel_map, default="PD2HDChannelMap", doc="Channel map for TPG"),
   ], doc="Global common settings"),
 
   timing: s.record("timing", [
@@ -139,7 +138,9 @@ local cs = {
     s.field( "latency_buffer_numa_aware", self.flag, default=false, doc="Enable NUMA-aware mode for the Latency Buffer"),
     s.field( "latency_buffer_preallocation", self.flag, default=false, doc="Enable Latency Buffer preallocation"),
   ], doc="Exception to the default NUMA ID for FELIX cards"),
+
   numa_exceptions: s.sequence( "NUMAExceptions", self.numa_exception, doc="Exceptions to the default NUMA ID"),
+  
   numa_config: s.record("numa_config", [
     s.field( "default_id", self.count, default=0, doc="Default NUMA ID for FELIX cards"),
     s.field( "default_latency_numa_aware", self.flag, default=false, doc="Default for Latency Buffer NUMA awareness"),
@@ -149,26 +150,30 @@ local cs = {
 
   readout: s.record("readout", [
     s.field( "detector_readout_map_file", self.path, default='./DetectorReadoutMap.json', doc="File containing detector hardware map for configuration to run"),
-    s.field( "clock_speed_hz", self.freq, default=62500000),
     s.field( "use_fake_data_producers", self.flag, default=false, doc="Use fake data producers that respond with empty fragments immediately instead of (fake) cards and DLHs"),
-    s.field( "emulator_mode", self.flag, default=false, doc="If active, timestamps of data frames are overwritten when processed by the readout. This is necessary if the felix card does not set correct timestamps. Former -e"),
-    s.field( "thread_pinning_file", self.path, default="", doc="A thread pinning configuration file that gets executed after conf."),
-    s.field( "data_rate_slowdown_factor",self.count, default=1, doc="Factor by which to suppress data generation. Former -s"),
+    // s.field( "memory_limit_gb", self.count, default=64, doc="Application memory limit in GB")
+    // Fake cards
     s.field( "use_fake_cards", self.flag, default=false, doc="Use fake cards"),
+    s.field( "emulated_data_times_start_with_now", self.flag, default=false, doc="If active, the timestamp of the first emulated data frame is set to the current wallclock time"),
     s.field( "default_data_file", self.path, default='asset://?label=ProtoWIB&subsystem=readout', doc="File containing data frames to be replayed by the fake cards. Former -d. Uses the asset manager, can also be 'asset://?checksum=somelonghash', or 'file://somewhere/frames.bin' or 'frames.bin'"),
     s.field( "data_files", self.data_files, default=[], doc="Files to use by detector type"),
+    // DPDK
+    s.field( "dpdk_eal_args", self.string, default='-l 0-1 -n 3 -- -m [0:1].0 -j', doc='Args passed to the EAL in DPDK'),
+    s.field( "dpdk_rxqueues_per_lcore", self.count, default=1, doc='Number of rx queues per core'),
+    // FLX
+    s.field( "numa_config", self.numa_config, default=self.numa_config, doc='Configuration of FELIX NUMA IDs'),
+    // DLH
+    s.field( "emulator_mode", self.flag, default=false, doc="If active, timestamps of data frames are overwritten when processed by the readout. This is necessary if the felix card does not set correct timestamps. Former -e"),
+    s.field( "thread_pinning_file", self.path, default="", doc="A thread pinning configuration file that gets executed after conf."),
+    // s.field( "data_rate_slowdown_factor",self.count, default=1, doc="Factor by which to suppress data generation. Former -s"),
     s.field( "latency_buffer_size", self.count, default=499968, doc="Size of the latency buffers (in number of elements)"),
     s.field( "fragment_send_timeout_ms", self.count, default=10, doc="The send timeout that will be used in the readout modules when sending fragments downstream (i.e. to the TRB)."),
     s.field( "enable_tpg", self.flag, default=false, doc="Enable TPG"),
     s.field( "tpg_threshold", self.count, default=120, doc="Select TPG threshold"),
-    s.field( "tpg_algorithm", self.string, default="SWTPG", doc="Select TPG algorithm (SWTPG, AbsRS)"),
+    s.field( "tpg_algorithm", self.string, default="SimpleThreshold", doc="Select TPG algorithm (SimpleThreshold, AbsRS)"),
     s.field( "tpg_channel_mask", self.channel_list, default=[], doc="List of offline channels to be masked out from the TPHandler"),
     s.field( "enable_raw_recording", self.flag, default=false, doc="Add queues and modules necessary for the record command"),
-    s.field( "raw_recording_output_dir", self.path, default='.', doc="Output directory where recorded data is written to. Data for each link is written to a separate file"),
-    s.field( "dpdk_eal_args", self.string, default='-l 0-1 -n 3 -- -m [0:1].0 -j', doc='Args passed to the EAL in DPDK'),
-    s.field( "dpdk_rxqueues_per_lcore", self.count, default=1, doc='Number of rx queues per core'),
-    s.field( "numa_config", self.numa_config, default=self.numa_config, doc='Configuration of FELIX NUMA IDs'),
-    s.field( "emulated_data_times_start_with_now", self.flag, default=false, doc="If active, the timestamp of the first emulated data frame is set to the current wallclock time"),
+    s.field( "raw_recording_output_dir", self.path, default='.', doc="Output directory where recorded data is written to. Data for each link is written to a separate file")
   ]),
 
   trigger_algo_config: s.record("trigger_algo_config", [
@@ -264,10 +269,10 @@ local cs = {
     s.field( "trigger_candidate_plugin", self.string, default='TriggerCandidateMakerPrescalePlugin', doc="Trigger candidate algorithm plugin"),
     s.field( "trigger_candidate_config", self.trigger_algo_config, default=self.trigger_algo_config, doc="Trigger candidate algorithm config (string containing python dictionary)"),
     s.field( "hsi_trigger_type_passthrough", self.flag, default=false, doc="Option to override trigger type in the MLT"),
-    s.field( "enable_tpset_writing", self.flag, default=false, doc="Enable the writing of TPs to disk (only works with enable_tpg or enable_firmware_tpg)"),
-    s.field( "tpset_output_path", self.path,default='.', doc="Output directory for TPSet stream files"),
-    s.field( "tpset_output_file_size",self.count, default=4*1024*1024*1024, doc="The size threshold when TPSet stream files are closed (in bytes)"),
-    s.field( "tpg_channel_map", self.tpg_channel_map, default="ProtoDUNESP1ChannelMap", doc="Channel map for TPG"),
+    // s.field( "enable_tpset_writing", self.flag, default=false, doc="Enable the writing of TPs to disk (only works with enable_tpg or enable_firmware_tpg)"),
+    // s.field( "tpset_output_path", self.path,default='.', doc="Output directory for TPSet stream files"),
+    // s.field( "tpset_output_file_size",self.count, default=4*1024*1024*1024, doc="The size threshold when TPSet stream files are closed (in bytes)"),
+    // s.field( "tpg_channel_map", self.tpg_channel_map, default="ProtoDUNESP1ChannelMap", doc="Channel map for TPG"),
     s.field( "mlt_merge_overlapping_tcs", self.flag, default=true, doc="Option to turn off merging of overlapping TCs when forming TDs in MLT"),
     s.field( "mlt_buffer_timeout", self.count, default=100, doc="Timeout (buffer) to wait for new overlapping TCs before sending TD"),
     s.field( "mlt_send_timed_out_tds", self.flag, default=true, doc="Option to drop TD if TC comes out of timeout window"),
@@ -281,7 +286,7 @@ local cs = {
   ]),
 
   dataflowapp: s.record("dataflowapp",[
-    s.field("app_name", self.string, default="dataflow0"),
+    s.field( "app_name", self.string, default="dataflow0"),
     s.field( "output_paths",self.paths, default=['.'], doc="Location(s) for the dataflow app to write data. Former -o"),
     s.field( "host_df", self.host, default='localhost'),
     s.field( "max_file_size",self.count, default=4*1024*1024*1024, doc="The size threshold when raw data files are closed (in bytes)"),
@@ -289,12 +294,17 @@ local cs = {
     s.field( "max_trigger_record_window",self.count, default=0, doc="The maximum size for the window of data that will included in a single TriggerRecord (in ticks). Readout windows that are longer than this size will result in TriggerRecords being split into a sequence of TRs. A zero value for this parameter means no splitting."),
 
   ], doc="Element of the dataflow.apps array"),
+
   dataflowapps: s.sequence("dataflowapps", self.dataflowapp, doc="List of dataflowapp instances"),
 
   dataflow: s.record("dataflow", [
     s.field( "host_dfo", self.host, default='localhost', doc="Sets the host for the DFO app"),
-    s.field("apps", self.dataflowapps, default=[], doc="Configuration for the dataflow apps (see dataflowapp for options)"),
+    s.field( "apps", self.dataflowapps, default=[], doc="Configuration for the dataflow apps (see dataflowapp for options)"),
     s.field( "token_count",self.count, default=10, doc="Number of tokens the dataflow apps give to the DFO. Former -c"),
+    // Trigger 
+    s.field( "enable_tpset_writing", self.flag, default=false, doc="Enable the writing of TPs to disk (only works with enable_tpg or enable_firmware_tpg)"),
+    s.field( "tpset_output_path", self.path,default='.', doc="Output directory for TPSet stream files"),
+    s.field( "tpset_output_file_size",self.count, default=4*1024*1024*1024, doc="The size threshold when TPSet stream files are closed (in bytes)"),
   ]),
 
   dqm: s.record("dqm", [
@@ -321,14 +331,16 @@ local cs = {
   ]),
 
   daqconf_multiru_gen: s.record('daqconf_multiru_gen', [
-    s.field('boot',     self.boot,    default=self.boot,      doc='Boot parameters'),
-    s.field('dataflow', self.dataflow, default=self.dataflow, doc='Dataflow paramaters'),
-    s.field('dqm',      self.dqm,      default=self.dqm,      doc='DQM parameters'),
-    s.field('hsi',      self.hsi,      default=self.hsi,      doc='HSI parameters'),
-    s.field('ctb_hsi',  self.ctb_hsi,  default=self.ctb_hsi,  doc='CTB parameters'),
-    s.field('readout',  self.readout,  default=self.readout,  doc='Readout parameters'),
-    s.field('timing',   self.timing,   default=self.timing,   doc='Timing parameters'),
-    s.field('trigger',  self.trigger,  default=self.trigger,  doc='Trigger parameters'),
+    s.field('detector',    self.detector,   default=self.detector,     doc='Boot parameters'),
+    s.field('daq_common',  self.daq_common, default=self.daq_common,   doc='DAQ common parameters'),
+    s.field('boot',        self.boot,       default=self.boot,         doc='Boot parameters'),
+    s.field('dataflow',    self.dataflow,   default=self.dataflow,     doc='Dataflow paramaters'),
+    s.field('dqm',         self.dqm,        default=self.dqm,          doc='DQM parameters'),
+    s.field('hsi',         self.hsi,        default=self.hsi,          doc='HSI parameters'),
+    s.field('ctb_hsi',     self.ctb_hsi,    default=self.ctb_hsi,      doc='CTB parameters'),
+    s.field('readout',     self.readout,    default=self.readout,      doc='Readout parameters'),
+    s.field('timing',      self.timing,     default=self.timing,       doc='Timing parameters'),
+    s.field('trigger',     self.trigger,    default=self.trigger,      doc='Trigger parameters'),
     s.field('dpdk_sender', self.dpdk_sender, default=self.dpdk_sender, doc='DPDK sender parameters'),
   ]),
 

@@ -836,8 +836,10 @@ def write_json_files(app_command_datas, system_command_datas, json_dir, verbose=
 
     # System commands
     for cmd, cfg in system_command_datas.items():
-        with open(json_dir / f'{cmd}.json', 'w') as f:
+        data_file = json_dir / f'{cmd}.json'
+        with open(data_file, 'w') as f:
             json.dump(cfg, f, indent=4, sort_keys=True)
+        console.log(f"- {data_file} generated")
 
     console.log(f"System configuration generated in directory '{json_dir}'")
 
