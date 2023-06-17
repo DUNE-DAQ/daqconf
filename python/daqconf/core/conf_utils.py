@@ -558,16 +558,16 @@ def generate_boot(
 
     if conf.ers_impl == 'cern':
         use_kafka = True
-        ers_settings["INFO"] =    "erstrace,throttle,lstdout,erskafka(monkafka.cern.ch:30092)"
-        ers_settings["WARNING"] = "erstrace,throttle,lstdout,erskafka(monkafka.cern.ch:30092)"
-        ers_settings["ERROR"] =   "erstrace,throttle,lstdout,erskafka(monkafka.cern.ch:30092)"
-        ers_settings["FATAL"] =   "erstrace,lstdout,erskafka(monkafka.cern.ch:30092)"
+        ers_settings["INFO"] =    "erstrace,throttle,lstdout,ersstream(monkafka.cern.ch:30092)"
+        ers_settings["WARNING"] = "erstrace,throttle,lstdout,ersstream(monkafka.cern.ch:30092)"
+        ers_settings["ERROR"] =   "erstrace,throttle,lstdout,ersstream(monkafka.cern.ch:30092)"
+        ers_settings["FATAL"] =   "erstrace,lstdout,ersstream(monkafka.cern.ch:30092)"
     elif conf.ers_impl == 'pocket':
         use_kafka = True
-        ers_settings["INFO"] =    "erstrace,throttle,lstdout,erskafka(" + conf.pocket_url + ":30092)"
-        ers_settings["WARNING"] = "erstrace,throttle,lstdout,erskafka(" + conf.pocket_url + ":30092)"
-        ers_settings["ERROR"] =   "erstrace,throttle,lstdout,erskafka(" + conf.pocket_url + ":30092)"
-        ers_settings["FATAL"] =   "erstrace,lstdout,erskafka(" + conf.pocket_url + ":30092)"
+        ers_settings["INFO"] =    "erstrace,throttle,lstdout,ersstream(" + conf.pocket_url + ":30092)"
+        ers_settings["WARNING"] = "erstrace,throttle,lstdout,ersstream(" + conf.pocket_url + ":30092)"
+        ers_settings["ERROR"] =   "erstrace,throttle,lstdout,ersstream(" + conf.pocket_url + ":30092)"
+        ers_settings["FATAL"] =   "erstrace,lstdout,ersstream(" + conf.pocket_url + ":30092)"
     else:
         use_kafka = False
         ers_settings["INFO"] =    "erstrace,throttle,lstdout"
