@@ -140,7 +140,7 @@ local cs = {
   ], doc="Exception to the default NUMA ID for FELIX cards"),
 
   numa_exceptions: s.sequence( "NUMAExceptions", self.numa_exception, doc="Exceptions to the default NUMA ID"),
-  
+    
   numa_config: s.record("numa_config", [
     s.field( "default_id", self.count, default=0, doc="Default NUMA ID for FELIX cards"),
     s.field( "default_latency_numa_aware", self.flag, default=false, doc="Default for Latency Buffer NUMA awareness"),
@@ -258,7 +258,7 @@ local cs = {
     s.field( "trigger_window_before_ticks",self.count, default=1000, doc="Trigger window before marker. Former -b"),
     s.field( "trigger_window_after_ticks", self.count, default=1000, doc="Trigger window after marker. Former -a"),
     s.field( "host_trigger", self.host, default='localhost', doc='Host to run the trigger app on'),
-    s.field( "host_tpw", self.host, default='localhost', doc='Host to run the TPWriter app on'),
+    // s.field( "host_tpw", self.host, default='localhost', doc='Host to run the TPWriter app on'),
     # trigger options
     s.field( "completeness_tolerance", self.count, default=1, doc="Maximum number of inactive queues we will tolerate."),
     s.field( "tolerate_incompleteness", self.flag, default=false, doc="Flag to tell trigger to tolerate inactive queues."),
@@ -302,6 +302,7 @@ local cs = {
     s.field( "apps", self.dataflowapps, default=[], doc="Configuration for the dataflow apps (see dataflowapp for options)"),
     s.field( "token_count",self.count, default=10, doc="Number of tokens the dataflow apps give to the DFO. Former -c"),
     // Trigger 
+    s.field( "host_tpw", self.host, default='localhost', doc='Host to run the TPWriter app on'),
     s.field( "enable_tpset_writing", self.flag, default=false, doc="Enable the writing of TPs to disk (only works with enable_tpg or enable_firmware_tpg)"),
     s.field( "tpset_output_path", self.path,default='.', doc="Output directory for TPSet stream files"),
     s.field( "tpset_output_file_size",self.count, default=4*1024*1024*1024, doc="The size threshold when TPSet stream files are closed (in bytes)"),

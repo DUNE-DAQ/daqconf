@@ -42,34 +42,16 @@ def get_timing_hsi_app(
                 daq_common,
                 source_id,
                 timing_session_name,
-                # TRIGGER_RATE_HZ: int = 1,
-                # CLOCK_SPEED_HZ: int = 62500000,
-                # TRIGGER_RATE_HZ: int = 1,
-                # DATA_RATE_SLOWDOWN_FACTOR: int=1,
-                # CONTROL_HSI_HARDWARE = False,
-                # READOUT_PERIOD_US: int = 1e3,
-                # HSI_ENDPOINT_ADDRESS = 1,
-                # HSI_ENDPOINT_PARTITION = 0,
-                # HSI_RE_MASK = 0x20000,
-                # HSI_FE_MASK = 0,
-                # HSI_INV_MASK = 0,
-                # HSI_SOURCE = 1,
-                # HSI_SOURCE_ID = 0,
-                # CONNECTIONS_FILE="${TIMING_SHARE}/config/etc/connections.xml",
-                # HSI_DEVICE_NAME="BOREAS_TLU",
                 UHAL_LOG_LEVEL="notice",
                 QUEUE_POP_WAIT_MS=10,
                 LATENCY_BUFFER_SIZE=100000,
                 DATA_REQUEST_TIMEOUT=1000,
-                # TIMING_SESSION="",
-                # HARDWARE_STATE_RECOVERY_ENABLED=True,
-                # HOST="localhost",
                 DEBUG=False):
 
 
 
 
-
+    # Temp vars
     CLOCK_SPEED_HZ = detector.clock_speed_hz
     # TRIGGER_RATE_HZ = trigger.trigger_rate_hz
     DATA_RATE_SLOWDOWN_FACTOR = daq_common.data_rate_slowdown_factor

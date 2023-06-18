@@ -30,31 +30,56 @@ from detdataformats._daq_detdataformats_py import *
 # Time to wait on pop()
 QUEUE_POP_WAIT_MS = 100
 
-def get_dqm_app(DQM_IMPL='',
-                DATA_RATE_SLOWDOWN_FACTOR=1,
-                CLOCK_SPEED_HZ=62500000,
-                DQMIDX=0,
-                MAX_NUM_FRAMES=32768,
-                KAFKA_ADDRESS='',
-                KAFKA_TOPIC='',
-                CMAP='HD',
-                RAW_PARAMS=[60, 50],
-                RMS_PARAMS=[10, 1000],
-                STD_PARAMS=[10, 1000],
-                FOURIER_CHANNEL_PARAMS=[600, 100],
-                FOURIER_PLANE_PARAMS=[60, 1000],
-                LINKS=[],
-                HOST="localhost",
-                MODE="readout",
-                DF_RATE=10,
-                DF_ALGS='raw std fourier_plane',
-                DF_TIME_WINDOW=0,
-                # DRO_CONFIG=None,
-                RU_STREAMS=None,
-                RU_APPNAME="ru_0",
-                TRB_DQM_SOURCEID_OFFSET=0,
-                DEBUG=False,
-                ):
+def get_dqm_app(
+        dqm,
+        detector,
+        daq_common,
+
+        # DQM_IMPL='',
+        # DATA_RATE_SLOWDOWN_FACTOR=1,
+        # CLOCK_SPEED_HZ=62500000,
+        DQMIDX=0,
+        # MAX_NUM_FRAMES=32768,
+        # KAFKA_ADDRESS='',
+        # KAFKA_TOPIC='',
+        # CMAP='HD',
+        # RAW_PARAMS=[60, 50],
+        # RMS_PARAMS=[10, 1000],
+        # STD_PARAMS=[10, 1000],
+        # FOURIER_CHANNEL_PARAMS=[600, 100],
+        # FOURIER_PLANE_PARAMS=[60, 1000],
+        LINKS=[],
+        # HOST="localhost",
+        MODE="readout",
+        DF_RATE=10,
+        DF_ALGS='raw std fourier_plane',
+        DF_TIME_WINDOW=0,
+        # DRO_CONFIG=None,
+        RU_STREAMS=None,
+        RU_APPNAME="ru_0",
+        TRB_DQM_SOURCEID_OFFSET=0,
+        DEBUG=False,
+    ):
+
+
+    DQM_IMPL=dqm.impl
+    DATA_RATE_SLOWDOWN_FACTOR=daq_common.data_rate_slowdown_factor
+    CLOCK_SPEED_HZ=detector.clock_speed_hz
+    MAX_NUM_FRAMES=dqm.max_num_frames
+    # DQMIDX = ru_i
+    KAFKA_ADDRESS=dqm.kafka_address
+    KAFKA_TOPIC=dqm.kafka_topic
+    CMAP=dqm.cmap
+    RAW_PARAMS=dqm.raw_params
+    RMS_PARAMS=dqm.rms_params
+    STD_PARAMS=dqm.std_params
+    FOURIER_CHANNEL_PARAMS=dqm.fourier_channel_params
+    FOURIER_PLANE_PARAMS=dqm.fourier_plane_params
+    # LINKS=dqm_links
+    # RU_APPNAME=ru_name
+    # TRB_DQM_SOURCEID_OFFSET=trb_dqm_sourceid_offset
+    HOST=dqm.host_dqm[DQMIDX % len(dqm.host_dqm)]
+    # RU_STREAMS=ru_desc.streams
 
     FRONTEND_TYPE = DetID.subdetector_to_string(DetID.Subdetector(RU_STREAMS[0].geo_id.det_id))
     if ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 50000000):
@@ -115,7 +140,7 @@ def get_dqm_app(DQM_IMPL='',
     mgraph = ModuleGraph(modules)
 
     if MODE == 'readout':
-        mgraph.add_endpoint(f"timesync_{RU_APPNAME}_.*", "dqmprocessor.timesync_input", "TimeSync", Direction.IN, is_pubsub=True)
+        mgraph.add_endpoint(f"timesync_.*", "dqmprocessor.timesync_input", "TimeSync", Direction.IN, is_pubsub=True)
         mgraph.connect_modules("dqmprocessor.trigger_decision_output", "trb_dqm.trigger_decision_input", "TriggerDecision", 'trigger_decision_q_dqm')
         mgraph.connect_modules('trb_dqm.trigger_record_output', 'dqmprocessor.trigger_record_input', "TriggerRecord", 'trigger_record_q_dqm', toposort=False)  
     else:

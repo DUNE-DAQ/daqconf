@@ -47,20 +47,12 @@ def get_fake_hsi_app(
         hsi,
         daq_common,
         source_id,
-        # TRIGGER_RATE_HZ: int=1,
-
-                    #  CLOCK_SPEED_HZ: int=62500000,
-                    #  DATA_RATE_SLOWDOWN_FACTOR: int=1,
-                    #  TRIGGER_RATE_HZ: int=1,
-                    #  HSI_SOURCE_ID: int=0,
-                    #  MEAN_SIGNAL_MULTIPLICITY: int=0,
-                    #  SIGNAL_EMULATION_MODE: int=0,
-                    #  ENABLED_SIGNALS: int=0b00000001,
-                     QUEUE_POP_WAIT_MS=10,
-                     LATENCY_BUFFER_SIZE=100000,
-                     DATA_REQUEST_TIMEOUT=1000,
-                    #  HOST="localhost",
-                     DEBUG=False):
+        QUEUE_POP_WAIT_MS=10,
+        LATENCY_BUFFER_SIZE=100000,
+        DATA_REQUEST_TIMEOUT=1000,
+        #  HOST="localhost",
+        DEBUG=False
+        ):
     
 
     CLOCK_SPEED_HZ = detector.clock_speed_hz

@@ -200,10 +200,12 @@ def make_network_connection(the_system, endpoint_name, data_type, in_apps, out_a
     if len(in_apps) > 1:
         raise ValueError(f"Connection with name {endpoint_name} has multiple receivers, which is unsupported for a network connection!")
 
+    sender_app = in_apps[0]
     port = the_system.next_unassigned_port() if not use_connectivity_service or use_k8s else '*'
-    address_sender = f'tcp://{{{in_apps[0]}}}:{port}' if not use_k8s else f'tcp://{in_apps[0]}:{port}'
-    conn_id = conn.ConnectionId(uid=endpoint_name, data_type=data_type)
-    the_system.connections[in_apps[0]] += [conn.Connection(id=conn_id, connection_type="kSendRecv", uri=address_sender)]
+    address_sender = f'tcp://{{{sender_app}}}:{port}' if not use_k8s else f'tcp://{sender_app}:{port}'
+    conn_uid = f"{sender_app}.{endpoint_name}"
+    conn_id = conn.ConnectionId(uid=conn_uid, data_type=data_type)
+    the_system.connections[sender_app] += [conn.Connection(id=conn_id, connection_type="kSendRecv", uri=address_sender)]
     if not use_connectivity_service:
         for app in set(out_apps):
             the_system.connections[app] += [conn.Connection(id=conn_id, connection_type="kSendRecv", uri=address_sender)]
@@ -317,17 +319,18 @@ def make_system_connections(the_system, verbose=False, use_k8s=False, use_connec
                 subscribers += [endpoint["app"]]
             else:
                 publishers += [endpoint["app"]]
-                if endpoint['endpoint'].external_name not in pubsub_connectionids:
+                conn_uid = f"{endpoint['app']}.{endpoint['endpoint'].external_name}"
+                if conn_uid not in pubsub_connectionids:
                     port = the_system.next_unassigned_port() if not use_connectivity_service or use_k8s else '*'
                     address = f'tcp://{{{endpoint["app"]}}}:{port}' if not use_k8s else f'tcp://{endpoint["app"]}:{port}'
-                    conn_id =conn.ConnectionId( uid=endpoint['endpoint'].external_name, data_type=endpoint['endpoint'].data_type)
-                    pubsub_connectionids[endpoint['endpoint'].external_name] = conn.Connection(id=conn_id,
+                    conn_id =conn.ConnectionId( uid=conn_uid, data_type=endpoint['endpoint'].data_type)
+                    pubsub_connectionids[conn_uid] = conn.Connection(id=conn_id,
                         connection_type="kPubSub",
                         uri=address
                     )
-                topic_connectionuids += [endpoint['endpoint'].external_name]
+                topic_connectionuids += [conn_uid]
                 if endpoint['app'] not in publisher_uids.keys(): publisher_uids[endpoint["app"]] = []
-                publisher_uids[endpoint["app"]] += [endpoint['endpoint'].external_name]
+                publisher_uids[endpoint["app"]] += [conn_uid]
 
         if len(subscribers) == 0 and check_endpoints:
             raise ValueError(f"Data Type {topic} has no subscribers!")

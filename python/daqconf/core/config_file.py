@@ -42,7 +42,7 @@ def parse_json(filename, schemed_object):
 
 
     filepath = Path(filename)
-    basepath = filepath.parent
+    # basepath = filepath.parent
 
     # First pass, load the main json file
     with open(filepath, 'r') as f:

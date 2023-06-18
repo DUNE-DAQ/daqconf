@@ -78,46 +78,12 @@ def get_trigger_app(
         daq_common,
         tp_infos,
         trigger_data_request_timeout,
-        # CLOCK_SPEED_HZ: int = 62_500_000,
-        # DATA_RATE_SLOWDOWN_FACTOR: float = 1,
-        # TP_CONFIG: dict = {},
-        # TOLERATE_INCOMPLETENESS=False,
-        # COMPLETENESS_TOLERANCE=1,
-
-        # ACTIVITY_PLUGIN: str = 'TriggerActivityMakerPrescalePlugin',
-        # ACTIVITY_CONFIG: dict = dict(prescale=10000),
-
-        # CANDIDATE_PLUGIN: str = 'TriggerCandidateMakerPrescalePlugin',
-        # CANDIDATE_CONFIG: int = dict(prescale=10),
-
         USE_HSI_INPUT = True,
-        # TTCM_S1: int = 1,
-        # TTCM_S2: int = 2,
-        # TRIGGER_WINDOW_BEFORE_TICKS: int = 1000,
-        # TRIGGER_WINDOW_AFTER_TICKS: int = 1000,
-        # HSI_TRIGGER_TYPE_PASSTHROUGH: bool = False,
-
-        # USE_CUSTOM_MAKER: bool = False,
-        # CTCM_TYPES: list = [4],
-        # CTCM_INTERVAL: list = [62500000],
-
-        # MLT_MERGE_OVERLAPPING_TCS: bool = False,
-        # MLT_BUFFER_TIMEOUT: int = 100,
-        # MLT_SEND_TIMED_OUT_TDS: bool = False,
-        # MLT_MAX_TD_LENGTH_MS: int = 1000,
-        # MLT_IGNORE_TC: list = [],
-        # MLT_USE_READOUT_MAP: bool = False,
-        # MLT_READOUT_MAP: dict = {},
-
         USE_CHANNEL_FILTER: bool = True,
-
-        # CHANNEL_MAP_NAME = "ProtoDUNESP1ChannelMap",
-        # DATA_REQUEST_TIMEOUT = 1000,
-        # HOST="localhost",
         DEBUG=False
     ):
 
-    # To cleanup
+    # Temp variables, To cleanup
     DATA_RATE_SLOWDOWN_FACTOR = daq_common.data_rate_slowdown_factor
     CLOCK_SPEED_HZ = detector.clock_speed_hz
     TP_CONFIG = tp_infos
