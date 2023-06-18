@@ -394,7 +394,8 @@ def make_app_command_data(system, app, appkey, verbose=False, use_k8s=False, use
         module, name = endpoint.internal_name.split(".")
         if verbose:
             console.log(f"module, name= {module}, {name}, endpoint.external_name={endpoint.external_name}, endpoint.direction={endpoint.direction}")
-        app_connrefs[module] += [appfwk.ConnectionReference(name=name, uid=endpoint.external_name)]
+        conn_uid = f"{appkey}.{endpoint.external_name}"
+        app_connrefs[module] += [appfwk.ConnectionReference(name=name, uid=conn_uid)]
 
     for queue in app.modulegraph.queues:
         queue_uid = queue.name
