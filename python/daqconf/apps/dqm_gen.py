@@ -65,8 +65,8 @@ def get_dqm_app(DQM_IMPL='',
         FRONTEND_TYPE = "pds_list"
     elif FRONTEND_TYPE== "VD_Top_TPC":
         FRONTEND_TYPE = "tde"
-    elif FRONTEND_TYPE== "ND_LAr":
-        FRONTEND_TYPE = "pacman"
+    #elif FRONTEND_TYPE== "ND_LAr":
+    #    FRONTEND_TYPE = "pacman"
 
     if DQM_IMPL == 'cern':
         KAFKA_ADDRESS = "monkafka.cern.ch:30092"
