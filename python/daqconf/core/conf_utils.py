@@ -380,6 +380,20 @@ def make_app_command_data(system, app, appkey, verbose=False, use_k8s=False, use
     if verbose:
         console.log(f"inter-module dependencies are: {module_deps}")
 
+
+
+    conn_uid_map = {}
+    for a,cs in system.connections.items():
+        for c in cs:
+            uid = c.id['uid']
+            conn_uid_map[uid.removeprefix(f"{a}.")] = uid
+
+
+
+
+    # print(system.connections[appkey])
+    # import IPython
+    # IPython.embed(colors="neutral")
     # stop_order = list(nx.algorithms.dag.topological_sort(module_deps))
     # start_order = stop_order[::-1]
 
@@ -394,7 +408,8 @@ def make_app_command_data(system, app, appkey, verbose=False, use_k8s=False, use
         module, name = endpoint.internal_name.split(".")
         if verbose:
             console.log(f"module, name= {module}, {name}, endpoint.external_name={endpoint.external_name}, endpoint.direction={endpoint.direction}")
-        conn_uid = f"{appkey}.{endpoint.external_name}"
+
+        conn_uid = conn_uid_map[endpoint.external_name]
         app_connrefs[module] += [appfwk.ConnectionReference(name=name, uid=conn_uid)]
 
     for queue in app.modulegraph.queues:
