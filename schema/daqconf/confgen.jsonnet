@@ -31,8 +31,8 @@ local cs = {
   tc_intervals:    s.sequence( "TCIntervals",   self.tc_interval, doc="List of TC intervals used by CTCM"),
   readout_time:    s.number(   "ROTime",        "i8", doc="A readout time in ticks"),
   channel_list:    s.sequence( "ChannelList",   self.count, doc="List of offline channels to be masked out from the TPHandler"),
-  bitword:	   s.string(   "Bitword",       doc="123"),
-  bitword_list:    s.sequence( "BitwordList",   self.bitword, doc="123"),
+  bitword:	   s.string(   "Bitword",       doc="A string representing the TC type name, to be set in the trigger bitword."),
+  bitword_list:    s.sequence( "BitwordList",   self.bitword, doc="A sequence of bitword (TC type bits) forming a bitword."),
   bitwords:        s.sequence( "Bitwords",      self.bitword_list, doc="List of bitwords to use when forming trigger decisions in MLT" ),
   
   numa_exception:  s.record( "NUMAException", [

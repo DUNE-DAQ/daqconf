@@ -74,26 +74,20 @@ def get_buffer_conf(source_id, data_request_timeout):
                                                                                enable_raw_recording = False))
 
 #===============================================================================
+### Function that converts trigger word strings to trigger word integers given TC type. Uses functions from trgdataformats.
 def get_trigger_bitwords(bitwords):
-    count_bitwords = 0
-    count_flags = 0
-    # process map
-    map_bits = trgbs.get_trigger_candidate_type_names()
     # create bitwords flags
     final_bit_flags = []
     for bitword in bitwords:
-        tmp_bit = []
+        tmp_bits = []
         for bit_name in bitword:
-             count_bitwords += 1
-             for map_bit in map_bits:
-                 if bit_name == map_bit.name: 
-                     tmp_bit.append(map_bit.value)
-                     count_flags +=1 
-                     break
-        final_bit_flags.append(tmp_bit) 
-    if (count_bitwords != count_flags):
-        raise RuntimeError(f'One or more of provided MLT trigger bitwords is incorrect! Please recheck the names...')
-
+            bit_value = trgbs.string_to_fragment_type_value(bit_name)
+            if bit_value == -1:
+                raise RuntimeError(f'One or more of provided MLT trigger bitwords is incorrect! Please recheck the names...')
+            else:
+                tmp_bits.append(bit_value)
+        final_bit_flags.append(tmp_bits)
+ 
     return final_bit_flags
     
 #===============================================================================
