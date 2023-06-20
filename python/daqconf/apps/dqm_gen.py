@@ -65,6 +65,7 @@ def get_dqm_app(DQM_IMPL='',
         FRONTEND_TYPE = "pds_list"
     elif FRONTEND_TYPE== "VD_Top_TPC":
         FRONTEND_TYPE = "tde"
+    # 20-Jun-2023, KAB: quick fix to get FD-specific nightly build to run
     #elif FRONTEND_TYPE== "ND_LAr":
     #    FRONTEND_TYPE = "pacman"
 

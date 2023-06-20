@@ -18,6 +18,7 @@ moo.otypes.load_types('flxlibs/felixcardreader.jsonnet')
 # moo.otypes.load_types('dtpctrellibs/dtpcontroller.jsonnet')
 moo.otypes.load_types('readoutlibs/sourceemulatorconfig.jsonnet')
 moo.otypes.load_types('readoutlibs/readoutconfig.jsonnet')
+# 20-Jun-2023, KAB: quick fix to get FD-specific nightly build to run
 #moo.otypes.load_types('lbrulibs/pacmancardreader.jsonnet')
 moo.otypes.load_types('dfmodules/fakedataprod.jsonnet')
 moo.otypes.load_types("dpdklibs/nicreader.jsonnet")
@@ -32,6 +33,7 @@ import dunedaq.readoutlibs.sourceemulatorconfig as sec
 import dunedaq.flxlibs.felixcardreader as flxcr
 # import dunedaq.dtpctrllibs.dtpcontroller as dtpctrl
 import dunedaq.readoutlibs.readoutconfig as rconf
+# 20-Jun-2023, KAB: quick fix to get FD-specific nightly build to run
 #import dunedaq.lbrulibs.pacmancardreader as pcr
 # import dunedaq.dfmodules.triggerrecordbuilder as trb
 import dunedaq.dfmodules.fakedataprod as fdp
@@ -98,6 +100,7 @@ def compute_data_types(
         queue_frag_type = "TDEFrame"
         fakedata_time_tick=4472*32
         fakedata_frame_size=8972
+    # 20-Jun-2023, KAB: quick fix to get FD-specific nightly build to run
     ## Near detector types
     #elif det_str == "NDLAr_TPC":
     #    fe_type = "pacman"
@@ -155,6 +158,7 @@ def create_fake_cardreader(
 
 
     modules = [DAQModule(name = "fake_source",
+                            # 20-Jun-2023, KAB: quick fix to get FD-specific nightly build to run
                             plugin = "FDFakeCardReader",
                             conf = conf)]
     queues = [
@@ -431,15 +435,15 @@ def create_pacman_cardreader(
     Create a Pacman Cardeader 
     """
 
-    #reader_name = "nd_reader" 
-    #if FRONTEND_TYPE == 'pacman':
-    #    reader_name = "pacman_source"
-#
-#    elif FRONTEND_TYPE == 'mpd':
-#        reader_name = "mpd_source"
-#
-#    else:
-#        raise RuntimeError(f"Pacman Cardreader for {FRONTEND_TYPE} not supported")
+    reader_name = "nd_reader" 
+    if FRONTEND_TYPE == 'pacman':
+        reader_name = "pacman_source"
+
+    elif FRONTEND_TYPE == 'mpd':
+        reader_name = "mpd_source"
+
+    else:
+        raise RuntimeError(f"Pacman Cardreader for {FRONTEND_TYPE} not supported")
 
     modules = [DAQModule(
                 name=reader_name,
@@ -493,6 +497,7 @@ def create_det_dhl(
         geo_id = stream.geo_id
         modules += [DAQModule(
                     name = f"datahandler_{stream.src_id}",
+                    # 20-Jun-2023, KAB: quick fix to get FD-specific nightly build to run
                     plugin = "FDDataLinkHandler", 
                     conf = rconf.Conf(
                         readoutmodelconf= rconf.ReadoutModelConf(
@@ -611,6 +616,7 @@ def create_tp_dlhs(
     # Create the TP link handler
     modules = [
       DAQModule(name = f"tp_datahandler_{tpset_sid}",
+                # 20-Jun-2023, KAB: quick fix to get FD-specific nightly build to run
                 plugin = "FDDataLinkHandler",
                 conf = rconf.Conf(
                             readoutmodelconf = rconf.ReadoutModelConf(
@@ -824,15 +830,16 @@ def create_readout_app(
             cr_mods += dpdk_mods
             cr_queues += dpdk_queues
 
-        elif RU_DESCRIPTOR.kind == 'eth' and RU_DESCRIPTOR.streams[0].parameters.protocol == "zmq":
+        # 20-Jun-2023, KAB: quick fix to get FD-specific nightly build to run
+        #elif RU_DESCRIPTOR.kind == 'eth' and RU_DESCRIPTOR.streams[0].parameters.protocol == "zmq":
 
-            pac_mods, pac_queues = create_pacman_cardreader(
-                FRONTEND_TYPE=FRONTEND_TYPE,
-                QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
-                RU_DESCRIPTOR=RU_DESCRIPTOR
-            )
-            cr_mods += pac_mods
-            cr_queues += pac_queues
+        #    pac_mods, pac_queues = create_pacman_cardreader(
+        #        FRONTEND_TYPE=FRONTEND_TYPE,
+        #        QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
+        #        RU_DESCRIPTOR=RU_DESCRIPTOR
+        #    )
+        #    cr_mods += pac_mods
+        #    cr_queues += pac_queues
 
     modules += cr_mods
     queues += cr_queues
