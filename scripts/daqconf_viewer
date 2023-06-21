@@ -1,12 +1,15 @@
 import asyncio
 import httpx
 import json
+import sys
+
+from rich.text import Text
 
 from textual import log, events
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Content, Container, Vertical
 from textual.widget import Widget
-from textual.widgets import Button, Header, Footer, Static, Input, Label, ListView, ListItem
+from textual.widgets import Button, Header, Footer, Static, Input, Label, ListView, ListItem, Tree
 from textual.reactive import reactive, Reactive
 from textual.message import Message, MessageTarget
 from textual.screen import Screen
@@ -37,7 +40,8 @@ class Configs(Static):
     async def update_configs(self) -> None:
         async with httpx.AsyncClient() as client:
             r = await client.get(f'{self.hostname}/listConfigs', auth=auth, timeout=60)
-        self.conflist = r.json()['configs']
+        unsorted = r.json()['configs']
+        self.conflist = sorted(unsorted, key=str.lower)
 
     def watch_conflist(self, conflist:list[str]):
         label_list = [LabelItem(c) for c in conflist]
@@ -100,27 +104,61 @@ class Display(Vertical):
         self.version = None 
 
     def compose(self) -> ComposeResult:
-       yield Static()
+       yield Tree("Root")
 
     async def get_json(self, conf, ver) -> None:
         self.confname = conf
         self.version = ver
-        if self.confname and self.version:
+        if self.confname != None and self.version != None:
             async with httpx.AsyncClient() as client:
                 payload = {'name': self.confname, 'version': self.version}
                 r = await client.get(f'{self.hostname}/retrieveVersion', auth=auth, params=payload, timeout=60)
             self.confdata = r.json()
 
-    #TODO the output could possibly be made nice with rich.print_json. It should also be able to collapse sections.
+    def json_into_tree(cls, node, json_data):
+        """Takes a JSON, and puts it into the tree."""
+        from rich.highlighter import ReprHighlighter
+
+        highlighter = ReprHighlighter()
+
+        def add_node(name, node, data) -> None:
+            """Adds a node to the tree.
+            Args:
+                name (str): Name of the node.
+                node (TreeNode): Parent node.
+                data (object): Data associated with the node.
+            """
+            if isinstance(data, dict):
+                node.set_label(Text(f"{{}} {name}"))
+                for key, value in data.items():
+                    new_node = node.add("")
+                    add_node(key, new_node, value)
+            elif isinstance(data, list):
+                node.set_label(Text(f"[] {name}"))
+                for index, value in enumerate(data):
+                    new_node = node.add("")
+                    add_node(str(index), new_node, value)
+            else:
+                node.allow_expand = False
+                if name:
+                    label = Text.assemble(
+                        Text.from_markup(f"[b]{name}[/b]="), highlighter(repr(data))
+                    )
+                else:
+                    label = Text(repr(data))
+                node.set_label(label)
+
+        add_node("", node, json_data)
+
     def watch_confdata(self, confdata:dict) -> None:
-        box = self.query_one(Static)
-        json_str = json.dumps(confdata, indent=2)
-        box.update(json_str)
+        tree = self.query_one(Tree)
+        tree.clear()
+        self.json_into_tree(tree.root, confdata)
+        tree.root.expand()
 
 
 class ConfViewer(App):
     CSS_PATH = "daqconf_viewer.css"
-    #BINDINGS = [("d", "toggle_dark", "Toggle dark mode")]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
