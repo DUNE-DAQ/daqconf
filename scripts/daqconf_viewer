@@ -1,8 +1,10 @@
+#!/usr/bin/env python3
 import asyncio
 import httpx
 import json
 import sys
 
+#from json_diff import Comparator
 from rich.text import Text
 
 from textual import log, events
@@ -104,7 +106,8 @@ class Display(Vertical):
         self.version = None 
 
     def compose(self) -> ComposeResult:
-       yield Tree("Root")
+       yield Tree("Root", id='conftree')
+       yield Container(Button("Get Diff", id='diff_btn', variant='primary'))
 
     async def get_json(self, conf, ver) -> None:
         self.confname = conf
@@ -156,9 +159,19 @@ class Display(Vertical):
         self.json_into_tree(tree.root, confdata)
         tree.root.expand()
 
+    def on_button_pressed(self) -> None:
+        app.push_screen(DiffScreen())
+
+class DiffScreen(Screen):
+    pass
 
 class ConfViewer(App):
     CSS_PATH = "daqconf_viewer.css"
+    #For some reason, importing json_diff makes these two modules start printing to stdout when a HTTP request is sent.
+    #The following code supresses all non-critical messages (hopefully all of them).
+    import logging
+    logging.getLogger('asyncio').setLevel(logging.CRITICAL)
+    logging.getLogger('httpx').setLevel(logging.CRITICAL)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

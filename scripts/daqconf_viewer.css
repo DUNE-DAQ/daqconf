@@ -15,13 +15,18 @@ Screen {
     row-span: 2;
     column-span: 3;
     height: 100%;
+    overflow-x: auto;
 }
 
 #display {
     row-span: 8;
     column-span: 3;
     height: 100%;
-    overflow-y: auto;
+    align-horizontal: center;
+}
+
+#conftree {
+    height:90%;
 }
 
 #verticalconf {
