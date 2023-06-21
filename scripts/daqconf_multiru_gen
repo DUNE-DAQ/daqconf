@@ -354,12 +354,13 @@ def cli(
     #--------------------------------------------------------------------------
     host_df, appconfig_df, df_app_names = create_df_apps(dataflow=dataflow, sourceid_broker=sourceid_broker)
 
-
+    # Expand paths/assetfiles
     readout.default_data_file = resolve_asset_file(readout.default_data_file, debug)
     data_file_map = {}
     for entry in readout.data_files:
         data_file_map[entry["detector_id"]] = resolve_asset_file(entry["data_file"], debug)
 
+    # and output paths (Why does it need to be expanded in k8s mode only? or at all?)
     if use_k8s:
         console.log(f'Using k8s')
         dataflow.tpset_output_path = abspath(dataflow.tpset_output_path)
@@ -369,6 +370,9 @@ def cli(
                 new_output_path += [abspath(op)]
             df_app.output_paths = new_output_path
 
+    #--------------------------------------------------------------------------
+    # Generation starts here
+    #--------------------------------------------------------------------------
     console.log(f"Generating configs for hosts trigger={trigger.host_trigger} DFO={dataflow.host_dfo} dataflow={host_df} timing_hsi={hsi.host_timing_hsi} fake_hsi={hsi.host_fake_hsi} ctb_hsi={ctb_hsi.host_ctb_hsi} dqm={dqm.host_dqm}")
 
     the_system = System()
@@ -557,39 +561,37 @@ def cli(
             # ru_name_with_underscore = f"ru{host}_{ru_id.iface}"
 
             the_system.apps[dqm_name] = get_dqm_app(
-                dqm=dqm,
-                detector=detector,
-                daq_common=daq_common,
-                # DQM_IMPL=dqm.impl,
-                # DATA_RATE_SLOWDOWN_FACTOR=daq_common.data_rate_slowdown_factor,
-                # CLOCK_SPEED_HZ=detector.clock_speed_hz,
-                # MAX_NUM_FRAMES=dqm.max_num_frames,
+                DQM_IMPL=dqm.impl,
+                DATA_RATE_SLOWDOWN_FACTOR=daq_common.data_rate_slowdown_factor,
+                CLOCK_SPEED_HZ=detector.clock_speed_hz,
+                MAX_NUM_FRAMES=dqm.max_num_frames,
                 DQMIDX = ru_i,
-                # KAFKA_ADDRESS=dqm.kafka_address,
-                # KAFKA_TOPIC=dqm.kafka_topic,
-                # CMAP=dqm.cmap,
-                # RAW_PARAMS=dqm.raw_params,
-                # RMS_PARAMS=dqm.rms_params,
-                # STD_PARAMS=dqm.std_params,
-                # FOURIER_CHANNEL_PARAMS=dqm.fourier_channel_params,
-                # FOURIER_PLANE_PARAMS=dqm.fourier_plane_params,
+                KAFKA_ADDRESS=dqm.kafka_address,
+                KAFKA_TOPIC=dqm.kafka_topic,
+                CMAP=dqm.cmap,
+                RAW_PARAMS=dqm.raw_params,
+                RMS_PARAMS=dqm.rms_params,
+                STD_PARAMS=dqm.std_params,
+                FOURIER_CHANNEL_PARAMS=dqm.fourier_channel_params,
+                FOURIER_PLANE_PARAMS=dqm.fourier_plane_params,
                 LINKS=dqm_links,
                 RU_APPNAME=ru_name,
                 TRB_DQM_SOURCEID_OFFSET=trb_dqm_sourceid_offset,
-                # HOST=dqm.host_dqm[ru_i % len(dqm.host_dqm)],
+                HOST=dqm.host_dqm[ru_i % len(dqm.host_dqm)],
                 RU_STREAMS=ru_desc.streams,
                 DEBUG=debug
             )
 
             if debug: console.log(f"{dqm_name} app: {the_system.apps[dqm_name]}")
 
-    dqm_df_app_names = []
-    idx = 0
 
 
     #--------------------------------------------------------------------------
     # Dataflow applications generatioo
     #--------------------------------------------------------------------------
+    dqm_df_app_names = []
+    idx = 0
+
     for app_name,df_config in appconfig_df.items():
         dfidx = df_config.source_id
         the_system.apps[app_name] = get_dataflow_app(

@@ -706,6 +706,7 @@ class ReadoutAppGenerator:
             self,
             mgraph: ModuleGraph,
             dlh_list: list,
+            RUIDX: str,
         ) -> None: 
         """Adds detector readout endpoints and fragment producers"""
         for dlh in dlh_list:
@@ -722,7 +723,7 @@ class ReadoutAppGenerator:
                 fragments_out = f"datahandler_{dro_sid}.fragment_queue"
             )
             mgraph.add_endpoint(
-                f"timesync_ru_{dro_sid}",
+                f"timesync_ru{RUIDX}_{dro_sid}",
                 f"datahandler_{dro_sid}.timesync_output",
                 "TimeSync",   Direction.OUT,
                 is_pubsub=True,
@@ -738,7 +739,7 @@ class ReadoutAppGenerator:
             self,
             mgraph: ModuleGraph,
             tpg_dlh_list: list,
-                
+            RUIDX: str,  
         ) -> None: 
         """Adds detector readout endpoints and fragment producers"""
 
@@ -749,7 +750,7 @@ class ReadoutAppGenerator:
 
             # Add enpointis with this source id for timesync and TPSets
             mgraph.add_endpoint(
-                f"timesync_tp_{tpset_sid}",
+                f"timesync_tp_dlh_ru{RUIDX}_{tpset_sid}",
                 f"tp_datahandler_{tpset_sid}.timesync_output",
                 "TimeSync",
                 Direction.OUT,
@@ -901,6 +902,7 @@ class ReadoutAppGenerator:
         self.add_dro_eps_and_fps(
             mgraph=mgraph,
             dlh_list=dlhs_mods,
+            RUIDX=RU_DESCRIPTOR.label
         )
 
         if TPG_ENABLED:
@@ -908,6 +910,7 @@ class ReadoutAppGenerator:
             self.add_tpg_eps_and_fps(
                 mgraph=mgraph,
                 tpg_dlh_list=tpg_mods,
+                RUIDX=RU_DESCRIPTOR.label
             )
 
         # Create the application
