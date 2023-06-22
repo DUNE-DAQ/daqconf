@@ -3,6 +3,11 @@ from rich.console import Console
 
 console = Console()
 
+# 22-Jun-2023, KAB: determine software environment, FarDet or NearDet
+import os
+detector_software_env = "FD"
+if os.environ.get('DUNEDAQ_DETECTOR_SOFTWARE_ENV') == "ND":
+    detector_software_env = "ND"
 
 from dunedaq.env import get_moo_model_path
 import moo.io
@@ -14,12 +19,14 @@ import moo.otypes
 # moo.otypes.load_types('appfwk/cmd.jsonnet')
 # moo.otypes.load_types('appfwk/app.jsonnet')
 
-moo.otypes.load_types('flxlibs/felixcardreader.jsonnet')
+if detector_software_env == "FD":
+    moo.otypes.load_types('flxlibs/felixcardreader.jsonnet')
 # moo.otypes.load_types('dtpctrellibs/dtpcontroller.jsonnet')
 moo.otypes.load_types('readoutlibs/sourceemulatorconfig.jsonnet')
 moo.otypes.load_types('readoutlibs/readoutconfig.jsonnet')
-# 20-Jun-2023, KAB: quick fix to get FD-specific nightly build to run
-#moo.otypes.load_types('lbrulibs/pacmancardreader.jsonnet')
+
+if detector_software_env == "ND":
+    moo.otypes.load_types('lbrulibs/pacmancardreader.jsonnet')
 moo.otypes.load_types('dfmodules/fakedataprod.jsonnet')
 moo.otypes.load_types("dpdklibs/nicreader.jsonnet")
 
@@ -30,11 +37,12 @@ moo.otypes.load_types("dpdklibs/nicreader.jsonnet")
 # import dunedaq.appfwk.cmd as cmd # AddressedCmd,
 # import dunedaq.appfwk.app as app # AddressedCmd,
 import dunedaq.readoutlibs.sourceemulatorconfig as sec
-import dunedaq.flxlibs.felixcardreader as flxcr
+if detector_software_env == "FD":
+    import dunedaq.flxlibs.felixcardreader as flxcr
 # import dunedaq.dtpctrllibs.dtpcontroller as dtpctrl
 import dunedaq.readoutlibs.readoutconfig as rconf
-# 20-Jun-2023, KAB: quick fix to get FD-specific nightly build to run
-#import dunedaq.lbrulibs.pacmancardreader as pcr
+if detector_software_env == "ND":
+    import dunedaq.lbrulibs.pacmancardreader as pcr
 # import dunedaq.dfmodules.triggerrecordbuilder as trb
 import dunedaq.dfmodules.fakedataprod as fdp
 import dunedaq.dpdklibs.nicreader as nrc
@@ -100,20 +108,19 @@ def compute_data_types(
         queue_frag_type = "TDEFrame"
         fakedata_time_tick=4472*32
         fakedata_frame_size=8972
-    # 20-Jun-2023, KAB: quick fix to get FD-specific nightly build to run
-    ## Near detector types
-    #elif det_str == "NDLAr_TPC":
-    #    fe_type = "pacman"
-    #    fakedata_frag_type = "PACMAN"
-    #    queue_frag_type = "PACMANFrame"
-    #    fakedata_time_tick=None
-    #    fakedata_frame_size=None       
-    #elif det_str == "NDLAr_PDS":
-    #    fe_type = "mpd"
-    #    fakedata_frag_type = "MPD"
-    #    queue_frag_type = "MPDFrame"
-    #    fakedata_time_tick=None
-    #    fakedata_frame_size=None       
+    # Near detector types
+    elif det_str == "NDLAr_TPC":
+        fe_type = "pacman"
+        fakedata_frag_type = "PACMAN"
+        queue_frag_type = "PACMANFrame"
+        fakedata_time_tick=None
+        fakedata_frame_size=None       
+    elif det_str == "NDLAr_PDS":
+        fe_type = "mpd"
+        fakedata_frag_type = "MPD"
+        queue_frag_type = "MPDFrame"
+        fakedata_time_tick=None
+        fakedata_frame_size=None       
     else:
         raise ValueError(f"No match for {det_str}, {clk_freq_hz}, {kind}")
 
@@ -158,9 +165,8 @@ def create_fake_cardreader(
 
 
     modules = [DAQModule(name = "fake_source",
-                            # 20-Jun-2023, KAB: quick fix to get FD-specific nightly build to run
-                            plugin = "FDFakeCardReader",
-                            conf = conf)]
+                         plugin = "NDFakeCardReader" if detector_software_env == "ND" else "FDFakeCardReader",
+                         conf = conf)]
     queues = [
         Queue(
             f"fake_source.output_{s.src_id}",
@@ -497,8 +503,7 @@ def create_det_dhl(
         geo_id = stream.geo_id
         modules += [DAQModule(
                     name = f"datahandler_{stream.src_id}",
-                    # 20-Jun-2023, KAB: quick fix to get FD-specific nightly build to run
-                    plugin = "FDDataLinkHandler", 
+                    plugin = "NDDataLinkHandler" if detector_software_env == "ND" else "FDDataLinkHandler",
                     conf = rconf.Conf(
                         readoutmodelconf= rconf.ReadoutModelConf(
                             source_queue_timeout_ms= QUEUE_POP_WAIT_MS,
@@ -616,8 +621,7 @@ def create_tp_dlhs(
     # Create the TP link handler
     modules = [
       DAQModule(name = f"tp_datahandler_{tpset_sid}",
-                # 20-Jun-2023, KAB: quick fix to get FD-specific nightly build to run
-                plugin = "FDDataLinkHandler",
+                plugin = "NDDataLinkHandler" if detector_software_env == "ND" else "FDDataLinkHandler",
                 conf = rconf.Conf(
                             readoutmodelconf = rconf.ReadoutModelConf(
                                 source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
@@ -830,16 +834,15 @@ def create_readout_app(
             cr_mods += dpdk_mods
             cr_queues += dpdk_queues
 
-        # 20-Jun-2023, KAB: quick fix to get FD-specific nightly build to run
-        #elif RU_DESCRIPTOR.kind == 'eth' and RU_DESCRIPTOR.streams[0].parameters.protocol == "zmq":
+        elif RU_DESCRIPTOR.kind == 'eth' and RU_DESCRIPTOR.streams[0].parameters.protocol == "zmq":
 
-        #    pac_mods, pac_queues = create_pacman_cardreader(
-        #        FRONTEND_TYPE=FRONTEND_TYPE,
-        #        QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
-        #        RU_DESCRIPTOR=RU_DESCRIPTOR
-        #    )
-        #    cr_mods += pac_mods
-        #    cr_queues += pac_queues
+            pac_mods, pac_queues = create_pacman_cardreader(
+                FRONTEND_TYPE=FRONTEND_TYPE,
+                QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
+                RU_DESCRIPTOR=RU_DESCRIPTOR
+            )
+            cr_mods += pac_mods
+            cr_queues += pac_queues
 
     modules += cr_mods
     queues += cr_queues
