@@ -4,8 +4,8 @@ import httpx
 import json
 import sys
 
-#from json_diff import Comparator
 from rich.text import Text
+from difflib import context_diff, ndiff, unified_diff
 
 from textual import log, events
 from textual.app import App, ComposeResult
@@ -17,6 +17,7 @@ from textual.message import Message, MessageTarget
 from textual.screen import Screen
 
 auth = ("fooUsr", "barPass")
+oldconf = None
 
 class LabelItem(ListItem):
     def __init__(self, label: str) -> None:
@@ -53,9 +54,8 @@ class Configs(Static):
             the_list.append(item)
 
     def on_list_view_selected(self, event: ListView.Selected):
-        '''The query gets all children of the app, then we choose Versions.'''
         confname = event.item.label
-        versions = self.app.query_one(Horizontal)
+        versions = self.screen.query_one(Horizontal)
         versions.new_conf(confname)
 
 class Versions(Horizontal):
@@ -77,22 +77,21 @@ class Versions(Horizontal):
             async with httpx.AsyncClient() as client:
                 payload = {'name': self.current_conf}
                 r = await client.get(f'{self.hostname}/listVersions', auth=auth, params=payload, timeout=60)
-            self.vlist = r.json()['versions']            #This is a list of ints
+            self.vlist = r.json()['versions']          #This is a list of ints
 
     def watch_vlist(self, vlist:list[int]) -> None:
         old_buttons = self.query(Button)
         for b in old_buttons:
            b.remove()
         for v in vlist:
-            b_id = 'v' + str(v)    #An id can't be just a number for some reason
+            b_id = 'v' + str(v)                        #An id can't be just a number for some reason
             self.mount(Button(str(v), id=b_id, classes='vbuttons', variant='primary'))
 
-    #TODO make buttons smaller, and force them to be in the centre (current position is a coincidence due to the margin)
     async def on_button_pressed (self, event: Button.Pressed) -> None:
         button_id = event.button.id
         version = int(button_id[1:])
-        for v in self.app.query(Vertical):
-            if isinstance(v, Display):
+        for v in self.screen.query(Vertical):
+            if isinstance(v, Display) or isinstance(v, DiffDisplay):
                 await v.get_json(self.current_conf, version)
                 break
 
@@ -106,8 +105,7 @@ class Display(Vertical):
         self.version = None 
 
     def compose(self) -> ComposeResult:
-       yield Tree("Root", id='conftree')
-       yield Container(Button("Get Diff", id='diff_btn', variant='primary'))
+       yield Tree("", id='conftree')
 
     async def get_json(self, conf, ver) -> None:
         self.confname = conf
@@ -154,37 +152,104 @@ class Display(Vertical):
         add_node("", node, json_data)
 
     def watch_confdata(self, confdata:dict) -> None:
-        tree = self.query_one(Tree)
-        tree.clear()
-        self.json_into_tree(tree.root, confdata)
-        tree.root.expand()
+        if confdata:
+            tree = self.query_one(Tree)
+            tree.clear()
+            self.json_into_tree(tree.root, confdata)
+            tree.root.expand()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if self.confdata:
+            self.app.mount(DiffScreen(self.hostname, self.confdata, id='diffscreen'))
+
+class DiffDisplay(Vertical):
+    confdata = reactive(None)
+
+    def __init__(self, hostname, **kwargs):
+        super().__init__(**kwargs)
+        self.hostname = hostname
+        self.confname = None
+        self.version = None
+
+    def compose(self) -> ComposeResult:
+        yield Static(id='diffbox')
+
+    async def get_json(self, conf, ver) -> None:
+        self.confname = conf
+        self.version = ver
+        if self.confname != None and self.version != None:
+            async with httpx.AsyncClient() as client:
+                payload = {'name': self.confname, 'version': self.version}
+                r = await client.get(f'{self.hostname}/retrieveVersion', auth=auth, params=payload, timeout=60)
+            self.confdata = r.json()
+
+    def watch_confdata(self, confdata:dict) -> None:
+        '''Turns the jsons into a string format with newlines, then generates a diff of the two.'''
+        if confdata:
+            a = json.dumps(oldconf, sort_keys=True, indent=4).splitlines(keepends=True)[:30]
+            b = json.dumps(confdata, sort_keys=True, indent=4).splitlines(keepends=True)[:30]
+            delta = unified_diff(a,b)
+            diff = Text()
+            for d in delta:
+                sym = d[0]
+                match sym:
+                    case '+':
+                        t = Text(d, style='green')
+                    case '-':
+                        t = Text(d, style='red')
+                    case '@':
+                        t = Text(d, style='gold1')
+                    case _:
+                        t = Text(d)
+                diff += t
+
+            box = self.query_one(Static)
+            box.update(diff)
 
     def on_button_pressed(self) -> None:
-        app.push_screen(DiffScreen())
+        self.remove()
 
 class DiffScreen(Screen):
-    pass
+    BINDINGS = [("d", "app.pop_screen", "Return")]
+    def __init__(self, hostname, **kwargs):
+        super().__init__(**kwargs)
+        self.hostname = hostname
+
+    def compose(self) -> ComposeResult:
+        yield Configs(hostname=self.hostname, classes='greencontainer configs', id='diffconfigs')
+        yield Versions(hostname=self.hostname, classes='greencontainer versions', id='diffversions')
+        yield DiffDisplay(hostname=self.hostname, classes='greencontainer display', id='diffdisplay')
+
+        yield Header(show_clock=True)
+        yield Footer()
+
 
 class ConfViewer(App):
     CSS_PATH = "daqconf_viewer.css"
-    #For some reason, importing json_diff makes these two modules start printing to stdout when a HTTP request is sent.
-    #The following code supresses all non-critical messages (hopefully all of them).
-    import logging
-    logging.getLogger('asyncio').setLevel(logging.CRITICAL)
-    logging.getLogger('httpx').setLevel(logging.CRITICAL)
+    BINDINGS = [("d", "make_diff()", "Diff")]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.hostname = "http://np04-srv-023:31011"
 
+    def on_mount(self) -> None:
+        self.install_screen(DiffScreen(hostname=self.hostname), name="diff")
+
     def compose(self) -> ComposeResult:
-        """Create child widgets for the app."""
-        yield Configs(hostname=self.hostname, classes='container', id='configs')
-        yield Versions(hostname=self.hostname, classes='container', id='versions')
-        yield Display(hostname=self.hostname, classes='container', id='display')
+        yield Configs(hostname=self.hostname, classes='redcontainer configs', id='regconfigs')
+        yield Versions(hostname=self.hostname, classes='redcontainer versions', id='regversions')
+        yield Display(hostname=self.hostname, classes='redcontainer display', id='regdisplay')
 
         yield Header(show_clock=True)
         yield Footer()
+
+    def action_make_diff(self):
+        '''Saves the current config to a global variable, then pushes the diff screen.'''
+        dis = self.query_one(Display)
+        if dis.confdata != None:
+           global oldconf
+           oldconf = dis.confdata
+           self.push_screen('diff')
 
 if __name__ == "__main__":
     app = ConfViewer()
