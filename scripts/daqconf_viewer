@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import asyncio
+import copy
 import httpx
 import json
 import sys
@@ -183,11 +184,15 @@ class DiffDisplay(Vertical):
                 r = await client.get(f'{self.hostname}/retrieveVersion', auth=auth, params=payload, timeout=60)
             self.confdata = r.json()
 
-    def watch_confdata(self, confdata:dict) -> None:
+    async def watch_confdata(self, confdata:dict) -> None:
         '''Turns the jsons into a string format with newlines, then generates a diff of the two.'''
         if confdata:
-            a = json.dumps(oldconf, sort_keys=True, indent=4).splitlines(keepends=True)[:30]
-            b = json.dumps(confdata, sort_keys=True, indent=4).splitlines(keepends=True)[:30]
+            j1 = copy.deepcopy(oldconf)
+            j2 = copy.deepcopy(confdata)
+            if "_id" in j1: del j1["_id"]       #We don't want to include the ID in the diff since it's always different.
+            if "_id" in j2: del j2["_id"]
+            a = json.dumps(j1, sort_keys=True, indent=4).splitlines(keepends=True)
+            b = json.dumps(j2, sort_keys=True, indent=4).splitlines(keepends=True)
             delta = unified_diff(a,b)
             diff = Text()
             for d in delta:
