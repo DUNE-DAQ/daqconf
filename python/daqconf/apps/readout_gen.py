@@ -10,32 +10,18 @@ moo.io.default_load_path = get_moo_model_path()
 
 # Load configuration types
 import moo.otypes
-# moo.otypes.load_types('rcif/cmd.jsonnet')
-# moo.otypes.load_types('appfwk/cmd.jsonnet')
-# moo.otypes.load_types('appfwk/app.jsonnet')
 
 moo.otypes.load_types('flxlibs/felixcardreader.jsonnet')
-# moo.otypes.load_types('dtpctrellibs/dtpcontroller.jsonnet')
 moo.otypes.load_types('readoutlibs/sourceemulatorconfig.jsonnet')
 moo.otypes.load_types('readoutlibs/readoutconfig.jsonnet')
-# 20-Jun-2023, KAB: quick fix to get FD-specific nightly build to run
-#moo.otypes.load_types('lbrulibs/pacmancardreader.jsonnet')
 moo.otypes.load_types('dfmodules/fakedataprod.jsonnet')
 moo.otypes.load_types("dpdklibs/nicreader.jsonnet")
 
 
 # Import new types
-# import dunedaq.cmdlib.cmd as basecmd # AddressedCmd,
-# import dunedaq.rcif.cmd as rccmd # AddressedCmd,
-# import dunedaq.appfwk.cmd as cmd # AddressedCmd,
-# import dunedaq.appfwk.app as app # AddressedCmd,
 import dunedaq.readoutlibs.sourceemulatorconfig as sec
 import dunedaq.flxlibs.felixcardreader as flxcr
-# import dunedaq.dtpctrllibs.dtpcontroller as dtpctrl
 import dunedaq.readoutlibs.readoutconfig as rconf
-# 20-Jun-2023, KAB: quick fix to get FD-specific nightly build to run
-#import dunedaq.lbrulibs.pacmancardreader as pcr
-# import dunedaq.dfmodules.triggerrecordbuilder as trb
 import dunedaq.dfmodules.fakedataprod as fdp
 import dunedaq.dpdklibs.nicreader as nrc
 

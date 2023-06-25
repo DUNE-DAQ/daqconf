@@ -216,7 +216,7 @@ def cli(
         debug_dir.mkdir(parents=True)
 
     config_data = config[0]
-    config_file = Path(config[1])
+    config_file = Path(config[1] if config[1] is not None else "daqconf_default.json")
 
     if debug:
         console.log(f"Configuration for daqconf: {config_data.pod()}")
@@ -264,31 +264,6 @@ def cli(
     
     file_label = file_label if file_label is not None else detector.op_env
 
-    #
-    # Configuration consistency checks
-    # 
-    # if readout.enable_tpg and readout.use_fake_data_producers:
-    #     raise Exception("Fake data producers don't support software tpg")
-
-    # if readout.use_fake_data_producers and dqm.enable_dqm:
-    #     raise Exception("DQM can't be used with fake data producers")
-
-    # if dataflow.enable_tpset_writing and not readout.enable_tpg:
-    #     raise Exception("TP writing can only be used when either software or firmware TPG is enabled")
-
-    # if hsi.use_timing_hsi and not hsi.hsi_device_name:
-    #     raise Exception("If --use-hsi-hw flag is set to true, --hsi-device-name must be specified!")
-
-    # if timing.control_timing_partition and not timing.timing_partition_master_device_name:
-    #     raise Exception("If --control-timing-partition flag is set to true, --timing-partition-master-device-name must be specified!")
-
-    # if hsi.control_hsi_hw and not hsi.use_timing_hsi:
-    #     raise Exception("Timing HSI hardware control can only be enabled if timing HSI hardware is used!")
-
-    # if use_k8s and not boot.k8s_image:
-    #     raise Exception("You need to define k8s_image if running with k8s")
-    
-
 
     validate_conf(boot, readout, dataflow, timing, hsi, dqm)
 
@@ -321,33 +296,6 @@ def cli(
 
     sourceid_broker = SourceIDBroker()
     sourceid_broker.debug = debug
-
-
-    # import dunedaq.daqconf.confgen as confgen
-
-    # if len(dataflow.apps) == 0:
-    #     console.log(f"No Dataflow apps defined, adding default dataflow0")
-    #     dataflow.apps = [confgen.dataflowapp()]
-
-    # host_df = []
-    # appconfig_df ={}
-    # df_app_names = []
-    # for d in dataflow.apps:
-    #     console.log(f"Parsing dataflow app config {d}")
-
-    #     ## Hack, we shouldn't need to do that, in the future, it should be appconfig = d
-    #     appconfig = confgen.dataflowapp(**d)
-
-    #     dfapp = appconfig.app_name
-    #     if dfapp in df_app_names:
-    #         appconfig_df[dfapp].update(appconfig)
-    #     else:
-    #         df_app_names.append(dfapp)
-    #         appconfig_df[dfapp] = appconfig
-    #         appconfig_df[dfapp].source_id = sourceid_broker.get_next_source_id("TRBuilder")
-    #         sourceid_broker.register_source_id("TRBuilder", appconfig_df[dfapp].source_id, None)
-    #         host_df += [appconfig.host_df]
-
 
     #--------------------------------------------------------------------------
     # Create dataflow applications
@@ -385,7 +333,8 @@ def cli(
     # Load Detector Readout map
     #--------------------------------------------------------------------------
     dro_map = dromap.DetReadoutMapService()
-    dro_map.load(readout.detector_readout_map_file)
+    if readout.detector_readout_map_file:
+        dro_map.load(readout.detector_readout_map_file)
 
     ru_descs = dro_map.get_ru_descriptors()
 
