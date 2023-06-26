@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import asyncio
 import copy
+import click
 import httpx
 import json
 import sys
@@ -44,13 +45,20 @@ class Configs(Static):
 
     def compose(self) -> ComposeResult:
        yield TitleBox('Configuration List')
-       yield ListView(LabelItem("asfas"))
+       yield ListView(LabelItem("This shouldn't be visible!"))
 
     async def update_configs(self) -> None:
-        async with httpx.AsyncClient() as client:
-            r = await client.get(f'{self.hostname}/listConfigs', auth=auth, timeout=60)
-        unsorted = r.json()['configs']
-        self.conflist = sorted(unsorted, key=str.lower)
+        try:
+            async with httpx.AsyncClient() as client:
+                r = await client.get(f'{self.hostname}/listConfigs', auth=auth, timeout=5)
+            unsorted = r.json()['configs']
+            self.conflist = sorted(unsorted, key=str.lower)
+        except Exception as e:
+            #Exiting the program mid-request causes a CancelledError: we don't want to call our function
+            #in this case, as it will not be able to find the relevent widgets.
+            if isinstance(e, asyncio.CancelledError):
+               return
+            self.display_error(f"Couldn't retrieve configs from {self.hostname}/listConfigs")
 
     def watch_conflist(self, conflist:list[str]):
         label_list = [LabelItem(c) for c in conflist]
@@ -65,6 +73,19 @@ class Configs(Static):
             if isinstance(v, Versions):
                 v.new_conf(confname)
                 break
+
+    def display_error(self, text):
+        '''If something goes wrong with getting the configs, we hijack the display to tell the user.'''
+        for v in self.screen.query(Vertical):
+            if isinstance(v, Display):
+                e_json = {'error': text}
+                v.confdata = e_json
+                break
+            if isinstance(v, DiffDisplay):
+                for s in v.query(Static):
+                    if s.id == 'diffbox':
+                       s.update(text)
+                       break
 
 class Versions(Vertical):
     vlist = reactive([])
@@ -86,10 +107,14 @@ class Versions(Vertical):
 
     async def update_versions(self) -> None:
         if self.current_conf:
-            async with httpx.AsyncClient() as client:
-                payload = {'name': self.current_conf}
-                r = await client.get(f'{self.hostname}/listVersions', auth=auth, params=payload, timeout=60)
-            self.vlist = r.json()['versions']          #This is a list of ints
+            try:
+                async with httpx.AsyncClient() as client:
+                    payload = {'name': self.current_conf}
+                    r = await client.get(f'{self.hostname}/listVersions', auth=auth, params=payload, timeout=5)
+                self.vlist = r.json()['versions']          #This is a list of ints
+            except Exception as e:
+                if isinstance(e, asyncio.CancelledError):
+                    self.display_error(f"Couldn't retrieve versions from {self.hostname}/listVersions")
 
     def watch_vlist(self, vlist:list[int]) -> None:
         bb = self.query_one(Horizontal)
@@ -108,6 +133,19 @@ class Versions(Vertical):
                 await v.get_json(self.current_conf, version)
                 break
 
+    def display_error(self, text):
+        '''If something goes wrong with getting the configs, we hijack the display to tell the user.'''
+        for v in self.screen.query(Vertical):
+            if isinstance(v, Display):
+                e_json = {'error': text}
+                v.confdata = e_json
+                break
+            if isinstance(v, DiffDisplay):
+                for s in v.query(Static):
+                    if s.id == 'diffbox':
+                       s.update(text)
+                       break
+
 class Display(Vertical):
     confdata = reactive(None)
 
@@ -115,7 +153,7 @@ class Display(Vertical):
         super().__init__(**kwargs)
         self.hostname = hostname
         self.confname = None
-        self.version = None 
+        self.version = None
 
     def compose(self) -> ComposeResult:
        yield TitleBox('Configuration Data')
@@ -125,10 +163,13 @@ class Display(Vertical):
         self.confname = conf
         self.version = ver
         if self.confname != None and self.version != None:
-            async with httpx.AsyncClient() as client:
-                payload = {'name': self.confname, 'version': self.version}
-                r = await client.get(f'{self.hostname}/retrieveVersion', auth=auth, params=payload, timeout=60)
-            self.confdata = r.json()
+            try:
+                async with httpx.AsyncClient() as client:
+                    payload = {'name': self.confname, 'version': self.version}
+                    r = await client.get(f'{self.hostname}/retrieveVersion', auth=auth, params=payload, timeout=5)
+                self.confdata = r.json()
+            except:
+                self.confdata = {"error": f"Couldn't retrieve the configuration at {self.hostname}/retrieveVersion (payload: {payload}"}
 
     def json_into_tree(cls, node, json_data):
         """Takes a JSON, and puts it into the tree."""
@@ -193,39 +234,48 @@ class DiffDisplay(Vertical):
         self.confname = conf
         self.version = ver
         if self.confname != None and self.version != None:
-            async with httpx.AsyncClient() as client:
-                payload = {'name': self.confname, 'version': self.version}
-                r = await client.get(f'{self.hostname}/retrieveVersion', auth=auth, params=payload, timeout=60)
-            self.confdata = r.json()
+            try:
+                async with httpx.AsyncClient() as client:
+                    payload = {'name': self.confname, 'version': self.version}
+                    r = await client.get(f'{self.hostname}/retrieveVersion', auth=auth, params=payload, timeout=5)
+                self.confdata = r.json()
+            except:
+                self.confdata = {"error": f"Couldn't retrieve the configuration at {self.hostname}/retrieveVersion (payload: {payload})"}
 
     async def watch_confdata(self, confdata:dict) -> None:
         '''Turns the jsons into a string format with newlines, then generates a diff of the two.'''
         if confdata:
-            j1 = copy.deepcopy(oldconf)
-            j2 = copy.deepcopy(confdata)
-            if "_id" in j1: del j1["_id"]       #We don't want to include the ID in the diff since it's always different.
-            if "_id" in j2: del j2["_id"]
-            a = json.dumps(j1, sort_keys=True, indent=4).splitlines(keepends=True)
-            b = json.dumps(j2, sort_keys=True, indent=4).splitlines(keepends=True)
-            delta = unified_diff(a,b)
-            diff = Text()
-            for d in delta:
-                sym = d[0]
-                match sym:
-                    case '+':
-                        t = Text(d, style='green')
-                    case '-':
-                        t = Text(d, style='red')
-                    case '@':
-                        t = Text(d, style='gold1')
-                    case _:
-                        t = Text(d)
-                diff += t
+            if "error" in confdata:
+                for s in self.query(Static):
+                  if s.id == 'diffbox':
+                      s.update(confdata['error'])
+                      break
+            else:
+                j1 = copy.deepcopy(oldconf)
+                j2 = copy.deepcopy(confdata)
+                if "_id" in j1: del j1["_id"]       #We don't want to include the ID in the diff since it's always different.
+                if "_id" in j2: del j2["_id"]
+                a = json.dumps(j1, sort_keys=True, indent=4).splitlines(keepends=True)
+                b = json.dumps(j2, sort_keys=True, indent=4).splitlines(keepends=True)
+                delta = unified_diff(a,b)
+                diff = Text()
+                for d in delta:
+                    sym = d[0]
+                    match sym:
+                        case '+':
+                            t = Text(d, style='green')
+                        case '-':
+                            t = Text(d, style='red')
+                        case '@':
+                            t = Text(d, style='gold1')
+                        case _:
+                            t = Text(d)
+                    diff += t
 
-            for b in self.query(Static):
-              if b.id == 'diffbox':
-                  b.update(diff)
-                  break
+                for s in self.query(Static):
+                  if s.id == 'diffbox':
+                      s.update(diff)
+                      break
 
     def on_button_pressed(self) -> None:
         self.remove()
@@ -249,9 +299,9 @@ class ConfViewer(App):
     CSS_PATH = "daqconf_viewer.css"
     BINDINGS = [("d", "make_diff()", "Diff")]
 
-    def __init__(self, **kwargs):
+    def __init__(self, host, port, **kwargs):
         super().__init__(**kwargs)
-        self.hostname = "http://np04-srv-023:31011"
+        self.hostname = f"{host}:{port}"
 
     def on_mount(self) -> None:
         self.install_screen(DiffScreen(hostname=self.hostname), name="diff")
@@ -272,6 +322,15 @@ class ConfViewer(App):
            oldconf = dis.confdata
            self.push_screen('diff')
 
-if __name__ == "__main__":
-    app = ConfViewer()
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('--host', default="http://np04-srv-023", help='Machine hosting the config service')
+@click.option('--port', default="31011", help='Port that the config service listens on')
+def start(host:str, port:str):
+    app = ConfViewer(host, port)
     app.run()
+
+if __name__ == "__main__":
+    start()
+"http://np04-srv-023:31011"
+
