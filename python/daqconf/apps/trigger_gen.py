@@ -115,8 +115,8 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
     # Generate schema for each of the maker plugins on the fly in the temptypes module
     num_algs = len(ACTIVITY_PLUGIN)
     for j in range(num_algs):
-        make_moo_record(eval(ACTIVITY_CONFIG[j]) , 'ActivityConf' , 'temptypes')
-        make_moo_record(eval(CANDIDATE_CONFIG[j]), 'CandidateConf', 'temptypes')
+        make_moo_record(ACTIVITY_CONFIG[j] , 'ActivityConf' , 'temptypes')
+        make_moo_record(CANDIDATE_CONFIG[j], 'CandidateConf', 'temptypes')
     import temptypes
 
     # How many clock ticks are there in a _wall clock_ second?
@@ -153,7 +153,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
         # Get a list of TCMaker configs if more than one exists:
         for j, cm_conf in enumerate(CANDIDATE_CONFIG):
             cm_configs.append(tcm.Conf(candidate_maker=CANDIDATE_PLUGIN[j],
-            candidate_maker_config=temptypes.CandidateConf(**eval(CANDIDATE_CONFIG[j]))))
+            candidate_maker_config=temptypes.CandidateConf(CANDIDATE_CONFIG[j])))
     
         # (PAR 2022-06-09) The max_latency_ms here should be kept
         # larger than the corresponding value in the upstream
@@ -167,7 +167,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
                         DAQModule(name = f'tcm_{j}',
                               plugin = 'TriggerCandidateMaker',
                               conf = tcm.Conf(candidate_maker=CANDIDATE_PLUGIN[j],
-                                     candidate_maker_config=temptypes.CandidateConf(**eval(CANDIDATE_CONFIG[j])))),
+                                     candidate_maker_config=temptypes.CandidateConf(CANDIDATE_CONFIG[j]))),
 
                         DAQModule(name = f'tctee_chain_{j}',
                               plugin = 'TCTee'),]
@@ -245,7 +245,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
                                           geoid_element=region_id,  # 2022-02-02 PL: Same comment as above
                                           window_time=10000,  # should match whatever makes TPSets, in principle
                                           buffer_time=10*ticks_per_wall_clock_s//1000, # 10 wall-clock ms
-                                          activity_maker_config=temptypes.ActivityConf(**eval(ACTIVITY_CONFIG[j])))),
+                                          activity_maker_config=temptypes.ActivityConf(ACTIVITY_CONFIG[j]))),
                                 DAQModule(name = f'tasettee_region_{region_id}_{j}', plugin = "TASetTee")]
 
                 # Add the zippers and TABuffers, independant of the number of algorithms we want to run concurrently.
@@ -270,7 +270,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
                                                                                                                  stream_buffer_size = 8388608,
                                                                                                                  request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                                                  enable_raw_recording = False))),
-                            DAQModule(name = f'tpsettee_ma_{link_id}',
+                            DAQModule(name = f'tpsettee_ma_{region_id}',
                                   plugin = 'TPSetTee'),]
 
         
@@ -352,15 +352,15 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
         ## mgraph.connect_modules("tctee_chain.output2", "tc_buf.tc_source",             "TriggerCandidate","tcs_to_buf",  size_hint=1000)
 
             #mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{tp_conf.region_id}.input","TPSet", f"{tp_conf.region_id}_tpset_q", size_hint=1000)
-            mgraph.connect_modules(f"zip_{tp_conf.region_id}.output", f'tpsettee_ma_{link_id}.input', data_type="TPSet", size_hint=1000)
+            mgraph.connect_modules(f"zip_{tp_conf.region_id}.output", f'tpsettee_ma_{region_id}.input', data_type="TPSet", size_hint=1000)
 
         for region_id in TA_SOURCE_IDS.keys():
             # Send the output of the new TPSetTee module to each of the activity makers
             for j in range(num_algs):
-                mgraph.connect_modules(f'tpsettee_ma_{link_id}.output{j+1}', f'tam_{region_id}_{j}.input', "TPSet", size_hint=1000)
+                mgraph.connect_modules(f'tpsettee_ma_{region_id}.output{j+1}', f'tam_{region_id}_{j}.input', "TPSet", size_hint=1000)
         # For each TCMaker config applied, connect the TCMaker to it's copyer, then to the MLT and TCBuffer via that copyer.
         for j in range(len(cm_configs)):
-            mgraph.connect_modules(f"tcm_{j}.output", f"tctee_chain_{j}.input", "TriggerCandidate", "chain_input", size_hint=1000)
+            mgraph.connect_modules(f"tcm_{j}.output", f"tctee_chain_{j}.input", "TriggerCandidate", f"chain_input_{j}", size_hint=1000)
             mgraph.connect_modules(f"tctee_chain_{j}.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",  size_hint=1000)
             mgraph.connect_modules(f"tctee_chain_{j}.output2", "tc_buf.tc_source", "TriggerCandidate","tcs_to_buf", size_hint=1000)
 
