@@ -332,5 +332,3 @@ def start(host:str, port:str):
 
 if __name__ == "__main__":
     start()
-"http://np04-srv-023:31011"
-
