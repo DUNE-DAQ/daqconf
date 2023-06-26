@@ -8,8 +8,8 @@ from collections import namedtuple, defaultdict
 
 console = Console()
 
-from daqdataformats._daq_daqdataformats_py import SourceID
-from detchannelmaps._daq_detchannelmaps_py import *
+from daqdataformats import SourceID
+from detchannelmaps import *
 
 TAID = namedtuple('TAID', ['detector', 'crate'])
 TPID = namedtuple('TPID', ['detector', 'crate'])

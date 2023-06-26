@@ -6,6 +6,10 @@ import os.path
 from rich.console import Console
 from os.path import exists, abspath, dirname, basename
 from pathlib import Path
+
+console = Console()
+# console.log("daqconf - loading base modules")
+
 from daqconf.core.system import System
 from daqconf.core.metadata import write_metadata_file, write_config_file
 from daqconf.core.sourceid import SourceIDBroker #, get_tpg_mode
@@ -15,16 +19,16 @@ from daqconf.core.assets import resolve_asset_file
 from detdataformats import *
 
 import daqconf.detreadoutmap as dromap
+# console.log("daqconf - base modules loaded")
 
-console = Console()
 
 # Set moo schema search path
-from dunedaq.env import get_moo_model_path
-import moo.io
-moo.io.default_load_path = get_moo_model_path()
+# from dunedaq.env import get_moo_model_path
+# import moo.io
+# moo.io.default_load_path = get_moo_model_path()
 
 # Load configuration types
-import moo.otypes
+# import moo.otypes
 
 # moo.otypes.load_types('detchannelmaps/hardwaremapservice.jsonnet')
 # import dunedaq.detchannelmaps.hardwaremapservice as hwms
@@ -196,6 +200,7 @@ def cli(
         json_dir
     ):
 
+    console.log("Commandline parsing completed")
     if only_check_args:
         return
     
@@ -776,8 +781,11 @@ def cli(
                 the_system.apps[name].export(debug_dir / f"{name}.dot")
 
 if __name__ == '__main__':
+    # console.log("daqconf - started")
     try:
         cli(show_default=True, standalone_mode=True)
     except Exception as e:
         console.print_exception()
         raise SystemExit(-1)
+    # console.log("daqconf - finished")
+    

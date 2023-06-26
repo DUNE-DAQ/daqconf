@@ -828,7 +828,7 @@ def write_json_files(app_command_datas, system_command_datas, json_dir, verbose=
     console.rule("JSON file creation")
 
     data_dir = json_dir / 'data'
-    data_dir.mkdir(parents=True)
+    data_dir.mkdir(parents=True, exist_ok=True)
 
     # Apps
     for app_name, command_data in app_command_datas.items():
