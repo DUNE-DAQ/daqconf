@@ -171,7 +171,16 @@ def generate_cli_from_schema(schema_file, schema_object_name, *args): ## doh
         module_name = schema_file.replace('.jsonnet', '').replace('/', '.')
         config_module = importlib.import_module(f'dunedaq.{module_name}')
         schema_object = getattr(config_module, schema_object_name)
-        extra_schemas = [getattr(config_module, obj)() for obj in args]
+        extra_schemas = []
+        for obj_name in args:
+            if '.' in obj_name:
+                i = obj_name.rfind('.')
+                ex_module_name, ex_schema_object_name = obj_name[:i], obj_name[i+1:]
+                extra_module = importlib.import_module(f'dunedaq.{ex_module_name}')
+                extra_schemas += [getattr(extra_module, ex_schema_object_name)()]
+            else:
+                # extra_schemas = [getattr(config_module, obj)() for obj in args]
+                extra_schemas = [getattr(config_module, obj_name)()]
 
         def configure(ctx, param, filename):
             return parse_config_file(filename, schema_object())

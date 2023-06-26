@@ -47,40 +47,49 @@ def expand_conf(config_data, debug=False):
     """
 
     import dunedaq.daqconf.confgen as confgen
+    import dunedaq.daqconf.bootgen as bootgen
+    import dunedaq.daqconf.detectorgen as detectorgen
+    import dunedaq.daqconf.daqcommongen as daqcommongen
+    import dunedaq.daqconf.timinggen as timinggen
+    import dunedaq.daqconf.hsigen as hsigen
+    import dunedaq.daqconf.readoutgen as readoutgen
+    import dunedaq.daqconf.triggergen as triggergen
+    import dunedaq.daqconf.dataflowgen as dataflowgen
+    import dunedaq.daqconf.dqmgen as dqmgen
 
     ## Hack, we shouldn't need to do that, in the future it should be, boot = config_data.boot
-    boot = confgen.boot(**config_data.boot)
+    boot = bootgen.boot(**config_data.boot)
     if debug: console.log(f"boot configuration object: {boot.pod()}")
 
-    detector = confgen.detector(**config_data.detector)
+    detector = detectorgen.detector(**config_data.detector)
     if debug: console.log(f"detector configuration object: {detector.pod()}")
 
-    daq_common = confgen.daq_common(**config_data.daq_common)
+    daq_common = daqcommongen.daq_common(**config_data.daq_common)
     if debug: console.log(f"daq_common configuration object: {daq_common.pod()}")
 
-    timing = confgen.timing(**config_data.timing)
+    timing = timinggen.timing(**config_data.timing)
     if debug: console.log(f"timing configuration object: {timing.pod()}")
 
-    hsi = confgen.hsi(**config_data.hsi)
+    hsi = hsigen.hsi(**config_data.hsi)
     if debug: console.log(f"hsi configuration object: {hsi.pod()}")
 
     ctb_hsi = confgen.ctb_hsi(**config_data.ctb_hsi)
     if debug: console.log(f"ctb_hsi configuration object: {ctb_hsi.pod()}")
 
-    readout = confgen.readout(**config_data.readout)
+    readout = readoutgen.readout(**config_data.readout)
     if debug: console.log(f"readout configuration object: {readout.pod()}")
 
-    trigger = confgen.trigger(**config_data.trigger)
+    trigger = triggergen.trigger(**config_data.trigger)
     if debug: console.log(f"trigger configuration object: {trigger.pod()}")
 
-    dataflow = confgen.dataflow(**config_data.dataflow)
+    dataflow = dataflowgen.dataflow(**config_data.dataflow)
     if debug: console.log(f"dataflow configuration object: {dataflow.pod()}")
 
-    dqm = confgen.dqm(**config_data.dqm)
+    dqm = dqmgen.dqm(**config_data.dqm)
     if debug: console.log(f"dqm configuration object: {dqm.pod()}")
 
-    dpdk_sender = confgen.dpdk_sender(**config_data.dpdk_sender)
-    if debug: console.log(f"dpdk_sender configuration object: {dpdk_sender.pod()}")
+    # dpdk_sender = confgen.dpdk_sender(**config_data.dpdk_sender)
+    # if debug: console.log(f"dpdk_sender configuration object: {dpdk_sender.pod()}")
 
     return (
         boot,
@@ -93,7 +102,7 @@ def expand_conf(config_data, debug=False):
         trigger,
         dataflow,
         dqm,
-        dpdk_sender
+        # dpdk_sender
     )
 
 def validate_conf(boot, readout, dataflow, timing, hsi, dqm):
@@ -143,11 +152,11 @@ def create_df_apps(
         sourceid_broker
     ):
 
-    import dunedaq.daqconf.confgen as confgen
+    import dunedaq.daqconf.dataflowgen as dataflowgen
 
     if len(dataflow.apps) == 0:
         console.log(f"No Dataflow apps defined, adding default dataflow0")
-        dataflow.apps = [confgen.dataflowapp()]
+        dataflow.apps = [dataflowgen.dataflowapp()]
 
     host_df = []
     appconfig_df = {}
@@ -156,7 +165,7 @@ def create_df_apps(
         console.log(f"Parsing dataflow app config {d}")
 
         ## Hack, we shouldn't need to do that, in the future, it should be appconfig = d
-        appconfig = confgen.dataflowapp(**d)
+        appconfig = dataflowgen.dataflowapp(**d)
 
         dfapp = appconfig.app_name
         if dfapp in df_app_names:
@@ -173,16 +182,16 @@ def create_df_apps(
 # Add -h as default help option
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(context_settings=CONTEXT_SETTINGS)
-@generate_cli_from_schema('daqconf/confgen.jsonnet', 'daqconf_multiru_gen', 'dataflowapp')
+@generate_cli_from_schema('daqconf/confgen.jsonnet', 'daqconf_multiru_gen', 'daqconf.dataflowgen.dataflowapp')
 @click.option('--force-pm', default=None, type=click.Choice(['ssh', 'k8s']), help="Force process manager")
 @click.option('--base-command-port', type=int, default=None, help="Base port of application command endpoints")
 @click.option('-m', '--detector-readout-map-file', default=None, help="File containing detector detector-readout map for configuration to run")
 @click.option('-s', '--data-rate-slowdown-factor', default=0, help="Scale factor for readout internal clock to generate less data")
 @click.option('--file-label', default=None, help="File - used for raw data filename prefix")
 @click.option('--enable-dqm', default=False, is_flag=True, help="Enable generation of DQM apps")
-@click.option('-a', '--only-check-args', default=False, is_flag=True, help="Check input arguments and quit")
+@click.option('-a', '--check-args-and-exit', default=False, is_flag=True, help="Check input arguments and quit")
 @click.option('-n', '--dry-run', default=False, is_flag=True, help="Dry run, do not generate output files")
-@click.option('-f', '--force', default=False, is_flag=True, help="Force configuration generation - delete ")
+@click.option('-f', '--force', default=False, is_flag=True, help="Force configuration generation - delete existing target directory if exists")
 @click.option('--debug', default=False, is_flag=True, help="Switch to get a lot of printout and dot files")
 @click.argument('json_dir', type=click.Path())
 def cli(
@@ -193,15 +202,15 @@ def cli(
         data_rate_slowdown_factor,
         enable_dqm,
         file_label,
-        only_check_args,
+        check_args_and_exit,
         dry_run,
         force,
         debug,
         json_dir
     ):
 
-    console.log("Commandline parsing completed")
-    if only_check_args:
+    # console.log("Commandline parsing completed")
+    if check_args_and_exit:
         return
     
     output_dir = Path(json_dir)
@@ -237,7 +246,7 @@ def cli(
         trigger,
         dataflow,
         dqm,
-        dpdk_sender
+        # dpdk_sender
     ) = expand_conf(config_data, debug)
 
     #
@@ -269,7 +278,9 @@ def cli(
     
     file_label = file_label if file_label is not None else detector.op_env
 
-
+    #--------------------------------------------------------------------------
+    # Validate configuration
+    #--------------------------------------------------------------------------
     validate_conf(boot, readout, dataflow, timing, hsi, dqm)
 
 
@@ -294,7 +305,8 @@ def cli(
     console.log("Loading timing partition controller config generator")
     from daqconf.apps.tprtc_gen import get_tprtc_app
     console.log("Loading DPDK sender config generator")
-    from daqconf.apps.dpdk_sender_gen import get_dpdk_sender_app
+    # from daqconf.apps.dpdk_sender_gen import get_dpdk_sender_app
+
     if dataflow.enable_tpset_writing:
         console.log("Loading TPWriter config generator")
         from daqconf.apps.tpwriter_gen import get_tpwriter_app
@@ -615,10 +627,10 @@ def cli(
         if debug: console.log(f"{tpw_name} app: {the_system.apps[tpw_name]}")
 
 
-    if dpdk_sender.enable_dpdk_sender:
-        the_system.apps["dpdk_sender"] = get_dpdk_sender_app(
-            HOST=dpdk_sender.host_dpdk_sender[0],
-        )
+    # if dpdk_sender.enable_dpdk_sender:
+    #     the_system.apps["dpdk_sender"] = get_dpdk_sender_app(
+    #         HOST=dpdk_sender.host_dpdk_sender[0],
+    #     )
 
     #--------------------------------------------------------------------------
     # App generation completed
@@ -761,7 +773,7 @@ def cli(
         write_config_file(
             output_dir,
             config_file.name if config_file else "default.json",
-            confgen.daqconf_multiru_gen(  # <facepalm>
+            confgen.daqconf_multiru_gen(  # :facepalm:
                 boot = boot,
                 dataflow = dataflow,
                 dqm = dqm,
@@ -770,7 +782,7 @@ def cli(
                 readout = readout,
                 timing = timing,
                 trigger = trigger,
-                dpdk_sender = dpdk_sender,
+                # dpdk_sender = dpdk_sender,
             ) # </facepalm>
         )
 
