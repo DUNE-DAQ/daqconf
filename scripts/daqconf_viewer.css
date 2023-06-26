@@ -2,9 +2,13 @@
 Screen {
     layout: grid;
     layers: below above;
-    grid-size: 4 10;
-    grid-gutter: 1;
+    grid-size: 4 4;
+    grid-gutter: 0;
     height: 100%;
+}
+
+#buttonbox {
+    overflow-x: auto;
 }
 
 #conftree {
@@ -24,21 +28,20 @@ Screen {
 }
 
 .configs {
-    row-span: 10;
+    row-span: 4;
     column-span: 1;
     height: 100%;
 }
 
 .versions {
-    row-span: 2;
+    row-span: 1;
     column-span: 3;
     height: 100%;
-    overflow-x: auto;
     align-vertical: middle;
 }
 
 .display {
-    row-span: 8;
+    row-span: 4;
     column-span: 3;
     height: 100%;
     align-horizontal: center;

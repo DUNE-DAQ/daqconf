@@ -6,19 +6,23 @@ import json
 import sys
 
 from rich.text import Text
+from rich.markdown import Markdown
 from difflib import context_diff, ndiff, unified_diff
 
 from textual import log, events
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Content, Container, Vertical
 from textual.widget import Widget
-from textual.widgets import Button, Header, Footer, Static, Input, Label, ListView, ListItem, Tree
+from textual.widgets import Button, Header, Footer, Static, Label, ListView, ListItem, Tree
 from textual.reactive import reactive, Reactive
-from textual.message import Message, MessageTarget
 from textual.screen import Screen
 
 auth = ("fooUsr", "barPass")
 oldconf = None
+
+class TitleBox(Static):
+    def __init__(self, title, **kwargs):
+        super().__init__(Markdown(f'# {title}'))
 
 class LabelItem(ListItem):
     def __init__(self, label: str) -> None:
@@ -39,6 +43,7 @@ class Configs(Static):
         self.set_interval(0.1, self.update_configs)
 
     def compose(self) -> ComposeResult:
+       yield TitleBox('Configuration List')
        yield ListView(LabelItem("asfas"))
 
     async def update_configs(self) -> None:
@@ -56,16 +61,22 @@ class Configs(Static):
 
     def on_list_view_selected(self, event: ListView.Selected):
         confname = event.item.label
-        versions = self.screen.query_one(Horizontal)
-        versions.new_conf(confname)
+        for v in self.screen.query(Vertical):
+            if isinstance(v, Versions):
+                v.new_conf(confname)
+                break
 
-class Versions(Horizontal):
+class Versions(Vertical):
     vlist = reactive([])
 
     def __init__(self, hostname, **kwargs):
         super().__init__(**kwargs)
         self.hostname = hostname
         self.current_conf = None
+
+    def compose(self) -> ComposeResult:
+       yield TitleBox('Available Versions')
+       yield Horizontal(id='buttonbox')
 
     def on_mount(self) -> None:
         self.set_interval(0.1, self.update_versions)
@@ -81,12 +92,13 @@ class Versions(Horizontal):
             self.vlist = r.json()['versions']          #This is a list of ints
 
     def watch_vlist(self, vlist:list[int]) -> None:
-        old_buttons = self.query(Button)
+        bb = self.query_one(Horizontal)
+        old_buttons = bb.query(Button)
         for b in old_buttons:
            b.remove()
         for v in vlist:
             b_id = 'v' + str(v)                        #An id can't be just a number for some reason
-            self.mount(Button(str(v), id=b_id, classes='vbuttons', variant='primary'))
+            bb.mount(Button(str(v), id=b_id, classes='vbuttons', variant='primary'))
 
     async def on_button_pressed (self, event: Button.Pressed) -> None:
         button_id = event.button.id
@@ -106,6 +118,7 @@ class Display(Vertical):
         self.version = None 
 
     def compose(self) -> ComposeResult:
+       yield TitleBox('Configuration Data')
        yield Tree("", id='conftree')
 
     async def get_json(self, conf, ver) -> None:
@@ -173,7 +186,8 @@ class DiffDisplay(Vertical):
         self.version = None
 
     def compose(self) -> ComposeResult:
-        yield Static(id='diffbox')
+        yield TitleBox('Diff')
+        yield Vertical(Static(id='diffbox'))
 
     async def get_json(self, conf, ver) -> None:
         self.confname = conf
@@ -208,8 +222,10 @@ class DiffDisplay(Vertical):
                         t = Text(d)
                 diff += t
 
-            box = self.query_one(Static)
-            box.update(diff)
+            for b in self.query(Static):
+              if b.id == 'diffbox':
+                  b.update(diff)
+                  break
 
     def on_button_pressed(self) -> None:
         self.remove()
