@@ -3,8 +3,8 @@
 
 local moo = import "moo.jsonnet";
 
-local sctb = import "ctbmodules/ctbmodule.jsonnet";
-local ctbmodule = moo.oschema.hier(sctb).dunedaq.ctbmodules.ctbmodule;
+#local sctb = import "ctbmodules/ctbmodule.jsonnet";
+#local ctbmodule = moo.oschema.hier(sctb).dunedaq.ctbmodules.ctbmodule;
 
 local s = moo.oschema.schema("dunedaq.daqconf.confgen");
 local nc = moo.oschema.numeric_constraints;
@@ -104,17 +104,17 @@ local cs = {
     s.field( "enabled_hsi_signals", self.count, default=1, doc='Fake HSI only: bit mask of enabled fake HSI signals')
   ]),
 
-  ctb_hsi: s.record("ctb_hsi", [
-    # ctb options
-    s.field( "use_ctb_hsi", self.flag, default=false, doc='Flag to control whether CTB HSI config is generated. Default is false'),
-    s.field( "host_ctb_hsi", self.host, default='localhost', doc='Host to run the HSI app on'),
-    s.field("hlt_triggers", ctbmodule.Hlt_trigger_seq, []),
-    s.field("beam_llt_triggers", ctbmodule.Llt_mask_trigger_seq, []),
-    s.field("crt_llt_triggers", ctbmodule.Llt_count_trigger_seq, []),
-    s.field("pds_llt_triggers", ctbmodule.Llt_count_trigger_seq, []),
-    s.field("fake_trig_1", ctbmodule.Randomtrigger, ctbmodule.Randomtrigger),
-    s.field("fake_trig_2", ctbmodule.Randomtrigger, ctbmodule.Randomtrigger)
-  ]),
+  #ctb_hsi: s.record("ctb_hsi", [
+  #  # ctb options
+  #  s.field( "use_ctb_hsi", self.flag, default=false, doc='Flag to control whether CTB HSI config is generated. Default is false'),
+  #  s.field( "host_ctb_hsi", self.host, default='localhost', doc='Host to run the HSI app on'),
+  #  s.field("hlt_triggers", ctbmodule.Hlt_trigger_seq, []),
+  #  s.field("beam_llt_triggers", ctbmodule.Llt_mask_trigger_seq, []),
+  #  s.field("crt_llt_triggers", ctbmodule.Llt_count_trigger_seq, []),
+  #  s.field("pds_llt_triggers", ctbmodule.Llt_count_trigger_seq, []),
+  #  s.field("fake_trig_1", ctbmodule.Randomtrigger, ctbmodule.Randomtrigger),
+  #  s.field("fake_trig_2", ctbmodule.Randomtrigger, ctbmodule.Randomtrigger)
+  #]),
 
   data_file_entry: s.record("data_file_entry", [
     s.field("data_file", self.path, default='./frames.bin', doc="File containing data frames to be replayed by the fake cards. Former -d. Uses the asset manager, can also be 'asset://checksum/somelonghash', or 'file://somewhere/frames.bin' or 'frames.bin'"),
@@ -309,7 +309,7 @@ local cs = {
     s.field('dataflow', self.dataflow, default=self.dataflow, doc='Dataflow paramaters'),
     s.field('dqm',      self.dqm,      default=self.dqm,      doc='DQM parameters'),
     s.field('hsi',      self.hsi,      default=self.hsi,      doc='HSI parameters'),
-    s.field('ctb_hsi',  self.ctb_hsi,  default=self.ctb_hsi,  doc='CTB parameters'),
+    #s.field('ctb_hsi',  self.ctb_hsi,  default=self.ctb_hsi,  doc='CTB parameters'),
     s.field('readout',  self.readout,  default=self.readout,  doc='Readout parameters'),
     s.field('timing',   self.timing,   default=self.timing,   doc='Timing parameters'),
     s.field('trigger',  self.trigger,  default=self.trigger,  doc='Trigger parameters'),
@@ -319,4 +319,5 @@ local cs = {
 };
 
 // Output a topologically sorted array.
-sctb + moo.oschema.sort_select(cs)
+#sctb + moo.oschema.sort_select(cs)
+moo.oschema.sort_select(cs)
