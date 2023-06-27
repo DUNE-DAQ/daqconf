@@ -3,47 +3,30 @@
 
 local moo = import "moo.jsonnet";
 
+local stypes = import "daqconf/types.jsonnet";
+local types = moo.oschema.hier(stypes).dunedaq.daqconf.types;
+
 local s = moo.oschema.schema("dunedaq.daqconf.triggergen");
 local nc = moo.oschema.numeric_constraints;
 // A temporary schema construction context.
 local cs = {
-  port:            s.number(   "Port", "i4", doc="A TCP/IP port number"),
-  freq:            s.number(   "Frequency", "u4", doc="A frequency"),
-  rate:            s.number(   "Rate", "f8", doc="A rate as a double"),
-  count:           s.number(   "count", "i8", doc="A count of things"),
-  three_choice:    s.number(   "threechoice", "i8", nc(minimum=0, exclusiveMaximum=3), doc="A choice between 0, 1, or 2"),
-  flag:            s.boolean(  "Flag", doc="Parameter that can be used to enable or disable functionality"),
-  monitoring_dest: s.enum(     "MonitoringDest", ["local", "cern", "pocket"]),
-  path:            s.string(   "Path", doc="Location on a filesystem"),
-  paths:           s.sequence( "Paths",         self.path, doc="Multiple paths"),
-  host:            s.string(   "Host",          moo.re.dnshost, doc="A hostname"),
-  hosts:           s.sequence( "Hosts",         self.host, "Multiple hosts"),
-  string:          s.string(   "Str",           doc="Generic string"),
-  strings:         s.sequence( "Strings",  self.string, doc="List of strings"),
-  tpg_channel_map: s.enum(     "TPGChannelMap", ["VDColdboxChannelMap", "ProtoDUNESP1ChannelMap", "PD2HDChannelMap", "HDColdboxChannelMap"]),
-  dqm_channel_map: s.enum(     "DQMChannelMap", ['HD', 'VD', 'PD2HD', 'HDCB']),
-  dqm_params:      s.sequence( "DQMParams",     self.count, doc="Parameters for DQM (fixme)"),
-  tc_types:        s.sequence( "TCTypes",       self.count, doc="List of TC types"),
   tc_type:         s.number(   "TCType",        "i4", nc(minimum=0, maximum=9), doc="Number representing TC type. Currently ranging from 0 to 9"),
+  tc_types:        s.sequence( "TCTypes",       self.tc_type, doc="List of TC types"),
   tc_interval:     s.number(   "TCInterval",    "i8", nc(minimum=1, maximum=30000000000), doc="The intervals between TCs that are inserted into MLT by CTCM, in clock ticks"),
   tc_intervals:    s.sequence( "TCIntervals",   self.tc_interval, doc="List of TC intervals used by CTCM"),
   readout_time:    s.number(   "ROTime",        "i8", doc="A readout time in ticks"),
-  channel_list:    s.sequence( "ChannelList",   self.count, doc="List of offline channels to be masked out from the TPHandler"),
-  tpg_algo_choice: s.enum(     "TPGAlgoChoice", ["SimpleThreshold", "AbsRS"], doc="Trigger algorithm choice"),
-  pm_choice:       s.enum(     "PMChoice", ["k8s", "ssh"], doc="Process Manager choice: ssh or Kubernetes"),
-  rte_choice:      s.enum(     "RTEChoice", ["auto", "release", "devarea"], doc="Kubernetes DAQ application RTE choice"),
 
   trigger_algo_config: s.record("trigger_algo_config", [
-    s.field("prescale", self.count, default=100),
-    s.field("window_length", self.count, default=10000),
-    s.field("adjacency_threshold", self.count, default=6),
-    s.field("adj_tolerance", self.count, default=4),
-    s.field("trigger_on_adc", self.flag, default=false),
-    s.field("trigger_on_n_channels", self.flag, default=false),
-    s.field("trigger_on_adjacency", self.flag, default=true),
-    s.field("adc_threshold", self.count, default=10000),
-    s.field("n_channels_threshold", self.count, default=8),
-    s.field("print_tp_info", self.flag, default=false),
+    s.field("prescale", types.count, default=100),
+    s.field("window_length", types.count, default=10000),
+    s.field("adjacency_threshold", types.count, default=6),
+    s.field("adj_tolerance", types.count, default=4),
+    s.field("trigger_on_adc", types.flag, default=false),
+    s.field("trigger_on_n_channels", types.flag, default=false),
+    s.field("trigger_on_adjacency", types.flag, default=true),
+    s.field("adc_threshold", types.count, default=10000),
+    s.field("n_channels_threshold", types.count, default=8),
+    s.field("print_tp_info", types.flag, default=false),
   ]),
 
   c0_readout: s.record("c0_readout", [
@@ -111,37 +94,37 @@ local cs = {
   ]),
 
   trigger: s.record("trigger",[
-    s.field( "trigger_rate_hz", self.rate, default=1.0, doc='Fake HSI only: rate at which fake HSIEvents are sent. 0 - disable HSIEvent generation. Former -t'),
-    s.field( "trigger_window_before_ticks",self.count, default=1000, doc="Trigger window before marker. Former -b"),
-    s.field( "trigger_window_after_ticks", self.count, default=1000, doc="Trigger window after marker. Former -a"),
-    s.field( "host_trigger", self.host, default='localhost', doc='Host to run the trigger app on'),
-    // s.field( "host_tpw", self.host, default='localhost', doc='Host to run the TPWriter app on'),
+    s.field( "trigger_rate_hz", types.rate, default=1.0, doc='Fake HSI only: rate at which fake HSIEvents are sent. 0 - disable HSIEvent generation. Former -t'),
+    s.field( "trigger_window_before_ticks",types.count, default=1000, doc="Trigger window before marker. Former -b"),
+    s.field( "trigger_window_after_ticks", types.count, default=1000, doc="Trigger window after marker. Former -a"),
+    s.field( "host_trigger", types.host, default='localhost', doc='Host to run the trigger app on'),
+    // s.field( "host_tpw", types.host, default='localhost', doc='Host to run the TPWriter app on'),
     # trigger options
-    s.field( "completeness_tolerance", self.count, default=1, doc="Maximum number of inactive queues we will tolerate."),
-    s.field( "tolerate_incompleteness", self.flag, default=false, doc="Flag to tell trigger to tolerate inactive queues."),
-    s.field( "ttcm_s1", self.count,default=1, doc="Timing trigger candidate maker accepted HSI signal ID 1"),
-    s.field( "ttcm_s2", self.count, default=2, doc="Timing trigger candidate maker accepted HSI signal ID 2"),
-    s.field( "trigger_activity_plugin", self.string, default='TriggerActivityMakerPrescalePlugin', doc="Trigger activity algorithm plugin"),
+    s.field( "completeness_tolerance", types.count, default=1, doc="Maximum number of inactive queues we will tolerate."),
+    s.field( "tolerate_incompleteness", types.flag, default=false, doc="Flag to tell trigger to tolerate inactive queues."),
+    s.field( "ttcm_s1", types.count,default=1, doc="Timing trigger candidate maker accepted HSI signal ID 1"),
+    s.field( "ttcm_s2", types.count, default=2, doc="Timing trigger candidate maker accepted HSI signal ID 2"),
+    s.field( "trigger_activity_plugin", types.string, default='TriggerActivityMakerPrescalePlugin', doc="Trigger activity algorithm plugin"),
     s.field( "trigger_activity_config", self.trigger_algo_config, default=self.trigger_algo_config,doc="Trigger activity algorithm config (string containing python dictionary)"),
-    s.field( "trigger_candidate_plugin", self.string, default='TriggerCandidateMakerPrescalePlugin', doc="Trigger candidate algorithm plugin"),
+    s.field( "trigger_candidate_plugin", types.string, default='TriggerCandidateMakerPrescalePlugin', doc="Trigger candidate algorithm plugin"),
     s.field( "trigger_candidate_config", self.trigger_algo_config, default=self.trigger_algo_config, doc="Trigger candidate algorithm config (string containing python dictionary)"),
-    s.field( "hsi_trigger_type_passthrough", self.flag, default=false, doc="Option to override trigger type in the MLT"),
-    // s.field( "enable_tpset_writing", self.flag, default=false, doc="Enable the writing of TPs to disk (only works with enable_tpg or enable_firmware_tpg)"),
-    // s.field( "tpset_output_path", self.path,default='.', doc="Output directory for TPSet stream files"),
-    // s.field( "tpset_output_file_size",self.count, default=4*1024*1024*1024, doc="The size threshold when TPSet stream files are closed (in bytes)"),
+    s.field( "hsi_trigger_type_passthrough", types.flag, default=false, doc="Option to override trigger type in the MLT"),
+    // s.field( "enable_tpset_writing", types.flag, default=false, doc="Enable the writing of TPs to disk (only works with enable_tpg or enable_firmware_tpg)"),
+    // s.field( "tpset_output_path", types.path,default='.', doc="Output directory for TPSet stream files"),
+    // s.field( "tpset_output_file_size",types.count, default=4*1024*1024*1024, doc="The size threshold when TPSet stream files are closed (in bytes)"),
     // s.field( "tpg_channel_map", self.tpg_channel_map, default="ProtoDUNESP1ChannelMap", doc="Channel map for TPG"),
-    s.field( "mlt_merge_overlapping_tcs", self.flag, default=true, doc="Option to turn off merging of overlapping TCs when forming TDs in MLT"),
-    s.field( "mlt_buffer_timeout", self.count, default=100, doc="Timeout (buffer) to wait for new overlapping TCs before sending TD"),
-    s.field( "mlt_send_timed_out_tds", self.flag, default=true, doc="Option to drop TD if TC comes out of timeout window"),
-    s.field( "mlt_max_td_length_ms", self.count, default=1000, doc="Maximum allowed time length [ms] for a readout window of a single TD"),
+    s.field( "mlt_merge_overlapping_tcs", types.flag, default=true, doc="Option to turn off merging of overlapping TCs when forming TDs in MLT"),
+    s.field( "mlt_buffer_timeout", types.count, default=100, doc="Timeout (buffer) to wait for new overlapping TCs before sending TD"),
+    s.field( "mlt_send_timed_out_tds", types.flag, default=true, doc="Option to drop TD if TC comes out of timeout window"),
+    s.field( "mlt_max_td_length_ms", types.count, default=1000, doc="Maximum allowed time length [ms] for a readout window of a single TD"),
     s.field( "mlt_ignore_tc", self.tc_types, default=[], doc="Optional list of TC types to be ignored in MLT"),
-    s.field( "mlt_use_readout_map", self.flag, default=false, doc="Option to use custom readout map in MLT"),
+    s.field( "mlt_use_readout_map", types.flag, default=false, doc="Option to use custom readout map in MLT"),
     s.field( "mlt_td_readout_map", self.tc_readout_map, default=self.tc_readout_map, doc="The readout windows assigned to TDs in MLT, based on TC type."),
-    s.field( "use_custom_maker", self.flag, default=false, doc="Option to use a Custom Trigger Candidate Maker (plugin)"),
+    s.field( "use_custom_maker", types.flag, default=false, doc="Option to use a Custom Trigger Candidate Maker (plugin)"),
     s.field( "ctcm_trigger_types", self.tc_types, default=[4], doc="Optional list of TC types to be used by the Custom Trigger Candidate Maker (plugin)"),
     s.field( "ctcm_trigger_intervals", self.tc_intervals, default=[10000000], doc="Optional list of intervals (clock ticks) for the TC types to be used by the Custom Trigger Candidate Maker (plugin)"),
   ]),
 
 };
 
-moo.oschema.sort_select(cs)
+stypes + moo.oschema.sort_select(cs)
