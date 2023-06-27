@@ -1,0 +1,64 @@
+/* 4 columns 10 rows */
+Screen {
+    layout: grid;
+    layers: below above;
+    grid-size: 4 4;
+    grid-gutter: 0;
+    height: 100%;
+}
+
+#buttonbox {
+    overflow-x: auto;
+}
+
+#conftree {
+    height:90%;
+}
+
+#verticalconf {
+    height: 20;
+}
+
+#diffscreen{
+    layer: above;
+    align: center middle;
+    background: cadetblue;
+    height: 100%;
+    width: 100%;
+}
+
+.configs {
+    row-span: 4;
+    column-span: 1;
+    height: 100%;
+}
+
+.versions {
+    row-span: 1;
+    column-span: 3;
+    height: 100%;
+    align-vertical: middle;
+}
+
+.display {
+    row-span: 4;
+    column-span: 3;
+    height: 100%;
+    align-horizontal: center;
+}
+
+.redcontainer{
+    border: wide red;
+}
+
+.greencontainer{
+    border: wide green;
+}
+
+.vbuttons {
+    align-vertical: middle;
+    width: 5%;
+    margin: 1;
+}
+
+
