@@ -312,7 +312,6 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
 
     ### get trigger bitwords for mlt
     MLT_TRIGGER_FLAGS = get_trigger_bitwords(MLT_TRIGGER_BITWORDS)
-    print(MLT_TRIGGER_FLAGS)
     
     # We need to populate the list of links based on the fragment
     # producers available in the system. This is a bit of a
