@@ -36,15 +36,15 @@ local cs = {
     ], doc="A FELIX readout stream configuration"),
 
     eth_conf: s.record("EthStreamParameters", [
-      s.field("protocol", self.eth_protocol, "udp", doc="Ethernet protocol"),
+      s.field("protocol", self.eth_protocol, "udp", doc="Ethernet protocol used. udp or zmq"),
       s.field("mode", self.mode, "fix_rate", doc="fix_rate, var_rate"),
       s.field("rx_iface", self.short, 0, doc="Reaout interface"),
-      s.field("rx_host", self.host, "localhost", doc="Reaout hostname"),
-      s.field("rx_mac", self.mac,  "00:00:00:00:00:00", doc="Reaout Destination MAC"),
-      s.field("rx_ip", self.ipv4, "0.0.0.0", doc="Reaout Destination IP"),
-      s.field("tx_host", self.host, "localhost", doc="Transmitter hostname"),
-      s.field("tx_mac", self.mac, "00:00:00:00:00:00", doc="Reaout Source MAC"),
-      s.field("tx_ip", self.ipv4, "0.0.0.0", doc="Reaout Source IP"),
+      s.field("rx_host", self.host, "localhost", doc="Readout hostname"),
+      s.field("rx_mac", self.mac,  "00:00:00:00:00:00", doc="Destination MAC on readout host"),
+      s.field("rx_ip", self.ipv4, "0.0.0.0", doc="Destination IP on readout host"),
+      s.field("tx_host", self.host, "localhost", doc="Transmitter control host"),
+      s.field("tx_mac", self.mac, "00:00:00:00:00:00", doc="Transmitter MAC"),
+      s.field("tx_ip", self.ipv4, "0.0.0.0", doc="Transmitter IP"),
     ], doc="A Ethernet readout stream configuration"),
 
 

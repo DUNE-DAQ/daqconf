@@ -3,10 +3,7 @@ from dunedaq.env import get_moo_model_path
 import moo.io
 moo.io.default_load_path = get_moo_model_path()
 
-from rich.console import Console
-
 import moo.otypes
-import re
 
 moo.otypes.load_types('trigger/moduleleveltrigger.jsonnet')
 moo.otypes.load_types('dfmodules/triggerrecordbuilder.jsonnet')
@@ -16,8 +13,6 @@ import dunedaq.dfmodules.triggerrecordbuilder as trb
 
 from daqconf.core.conf_utils import Direction
 from daqconf.core.sourceid import source_id_raw_str, ensure_subsystem_string
-
-console = Console()
 
 def set_mlt_links(the_system, mlt_app_name="trigger", verbose=False):
     """

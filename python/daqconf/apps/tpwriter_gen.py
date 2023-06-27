@@ -26,18 +26,26 @@ from daqconf.core.conf_utils import Direction
 QUEUE_POP_WAIT_MS = 100
 
 def get_tpwriter_app(
-                     OUTPUT_PATH=".",
-                     APP_NAME="tpwriter",
-                     OPERATIONAL_ENVIRONMENT="swtest",
-                     MAX_FILE_SIZE=4*1024*1024*1024,
-                     DATA_RATE_SLOWDOWN_FACTOR=1,
-                     CLOCK_SPEED_HZ=62500000,
-                     SRC_GEO_ID_MAP='',
-                     SOURCE_IDX=998,
-                     HOST="localhost",
-                     DEBUG=False):
-
+        detector,
+        dataflow,
+        daq_common,
+        app_name,
+        file_label,
+        source_id,
+        SRC_GEO_ID_MAP,
+        DEBUG=False
+    ):
     """Generate the json configuration for the readout and DF process"""
+
+    # Temp vars
+    OUTPUT_PATH = dataflow.tpset_output_path
+    APP_NAME = app_name
+    OPERATIONAL_ENVIRONMENT = detector.op_env
+    MAX_FILE_SIZE = dataflow.tpset_output_file_size
+    DATA_RATE_SLOWDOWN_FACTOR = daq_common.data_rate_slowdown_factor
+    CLOCK_SPEED_HZ = detector.clock_speed_hz
+    SOURCE_IDX=source_id
+    HOST=dataflow.host_tpw
 
     ONE_SECOND_INTERVAL_TICKS = CLOCK_SPEED_HZ / DATA_RATE_SLOWDOWN_FACTOR
 
@@ -75,5 +83,12 @@ def get_tpwriter_app(
     mgraph.add_endpoint(".*", f"tpswriter.tpset_source", "TPSet", Direction.IN, is_pubsub=True)
 
     tpw_app = App(modulegraph=mgraph, host=HOST)
+
+    tpw_app.mounted_dirs += [{
+        'name': 'raw-data',
+        'physical_location':OUTPUT_PATH,
+        'in_pod_location':OUTPUT_PATH,
+        'read_only': False
+    }]
 
     return tpw_app
