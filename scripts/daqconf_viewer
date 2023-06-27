@@ -44,7 +44,7 @@ class Configs(Static):
         self.set_interval(0.1, self.update_configs)
 
     def compose(self) -> ComposeResult:
-       yield TitleBox('Configuration List')
+       yield TitleBox('Configurations')
        yield ListView(LabelItem("This shouldn't be visible!"))
 
     async def update_configs(self) -> None:
@@ -96,7 +96,7 @@ class Versions(Vertical):
         self.current_conf = None
 
     def compose(self) -> ComposeResult:
-       yield TitleBox('Available Versions')
+       yield TitleBox(f'Configuration versions')
        yield Horizontal(id='buttonbox')
 
     def on_mount(self) -> None:
@@ -156,7 +156,7 @@ class Display(Vertical):
         self.version = None
 
     def compose(self) -> ComposeResult:
-       yield TitleBox('Configuration Data')
+       yield TitleBox('Configuration data')
        yield Tree("", id='conftree')
 
     async def get_json(self, conf, ver) -> None:
@@ -297,7 +297,10 @@ class DiffScreen(Screen):
 
 class ConfViewer(App):
     CSS_PATH = "daqconf_viewer.css"
-    BINDINGS = [("d", "make_diff()", "Diff")]
+    BINDINGS = [
+        ("d", "make_diff", "Diff"),
+        ("q", "quit", "Quit"),
+    ]
 
     def __init__(self, host, port, **kwargs):
         super().__init__(**kwargs)
