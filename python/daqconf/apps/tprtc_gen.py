@@ -12,8 +12,6 @@
 
 from distutils.command.check import check
 import math
-from rich.console import Console
-console = Console()
 
 # Set moo schema search path
 from dunedaq.env import get_moo_model_path

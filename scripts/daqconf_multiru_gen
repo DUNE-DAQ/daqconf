@@ -7,7 +7,8 @@ from rich.console import Console
 from os.path import exists, abspath, dirname, basename
 from pathlib import Path
 
-console = Console()
+from daqconf.core.console import console
+
 # console.log("daqconf - loading base modules")
 
 from daqconf.core.system import System
@@ -775,6 +776,8 @@ def cli(
             config_file.name if config_file else "default.json",
             confgen.daqconf_multiru_gen(  # :facepalm:
                 boot = boot,
+                detector = detector,
+                daq_common = daq_common,
                 dataflow = dataflow,
                 dqm = dqm,
                 hsi = hsi,

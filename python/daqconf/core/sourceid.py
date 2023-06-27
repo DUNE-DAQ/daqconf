@@ -6,7 +6,8 @@ from rich.console import Console
 from enum import Enum
 from collections import namedtuple, defaultdict
 
-console = Console()
+from .console import console
+
 
 from daqdataformats import SourceID
 from detchannelmaps import *

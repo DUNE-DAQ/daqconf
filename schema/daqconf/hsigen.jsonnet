@@ -12,6 +12,7 @@ local nc = moo.oschema.numeric_constraints;
 local cs = {
 
   hsi: s.record("hsi", [
+    s.field( "random_trigger_rate_hz", types.rate, default=1.0, doc='Fake HSI only: rate at which fake HSIEvents are sent. 0 - disable HSIEvent generation. Former -t'),
     # timing hsi options
     s.field( "use_timing_hsi", types.flag, default=false, doc='Flag to control whether real hardware timing HSI config is generated. Default is false'),
     s.field( "host_timing_hsi", types.host, default='localhost', doc='Host to run the HSI app on'),

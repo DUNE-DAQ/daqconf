@@ -57,32 +57,20 @@ def get_fake_hsi_app(
 
     CLOCK_SPEED_HZ = detector.clock_speed_hz
     DATA_RATE_SLOWDOWN_FACTOR = daq_common.data_rate_slowdown_factor
-    # TRIGGER_RATE_HZ = trigger.trigger_rate_hz
     HSI_SOURCE_ID=source_id
+    RANDOM_TRIGGER_RATE_HZ = hsi.random_trigger_rate_hz
     MEAN_SIGNAL_MULTIPLICITY = hsi.mean_hsi_signal_multiplicity
     SIGNAL_EMULATION_MODE = hsi.hsi_signal_emulation_mode
     ENABLED_SIGNALS =  hsi.enabled_hsi_signals
     HOST=hsi.host_fake_hsi
 
-    TRIGGER_RATE_HZ: int=1
-
-    # region_id=0
-    # element_id=0
-    
-    # trigger_interval_ticks = 0
-    # if TRIGGER_RATE_HZ > 0:
-    #     trigger_interval_ticks = math.floor((1 / TRIGGER_RATE_HZ) * CLOCK_SPEED_HZ / DATA_RATE_SLOWDOWN_FACTOR)
-
-    # startpars = rccmd.StartParams(run=RUN_NUMBER, trigger_rate = TRIGGER_RATE_HZ)
-
     modules = [DAQModule(name   = 'fhsig',
                          plugin = "FakeHSIEventGenerator",
                          conf   =  fhsig.Conf(clock_frequency=CLOCK_SPEED_HZ/DATA_RATE_SLOWDOWN_FACTOR,
-                                              trigger_rate=TRIGGER_RATE_HZ,
+                                              trigger_rate=RANDOM_TRIGGER_RATE_HZ,
                                               mean_signal_multiplicity=MEAN_SIGNAL_MULTIPLICITY,
                                               signal_emulation_mode=SIGNAL_EMULATION_MODE,
                                               enabled_signals=ENABLED_SIGNALS),
-                        #  extra_commands = {"start": startpars}
                         )]
     
     

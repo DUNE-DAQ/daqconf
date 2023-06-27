@@ -1,7 +1,8 @@
 
 from os.path import exists,abspath,dirname
-from rich.console import Console
-console = Console()
+
+from .console import console
+
 
 from daq_assettools.asset_file import AssetFile
 from daq_assettools.asset_database import Database

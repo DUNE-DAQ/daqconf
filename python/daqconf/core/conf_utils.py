@@ -5,11 +5,9 @@ moo.io.default_load_path = get_moo_model_path()
 
 import urllib
 from pathlib import Path
-from rich.console import Console
 from copy import deepcopy
 from collections import namedtuple, defaultdict
 import json
-import os
 from enum import Enum
 from typing import Callable
 from graphviz import Digraph
@@ -29,7 +27,7 @@ import dunedaq.iomanager.connection as conn
 
 from daqconf.core.daqmodule import DAQModule
 
-console = Console()
+from .console import console
 
 ########################################################################
 #

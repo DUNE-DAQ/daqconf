@@ -108,7 +108,7 @@ def get_trigger_app(
     USE_CUSTOM_MAKER = trigger.use_custom_maker
     CTCM_TYPES = trigger.ctcm_trigger_types
     CTCM_INTERVAL = trigger.ctcm_trigger_intervals
-    CHANNEL_MAP_NAME = detector.tpg_channel_map
+    CHANNEL_MAP_NAME = detector.tpc_channel_map
     DATA_REQUEST_TIMEOUT=trigger_data_request_timeout
     HOST=trigger.host_trigger
 

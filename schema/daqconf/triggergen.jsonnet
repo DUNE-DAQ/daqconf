@@ -94,7 +94,7 @@ local cs = {
   ]),
 
   trigger: s.record("trigger",[
-    s.field( "trigger_rate_hz", types.rate, default=1.0, doc='Fake HSI only: rate at which fake HSIEvents are sent. 0 - disable HSIEvent generation. Former -t'),
+    // s.field( "trigger_rate_hz", types.rate, default=1.0, doc='Fake HSI only: rate at which fake HSIEvents are sent. 0 - disable HSIEvent generation. Former -t'),
     s.field( "trigger_window_before_ticks",types.count, default=1000, doc="Trigger window before marker. Former -b"),
     s.field( "trigger_window_after_ticks", types.count, default=1000, doc="Trigger window after marker. Former -a"),
     s.field( "host_trigger", types.host, default='localhost', doc='Host to run the trigger app on'),

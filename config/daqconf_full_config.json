@@ -69,7 +69,7 @@
     "detector": {
         "clock_speed_hz": 62500000,
         "op_env": "swtest",
-        "tpg_channel_map": "PD2HDChannelMap"
+        "tpc_channel_map": "PD2HDChannelMap"
     },
     "dpdk_sender": {
         "eal_args": "-l 0-1 -n 3 -- -m [0:1].0 -j",

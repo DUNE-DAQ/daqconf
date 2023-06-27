@@ -11,9 +11,8 @@
 # fragments are provided by the FakeDataProd module from dfmodules
 
 import math
-from rich.console import Console
-console = Console()
-
+# from rich.console import Console
+from ..core.console import console
 # Set moo schema search path
 from dunedaq.env import get_moo_model_path
 import moo.io
@@ -21,12 +20,12 @@ moo.io.default_load_path = get_moo_model_path()
 
 # Load configuration types
 import moo.otypes
-moo.otypes.load_types('rcif/cmd.jsonnet')
+# moo.otypes.load_types('rcif/cmd.jsonnet')
 moo.otypes.load_types('hsilibs/hsireadout.jsonnet')
 moo.otypes.load_types('hsilibs/hsicontroller.jsonnet')
 moo.otypes.load_types('readoutlibs/readoutconfig.jsonnet')
 
-import dunedaq.rcif.cmd as rccmd # AddressedCmd, 
+# import dunedaq.rcif.cmd as rccmd # AddressedCmd, 
 import dunedaq.hsilibs.hsireadout as hsir
 import dunedaq.hsilibs.hsicontroller as hsic
 import dunedaq.readoutlibs.readoutconfig as rconf
@@ -51,10 +50,10 @@ def get_timing_hsi_app(
 
 
 
-    # Temp vars
+    # Temp vars - remove
     CLOCK_SPEED_HZ = detector.clock_speed_hz
-    # TRIGGER_RATE_HZ = trigger.trigger_rate_hz
     DATA_RATE_SLOWDOWN_FACTOR = daq_common.data_rate_slowdown_factor
+    RANDOM_TRIGGER_RATE_HZ = hsi.random_trigger_rate_hz
     CONTROL_HSI_HARDWARE=hsi.control_hsi_hw
     CONNECTIONS_FILE=hsi.hsi_hw_connections_file
     READOUT_PERIOD_US = hsi.hsi_readout_period
@@ -70,11 +69,6 @@ def get_timing_hsi_app(
     TIMING_SESSION=timing_session_name
     HOST=hsi.host_timing_hsi
 
-
-    # (Useless) constant
-    TRIGGER_RATE_HZ: int = 1,
-
-
     modules = {}
 
     ## TODO all the connections...
@@ -85,9 +79,6 @@ def get_timing_hsi_app(
                                             hsi_device_name=HSI_DEVICE_NAME,
                                             uhal_log_level=UHAL_LOG_LEVEL))]
     
-    region_id=0
-    element_id=0
-
     modules += [DAQModule(name = f"hsi_datahandler",
                         plugin = "HSIDataLinkHandler",
                         conf = rconf.Conf(readoutmodelconf = rconf.ReadoutModelConf(source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
@@ -107,15 +98,6 @@ def get_timing_hsi_app(
                                                                                           enable_raw_recording = False)
                                              ))]
 
-    # trigger_interval_ticks=0
-    # if TRIGGER_RATE_HZ > 0:
-    #     trigger_interval_ticks=math.floor((1/TRIGGER_RATE_HZ) * CLOCK_SPEED_HZ)
-    # elif CONTROL_HSI_HARDWARE:
-    #     console.log('WARNING! Emulated trigger rate of 0 will not disable signal emulation in real HSI hardware! To disable emulated HSI triggers, use  option: "--hsi-source 0" or mask all signal bits', style="bold red")
-    
-    # startpars = rccmd.StartParams(run=RUN_NUMBER, trigger_rate = TRIGGER_RATE_HZ)
-    # resumepars = rccmd.ResumeParams(trigger_interval_ticks = trigger_interval_ticks)
-
     if CONTROL_HSI_HARDWARE:
         modules.extend( [
                         DAQModule(name="hsic",
@@ -124,7 +106,7 @@ def get_timing_hsi_app(
                                                         hardware_state_recovery_enabled=HARDWARE_STATE_RECOVERY_ENABLED,
                                                         timing_session_name=TIMING_SESSION,
                                                         clock_frequency=CLOCK_SPEED_HZ,
-                                                        trigger_rate=TRIGGER_RATE_HZ,
+                                                        trigger_rate=RANDOM_TRIGGER_RATE_HZ,
                                                         address=HSI_ENDPOINT_ADDRESS,
                                                         partition=HSI_ENDPOINT_PARTITION,
                                                         rising_edge_mask=HSI_RE_MASK,

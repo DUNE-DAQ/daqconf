@@ -11,12 +11,12 @@ local nc = moo.oschema.numeric_constraints;
 // A temporary schema construction context.
 local cs = {
 
-  tpg_channel_map: s.enum(     "TPGChannelMap", ["VDColdboxChannelMap", "ProtoDUNESP1ChannelMap", "PD2HDChannelMap", "HDColdboxChannelMap"]),
+  tpc_channel_map: s.enum("TPCChannelMap", ["VDColdboxChannelMap", "ProtoDUNESP1ChannelMap", "PD2HDChannelMap", "HDColdboxChannelMap"]),
 
   detector :  s.record("detector", [
     s.field( "op_env", types.string, default='swtest', doc="Operational environment - used for HDF5 Attribute inside the files"),
     s.field( "clock_speed_hz", types.freq, default=62500000),
-    s.field( "tpg_channel_map", self.tpg_channel_map, default="PD2HDChannelMap", doc="Channel map for TPG"),
+    s.field( "tpc_channel_map", self.tpc_channel_map, default="PD2HDChannelMap", doc="Channel map for TPG"),
   ], doc="Global common settings"),
 
 

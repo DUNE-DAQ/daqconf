@@ -1,9 +1,4 @@
 # Set moo schema search path
-from rich.console import Console
-
-console = Console()
-
-
 from dunedaq.env import get_moo_model_path
 import moo.io
 moo.io.default_load_path = get_moo_model_path()
@@ -864,7 +859,7 @@ class ReadoutAppGenerator:
         if TPG_ENABLED:
             dlhs_mods = self.add_tp_processing(
             dlh_list=dlhs_mods,
-            TPG_CHANNEL_MAP=self.det_cfg.tpg_channel_map,
+            TPG_CHANNEL_MAP=self.det_cfg.tpc_channel_map,
             )
 
         modules += dlhs_mods
@@ -895,7 +890,7 @@ class ReadoutAppGenerator:
         )
 
         if TPG_ENABLED:
-        # Add endpoints and frame producers to TP data handlers
+            # Add endpoints and frame producers to TP data handlers
             self.add_tpg_eps_and_fps(
                 mgraph=mgraph,
                 tpg_dlh_list=tpg_mods,
