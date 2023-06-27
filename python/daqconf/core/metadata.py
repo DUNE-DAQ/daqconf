@@ -3,11 +3,10 @@ import os
 import sys
 from os.path import exists, join
 
-from rich.console import Console
+from .console import console
 
 def write_metadata_file(json_dir, generator, config_file):
     console.log("Generating metadata file")
-
 
     # Backwards compatibility
     if isinstance(json_dir, str):
