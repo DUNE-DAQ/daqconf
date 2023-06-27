@@ -141,6 +141,8 @@
     "mlt_send_timed_out_tds": true,
     "mlt_max_td_length_ms": 1000,
     "mlt_ignore_tc": [],
+    "mlt_use_bitwords": false,
+    "mlt_trigger_bitwords": [],
     "use_custom_maker": false,
     "ctcm_trigger_types": [4],
     "ctcm_trigger_intervals": [62500000],
