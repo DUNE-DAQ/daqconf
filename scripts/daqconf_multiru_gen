@@ -203,8 +203,10 @@ def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown
     sourceid_broker.generate_trigger_source_ids(ru_descs, readout.enable_tpg)
     tp_infos = sourceid_broker.get_all_source_ids("Trigger")
 
+    number_of_ru_streams = 0
     for ru_name, ru_desc in ru_descs.items():
         console.log(f"Will generate a RU process on {ru_name} ({ru_desc.iface}, {ru_desc.kind}), {len(ru_desc.streams)} streams active")
+        number_of_ru_streams += len(ru_desc.streams)
 
 #    total_number_of_data_producers = 0
 
@@ -292,15 +294,15 @@ def cli(config, base_command_port, detector_readout_map_file, data_rate_slowdown
     # to take into account the number of data producers in Readout and Trigger.
     MINIMUM_BASIC_TRB_TIMEOUT = 200  # msec
     TRB_TIMEOUT_SAFETY_FACTOR = 2
-    DFO_TIMEOUT_SAFETY_FACTOR = 3
+    DFO_TIMEOUT_SAFETY_FACTOR = 2
     MINIMUM_DFO_TIMEOUT = 10000
     readout_data_request_timeout = boot.data_request_timeout_ms # can that be put somewhere else? in dataflow?
     trigger_data_request_timeout = boot.data_request_timeout_ms
     trigger_record_building_timeout = max(MINIMUM_BASIC_TRB_TIMEOUT, TRB_TIMEOUT_SAFETY_FACTOR * max(readout_data_request_timeout, trigger_data_request_timeout))
     if len(ru_descs) >= 1:
-        effective_number_of_data_producers = len(ru_descs)  # number of DataLinkHandlers
+        effective_number_of_data_producers = number_of_ru_streams
         if readout.enable_tpg:
-            effective_number_of_data_producers *= 2  # add in TPSet producers from Trigger (one per Link)
+            effective_number_of_data_producers *= len(ru_descs)  # add in TPSet producers from Trigger (one per RU)
             effective_number_of_data_producers += len(ru_descs)  # add in TA producers from Trigger (one per RU)
         trigger_record_building_timeout = int(math.sqrt(effective_number_of_data_producers) * trigger_record_building_timeout)
     trigger_record_building_timeout += 15 * TRB_TIMEOUT_SAFETY_FACTOR * max_expected_tr_sequences
