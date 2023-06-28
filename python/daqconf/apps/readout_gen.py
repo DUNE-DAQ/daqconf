@@ -914,7 +914,7 @@ class ReadoutAppGenerator:
         cvmfs = Path('/cvmfs')
         ddf_path = Path(cfg.default_data_file)
         if not cvmfs in ddf_path.parents:
-            dir_name.add(ddf_path.parent)
+            dir_names.add(ddf_path.parent)
 
         for _,file in data_file_map:
             f = Path(file)
