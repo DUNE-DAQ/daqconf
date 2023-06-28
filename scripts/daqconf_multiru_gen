@@ -624,6 +624,7 @@ def cli(
             app_name=tpw_name,
             file_label=file_label,
             source_id=dfidx,
+            SRC_GEO_ID_MAP=dro_map.get_src_geo_map(),
             DEBUG=debug
             )
 
