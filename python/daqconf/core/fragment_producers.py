@@ -13,6 +13,7 @@ import dunedaq.dfmodules.triggerrecordbuilder as trb
 
 from daqconf.core.conf_utils import Direction
 from daqconf.core.sourceid import source_id_raw_str, ensure_subsystem_string
+from .console import console
 
 def set_mlt_links(the_system, mlt_app_name="trigger", verbose=False):
     """
