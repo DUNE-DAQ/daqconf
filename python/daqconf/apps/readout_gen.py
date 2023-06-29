@@ -288,10 +288,12 @@ class ReadoutAppGenerator:
         cfg = self.ro_cfg
         try:
             ex = self.lcores_excpt[(RU_DESCRIPTOR.host_name, RU_DESCRIPTOR.iface)]
-            lcore_id_set = list(set(ex['lcore_id_set']))
+            lcore_id_set = ex['lcore_id_set']
         except KeyError:
-            lcore_id_set = list(set(cfg.dpdk_lcore_config['default_lcore_id_set']))
-        return lcore_id_set
+            lcore_id_set = cfg.dpdk_lcore_config['default_lcore_id_set']
+
+        
+        return list(dict.fromkeys(lcore_id_set))
 
 
     ###
