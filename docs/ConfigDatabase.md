@@ -1,8 +1,10 @@
 # Interacting with the Configuration Database
 
 ## Uploading a config
-To use configuration files with a nanorc instance run on Kubernetes, the config first needs to be uploaded to the MongoDB running in the cluster.
+To use configuration files with a _nanorc_ instance run on Kubernetes, the config first needs to be uploaded to the MongoDB running in the cluster.
 To do this, simply run `upload-conf <the_conf_dir/> <name-for-the-conf>`.
+
+_nanorc_ should then be started with `nanorc --pm k8s://np04-srv-015:31000 db://name-for-the-conf partition-name`
 
 Keep in mind that the config directory can contain underscores, but the name it will be given in the database cannot (hyphens are fine).
 
