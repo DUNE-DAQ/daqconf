@@ -945,7 +945,7 @@ class ReadoutAppGenerator:
         if not cvmfs in ddf_path.parents:
             dir_names.add(ddf_path.parent)
 
-        for _,file in data_file_map:
+        for file in data_file_map.values():
             f = Path(file)
             if not cvmfs in f.parents:
                 dir_names.add(f.parent)
