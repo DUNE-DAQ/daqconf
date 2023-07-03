@@ -34,6 +34,8 @@ from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Direction, Queue
 from daqconf.core.sourceid import TAInfo, TPInfo, TCInfo
 
+from trgdataformats._daq_trgdataformats_py import TriggerBits as trgbs
+
 #FIXME maybe one day, triggeralgs will define schemas... for now allow a dictionary of 4byte int, 4byte floats, and strings
 moo.otypes.make_type(schema='number', dtype='i4', name='temp_integer', path='temptypes')
 moo.otypes.make_type(schema='number', dtype='f4', name='temp_float', path='temptypes')
@@ -70,6 +72,23 @@ def get_buffer_conf(source_id, data_request_timeout):
                                                                                request_timeout_ms = data_request_timeout,
                                                                                warn_on_timeout = False,
                                                                                enable_raw_recording = False))
+
+#===============================================================================
+### Function that converts trigger word strings to trigger word integers given TC type. Uses functions from trgdataformats.
+def get_trigger_bitwords(bitwords):
+    # create bitwords flags
+    final_bit_flags = []
+    for bitword in bitwords:
+        tmp_bits = []
+        for bit_name in bitword:
+            bit_value = trgbs.string_to_fragment_type_value(bit_name)
+            if bit_value == -1:
+                raise RuntimeError(f'One or more of provided MLT trigger bitwords is incorrect! Please recheck the names...')
+            else:
+                tmp_bits.append(bit_value)
+        final_bit_flags.append(tmp_bits)
+ 
+    return final_bit_flags
     
 #===============================================================================
 def get_trigger_app(
@@ -105,15 +124,14 @@ def get_trigger_app(
     MLT_IGNORE_TC = trigger.mlt_ignore_tc
     MLT_USE_READOUT_MAP = trigger.mlt_use_readout_map
     MLT_READOUT_MAP = trigger.mlt_td_readout_map
+    MLT_USE_BITWORDS = trigger.mlt_use_bitwords
+    MLT_TRIGGER_BITWORDS = trigger.mlt_trigger_bitwords
     USE_CUSTOM_MAKER = trigger.use_custom_maker
     CTCM_TYPES = trigger.ctcm_trigger_types
     CTCM_INTERVAL = trigger.ctcm_trigger_intervals
     CHANNEL_MAP_NAME = detector.tpc_channel_map
     DATA_REQUEST_TIMEOUT=trigger_data_request_timeout
     HOST=trigger.host_trigger
-
-
-
     
     # Generate schema for the maker plugins on the fly in the temptypes module
     make_moo_record(ACTIVITY_CONFIG , 'ActivityConf' , 'temptypes')
@@ -293,6 +311,9 @@ def get_trigger_app(
                        trigger_intervals=CTCM_INTERVAL,
                        clock_frequency_hz=CLOCK_SPEED_HZ,
                        timestamp_method="kSystemClock"))]
+
+    ### get trigger bitwords for mlt
+    MLT_TRIGGER_FLAGS = get_trigger_bitwords(MLT_TRIGGER_BITWORDS)
     
     # We need to populate the list of links based on the fragment
     # producers available in the system. This is a bit of a
@@ -311,7 +332,9 @@ def get_trigger_app(
                                               ignore_tc=MLT_IGNORE_TC,
                                               td_readout_limit=max_td_length_ticks,
                                               use_readout_map=MLT_USE_READOUT_MAP,
-                                              td_readout_map=MLT_READOUT_MAP))]
+                                              td_readout_map=MLT_READOUT_MAP,
+					      use_bitwords=MLT_USE_BITWORDS,
+					      trigger_bitwords=MLT_TRIGGER_FLAGS))]
 
     mgraph = ModuleGraph(modules)
 

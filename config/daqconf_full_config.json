@@ -235,6 +235,8 @@
                 "time_before": 1000
             }
         },
+        "mlt_trigger_bitwords": [],
+        "mlt_use_bitwords": false,
         "mlt_use_readout_map": false,
         "tolerate_incompleteness": false,
         "trigger_activity_config": {

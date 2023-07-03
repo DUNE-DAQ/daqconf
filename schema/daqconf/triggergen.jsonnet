@@ -15,6 +15,9 @@ local cs = {
   tc_interval:     s.number(   "TCInterval",    "i8", nc(minimum=1, maximum=30000000000), doc="The intervals between TCs that are inserted into MLT by CTCM, in clock ticks"),
   tc_intervals:    s.sequence( "TCIntervals",   self.tc_interval, doc="List of TC intervals used by CTCM"),
   readout_time:    s.number(   "ROTime",        "i8", doc="A readout time in ticks"),
+  bitword:	   s.string(   "Bitword",       doc="A string representing the TC type name, to be set in the trigger bitword."),
+  bitword_list:    s.sequence( "BitwordList",   self.bitword, doc="A sequence of bitword (TC type bits) forming a bitword."),
+  bitwords:        s.sequence( "Bitwords",      self.bitword_list, doc="List of bitwords to use when forming trigger decisions in MLT" ),
 
   trigger_algo_config: s.record("trigger_algo_config", [
     s.field("prescale", types.count, default=100),
@@ -120,6 +123,8 @@ local cs = {
     s.field( "mlt_ignore_tc", self.tc_types, default=[], doc="Optional list of TC types to be ignored in MLT"),
     s.field( "mlt_use_readout_map", types.flag, default=false, doc="Option to use custom readout map in MLT"),
     s.field( "mlt_td_readout_map", self.tc_readout_map, default=self.tc_readout_map, doc="The readout windows assigned to TDs in MLT, based on TC type."),
+    s.field( "mlt_use_bitwords", types.flag, default=false, doc="Option to use bitwords (ie trigger types, coincidences) when forming trigger decisions in MLT" ),
+    s.field( "mlt_trigger_bitwords", self.bitwords, default=[], doc="Optional dictionary of bitwords to use when forming trigger decisions in MLT" ),    
     s.field( "use_custom_maker", types.flag, default=false, doc="Option to use a Custom Trigger Candidate Maker (plugin)"),
     s.field( "ctcm_trigger_types", self.tc_types, default=[4], doc="Optional list of TC types to be used by the Custom Trigger Candidate Maker (plugin)"),
     s.field( "ctcm_trigger_intervals", self.tc_intervals, default=[10000000], doc="Optional list of intervals (clock ticks) for the TC types to be used by the Custom Trigger Candidate Maker (plugin)"),

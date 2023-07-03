@@ -284,8 +284,6 @@ def cli(
     #--------------------------------------------------------------------------
     validate_conf(boot, readout, dataflow, timing, hsi, dqm)
 
-
-
     console.log("Loading dataflow config generator")
     from daqconf.apps.dataflow_gen import get_dataflow_app
     if dqm.enable_dqm:
