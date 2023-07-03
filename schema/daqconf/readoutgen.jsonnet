@@ -11,7 +11,7 @@ local nc = moo.oschema.numeric_constraints;
 // A temporary schema construction context.
 local cs = {
 
-  channel_list:    s.sequence( "ChannelList",   types.count, doc="List of offline channels to be masked out from the TPHandler"),
+  id_list:    s.sequence( "IDList",   types.count, doc="List of Ids"),
 
   data_file_entry: s.record("data_file_entry", [
     s.field( "data_file", types.path, default='./frames.bin', doc="File containing data frames to be replayed by the fake cards. Former -d. Uses the asset manager, can also be 'asset://checksum/somelonghash', or 'file://somewhere/frames.bin' or 'frames.bin'"),
@@ -37,6 +37,18 @@ local cs = {
     s.field( "exceptions", self.numa_exceptions, default=[], doc="Exceptions to the default NUMA ID"),
   ]),
 
+  dpdk_lcore_exception:  s.record( "DPDKLCoreException", [
+    s.field( "host", types.host, default='localhost', doc="Host of exception"),
+    s.field( "iface", types.count, default=0, doc="Card ID of exception"),
+    s.field( "lcore_id_set", self.id_list, default=[], doc='List of IDs per core'),
+  ]),
+  dpdk_lcore_exceptions: s.sequence( "DPDKLCoreExceptions", self.dpdk_lcore_exception, doc="Exceptions to the default LCore config"),
+
+  dpdk_lcore_config: s.record("DPDKLCoreConfig", [
+    s.field( "default_lcore_id_set", self.id_list, default=[1,2,3,4], doc='List of IDs per core'),
+    s.field( "exceptions", self.dpdk_lcore_exceptions, default=[], doc="Exceptions to the default NUMA ID"),
+  ]),
+
   readout: s.record("readout", [
     s.field( "detector_readout_map_file", types.path, default='./DetectorReadoutMap.json', doc="File containing detector hardware map for configuration to run"),
     s.field( "use_fake_data_producers", types.flag, default=false, doc="Use fake data producers that respond with empty fragments immediately instead of (fake) cards and DLHs"),
@@ -48,7 +60,9 @@ local cs = {
     s.field( "data_files", self.data_files, default=[], doc="Files to use by detector type"),
     // DPDK
     s.field( "dpdk_eal_args", types.string, default='-l 0-1 -n 3 -- -m [0:1].0 -j', doc='Args passed to the EAL in DPDK'),
-    s.field( "dpdk_rxqueues_per_lcore", types.count, default=1, doc='Number of rx queues per core'),
+    // s.field( "dpdk_rxqueues_per_lcore", types.count, default=1, doc='Number of rx queues per core'),
+    // s.field( "dpdk_lcore_id_set", self.id_list, default=1, doc='List of IDs per core'),
+    s.field( "dpdk_lcores_config", self.dpdk_lcore_config, default=self.dpdk_lcore_config, doc='Configuration of DPDK LCore IDs'),
     // FLX
     s.field( "numa_config", self.numa_config, default=self.numa_config, doc='Configuration of FELIX NUMA IDs'),
     // DLH
@@ -60,7 +74,7 @@ local cs = {
     s.field( "enable_tpg", types.flag, default=false, doc="Enable TPG"),
     s.field( "tpg_threshold", types.count, default=120, doc="Select TPG threshold"),
     s.field( "tpg_algorithm", types.string, default="SimpleThreshold", doc="Select TPG algorithm (SimpleThreshold, AbsRS)"),
-    s.field( "tpg_channel_mask", self.channel_list, default=[], doc="List of offline channels to be masked out from the TPHandler"),
+    s.field( "tpg_channel_mask", self.id_list, default=[], doc="List of offline channels to be masked out from the TPHandler"),
     s.field( "enable_raw_recording", types.flag, default=false, doc="Add queues and modules necessary for the record command"),
     s.field( "raw_recording_output_dir", types.path, default='.', doc="Output directory where recorded data is written to. Data for each link is written to a separate file")
   ]),

@@ -122,15 +122,20 @@ class NICReceiverBuilder:
 
         return iface_map    
 
-    def streams_by_iface(self):
+    def streams_by_rxiface(self):
+        """Group streams by interface
+
+        Returns:
+            dict: A map of streams with the same destination ip, mac and host
+        """
 
         iface_map = group_by_key(self.desc.streams, lambda s: (s.parameters.rx_ip, s.parameters.rx_mac, s.parameters.rx_host))
 
         return iface_map
 
-    def streams_by_iface_and_tx_endpoint(self):
+    def streams_by_rxiface_and_tx_endpoint(self):
 
-        s_by_if = self.streams_by_iface()
+        s_by_if = self.streams_by_rxiface()
         m = {}
         for k,v in s_by_if.items():
             m[k] = group_by_key(v, lambda s: (s.parameters.tx_ip, s.parameters.tx_mac, s.parameters.tx_host))
@@ -141,16 +146,22 @@ class NICReceiverBuilder:
     #     m = group_by_key(self.desc.streams, lambda s: (getattr(s.parameters, self.desc._host_label_map[s.kind]), getattr(s.parameters, self.desc._iflabel_map[s.kind]), s.kind, s.geo_id.det_id))
     #     return m
 
-    def build_conf(self, eal_arg_list, rxqueues_per_lcore):
+    def build_conf(self, eal_arg_list, lcores_id_set):
 
-        streams_by_if_and_tx = self.streams_by_iface_and_tx_endpoint()
+
+        streams_by_if_and_tx = self.streams_by_rxiface_and_tx_endpoint()
 
         ifcfgs = []
         for (rx_ip, rx_mac, _),txs in streams_by_if_and_tx.items():
             srcs = []
             # Sid is used for the "Source.id". What is it?
 
-            for sid,((tx_ip,_,_),streams) in enumerate(txs.items()):
+            # Transmitters are sorted by tx ip address.
+            # This is not good for understanding what is what, so we sort them by minimum
+            # src_id
+            txs_sorted_by_src = sorted(txs.items(), key=lambda x: min(x[1], key=lambda y: y.src_id))
+
+            for sid,((tx_ip,_,_),streams) in enumerate(txs_sorted_by_src):
                 ssm = nrc.SrcStreamsMapping([
                         nrc.StreamMap(source_id=s.src_id, stream_id=s.geo_id.stream_id)
                         for s in streams
@@ -166,7 +177,7 @@ class NICReceiverBuilder:
                     nrc.Source(
                         id=sid, # FIXME what is this ID?
                         ip_addr=tx_ip,
-                        lcore=(sid//rxqueues_per_lcore)+self.lcore_offset,
+                        lcore=lcores_id_set[sid % len(lcores_id_set)],
                         rx_q=sid,
                         src_info=si,
                         src_streams_mapping=ssm
@@ -188,44 +199,44 @@ class NICReceiverBuilder:
 
         return conf
 
-    def build_conf_by_host(self, eal_arg_list):
+    # def build_conf_by_host(self, eal_arg_list):
 
-        streams_by_if_and_tx = self.streams_by_host()
+    #     streams_by_if_and_tx = self.streams_by_host()
 
-        ifcfgs = []
-        for (rx_ip, rx_mac, _),txs in streams_by_if_and_tx.items():
-            srcs = []
-            # Sid is used for the "Source.id". What is it?
+    #     ifcfgs = []
+    #     for (rx_ip, rx_mac, _),txs in streams_by_if_and_tx.items():
+    #         srcs = []
+    #         # Sid is used for the "Source.id". What is it?
 
-            for sid,((tx_ip,_,_),streams) in enumerate(txs.items()):
-                ssm = nrc.SrcStreamsMapping([
-                        nrc.StreamMap(source_id=s.src_id, stream_id=s.geo_id.stream_id)
-                        for s in streams
-                    ])
-                geo_id = streams[0].geo_id
-                si = nrc.SrcGeoInfo(
-                    det_id=geo_id.det_id,
-                    crate_id=geo_id.crate_id,
-                    slot_id=geo_id.slot_id
-                )
+    #         for sid,((tx_ip,_,_),streams) in enumerate(txs.items()):
+    #             ssm = nrc.SrcStreamsMapping([
+    #                     nrc.StreamMap(source_id=s.src_id, stream_id=s.geo_id.stream_id)
+    #                     for s in streams
+    #                 ])
+    #             geo_id = streams[0].geo_id
+    #             si = nrc.SrcGeoInfo(
+    #                 det_id=geo_id.det_id,
+    #                 crate_id=geo_id.crate_id,
+    #                 slot_id=geo_id.slot_id
+    #             )
 
-                srcs.append(
-                    nrc.Source(
-                        id=sid, # FIXME what is this ID?
-                        ip_addr=tx_ip,
-                        lcore=sid+self.lcore_offset,
-                        rx_q=sid,
-                        src_info=si,
-                        src_streams_mapping=ssm
-                    )
-                )
-            ifcfgs.append(
-                nrc.Interface(
-                    ip_addr=rx_ip,
-                    mac_addr=rx_mac,
-                    expected_sources=srcs
-                )
-            )         
+    #             srcs.append(
+    #                 nrc.Source(
+    #                     id=sid, # FIXME what is this ID?
+    #                     ip_addr=tx_ip,
+    #                     lcore=sid+self.lcore_offset,
+    #                     rx_q=sid,
+    #                     src_info=si,
+    #                     src_streams_mapping=ssm
+    #                 )
+    #             )
+    #         ifcfgs.append(
+    #             nrc.Interface(
+    #                 ip_addr=rx_ip,
+    #                 mac_addr=rx_mac,
+    #                 expected_sources=srcs
+    #             )
+    #         )         
 
 
         conf = nrc.Conf(
@@ -251,17 +262,22 @@ class ReadoutAppGenerator:
         self.det_cfg = det_cfg
         self.daq_cfg = daq_cfg
 
-        excpt = {}
+        numa_excpt = {}
         for ex in self.ro_cfg.numa_config['exceptions']:
-            excpt[(ex['host'], ex['card'])] = ex
-        self.excpt = excpt
+            numa_excpt[(ex['host'], ex['card'])] = ex
+        self.numa_excpt = numa_excpt
+
+        lcores_excpt = {}
+        for ex in self.ro_cfg.dpdk_lcores_config['exceptions']:
+            lcores_excpt[(ex['host'], ex['iface'])] = ex
+        self.lcores_excpt = lcores_excpt
 
 
     def get_numa_cfg(self, RU_DESCRIPTOR):
 
         cfg = self.ro_cfg
         try:
-            ex = self.excpt[(RU_DESCRIPTOR.host_name, RU_DESCRIPTOR.iface)]
+            ex = self.numa_excpt[(RU_DESCRIPTOR.host_name, RU_DESCRIPTOR.iface)]
             numa_id = ex['numa_id']
             latency_numa = ex['latency_buffer_numa_aware']
             latency_preallocate = ex['latency_buffer_preallocation']
@@ -272,6 +288,17 @@ class ReadoutAppGenerator:
             latency_preallocate = cfg.numa_config['default_latency_preallocation']
             flx_card_override = -1
         return (numa_id, latency_numa, latency_preallocate, flx_card_override)
+
+    def get_lcore_config(self, RU_DESCRIPTOR):
+        cfg = self.ro_cfg
+        try:
+            ex = self.lcores_excpt[(RU_DESCRIPTOR.host_name, RU_DESCRIPTOR.iface)]
+            lcore_id_set = ex['lcore_id_set']
+        except KeyError:
+            lcore_id_set = cfg.dpdk_lcores_config['default_lcore_id_set']
+
+        
+        return list(dict.fromkeys(lcore_id_set))
 
 
     ###
@@ -428,12 +455,14 @@ class ReadoutAppGenerator:
 
         nic_reader_name = f"nic_reader_{RU_DESCRIPTOR.iface}"
 
+        lcores_id_set = self.get_lcore_config(RU_DESCRIPTOR)
+
         modules = [DAQModule(
                     name=nic_reader_name,
                     plugin="NICReceiver",
                     conf=eth_ru_bldr.build_conf(
                         eal_arg_list=cfg.dpdk_eal_args,
-                        rxqueues_per_lcore=cfg.dpdk_rxqueues_per_lcore
+                        lcores_id_set=lcores_id_set
                         ),
                 )]
 

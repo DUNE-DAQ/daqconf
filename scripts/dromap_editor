@@ -265,8 +265,12 @@ def ipy(obj):
 
     m = obj
 
-    import IPython
-    IPython.embed(colors="neutral")
+    try:
+        import IPython
+        IPython.embed(colors="neutral")
+    except ModuleNotFoundError:
+        print("[red]Error: IPython is not installed[/red]")
+        raise SystemExit(-1)
 
 if __name__ == "__main__":
     cli(obj=dromap.DetReadoutMapService())
