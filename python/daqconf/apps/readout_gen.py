@@ -156,7 +156,12 @@ class NICReceiverBuilder:
             srcs = []
             # Sid is used for the "Source.id". What is it?
 
-            for sid,((tx_ip,_,_),streams) in enumerate(txs.items()):
+            # Transmitters are sorted by tx ip address.
+            # This is not good for understanding what is what, so we sort them by minimum
+            # src_id
+            txs_sorted_by_src = sorted(txs.items(), key=lambda x: min(x[1], key=lambda y: y.src_id))
+
+            for sid,((tx_ip,_,_),streams) in enumerate(txs_sorted_by_src):
                 ssm = nrc.SrcStreamsMapping([
                         nrc.StreamMap(source_id=s.src_id, stream_id=s.geo_id.stream_id)
                         for s in streams
