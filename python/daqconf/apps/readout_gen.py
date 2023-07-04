@@ -456,14 +456,14 @@ class ReadoutAppGenerator:
         # ]
         
         queues = []
-        for s in RU_DESCRIPTOR.streams:
-            FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _, _, _ = compute_data_types(s)
+        for stream in RU_DESCRIPTOR.streams:
+            FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _, _, _ = compute_data_types(stream)
             queues.append(
                 Queue(
-                    f"fake_source.output_{s.src_id}",
-                    f"datahandler_{s.src_id}.raw_input",
+                    f"{nic_reader_name}.output_{stream.src_id}",
+                    f"datahandler_{stream.src_id}.raw_input",
                     QUEUE_FRAGMENT_TYPE,
-                    f'{FRONTEND_TYPE}_link_{s.src_id}', 100000
+                    f'{FRONTEND_TYPE}_stream_{stream.src_id}', 100000
                 )
             )
 
