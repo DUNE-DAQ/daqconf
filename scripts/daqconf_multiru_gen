@@ -488,7 +488,7 @@ def cli(
     dqm_app_names = []
 
     #--------------------------------------------------------------------------
-    # Readout generatioo
+    # Readout generation
     #--------------------------------------------------------------------------
     roapp_gen = ReadoutAppGenerator(readout, detector, daq_common)
     for ru_i,(ru_name, ru_desc) in enumerate(ru_descs.items()):
