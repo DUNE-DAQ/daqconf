@@ -34,7 +34,7 @@ from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Direction, Queue
 from daqconf.core.sourceid import TAInfo, TPInfo, TCInfo
 
-from trgdataformats._daq_trgdataformats_py import TriggerBits as trgbs
+from trgdataformats import TriggerBits as trgbs
 
 #FIXME maybe one day, triggeralgs will define schemas... for now allow a dictionary of 4byte int, 4byte floats, and strings
 moo.otypes.make_type(schema='number', dtype='i4', name='temp_integer', path='temptypes')
@@ -82,8 +82,8 @@ def get_trigger_bitwords(bitwords):
         tmp_bits = []
         for bit_name in bitword:
             bit_value = trgbs.string_to_fragment_type_value(bit_name)
-            if bit_value == -1:
-                raise RuntimeError(f'One or more of provided MLT trigger bitwords is incorrect! Please recheck the names...')
+            if bit_value == 0:
+                raise RuntimeError(f'One (or more) of provided MLT trigger bitwords is unknown! Please recheck the names...')
             else:
                 tmp_bits.append(bit_value)
         final_bit_flags.append(tmp_bits)
