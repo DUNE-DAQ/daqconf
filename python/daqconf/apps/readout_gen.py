@@ -28,49 +28,39 @@ from ..core.conf_utils import Direction, Queue
 from ..core.sourceid import  SourceIDBroker
 from ..core.daqmodule import DAQModule
 from ..core.app import App, ModuleGraph
-from ..detreadoutmap import ReadoutUnitDescriptor
+from ..detreadoutmap import ReadoutUnitDescriptor, group_by_key
 
 # from detdataformats._daq_detdataformats_py import *
 from detdataformats import DetID
 
-from ..detreadoutmap import group_by_key
-
-
 
 ## Compute the frament types from detector infos
 def compute_data_types(
-        det_id : int,
-        clk_freq_hz: int,
-        kind: str
+        stream_entry
     ):
-    det_str = DetID.subdetector_to_string(DetID.Subdetector(det_id))
+    det_str = DetID.subdetector_to_string(DetID.Subdetector(stream_entry.det_id))
 
-    fe_type = None
-    fakedata_frag_type = None
-    queue_frag_type = None
-    fakedata_time_tick=None
-    fakedata_frame_size=None  
 
-    # if ((det_str == "HD_TPC" or det_str== "VD_Bottom_TPC") and clk_freq_hz== 50000000):
-    #     fe_type = "wib"
-    #     queue_frag_type="WIBFrame"
-    #     fakedata_frag_type = "ProtoWIB"
-        # fakedata_time_tick=25
-    #    fakedata_frame_size=434
     # Far detector types
-    if ((det_str == "HD_TPC" or det_str == "VD_Bottom_TPC") and clk_freq_hz== 62500000 and kind=='flx' ):
+    if (det_str in ("HD_TPC","VD_Bottom_TPC") and stream_entry.kind=='flx' ):
         fe_type = "wib2"
         queue_frag_type="WIB2Frame"
         fakedata_frag_type = "WIB"
         fakedata_time_tick=32
         fakedata_frame_size=472
-    elif ((det_str == "HD_TPC" or det_str == "VD_Bottom_TPC") and clk_freq_hz== 62500000 and kind=='eth' ):
+    elif (("HD_TPC","VD_Bottom_TPC") and stream_entry.kind=='eth' ):
         fe_type = "wibeth"
         queue_frag_type="WIBEthFrame"
         fakedata_frag_type = "WIBEth"
         fakedata_time_tick=2048
         fakedata_frame_size=7200
-    elif det_str == "HD_PDS" or det_str == "VD_Cathode_PDS" or det_str =="VD_Membrane_PDS":
+    elif det_str in ("HD_PDS", "VD_Cathode_PDS", "VD_Membrane_PDS") and stream_entry.parameters.mode == "var_rate":
+        fe_type = "pds"
+        fakedata_frag_type = "DAPHNE"
+        queue_frag_type = "PDSFrame"
+        fakedata_time_tick=None
+        fakedata_frame_size=472
+    elif det_str in ("HD_PDS", "VD_Cathode_PDS", "VD_Membrane_PDS") and  stream_entry.parameters.mode == "fix_rate":
         fe_type = "pds_stream"
         fakedata_frag_type = "DAPHNE"
         queue_frag_type = "PDSStreamFrame"
@@ -97,7 +87,7 @@ def compute_data_types(
     #    fakedata_time_tick=None
     #    fakedata_frame_size=None       
     else:
-        raise ValueError(f"No match for {det_str}, {clk_freq_hz}, {kind}")
+        raise ValueError(f"No match for {det_str}, {stream_entry.kind}")
 
 
     return fe_type, queue_frag_type, fakedata_frag_type, fakedata_time_tick, fakedata_frame_size
@@ -198,56 +188,7 @@ class NICReceiverBuilder:
         )
 
         return conf
-
-    # def build_conf_by_host(self, eal_arg_list):
-
-    #     streams_by_if_and_tx = self.streams_by_host()
-
-    #     ifcfgs = []
-    #     for (rx_ip, rx_mac, _),txs in streams_by_if_and_tx.items():
-    #         srcs = []
-    #         # Sid is used for the "Source.id". What is it?
-
-    #         for sid,((tx_ip,_,_),streams) in enumerate(txs.items()):
-    #             ssm = nrc.SrcStreamsMapping([
-    #                     nrc.StreamMap(source_id=s.src_id, stream_id=s.geo_id.stream_id)
-    #                     for s in streams
-    #                 ])
-    #             geo_id = streams[0].geo_id
-    #             si = nrc.SrcGeoInfo(
-    #                 det_id=geo_id.det_id,
-    #                 crate_id=geo_id.crate_id,
-    #                 slot_id=geo_id.slot_id
-    #             )
-
-    #             srcs.append(
-    #                 nrc.Source(
-    #                     id=sid, # FIXME what is this ID?
-    #                     ip_addr=tx_ip,
-    #                     lcore=sid+self.lcore_offset,
-    #                     rx_q=sid,
-    #                     src_info=si,
-    #                     src_streams_mapping=ssm
-    #                 )
-    #             )
-    #         ifcfgs.append(
-    #             nrc.Interface(
-    #                 ip_addr=rx_ip,
-    #                 mac_addr=rx_mac,
-    #                 expected_sources=srcs
-    #             )
-    #         )         
-
-
-        conf = nrc.Conf(
-            ifaces = ifcfgs,
-            eal_arg_list=eal_arg_list
-        )
-
-        return conf
-
-#         )
-        
+    
 
 # Time to wait on pop()
 QUEUE_POP_WAIT_MS = 10 # This affects stop time, as each link will wait this long before stop
@@ -306,8 +247,8 @@ class ReadoutAppGenerator:
     ###
     def create_fake_cardreader(
         self,
-        FRONTEND_TYPE: str,
-        QUEUE_FRAGMENT_TYPE: str,
+        # FRONTEND_TYPE: str,
+        # QUEUE_FRAGMENT_TYPE: str,
         DATA_FILES: dict,
         RU_DESCRIPTOR # ReadoutUnitDescriptor
 
@@ -338,15 +279,27 @@ class ReadoutAppGenerator:
         modules = [DAQModule(name = "fake_source",
                                 plugin = "FDFakeCardReader",
                                 conf = conf)]
-        queues = [
-            Queue(
-                f"fake_source.output_{s.src_id}",
-                f"datahandler_{s.src_id}.raw_input",
-                QUEUE_FRAGMENT_TYPE,
-                f'{FRONTEND_TYPE}_link_{s.src_id}', 100000
-            ) for s in RU_DESCRIPTOR.streams
-        ]
+        # queues = [
+        #     Queue(
+        #         f"fake_source.output_{s.src_id}",
+        #         f"datahandler_{s.src_id}.raw_input",
+        #         QUEUE_FRAGMENT_TYPE,
+        #         f'{FRONTEND_TYPE}_link_{s.src_id}', 100000
+        #     ) for s in RU_DESCRIPTOR.streams
+        # ]
         
+        queues = []
+        for s in RU_DESCRIPTOR.streams:
+            FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _, _, _ = compute_data_types(s)
+            queues.append(
+                Queue(
+                    f"fake_source.output_{s.src_id}",
+                    f"datahandler_{s.src_id}.raw_input",
+                    QUEUE_FRAGMENT_TYPE,
+                    f'{FRONTEND_TYPE}_link_{s.src_id}', 100000
+                )
+            )
+
         return modules, queues
 
 
@@ -368,15 +321,15 @@ class ReadoutAppGenerator:
         """
         links_slr0 = []
         links_slr1 = []
-        sids_slr0 = []
-        sids_slr1 = []
+        strms_slr0 = []
+        strms_slr1 = []
         for stream in RU_DESCRIPTOR.streams:
             if stream.parameters.slr == 0:
                 links_slr0.append(stream.parameters.link)
-                sids_slr0.append(stream.src_id)
+                strms_slr0.append(stream)
             if stream.parameters.slr == 1:
                 links_slr1.append(stream.parameters.link)
-                sids_slr1.append(stream.src_id)
+                strms_slr1.append(stream)
 
         links_slr0.sort()
         links_slr1.sort()
@@ -413,27 +366,53 @@ class ReadoutAppGenerator:
                                                 )
                         )]
         
-        # Queues for card reader 1
-        queues += [
-            Queue(
-                f'flxcard_0.output_{idx}',
-                f"datahandler_{idx}.raw_input",
-                QUEUE_FRAGMENT_TYPE,
-                f'{FRONTEND_TYPE}_link_{idx}',
-                100000 
-            ) for idx in sids_slr0
-        ]
-        # Queues for card reader 2
-        queues += [
-            Queue(
-                f'flxcard_1.output_{idx}',
-                f"datahandler_{idx}.raw_input",
-                QUEUE_FRAGMENT_TYPE,
-                f'{FRONTEND_TYPE}_link_{idx}',
-                100000 
-            ) for idx in sids_slr1
-        ]
+        # # Queues for card reader 1
+        # queues += [
+        #     Queue(
+        #         f'flxcard_0.output_{idx}',
+        #         f"datahandler_{idx}.raw_input",
+        #         QUEUE_FRAGMENT_TYPE,
+        #         f'{FRONTEND_TYPE}_link_{idx}',
+        #         100000 
+        #     ) for idx in strms_slr0
+        # ]
+        # # Queues for card reader 2
+        # queues += [
+        #     Queue(
+        #         f'flxcard_1.output_{idx}',
+        #         f"datahandler_{idx}.raw_input",
+        #         QUEUE_FRAGMENT_TYPE,
+        #         f'{FRONTEND_TYPE}_link_{idx}',
+        #         100000 
+        #     ) for idx in strms_slr1
+        # ]
     
+        # Queues for card reader 1
+        for s in strms_slr0:
+            FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _, _, _ = compute_data_types(s)
+            queues.append(
+                Queue(
+                    f'flxcard_0.output_{s.src_id}',
+                    f"datahandler_{s.src_id}.raw_input",
+                    QUEUE_FRAGMENT_TYPE,
+                    f'{FRONTEND_TYPE}_link_{s.src_id}',
+                    100000 
+                )
+            )
+        # Queues for card reader 2
+        for s in strms_slr1:
+            FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _, _, _ = compute_data_types(s)
+            queues.append(
+                Queue(
+                    f'flxcard_1.output_{s.src_id}',
+                    f"datahandler_{s.src_id}.raw_input",
+                    QUEUE_FRAGMENT_TYPE,
+                    f'{FRONTEND_TYPE}_link_{s.src_id}',
+                    100000 
+                )
+            )
+
+
         return modules, queues
 
 
@@ -467,15 +446,27 @@ class ReadoutAppGenerator:
                 )]
 
         # Queues
-        queues = [
-            Queue(
-                f"{nic_reader_name}.output_{stream.src_id}",
-                f"datahandler_{stream.src_id}.raw_input", QUEUE_FRAGMENT_TYPE,
-                f'{FRONTEND_TYPE}_stream_{stream.src_id}', 100000
-            ) 
-            for stream in RU_DESCRIPTOR.streams
-        ]
+        # queues = [
+        #     Queue(
+        #         f"{nic_reader_name}.output_{stream.src_id}",
+        #         f"datahandler_{stream.src_id}.raw_input", QUEUE_FRAGMENT_TYPE,
+        #         f'{FRONTEND_TYPE}_stream_{stream.src_id}', 100000
+        #     ) 
+        #     for stream in RU_DESCRIPTOR.streams
+        # ]
         
+        queues = []
+        for s in RU_DESCRIPTOR.streams:
+            FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _, _, _ = compute_data_types(s)
+            queues.append(
+                Queue(
+                    f"fake_source.output_{s.src_id}",
+                    f"datahandler_{s.src_id}.raw_input",
+                    QUEUE_FRAGMENT_TYPE,
+                    f'{FRONTEND_TYPE}_link_{s.src_id}', 100000
+                )
+            )
+
         return modules, queues
     
 
@@ -799,7 +790,7 @@ class ReadoutAppGenerator:
             RU_DESCRIPTOR (ReadoutUnitDescriptor): A readout unit descriptor object
             SOURCEID_BROKER (SourceIDBroker): The source ID brocker
             data_file_map (dict): Map of pattern files to application
-            data_timeout_requests (_type_): Data timeout request
+            data_timeout_requests (int): Data timeout request
 
         Raises:
             RuntimeError: _description_
@@ -814,10 +805,11 @@ class ReadoutAppGenerator:
         DATA_FILES = data_file_map
         DATA_REQUEST_TIMEOUT=data_timeout_requests
 
-        FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _, _, _ = compute_data_types(RU_DESCRIPTOR.det_id, self.det_cfg.clock_speed_hz, RU_DESCRIPTOR.kind)
+        # FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _, _, _ = compute_data_types(RU_DESCRIPTOR.det_id, self.det_cfg.clock_speed_hz, RU_DESCRIPTOR.kind)
         
         # TPG is automatically disabled for non wib2 frontends
-        TPG_ENABLED = TPG_ENABLED and (FRONTEND_TYPE=='wib2' or FRONTEND_TYPE=='wibeth')
+        # TPG_ENABLED = TPG_ENABLED and (FRONTEND_TYPE=='wib2' or FRONTEND_TYPE=='wibeth')
+        TPG_ENABLED = TPG_ENABLED and (RU_DESCRIPTOR.det_id == DetID.Subdetector.kHD_TPC.value)
         
         modules = []
         queues = []
@@ -976,19 +968,21 @@ def create_fake_readout_app(
     modules = []
     queues = []
 
-    _, _, fakedata_fragment_type, fakedata_time_tick, fakedata_frame_size = compute_data_types(RU_DESCRIPTOR.det_id, CLOCK_SPEED_HZ, RU_DESCRIPTOR.kind)
+    # _, _, fakedata_fragment_type, fakedata_time_tick, fakedata_frame_size = compute_data_types(RU_DESCRIPTOR.det_id, CLOCK_SPEED_HZ, RU_DESCRIPTOR.kind)
 
     for stream in RU_DESCRIPTOR.streams:
-            modules += [DAQModule(name = f"fakedataprod_{stream.src_id}",
-                                  plugin='FakeDataProd',
-                                  conf = fdp.ConfParams(
-                                  system_type = "Detector_Readout",
-                                  source_id = stream.src_id,
-                                  time_tick_diff = fakedata_time_tick,
-                                  frame_size = fakedata_frame_size,
-                                  response_delay = 0,
-                                  fragment_type = fakedata_fragment_type,
-                                  ))]
+        _, _, fakedata_fragment_type, fakedata_time_tick, fakedata_frame_size = compute_data_types(stream)
+
+        modules += [DAQModule(name = f"fakedataprod_{stream.src_id}",
+                                plugin='FakeDataProd',
+                                conf = fdp.ConfParams(
+                                system_type = "Detector_Readout",
+                                source_id = stream.src_id,
+                                time_tick_diff = fakedata_time_tick,
+                                frame_size = fakedata_frame_size,
+                                response_delay = 0,
+                                fragment_type = fakedata_fragment_type,
+                                ))]
 
     mgraph = ModuleGraph(modules, queues=queues)
 
