@@ -38,7 +38,7 @@ from detdataformats import DetID
 def compute_data_types(
         stream_entry
     ):
-    det_str = DetID.subdetector_to_string(DetID.Subdetector(stream_entry.det_id))
+    det_str = DetID.subdetector_to_string(DetID.Subdetector(stream_entry.geo_id.det_id))
 
 
     # Far detector types
@@ -308,8 +308,8 @@ class ReadoutAppGenerator:
     ###
     def create_felix_cardreader(
             self,
-            FRONTEND_TYPE: str,
-            QUEUE_FRAGMENT_TYPE: str,
+            # FRONTEND_TYPE: str,
+            # QUEUE_FRAGMENT_TYPE: str,
             CARD_ID_OVERRIDE: int,
             NUMA_ID: int,
             RU_DESCRIPTOR # ReadoutUnitDescriptor
@@ -418,8 +418,8 @@ class ReadoutAppGenerator:
 
     def create_dpdk_cardreader(
             self,
-            FRONTEND_TYPE: str,
-            QUEUE_FRAGMENT_TYPE: str,
+            # FRONTEND_TYPE: str,
+            # QUEUE_FRAGMENT_TYPE: str,
             RU_DESCRIPTOR # ReadoutUnitDescriptor
         ) -> tuple[list, list]:
         """
@@ -823,8 +823,8 @@ class ReadoutAppGenerator:
         # Create the card readers
         if cfg.use_fake_cards:
             fakecr_mods, fakecr_queues = self.create_fake_cardreader(
-                FRONTEND_TYPE=FRONTEND_TYPE,
-                QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
+                # FRONTEND_TYPE=FRONTEND_TYPE,
+                # QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
                 DATA_FILES=DATA_FILES,
                 RU_DESCRIPTOR=RU_DESCRIPTOR
             )
@@ -833,8 +833,8 @@ class ReadoutAppGenerator:
         else:
             if RU_DESCRIPTOR.kind == 'flx':
                 flx_mods, flx_queues = self.create_felix_cardreader(
-                    FRONTEND_TYPE=FRONTEND_TYPE,
-                    QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
+                    # FRONTEND_TYPE=FRONTEND_TYPE,
+                    # QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
                     CARD_ID_OVERRIDE=card_override,
                     NUMA_ID=numa_id,
                     RU_DESCRIPTOR=RU_DESCRIPTOR
@@ -844,8 +844,8 @@ class ReadoutAppGenerator:
 
             elif RU_DESCRIPTOR.kind == 'eth' and RU_DESCRIPTOR.streams[0].parameters.protocol == "udp":
                 dpdk_mods, dpdk_queues = self.create_dpdk_cardreader(
-                    FRONTEND_TYPE=FRONTEND_TYPE,
-                    QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
+                    # FRONTEND_TYPE=FRONTEND_TYPE,
+                    # QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
                     RU_DESCRIPTOR=RU_DESCRIPTOR
                 )
                 cr_mods += dpdk_mods
