@@ -477,14 +477,15 @@ class ReadoutAppGenerator:
 
     def create_pacman_cardreader(
             self,
-            FRONTEND_TYPE: str,
-            QUEUE_FRAGMENT_TYPE: str,
+            #FRONTEND_TYPE: str,
+            #QUEUE_FRAGMENT_TYPE: str,
             RU_DESCRIPTOR # ReadoutUnitDescriptor
         ) -> tuple[list, list]:
         """
         Create a Pacman Cardeader 
         """
 
+        FRONTEND_TYPE, _, _, _, _ = compute_data_types(RU_DESCRIPTOR.streams[0])
         reader_name = "nd_reader" 
         if FRONTEND_TYPE == 'pacman':
             reader_name = "pacman_source"
@@ -502,21 +503,20 @@ class ReadoutAppGenerator:
                                         for stream in RU_DESCRIPTOR.streams],
                         zmq_receiver_timeout = 10000)
                 )]
-        
+
         # Queues
-        queues = [
-            Queue(
-                f"{reader_name}.output_{stream.src_id}",
-                f"datahandler_{stream.src_id}.raw_input", QUEUE_FRAGMENT_TYPE,
-                f'{FRONTEND_TYPE}_stream_{stream.src_id}', 100000
-            ) 
-            for stream in RU_DESCRIPTOR.streams
-        ]
+        queues = []
+        for s in RU_DESCRIPTOR.streams:
+            FRONTEND_TYPE, QUEUE_FRAGMENT_TYPE, _, _, _ = compute_data_types(s)
+            queues.append(
+                Queue(
+                    f"{reader_name}.output_{s.src_id}",
+                    f"datahandler_{s.src_id}.raw_input", QUEUE_FRAGMENT_TYPE,
+                    f'{FRONTEND_TYPE}_stream_{s.src_id}', 100000
+                )
+            )
 
         return modules, queues
-
-
-
 
 
     ###
@@ -859,8 +859,8 @@ class ReadoutAppGenerator:
             elif RU_DESCRIPTOR.kind == 'eth' and RU_DESCRIPTOR.streams[0].parameters.protocol == "zmq":
 
                 pac_mods, pac_queues = self.create_pacman_cardreader(
-                    FRONTEND_TYPE=FRONTEND_TYPE,
-                    QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
+                    #FRONTEND_TYPE=FRONTEND_TYPE,
+                    #QUEUE_FRAGMENT_TYPE=QUEUE_FRAGMENT_TYPE,
                     RU_DESCRIPTOR=RU_DESCRIPTOR
                 )
                 cr_mods += pac_mods
