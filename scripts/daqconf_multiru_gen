@@ -287,8 +287,6 @@ def cli(
     #--------------------------------------------------------------------------
     validate_conf(boot, readout, dataflow, timing, hsi, dqm)
 
-
-
     console.log("Loading dataflow config generator")
     from daqconf.apps.dataflow_gen import get_dataflow_app
     if dqm.enable_dqm:
@@ -497,7 +495,7 @@ def cli(
     dqm_app_names = []
 
     #--------------------------------------------------------------------------
-    # Readout generatioo
+    # Readout generation
     #--------------------------------------------------------------------------
     roapp_gen = ReadoutAppGenerator(readout, detector, daq_common)
     for ru_i,(ru_name, ru_desc) in enumerate(ru_descs.items()):
