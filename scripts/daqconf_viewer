@@ -8,22 +8,27 @@ import sys
 
 from rich.text import Text
 from rich.markdown import Markdown
-from difflib import context_diff, ndiff, unified_diff
+from difflib import unified_diff
 
 from textual import log, events
 from textual.app import App, ComposeResult
-from textual.containers import Horizontal, Content, Container, Vertical
+from textual.containers import Content, Container, Horizontal, Vertical
 from textual.widget import Widget
-from textual.widgets import Button, Header, Footer, Static, Label, ListView, ListItem, Tree
+from textual.widgets import Button, Footer, Header, Input, Label, ListItem, ListView, Static, Tree
 from textual.reactive import reactive, Reactive
 from textual.screen import Screen
 
 auth = ("fooUsr", "barPass")
 oldconf = None
+oldconfname = None
+oldconfver = None
 
 class TitleBox(Static):
     def __init__(self, title, **kwargs):
         super().__init__(Markdown(f'# {title}'))
+
+    def update(self, text):
+        super().update(Markdown(f'# {text}'))
 
 class LabelItem(ListItem):
     def __init__(self, label: str) -> None:
@@ -39,12 +44,14 @@ class Configs(Static):
     def __init__(self, hostname, **kwargs):
         super().__init__(**kwargs)
         self.hostname = hostname
+        self.term = ""
 
     def on_mount(self) -> None:
         self.set_interval(0.1, self.update_configs)
 
     def compose(self) -> ComposeResult:
        yield TitleBox('Configurations')
+       yield Input(placeholder='Search Configs')
        yield ListView(LabelItem("This shouldn't be visible!"))
 
     async def update_configs(self) -> None:
@@ -58,10 +65,27 @@ class Configs(Static):
             #in this case, as it will not be able to find the relevent widgets.
             if isinstance(e, asyncio.CancelledError):
                return
-            self.display_error(f"Couldn't retrieve configs from {self.hostname}/listConfigs")
+            self.display_error(f"Couldn't retrieve configs from {self.hostname}/listConfigs\nError: {e}")
 
     def watch_conflist(self, conflist:list[str]):
-        label_list = [LabelItem(c) for c in conflist]
+        self.display_conflist()
+
+    async def on_input_changed(self, message: Input.Changed) -> None:
+        '''This event occurs whenever the user types in the search box.'''
+        self.term = message.value
+        self.display_conflist()
+
+    def display_conflist(self) -> None:
+        '''
+        We regenerate the list whenever the actual list of configs changes, or whenever the user types in the search box.
+        #If the box is empty, don't filter, else we require that the search term is in the name
+        '''
+        if self.term == "":
+            filtered = self.conflist
+        else:
+            filtered = [name for name in self.conflist if self.term in name]
+
+        label_list = [LabelItem(f) for f in filtered]
         the_list = self.query_one(ListView)
         the_list.clear()
         for item in label_list:
@@ -118,7 +142,7 @@ class Versions(Vertical):
                 self.vlist = numlist
             except Exception as e:
                 if isinstance(e, asyncio.CancelledError):
-                    self.display_error(f"Couldn't retrieve versions from {self.hostname}/listVersions")
+                    self.display_error(f"Couldn't retrieve versions from {self.hostname}/listVersions\nError: {e}")
 
     def watch_vlist(self, vlist:list[int]) -> None:
         bb = self.query_one(Horizontal)
@@ -231,8 +255,19 @@ class DiffDisplay(Vertical):
         self.version = None
 
     def compose(self) -> ComposeResult:
-        yield TitleBox('Diff')
+        yield TitleBox("Diff")
         yield Vertical(Static(id='diffbox'))
+
+    def on_mount(self) -> None:
+        self.set_interval(0.1, self.update_title)
+
+    def update_title(self) -> None:
+        if str(self.version):   #If we didn't convert to a string, v0 would trigger the else statement
+            difftext = f"Comparing {str(oldconfname)} (v{oldconfver}) with {self.confname} (v{self.version})"
+        else:
+            difftext = f"Comparing {str(oldconfname)} (v{oldconfver}) with..."
+        title = self.query_one(TitleBox)
+        title.update(difftext)
 
     async def get_json(self, conf, ver) -> None:
         self.confname = conf
@@ -326,8 +361,8 @@ class ConfViewer(App):
         '''Saves the current config to a global variable, then pushes the diff screen.'''
         dis = self.query_one(Display)
         if dis.confdata != None:
-           global oldconf
-           oldconf = dis.confdata
+           global oldconf, oldconfname, oldconfver
+           oldconf, oldconfname, oldconfver = dis.confdata, dis.confname, dis.version 
            self.push_screen('diff')
 
     def action_flip_versions(self):
