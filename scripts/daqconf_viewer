@@ -262,7 +262,7 @@ class DiffDisplay(Vertical):
         self.set_interval(0.1, self.update_title)
 
     def update_title(self) -> None:
-        if str(self.version):   #If we didn't convert to a string, v0 would trigger the else statement
+        if self.version != None:
             difftext = f"Comparing {str(oldconfname)} (v{oldconfver}) with {self.confname} (v{self.version})"
         else:
             difftext = f"Comparing {str(oldconfname)} (v{oldconfver}) with..."
