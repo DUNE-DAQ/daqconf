@@ -4,6 +4,7 @@ import copy
 import click
 import httpx
 import json
+import os
 import sys
 
 from rich.text import Text
@@ -14,7 +15,7 @@ from textual import log, events
 from textual.app import App, ComposeResult
 from textual.containers import Content, Container, Horizontal, Vertical
 from textual.widget import Widget
-from textual.widgets import Button, Footer, Header, Input, Label, ListItem, ListView, Static, Tree
+from textual.widgets import Button, DirectoryTree, Footer, Header, Input, Label, ListItem, ListView, Static, Tree
 from textual.reactive import reactive, Reactive
 from textual.screen import Screen
 
@@ -97,6 +98,46 @@ class Configs(Static):
             if isinstance(v, Versions):
                 v.new_conf(confname)
                 break
+
+    def display_error(self, text):
+        '''If something goes wrong with getting the configs, we hijack the display to tell the user.'''
+        for v in self.screen.query(Vertical):
+            if isinstance(v, Display):
+                e_json = {'error': text}
+                v.confdata = e_json
+                break
+            if isinstance(v, DiffDisplay):
+                for s in v.query(Static):
+                    if s.id == 'diffbox':
+                       s.update(text)
+                       break
+
+class LocalConfigs(Static):
+    conflist = reactive([])
+
+    def __init__(self, hostname, path, **kwargs):
+        super().__init__(**kwargs)
+        self.hostname = hostname
+        self.path = path
+
+    def compose(self) -> ComposeResult:
+       yield TitleBox('Configurations')
+       yield Input(placeholder='Search Configs')
+       yield DirectoryTree(self.path)
+
+    async def on_directory_tree_file_selected(self, event: DirectoryTree.FileSelected ) -> None:
+        location = event.path
+        filename = location.split('/')[-1]
+        try:
+            with open(location) as f:
+                self.current_conf = json.load(f)
+            #Look for a display to show the config to
+            for v in self.screen.query(Vertical):
+                if isinstance(v, Display) or isinstance(v, DiffDisplay):
+                    await v.get_json_local(filename, self.current_conf)
+                    break
+        except Exception as e:
+           self.display_error(f"Config at {location} is not usable\n Error: {e}")
 
     def display_error(self, text):
         '''If something goes wrong with getting the configs, we hijack the display to tell the user.'''
@@ -199,6 +240,11 @@ class Display(Vertical):
             except:
                 self.confdata = {"error": f"Couldn't retrieve the configuration at {self.hostname}/retrieveVersion (payload: {payload}"}
 
+    async def get_json_local(self, name, conf) -> None:
+        self.confname = name
+        self.version = -1
+        self.confdata = conf
+
     def json_into_tree(cls, node, json_data):
         """Takes a JSON, and puts it into the tree."""
         from rich.highlighter import ReprHighlighter
@@ -262,10 +308,14 @@ class DiffDisplay(Vertical):
         self.set_interval(0.1, self.update_title)
 
     def update_title(self) -> None:
+        #If the config is local, we set the version number to -1
+        vold = "(local)" if oldconfver == -1 else f"(v{oldconfver})"
+        vnew = "(local)" if self.version == -1 else f"(v{self.version})"
+
         if self.version != None:
-            difftext = f"Comparing {str(oldconfname)} (v{oldconfver}) with {self.confname} (v{self.version})"
+            difftext = f"Comparing {str(oldconfname)} {vold} with {self.confname} {vnew}"
         else:
-            difftext = f"Comparing {str(oldconfname)} (v{oldconfver}) with..."
+            difftext = f"Comparing {str(oldconfname)} {vold} with..."
         title = self.query_one(TitleBox)
         title.update(difftext)
 
@@ -280,6 +330,11 @@ class DiffDisplay(Vertical):
                 self.confdata = r.json()
             except:
                 self.confdata = {"error": f"Couldn't retrieve the configuration at {self.hostname}/retrieveVersion (payload: {payload})"}
+
+    async def get_json_local(self, name, conf) -> None:
+        self.confname = name
+        self.version = -1
+        self.confdata = conf
 
     async def watch_confdata(self, confdata:dict) -> None:
         '''Turns the jsons into a string format with newlines, then generates a diff of the two.'''
@@ -319,8 +374,40 @@ class DiffDisplay(Vertical):
     def on_button_pressed(self) -> None:
         self.remove()
 
+class LocalDiffScreen(Screen):
+    BINDINGS = [
+        ("l", "switch_local", "DB Files"),
+        ("d", "end_diff", "Return")
+    ]
+
+    def __init__(self, hostname, path, **kwargs):
+        super().__init__(**kwargs)
+        self.hostname = hostname
+        self.path = path
+
+    def compose(self) -> ComposeResult:
+        yield LocalConfigs(hostname=self.hostname, path=self.path, classes='greencontainer configs', id='diffconfigs')
+        yield Versions(hostname=self.hostname, classes='greencontainer versions', id='diffversions')
+        yield DiffDisplay(hostname=self.hostname, classes='greencontainer display', id='diffdisplay')
+
+        yield Header(show_clock=True)
+        yield Footer()
+
+    def action_switch_local(self) -> None:
+        self.app.pop_screen()
+        self.app.push_screen('diff')
+
+    def action_end_diff(self) -> None:
+        self.app.pop_screen()
+        self.app.push_screen('lconf')
+
+
 class DiffScreen(Screen):
-    BINDINGS = [("d", "app.pop_screen", "Return")]
+    BINDINGS = [
+        ("l", "switch_local", "Local Files"),
+        ("d", "app.pop_screen", "Return")
+    ]
+
     def __init__(self, hostname, **kwargs):
         super().__init__(**kwargs)
         self.hostname = hostname
@@ -333,21 +420,56 @@ class DiffScreen(Screen):
         yield Header(show_clock=True)
         yield Footer()
 
+    def action_switch_local(self) -> None:
+        self.app.pop_screen()
+        self.app.push_screen('ldiff')
+
+
+class LocalConfScreen(Screen):
+    BINDINGS = [
+        ("l", "app.pop_screen", "DB Files"),
+        ("d", "make_diff", "Diff")
+    ]
+    def __init__(self, hostname, path, **kwargs):
+        super().__init__(**kwargs)
+        self.hostname = hostname
+        self.path = path
+
+    def compose(self) -> ComposeResult:
+        yield LocalConfigs(hostname=self.hostname, path=self.path, classes='redcontainer configs', id='localconfigs')
+        yield Versions(hostname=self.hostname, classes='redcontainer versions', id='localversions')
+        yield Display(hostname=self.hostname, classes='redcontainer display', id='localdisplay')
+
+        yield Header(show_clock=True)
+        yield Footer()
+
+    def action_make_diff(self) -> None:
+        '''Saves the current config to a global variable, then pushes the (local) diff screen.'''
+        dis = self.query_one(Display)
+        if dis.confdata != None:
+           global oldconf, oldconfname, oldconfver
+           oldconf, oldconfname, oldconfver = dis.confdata, dis.confname, dis.version
+           self.app.pop_screen()
+           self.app.push_screen('ldiff')
 
 class ConfViewer(App):
     CSS_PATH = "daqconf_viewer.css"
     BINDINGS = [
+        ("l", "switch_local", "Local Files"),
         ("d", "make_diff", "Diff"),
+        ("v", "flip_versions", "Reverse Version Order"),
         ("q", "quit", "Quit"),
-        ("v", "flip_versions", "Reverse Version Order")
     ]
 
     def __init__(self, host, port, dir, **kwargs):
         super().__init__(**kwargs)
         self.hostname = f"{host}:{port}"
+        self.path = dir
 
     def on_mount(self) -> None:
+        self.install_screen(LocalConfScreen(hostname=self.hostname, path=self.path), name="lconf")
         self.install_screen(DiffScreen(hostname=self.hostname), name="diff")
+        self.install_screen(LocalDiffScreen(hostname=self.hostname, path=self.path), name="ldiff")
 
     def compose(self) -> ComposeResult:
         yield Configs(hostname=self.hostname, classes='redcontainer configs', id='regconfigs')
@@ -357,24 +479,33 @@ class ConfViewer(App):
         yield Header(show_clock=True)
         yield Footer()
 
-    def action_make_diff(self):
+    def action_switch_local(self) -> None:
+        self.push_screen('lconf')
+
+    def action_make_diff(self) -> None:
         '''Saves the current config to a global variable, then pushes the diff screen.'''
-        dis = self.query_one(Display)
+        dis = self.screen.query_one(Display)
         if dis.confdata != None:
            global oldconf, oldconfname, oldconfver
-           oldconf, oldconfname, oldconfver = dis.confdata, dis.confname, dis.version 
+           oldconf, oldconfname, oldconfver = dis.confdata, dis.confname, dis.version
            self.push_screen('diff')
 
-    def action_flip_versions(self):
-        '''Tells the versions widget to display them the other way around'''
-        ver = self.screen.query_one(Versions)
-        ver.reverse = not ver.reverse
+    def action_flip_versions(self) -> None:
+        '''
+        Tells the versions widget to display them the other way around.
+        If that widget doesn't exist on this scren, do nothing.
+        '''
+        try:
+            ver = self.screen.query_one(Versions)
+            ver.reverse = not ver.reverse
+        except:
+            pass
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('--host', default="http://np04-srv-023", help='Machine hosting the config service')
 @click.option('--port', default="31011", help='Port that the config service listens on')
-@click.option('--dir', default = "", help='Top-level directory to look for local files in')
+@click.option('--dir', default = "./", help='Top-level directory to look for local files in')
 def start(host:str, port:str, dir:str):
     app = ConfViewer(host, port, dir)
     app.run()
