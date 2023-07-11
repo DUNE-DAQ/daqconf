@@ -94,6 +94,7 @@ class Versions(Vertical):
         super().__init__(**kwargs)
         self.hostname = hostname
         self.current_conf = None
+        self.reverse = True
 
     def compose(self) -> ComposeResult:
        yield TitleBox(f'Configuration versions')
@@ -111,7 +112,10 @@ class Versions(Vertical):
                 async with httpx.AsyncClient() as client:
                     payload = {'name': self.current_conf}
                     r = await client.get(f'{self.hostname}/listVersions', auth=auth, params=payload, timeout=5)
-                self.vlist = r.json()['versions']          #This is a list of ints
+                numlist = r.json()['versions']          #This is a list of ints
+                if self.reverse:
+                    numlist.reverse()
+                self.vlist = numlist
             except Exception as e:
                 if isinstance(e, asyncio.CancelledError):
                     self.display_error(f"Couldn't retrieve versions from {self.hostname}/listVersions")
@@ -300,9 +304,10 @@ class ConfViewer(App):
     BINDINGS = [
         ("d", "make_diff", "Diff"),
         ("q", "quit", "Quit"),
+        ("v", "flip_versions", "Reverse Version Order")
     ]
 
-    def __init__(self, host, port, **kwargs):
+    def __init__(self, host, port, dir, **kwargs):
         super().__init__(**kwargs)
         self.hostname = f"{host}:{port}"
 
@@ -325,12 +330,18 @@ class ConfViewer(App):
            oldconf = dis.confdata
            self.push_screen('diff')
 
+    def action_flip_versions(self):
+        '''Tells the versions widget to display them the other way around'''
+        ver = self.screen.query_one(Versions)
+        ver.reverse = not ver.reverse
+
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('--host', default="http://np04-srv-023", help='Machine hosting the config service')
 @click.option('--port', default="31011", help='Port that the config service listens on')
-def start(host:str, port:str):
-    app = ConfViewer(host, port)
+@click.option('--dir', default = "", help='Top-level directory to look for local files in')
+def start(host:str, port:str, dir:str):
+    app = ConfViewer(host, port, dir)
     app.run()
 
 if __name__ == "__main__":
