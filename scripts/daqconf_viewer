@@ -4,20 +4,20 @@ import copy
 import click
 import httpx
 import json
-import os
 import sys
 
-from rich.text import Text
-from rich.markdown import Markdown
 from difflib import unified_diff
+from pathlib import Path
+from rich.markdown import Markdown
+from rich.text import Text
 
 from textual import log, events
 from textual.app import App, ComposeResult
 from textual.containers import Content, Container, Horizontal, Vertical
-from textual.widget import Widget
-from textual.widgets import Button, DirectoryTree, Footer, Header, Input, Label, ListItem, ListView, Static, Tree
 from textual.reactive import reactive, Reactive
 from textual.screen import Screen
+from textual.widget import Widget
+from textual.widgets import Button, DirectoryTree, Footer, Header, Input, Label, ListItem, ListView, Static, Tree
 
 auth = ("fooUsr", "barPass")
 oldconf = None
@@ -112,18 +112,34 @@ class Configs(Static):
                        s.update(text)
                        break
 
+class ShortNodeTree(DirectoryTree):
+    '''We inherit everything from the dirtree, but we want to abbreviate the top node.'''
+    def process_label(self, label):
+        '''If a node is a/b/c, just display c'''
+        if '/' in label:
+            good_label = label.split('/')[-1]
+        else:
+            good_label = label
+        if isinstance(good_label, str):
+            text_label = Text.from_markup(good_label)
+        else:
+            text_label = good_label
+        first_line = text_label.split()[0]
+        return first_line
+
 class LocalConfigs(Static):
     conflist = reactive([])
 
     def __init__(self, hostname, path, **kwargs):
         super().__init__(**kwargs)
         self.hostname = hostname
-        self.path = path
+        path_obj = Path(path)
+        self.path = str(path_obj.resolve())
 
     def compose(self) -> ComposeResult:
        yield TitleBox('Configurations')
        yield Input(placeholder='Search Configs')
-       yield DirectoryTree(self.path)
+       yield ShortNodeTree(self.path)
 
     async def on_directory_tree_file_selected(self, event: DirectoryTree.FileSelected ) -> None:
         location = event.path
@@ -386,9 +402,8 @@ class LocalDiffScreen(Screen):
         self.path = path
 
     def compose(self) -> ComposeResult:
-        yield LocalConfigs(hostname=self.hostname, path=self.path, classes='greencontainer configs', id='diffconfigs')
-        yield Versions(hostname=self.hostname, classes='greencontainer versions', id='diffversions')
-        yield DiffDisplay(hostname=self.hostname, classes='greencontainer display', id='diffdisplay')
+        yield LocalConfigs(hostname=self.hostname, path=self.path, classes='greencontainer configs', id='localdiffconfigs')
+        yield DiffDisplay(hostname=self.hostname, classes='greencontainer display', id='localdiffdisplay')
 
         yield Header(show_clock=True)
         yield Footer()
@@ -437,7 +452,6 @@ class LocalConfScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield LocalConfigs(hostname=self.hostname, path=self.path, classes='redcontainer configs', id='localconfigs')
-        yield Versions(hostname=self.hostname, classes='redcontainer versions', id='localversions')
         yield Display(hostname=self.hostname, classes='redcontainer display', id='localdisplay')
 
         yield Header(show_clock=True)
