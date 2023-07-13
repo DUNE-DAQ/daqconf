@@ -12,8 +12,6 @@ local nc = moo.oschema.numeric_constraints;
 local cs = {
   monitoring_dest: s.enum(     "MonitoringDest", ["local", "cern", "pocket"]),
   pm_choice:       s.enum(     "PMChoice", ["k8s", "ssh"], doc="Process Manager choice: ssh or Kubernetes"),
-  rte_choice:      s.enum(     "RTEChoice", ["auto", "release", "devarea"], doc="Kubernetes DAQ application RTE choice"),
-  
 
 
   boot: s.record("boot", [
@@ -30,7 +28,6 @@ local cs = {
 
     # K8S
     s.field( "k8s_image", types.string, default="dunedaq/c8-minimal", doc="Which docker image to use"),
-    s.field( "k8s_rte", self.rte_choice, default="auto", doc="0 - Use an RTE script if not in a dev environment, 1 - Always use RTE, 2 - never use RTE"),
 
     # Connectivity Service
     s.field( "use_connectivity_service", types.flag, default=true, doc="Whether to use the ConnectivityService to manage connections"),
