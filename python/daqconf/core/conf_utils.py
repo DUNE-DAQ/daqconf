@@ -531,10 +531,10 @@ def add_k8s_app_boot_data(
 
     boot_data.update({"apps": apps_desc})
     boot_data.update({"order": boot_order})
-    if 'rte_script' in boot_data:
-        boot_data['exec']['daq_application_k8s']['cmd'] = ['daq_application']
-    else:
-        boot_data['exec']['daq_application_k8s']['cmd'] = ['/dunedaq/run/app-entrypoint.sh']
+    # if 'rte_script' in boot_data:
+    #     boot_data['exec']['daq_application_k8s']['cmd'] = ['daq_application']
+    # else:
+    #     boot_data['exec']['daq_application_k8s']['cmd'] = ['/dunedaq/run/app-entrypoint.sh']
     boot_data["exec"]["daq_application_k8s"]["image"] = image
 
 
@@ -604,7 +604,7 @@ def generate_boot(
     app_env.update({
         p:'getenv' for p in capture_paths
     })
-    
+
     app_env.update({
         v:'getenv' for v in boot_conf.capture_env_vars
     })
