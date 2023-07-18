@@ -48,7 +48,7 @@ def compute_data_types(
         fakedata_frag_type = "WIB"
         fakedata_time_tick=32
         fakedata_frame_size=472
-    elif (("HD_TPC","VD_Bottom_TPC") and stream_entry.kind=='eth' ):
+    elif (det_str in ("HD_TPC","VD_Bottom_TPC") and stream_entry.kind=='eth' ):
         fe_type = "wibeth"
         queue_frag_type="WIBEthFrame"
         fakedata_frag_type = "WIBEth"
@@ -177,7 +177,8 @@ class NICReceiverBuilder:
                 nrc.Interface(
                     ip_addr=rx_ip,
                     mac_addr=rx_mac,
-                    expected_sources=srcs
+                    expected_sources=srcs,
+                    stats_reporting_cfg=nrc.StatsReporting()
                 )
             )         
 
