@@ -390,6 +390,32 @@ class DiffDisplay(Vertical):
     def on_button_pressed(self) -> None:
         self.remove()
 
+class RunSelection(Vertical):
+    def __init__(self, hostname, **kwargs):
+        super().__init__(**kwargs)
+        self.hostname = hostname
+
+    def compose(self) -> ComposeResult:
+        yield Input(placeholder="Enter a run number")
+        yield Button("Get Data, "variant='primary')
+
+    async def on_button_pressed (self, event: Button.Pressed) -> None:
+        box = self.query_one(Input)
+        number = box.value
+        try:
+            async with httpx.AsyncClient() as client:
+                r1 = await client.get(f'{self.hostname}/getRunMeta/{number}', auth=auth, timeout=5)
+            self.rundata = r1.json()
+        except:
+            pass
+        try:
+            async with httpx.AsyncClient() as client:
+                r2 = await client.get(f'{self.hostname}/getRunBlob/{number}', auth=auth, timeout=5)
+            #Download and extract to a temporary directory
+
+
+class RunInfo()
+
 class LocalDiffScreen(Screen):
     BINDINGS = [
         ("l", "switch_local", "DB Files"),
@@ -466,25 +492,41 @@ class LocalConfScreen(Screen):
            self.app.pop_screen()
            self.app.push_screen('ldiff')
 
+class RunRegistryScreen(Screen):
+    BINDINGS = [("r", "app.pop_screen", "Return")]
+
+    def __init__(self, hostname, path, **kwargs):
+        super().__init__(**kwargs)
+        self.hostname = hostname
+
+   def compose(self) -> ComposeResult:
+        yield RunSelection(hostname=self.hostname, classes='orangecontainer'  id="runselect")
+        yield RunInfo(classes='orangecontainer'  id="runinfo")
+        #yield LocalConfigs(hostname=self.hostname, path=AAAAAAAAAA, classes='orangecontainer configs', id='regconfigs')
+        #yield Display(hostname=self.hostname, classes='orangecontainer display', id='regdisplay')
+
+
 class ConfViewer(App):
     CSS_PATH = "daqconf_viewer.css"
     BINDINGS = [
         ("l", "switch_local", "Local Files"),
         ("d", "make_diff", "Diff"),
         ("v", "flip_versions", "Reverse Version Order"),
+        ("r", "run_reg", "Display Run Registry"),
         ("q", "quit", "Quit"),
     ]
 
-    def __init__(self, host, port, dir, **kwargs):
+    def __init__(self, chost, cport, rhost, rport, dir, **kwargs):
         super().__init__(**kwargs)
-        self.hostname = f"{host}:{port}"
+        self.confhost = f"{chost}:{cport}"
+        self.reghost = f"{rhost}:{rport}"
         self.path = dir
 
     def on_mount(self) -> None:
-        self.install_screen(LocalConfScreen(hostname=self.hostname, path=self.path), name="lconf")
-        self.install_screen(DiffScreen(hostname=self.hostname), name="diff")
-        self.install_screen(LocalDiffScreen(hostname=self.hostname, path=self.path), name="ldiff")
-
+        self.install_screen(LocalConfScreen(hostname=self.confhost, path=self.path), name="lconf")
+        self.install_screen(DiffScreen(hostname=self.conf), name="diff")
+        self.install_screen(LocalDiffScreen(hostname=self.confhost, path=self.path), name="ldiff")
+        self.install_screen(RunRegistryScreen(hostmane=self.reghost), name="runreg")
     def compose(self) -> ComposeResult:
         yield Configs(hostname=self.hostname, classes='redcontainer configs', id='regconfigs')
         yield Versions(hostname=self.hostname, classes='redcontainer versions', id='regversions')
@@ -515,13 +557,18 @@ class ConfViewer(App):
         except:
             pass
 
+    def action_run_reg(self) -> None:
+       self.push_screen('runreg')
+
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.option('--host', default="http://np04-srv-023", help='Machine hosting the config service')
-@click.option('--port', default="31011", help='Port that the config service listens on')
-@click.option('--dir', default = "./", help='Top-level directory to look for local files in')
+@click.option('--conf-host', default="http://np04-srv-023", help='Machine hosting the config service')
+@click.option('--conf-port', default="31011", help='Port that the config service listens on')
+@click.option('--reg-host', default="http://dunedaq-microservices.cern.ch", help='Machine hosting the run registry service')
+@click.option('--reg-port', default="5005", help='Port that the run registry service listens on')
+@click.option('--dir', default = "./", help='Top-level directory to look for local config files in')
 def start(host:str, port:str, dir:str):
-    app = ConfViewer(host, port, dir)
+    app = ConfViewer(conf-host, conf-port, reg-host, reg-port, dir)
     app.run()
 
 if __name__ == "__main__":

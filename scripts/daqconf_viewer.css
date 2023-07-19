@@ -51,6 +51,10 @@ Screen {
     border: wide red;
 }
 
+.orangecontainer{
+    border: wide orange;
+}
+
 .greencontainer{
     border: wide green;
 }
