@@ -10,7 +10,7 @@ local s = moo.oschema.schema("dunedaq.daqconf.triggergen");
 local nc = moo.oschema.numeric_constraints;
 // A temporary schema construction context.
 local cs = {
-  tc_type:         s.number(   "TCType",        "i4", nc(minimum=0, maximum=9), doc="Number representing TC type. Currently ranging from 0 to 9"),
+  tc_type:         s.number(   "TCType",        "i4", nc(minimum=0, maximum=10), doc="Number representing TC type. Currently ranging from 0 to 10"),
   tc_types:        s.sequence( "TCTypes",       self.tc_type, doc="List of TC types"),
   tc_interval:     s.number(   "TCInterval",    "i8", nc(minimum=1, maximum=30000000000), doc="The intervals between TCs that are inserted into MLT by CTCM, in clock ticks"),
   tc_intervals:    s.sequence( "TCIntervals",   self.tc_interval, doc="List of TC intervals used by CTCM"),
@@ -82,6 +82,11 @@ local cs = {
     s.field("time_before",    self.readout_time, default=1000, doc="Time to readout before TC time [ticks]"),
     s.field("time_after",     self.readout_time, default=1001, doc="Time to readout after TC time [ticks]"),
   ]),
+  c10_readout: s.record("c10_readout", [
+    s.field("candidate_type", self.tc_type,      default=10,     doc="The TC type, 10=NChannelHits"),
+    s.field("time_before",    self.readout_time, default=1000, doc="Time to readout before TC time [ticks]"),
+    s.field("time_after",     self.readout_time, default=1001, doc="Time to readout after TC time [ticks]"),
+  ]),
 
   tc_readout_map: s.record("tc_readout_map", [
     s.field("c0", self.c0_readout, default=self.c0_readout, doc="TC readout for TC type 0"),
@@ -94,6 +99,7 @@ local cs = {
     s.field("c7", self.c7_readout, default=self.c7_readout, doc="TC readout for TC type 7"),
     s.field("c8", self.c8_readout, default=self.c8_readout, doc="TC readout for TC type 8"),
     s.field("c9", self.c9_readout, default=self.c9_readout, doc="TC readout for TC type 9"),
+    s.field("c10", self.c10_readout, default=self.c10_readout, doc="TC readout for TC type 10"),
   ]),
 
   trigger: s.record("trigger",[

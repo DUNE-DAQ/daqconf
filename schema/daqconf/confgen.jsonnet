@@ -60,7 +60,7 @@ local cs = {
   // dqm_channel_map: s.enum(     "DQMChannelMap", ['HD', 'VD', 'PD2HD', 'HDCB']),
   // dqm_params:      s.sequence( "DQMParams",     self.count, doc="Parameters for DQM (fixme)"),
   // tc_types:        s.sequence( "TCTypes",       self.count, doc="List of TC types"),
-  // tc_type:         s.number(   "TCType",        "i4", nc(minimum=0, maximum=9), doc="Number representing TC type. Currently ranging from 0 to 9"),
+  // tc_type:         s.number(   "TCType",        "i4", nc(minimum=0, maximum=10), doc="Number representing TC type. Currently ranging from 0 to 10"),
   // tc_interval:     s.number(   "TCInterval",    "i8", nc(minimum=1, maximum=30000000000), doc="The intervals between TCs that are inserted into MLT by CTCM, in clock ticks"),
   // tc_intervals:    s.sequence( "TCIntervals",   self.tc_interval, doc="List of TC intervals used by CTCM"),
   // readout_time:    s.number(   "ROTime",        "i8", doc="A readout time in ticks"),

@@ -233,6 +233,11 @@
                 "candidate_type": 9,
                 "time_after": 1001,
                 "time_before": 1000
+            },
+            "c10": {
+                "candidate_type": 10,
+                "time_after": 1001,
+                "time_before": 1000
             }
         },
         "mlt_trigger_bitwords": [],
