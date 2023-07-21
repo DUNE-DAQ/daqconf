@@ -7,6 +7,18 @@ Screen {
     height: 100%;
 }
 
+RunSelection {
+    row-span: 1;
+    column-span: 2;
+    height: 100%;
+}
+
+RunInfo {
+    row-span: 1;
+    column-span: 2;
+    height: 100%;
+}
+
 #buttonbox {
     overflow-x: auto;
 }
@@ -33,6 +45,12 @@ Screen {
     height: 100%;
 }
 
+.shortconfigs {
+    row-span: 3;
+    column-span: 1;
+    height: 100%;
+}
+
 .versions {
     row-span: 1;
     column-span: 3;
@@ -42,6 +60,13 @@ Screen {
 
 .display {
     row-span: 4;
+    column-span: 3;
+    height: 100%;
+    align-horizontal: center;
+}
+
+.smalldisplay {
+    row-span: 3;
     column-span: 3;
     height: 100%;
     align-horizontal: center;
