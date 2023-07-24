@@ -39,6 +39,10 @@ RunInfo {
     width: 100%;
 }
 
+.runbuttons {
+    align_horizontal: center;
+}
+
 .configs {
     row-span: 4;
     column-span: 1;

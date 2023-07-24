@@ -17,6 +17,7 @@ from rich.text import Text
 
 from textual import log, events
 from textual.app import App, ComposeResult
+from textual.binding import Binding
 from textual.containers import Content, Container, Horizontal, Vertical
 from textual.reactive import reactive, Reactive
 from textual.screen import Screen
@@ -447,19 +448,74 @@ class RunSelection(Vertical):
     def __init__(self, hostname, **kwargs):
         super().__init__(**kwargs)
         self.hostname = hostname
+        self.current = None
 
     def compose(self) -> ComposeResult:
+        yield TitleBox("Run Number")
         yield Input(placeholder="Enter a run number")
-        yield Button("Get Data", variant='primary')
+        yield Horizontal (
+            Button("<--", id="back", variant='primary'),
+            Button("Get Data", id="get", variant='primary'),
+            Button("-->", id="forward", variant='primary'),
+            classes = "runbuttons"
+        )
+    async def on_mount(self) -> None:
+        async with httpx.AsyncClient() as client:
+            route = f'{self.hostname}/runregistry/getRunMetaLast/1'
+            r = await client.get(route, auth=auth, timeout=5)
+        runmeta = r.json()
+        headers = runmeta[0]
+        try:
+            data = runmeta[1][0]
+            await self.show_data("get", data[0])
+        except:
+            self.display_error("No data about most recent run")
 
-    async def on_button_pressed (self, event: Button.Pressed) -> None:
+    async def on_button_pressed(self, event: Button.Pressed) -> None:
+        button_id = event.button.id
+        await self.show_data(button_id)
+
+    async def show_data(self, button_id, number=None):
         box = self.query_one(Input)
-        number = box.value
+        if number == None:
+            number = box.value
+        else:
+            box.value = str(number)
+
+        match button_id:
+            case "get":
+                if number == "":                                        #If no number has been entered, then we should do nothing.
+                    self.display_error("Please enter a run number!")
+                    return
+                try:
+                    number = int(number)
+                except:
+                    self.display_error("Run number must be an integer")
+                    return
+                if number < 1:
+                    self.display_error("Run numbers start at 1!")
+                    return
+                self.current = number
+
+            case "back":
+                if self.current == 1 or self.current == None:           #If we are at the start, the back button does nothing
+                    return
+                self.current -= 1
+                number = self.current
+                box.value = str(number)
+
+            case "forward":
+                if self.current == None:
+                    return
+                self.current += 1
+                number = self.current
+                box.value = str(number)
 
         async with httpx.AsyncClient() as client:
-            route = f'{self.hostname}/runregistry/getRunMeta/{number}'
-            r1 = await client.get(route , auth=auth, timeout=5)
-            r2 = await client.get(f'{self.hostname}/runregistry/getRunBlob/{number}', auth=auth, timeout=5)
+            route1 = f'{self.hostname}/runregistry/getRunMeta/{number}'
+            route2 = f'{self.hostname}/runregistry/getRunBlob/{number}'
+            r1 = await client.get(route1, auth=auth, timeout=5)
+            r2 = await client.get(route2, auth=auth, timeout=5)
         runmeta = r1.json()                     #Format is [[headers], [[row]]], but that's still a JSON
         headers = runmeta[0]
         try:
@@ -472,9 +528,11 @@ class RunSelection(Vertical):
         rc = self.screen.query_one(RegistryConfigs)
         if r2.status_code == 500:
            rc.clear()
-           dis = self.screen.query_one(Display)
-           dis.confdata = None
+           self.display_error(f"No config data found for run {number}")
            return
+
+        dis = self.screen.query_one(Display)
+        dis.confdata = None
 
         f = tempfile.NamedTemporaryFile(mode="w+b",suffix='.tar.gz', delete=False)
         f.write(r2.content)
@@ -490,9 +548,21 @@ class RunSelection(Vertical):
         os.unlink(f.name)
 
         rc.new_directory(temp_name)
+        self.current = int(number)
 
+    def display_error(self, text):
+        '''If something goes wrong with getting the configs, we hijack the display to tell the user.'''
+        for v in self.screen.query(Vertical):
+            if isinstance(v, Display):
+                e_json = {'error': text}
+                v.confdata = e_json
+                break
 
-class RunInfo(Static):
+class RunInfo(Vertical):
+    def compose(self) -> ComposeResult:
+        yield TitleBox("Run Metadata")
+        yield Static(id='md')
+
     def update(self, head, row):
         text = ""
         if row:
@@ -501,7 +571,10 @@ class RunInfo(Static):
         else:
             text = '\n'.join([h+':' for h in head])
         text.rstrip()
-        super().update(text)
+        for s in self.query(Static):
+            if s.id == "md":
+                s.update(text)
+                break
 
 
 class LocalDiffScreen(Screen):
@@ -580,6 +653,51 @@ class LocalConfScreen(Screen):
            self.app.pop_screen()
            self.app.push_screen('ldiff')
 
+class BaseScreen(Screen):
+    BINDINGS = [
+    ("l", "switch_local", "Local Files"),
+    ("d", "make_diff", "Diff"),
+    ("v", "flip_versions", "Reverse Version Order"),
+    ("r", "run_reg", "Display Run Registry"),
+    ]
+
+    def __init__(self, hostname, **kwargs):
+        super().__init__(**kwargs)
+        self.confhost = hostname
+
+    def compose(self) -> ComposeResult:
+        yield Configs(hostname=self.confhost, classes='redcontainer configs', id='configs')
+        yield Versions(hostname=self.confhost, classes='redcontainer versions', id='versions')
+        yield Display(hostname=self.confhost, classes='redcontainer smalldisplay', id='display')
+
+        yield Header(show_clock=True)
+        yield Footer()
+
+    def action_switch_local(self) -> None:
+        self.app.push_screen('lconf')
+
+    def action_make_diff(self) -> None:
+        '''Saves the current config to a global variable, then pushes the diff screen.'''
+        dis = self.screen.query_one(Display)
+        if dis.confdata != None:
+           global oldconf, oldconfname, oldconfver
+           oldconf, oldconfname, oldconfver = dis.confdata, dis.confname, dis.version
+           self.app.push_screen('diff')
+
+    def action_flip_versions(self) -> None:
+        '''
+        Tells the versions widget to display them the other way around.
+        If that widget doesn't exist on this scren, do nothing.
+        '''
+        try:
+            ver = self.screen.query_one(Versions)
+            ver.reverse = not ver.reverse
+        except:
+            pass
+
+    def action_run_reg(self) -> None:
+       self.app.push_screen('runreg')
+
 class RunRegistryScreen(Screen):
     BINDINGS = [("r", "app.pop_screen", "Return")]
 
@@ -596,17 +714,13 @@ class RunRegistryScreen(Screen):
         yield Header(show_clock=True)
         yield Footer()
 
-#TODO Make bindings not show on screens that don't need them
-#TODO Make the app not send a message about cleaning up tmpdirs when it closes
+    def nothing(self) -> None:
+        '''This function doesn't do anything, the fake bindings call it.'''
+        pass
+
 class ConfViewer(App):
     CSS_PATH = "daqconf_viewer.css"
-    BINDINGS = [
-        ("l", "switch_local", "Local Files"),
-        ("d", "make_diff", "Diff"),
-        ("v", "flip_versions", "Reverse Version Order"),
-        ("r", "run_reg", "Display Run Registry"),
-        ("q", "quit", "Quit")
-    ]
+    BINDINGS = [("q", "quit", "Quit")]
 
     def __init__(self, chost, cport, rhost, rport, dir, **kwargs):
         super().__init__(**kwargs)
@@ -615,43 +729,13 @@ class ConfViewer(App):
         self.path = dir
 
     def on_mount(self) -> None:
+        self.install_screen(BaseScreen(hostname=self.confhost), name="base")
         self.install_screen(LocalConfScreen(hostname=self.confhost, path=self.path), name="lconf")
         self.install_screen(DiffScreen(hostname=self.confhost), name="diff")
         self.install_screen(LocalDiffScreen(hostname=self.confhost, path=self.path), name="ldiff")
         self.install_screen(RunRegistryScreen(hostname=self.reghost), name="runreg")
+        self.push_screen("base")
 
-    def compose(self) -> ComposeResult:
-        yield Configs(hostname=self.confhost, classes='redcontainer configs', id='configs')
-        yield Versions(hostname=self.confhost, classes='redcontainer versions', id='versions')
-        yield Display(hostname=self.confhost, classes='redcontainer smalldisplay', id='display')
-
-        yield Header(show_clock=True)
-        yield Footer()
-
-    def action_switch_local(self) -> None:
-        self.push_screen('lconf')
-
-    def action_make_diff(self) -> None:
-        '''Saves the current config to a global variable, then pushes the diff screen.'''
-        dis = self.screen.query_one(Display)
-        if dis.confdata != None:
-           global oldconf, oldconfname, oldconfver
-           oldconf, oldconfname, oldconfver = dis.confdata, dis.confname, dis.version
-           self.push_screen('diff')
-
-    def action_flip_versions(self) -> None:
-        '''
-        Tells the versions widget to display them the other way around.
-        If that widget doesn't exist on this scren, do nothing.
-        '''
-        try:
-            ver = self.screen.query_one(Versions)
-            ver.reverse = not ver.reverse
-        except:
-            pass
-
-    def action_run_reg(self) -> None:
-       self.push_screen('runreg')
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(context_settings=CONTEXT_SETTINGS)
