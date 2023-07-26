@@ -2,8 +2,21 @@
 Screen {
     layout: grid;
     layers: below above;
-    grid-size: 4 4;
+    grid-size: 12 12;
     grid-gutter: 0;
+    height: 100%;
+}
+
+RunSelection {
+    row-span: 4;
+    column-span: 6;
+    height: 100%;
+    content-align: center middle;
+}
+
+RunInfo {
+    row-span: 4;
+    column-span: 6;
     height: 100%;
 }
 
@@ -19,36 +32,55 @@ Screen {
     height: 20;
 }
 
-#diffscreen{
-    layer: above;
-    align: center middle;
-    background: cadetblue;
-    height: 100%;
-    width: 100%;
+.runbuttons {
+    align_horizontal: center;
 }
 
 .configs {
-    row-span: 4;
-    column-span: 1;
+    row-span: 12;
+    column-span: 3;
+    height: 100%;
+}
+
+.shortconfigs {
+    row-span: 8;
+    column-span: 3;
     height: 100%;
 }
 
 .versions {
-    row-span: 1;
-    column-span: 3;
+    row-span: 3;
+    column-span: 9;
     height: 100%;
     align-vertical: middle;
 }
+.bigdisplay {
+    row-span: 12;
+    column-span: 9;
+    height: 100%;
+    align-horizontal: center;
+}
 
 .display {
-    row-span: 4;
-    column-span: 3;
+    row-span: 9;
+    column-span: 9;
+    height: 100%;
+    align-horizontal: center;
+}
+
+.smalldisplay {
+    row-span: 8;
+    column-span: 9;
     height: 100%;
     align-horizontal: center;
 }
 
 .redcontainer{
     border: wide red;
+}
+
+.orangecontainer{
+    border: wide orange;
 }
 
 .greencontainer{

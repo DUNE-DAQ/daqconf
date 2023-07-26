@@ -3,8 +3,12 @@ import asyncio
 import copy
 import click
 import httpx
+import io
 import json
+import os
 import sys
+import tarfile
+import tempfile
 
 from difflib import unified_diff
 from pathlib import Path
@@ -13,6 +17,7 @@ from rich.text import Text
 
 from textual import log, events
 from textual.app import App, ComposeResult
+from textual.binding import Binding
 from textual.containers import Content, Container, Horizontal, Vertical
 from textual.reactive import reactive, Reactive
 from textual.screen import Screen
@@ -23,6 +28,7 @@ auth = ("fooUsr", "barPass")
 oldconf = None
 oldconfname = None
 oldconfver = None
+dir_object = None
 
 class TitleBox(Static):
     def __init__(self, title, **kwargs):
@@ -138,7 +144,6 @@ class LocalConfigs(Static):
 
     def compose(self) -> ComposeResult:
        yield TitleBox('Configurations')
-       yield Input(placeholder='Search Configs')
        yield ShortNodeTree(self.path)
 
     async def on_directory_tree_file_selected(self, event: DirectoryTree.FileSelected ) -> None:
@@ -154,6 +159,55 @@ class LocalConfigs(Static):
                     break
         except Exception as e:
            self.display_error(f"Config at {location} is not usable\n Error: {e}")
+
+    def display_error(self, text):
+        '''If something goes wrong with getting the configs, we hijack the display to tell the user.'''
+        for v in self.screen.query(Vertical):
+            if isinstance(v, Display):
+                e_json = {'error': text}
+                v.confdata = e_json
+                break
+            if isinstance(v, DiffDisplay):
+                for s in v.query(Static):
+                    if s.id == 'diffbox':
+                       s.update(text)
+                       break
+
+class RegistryConfigs(Static):
+    conflist = reactive([])
+
+    def __init__(self, hostname, **kwargs):
+        super().__init__(**kwargs)
+        self.hostname = hostname
+        self.path = None
+
+    def compose(self) -> ComposeResult:
+       yield TitleBox('Configurations')
+
+    def new_directory(self, path) -> None:
+        path_obj = Path(path)
+        self.path = str(path_obj.resolve())
+        for p in self.query(ShortNodeTree):     #Delete any existing file trees
+            p.remove()
+        self.mount(ShortNodeTree(self.path))
+
+    async def on_directory_tree_file_selected(self, event: DirectoryTree.FileSelected ) -> None:
+        location = event.path
+        filename = location.split('/')[-1]
+        try:
+            with open(location) as f:
+                self.current_conf = json.load(f)
+            #Look for a display to show the config to
+            for v in self.screen.query(Vertical):
+                if isinstance(v, Display) or isinstance(v, DiffDisplay):
+                    await v.get_json_local(filename, self.current_conf)
+                    break
+        except Exception as e:
+           self.display_error(f"Config at {location} is not usable\n Error: {e}")
+
+    def clear(self):
+        for p in self.query(ShortNodeTree):
+            p.remove()
 
     def display_error(self, text):
         '''If something goes wrong with getting the configs, we hijack the display to tell the user.'''
@@ -297,9 +351,9 @@ class Display(Vertical):
         add_node("", node, json_data)
 
     def watch_confdata(self, confdata:dict) -> None:
+        tree = self.query_one(Tree)
+        tree.clear()
         if confdata:
-            tree = self.query_one(Tree)
-            tree.clear()
             self.json_into_tree(tree.root, confdata)
             tree.root.expand()
 
@@ -390,6 +444,139 @@ class DiffDisplay(Vertical):
     def on_button_pressed(self) -> None:
         self.remove()
 
+class RunSelection(Vertical):
+    def __init__(self, hostname, **kwargs):
+        super().__init__(**kwargs)
+        self.hostname = hostname
+        self.current = None
+
+    def compose(self) -> ComposeResult:
+        yield TitleBox("Run Number")
+        yield Input(placeholder="Enter a run number")
+        yield Horizontal (
+            Button("<--", id="back", variant='primary'),
+            Button("Get Data", id="get", variant='primary'),
+            Button("-->", id="forward", variant='primary'),
+            classes = "runbuttons"
+        )
+    async def on_mount(self) -> None:
+        async with httpx.AsyncClient() as client:
+            route = f'{self.hostname}/runregistry/getRunMetaLast/1'
+            r = await client.get(route, auth=auth, timeout=5)
+        runmeta = r.json()
+        headers = runmeta[0]
+        try:
+            data = runmeta[1][0]
+            await self.show_data("get", data[0])
+        except:
+            self.display_error("No data about most recent run")
+
+    async def on_button_pressed(self, event: Button.Pressed) -> None:
+        button_id = event.button.id
+        await self.show_data(button_id)
+
+    async def show_data(self, button_id, number=None):
+        box = self.query_one(Input)
+        if number == None:
+            number = box.value
+        else:
+            box.value = str(number)
+
+        match button_id:
+            case "get":
+                if number == "":                                        #If no number has been entered, then we should do nothing.
+                    self.display_error("Please enter a run number!")
+                    return
+                try:
+                    number = int(number)
+                except:
+                    self.display_error("Run number must be an integer")
+                    return
+                if number < 1:
+                    self.display_error("Run numbers start at 1!")
+                    return
+                self.current = number
+
+            case "back":
+                if self.current == 1 or self.current == None:           #If we are at the start, the back button does nothing
+                    return
+                self.current -= 1
+                number = self.current
+                box.value = str(number)
+
+            case "forward":
+                if self.current == None:
+                    return
+                self.current += 1
+                number = self.current
+                box.value = str(number)
+
+        async with httpx.AsyncClient() as client:
+            route1 = f'{self.hostname}/runregistry/getRunMeta/{number}'
+            route2 = f'{self.hostname}/runregistry/getRunBlob/{number}'
+            r1 = await client.get(route1, auth=auth, timeout=5)
+            r2 = await client.get(route2, auth=auth, timeout=5)
+        runmeta = r1.json()                     #Format is [[headers], [[row]]], but that's still a JSON
+        headers = runmeta[0]
+        try:
+            data = runmeta[1][0]                #We will assume we only get one row at once (true for this sort of query)
+        except:
+            data = None
+        info = self.screen.query_one(RunInfo)
+        info.update(headers, data)
+
+        rc = self.screen.query_one(RegistryConfigs)
+        if r2.status_code == 500:
+           rc.clear()
+           self.display_error(f"No config data found for run {number}")
+           return
+
+        dis = self.screen.query_one(Display)
+        dis.confdata = None
+
+        f = tempfile.NamedTemporaryFile(mode="w+b",suffix='.tar.gz', delete=False)
+        f.write(r2.content)
+        fname = f.name
+        f.close()
+
+        global dir_object                           #This is a global variable, since otherwise garbage collection deletes the directory!
+        dir_object = tempfile.TemporaryDirectory()
+        temp_name = dir_object.name
+        tar = tarfile.open(fname, "r:gz")
+        tar.extractall(temp_name)
+        tar.close()
+        os.unlink(f.name)
+
+        rc.new_directory(temp_name)
+        self.current = int(number)
+
+    def display_error(self, text):
+        '''If something goes wrong with getting the configs, we hijack the display to tell the user.'''
+        for v in self.screen.query(Vertical):
+            if isinstance(v, Display):
+                e_json = {'error': text}
+                v.confdata = e_json
+                break
+
+class RunInfo(Vertical):
+    def compose(self) -> ComposeResult:
+        yield TitleBox("Run Metadata")
+        yield Static(id='md')
+
+    def update(self, head, row):
+        text = ""
+        if row:
+            for i, val in enumerate(row):
+                text += f"{head[i]}: {val}\n"
+        else:
+            text = '\n'.join([h+':' for h in head])
+        text.rstrip()
+        for s in self.query(Static):
+            if s.id == "md":
+                s.update(text)
+                break
+
+
 class LocalDiffScreen(Screen):
     BINDINGS = [
         ("l", "switch_local", "DB Files"),
@@ -403,7 +590,7 @@ class LocalDiffScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield LocalConfigs(hostname=self.hostname, path=self.path, classes='greencontainer configs', id='localdiffconfigs')
-        yield DiffDisplay(hostname=self.hostname, classes='greencontainer display', id='localdiffdisplay')
+        yield DiffDisplay(hostname=self.hostname, classes='greencontainer bigdisplay', id='localdiffdisplay')
 
         yield Header(show_clock=True)
         yield Footer()
@@ -452,7 +639,7 @@ class LocalConfScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield LocalConfigs(hostname=self.hostname, path=self.path, classes='redcontainer configs', id='localconfigs')
-        yield Display(hostname=self.hostname, classes='redcontainer display', id='localdisplay')
+        yield Display(hostname=self.hostname, classes='redcontainer bigdisplay', id='localdisplay')
 
         yield Header(show_clock=True)
         yield Footer()
@@ -466,35 +653,28 @@ class LocalConfScreen(Screen):
            self.app.pop_screen()
            self.app.push_screen('ldiff')
 
-class ConfViewer(App):
-    CSS_PATH = "daqconf_viewer.css"
+class BaseScreen(Screen):
     BINDINGS = [
-        ("l", "switch_local", "Local Files"),
-        ("d", "make_diff", "Diff"),
-        ("v", "flip_versions", "Reverse Version Order"),
-        ("q", "quit", "Quit"),
+    ("l", "switch_local", "Local Files"),
+    ("d", "make_diff", "Diff"),
+    ("v", "flip_versions", "Reverse Version Order"),
+    ("r", "run_reg", "Display Run Registry"),
     ]
 
-    def __init__(self, host, port, dir, **kwargs):
+    def __init__(self, hostname, **kwargs):
         super().__init__(**kwargs)
-        self.hostname = f"{host}:{port}"
-        self.path = dir
-
-    def on_mount(self) -> None:
-        self.install_screen(LocalConfScreen(hostname=self.hostname, path=self.path), name="lconf")
-        self.install_screen(DiffScreen(hostname=self.hostname), name="diff")
-        self.install_screen(LocalDiffScreen(hostname=self.hostname, path=self.path), name="ldiff")
+        self.confhost = hostname
 
     def compose(self) -> ComposeResult:
-        yield Configs(hostname=self.hostname, classes='redcontainer configs', id='regconfigs')
-        yield Versions(hostname=self.hostname, classes='redcontainer versions', id='regversions')
-        yield Display(hostname=self.hostname, classes='redcontainer display', id='regdisplay')
+        yield Configs(hostname=self.confhost, classes='redcontainer configs', id='configs')
+        yield Versions(hostname=self.confhost, classes='redcontainer versions', id='versions')
+        yield Display(hostname=self.confhost, classes='redcontainer display', id='display')
 
         yield Header(show_clock=True)
         yield Footer()
 
     def action_switch_local(self) -> None:
-        self.push_screen('lconf')
+        self.app.push_screen('lconf')
 
     def action_make_diff(self) -> None:
         '''Saves the current config to a global variable, then pushes the diff screen.'''
@@ -502,7 +682,7 @@ class ConfViewer(App):
         if dis.confdata != None:
            global oldconf, oldconfname, oldconfver
            oldconf, oldconfname, oldconfver = dis.confdata, dis.confname, dis.version
-           self.push_screen('diff')
+           self.app.push_screen('diff')
 
     def action_flip_versions(self) -> None:
         '''
@@ -515,13 +695,65 @@ class ConfViewer(App):
         except:
             pass
 
+    def action_run_reg(self) -> None:
+       self.app.push_screen('runreg')
+
+class RunRegistryScreen(Screen):
+    BINDINGS = [("r", "app.pop_screen", "Return")]
+
+    def __init__(self, hostname, **kwargs):
+        super().__init__(**kwargs)
+        self.hostname = hostname
+
+    def compose(self) -> ComposeResult:
+        yield RunSelection(hostname=self.hostname, classes='orangecontainer',  id="runselect")
+        yield RunInfo(classes='orangecontainer',  id="runinfo")
+        yield RegistryConfigs(hostname=self.hostname, classes='orangecontainer shortconfigs', id='regconfigs')
+        yield Display(hostname=self.hostname, classes='orangecontainer smalldisplay', id='regdisplay')
+
+        yield Header(show_clock=True)
+        yield Footer()
+
+    def nothing(self) -> None:
+        '''This function doesn't do anything, the fake bindings call it.'''
+        pass
+
+class ConfViewer(App):
+    CSS_PATH = "daqconf_viewer.css"
+    BINDINGS = [("q", "quit", "Quit")]
+
+    def __init__(self, chost, cport, rhost, rport, dir, **kwargs):
+        super().__init__(**kwargs)
+        self.confhost = f"{chost}:{cport}"
+        self.reghost = f"{rhost}:{rport}"
+        self.path = dir
+
+    def on_mount(self) -> None:
+        self.install_screen(BaseScreen(hostname=self.confhost), name="base")
+        self.install_screen(LocalConfScreen(hostname=self.confhost, path=self.path), name="lconf")
+        self.install_screen(DiffScreen(hostname=self.confhost), name="diff")
+        self.install_screen(LocalDiffScreen(hostname=self.confhost, path=self.path), name="ldiff")
+        self.install_screen(RunRegistryScreen(hostname=self.reghost), name="runreg")
+        self.push_screen("base")
+
+    def action_quit(self):
+        """
+        Called when the quit button is pressed.
+        We redefine it here so that we can add the removal of the temporary directory.
+        """
+        dir_object.cleanup()
+        self.exit()
+
+
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.option('--host', default="http://np04-srv-023", help='Machine hosting the config service')
-@click.option('--port', default="31011", help='Port that the config service listens on')
-@click.option('--dir', default = "./", help='Top-level directory to look for local files in')
-def start(host:str, port:str, dir:str):
-    app = ConfViewer(host, port, dir)
+@click.option('--conf-host', default="http://np04-srv-023", help='Machine hosting the config service')
+@click.option('--conf-port', default="31011", help='Port that the config service listens on')
+@click.option('--reg-host', default="http://dunedaq-microservices.cern.ch", help='Machine hosting the run registry service')
+@click.option('--reg-port', default="5005", help='Port that the run registry service listens on')
+@click.option('--dir', default = "./", help='Top-level directory to look for local config files in')
+def start(conf_host:str, conf_port:str, reg_host:str, reg_port:str, dir:str):
+    app = ConfViewer(conf_host, conf_port, reg_host, reg_port, dir)
     app.run()
 
 if __name__ == "__main__":
