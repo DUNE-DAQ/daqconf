@@ -590,7 +590,7 @@ class LocalDiffScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield LocalConfigs(hostname=self.hostname, path=self.path, classes='greencontainer configs', id='localdiffconfigs')
-        yield DiffDisplay(hostname=self.hostname, classes='greencontainer display', id='localdiffdisplay')
+        yield DiffDisplay(hostname=self.hostname, classes='greencontainer bigdisplay', id='localdiffdisplay')
 
         yield Header(show_clock=True)
         yield Footer()
@@ -617,7 +617,7 @@ class DiffScreen(Screen):
     def compose(self) -> ComposeResult:
         yield Configs(hostname=self.hostname, classes='greencontainer configs', id='diffconfigs')
         yield Versions(hostname=self.hostname, classes='greencontainer versions', id='diffversions')
-        yield DiffDisplay(hostname=self.hostname, classes='greencontainer smalldisplay', id='diffdisplay')
+        yield DiffDisplay(hostname=self.hostname, classes='greencontainer display', id='diffdisplay')
 
         yield Header(show_clock=True)
         yield Footer()
@@ -639,7 +639,7 @@ class LocalConfScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield LocalConfigs(hostname=self.hostname, path=self.path, classes='redcontainer configs', id='localconfigs')
-        yield Display(hostname=self.hostname, classes='redcontainer display', id='localdisplay')
+        yield Display(hostname=self.hostname, classes='redcontainer bigdisplay', id='localdisplay')
 
         yield Header(show_clock=True)
         yield Footer()
@@ -668,7 +668,7 @@ class BaseScreen(Screen):
     def compose(self) -> ComposeResult:
         yield Configs(hostname=self.confhost, classes='redcontainer configs', id='configs')
         yield Versions(hostname=self.confhost, classes='redcontainer versions', id='versions')
-        yield Display(hostname=self.confhost, classes='redcontainer smalldisplay', id='display')
+        yield Display(hostname=self.confhost, classes='redcontainer display', id='display')
 
         yield Header(show_clock=True)
         yield Footer()
@@ -735,6 +735,14 @@ class ConfViewer(App):
         self.install_screen(LocalDiffScreen(hostname=self.confhost, path=self.path), name="ldiff")
         self.install_screen(RunRegistryScreen(hostname=self.reghost), name="runreg")
         self.push_screen("base")
+
+    def action_quit(self):
+        """
+        Called when the quit button is pressed.
+        We redefine it here so that we can add the removal of the temporary directory.
+        """
+        dir_object.cleanup()
+        self.exit()
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
