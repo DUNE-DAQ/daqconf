@@ -10,7 +10,7 @@ For a slightly more in-depth look into how to generate configurations for a DAQ 
 
 [Configuration options for casual or first-time users](ConfigurationsForCasualUsers.md)
 
-If you want to view existing configs stored in the MongoDB, take a look at:
+If you want to view existing configs stored in the MongoDB, or run configurations accessible through the run-registry microservice, take a look at:
 
 [Interacting with the Configuration Database](ConfigDatabase.md)
 
