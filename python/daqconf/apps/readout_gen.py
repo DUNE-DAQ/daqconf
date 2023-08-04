@@ -513,7 +513,12 @@ class ReadoutAppGenerator:
 
 
 
-
+    ###
+    # Create the fragment aggregator
+    ###
+    def create_fa() -> list:
+        modules = [DAQModule(name = f"fragment_aggregator", plugin = "FragmentAggregator")]
+        return modules
 
     ###
     # Create detector datalink handlers
@@ -585,6 +590,18 @@ class ReadoutAppGenerator:
                             ))
                     )]
         queues = []
+        for dlh in modules:
+            # Attach to the detector DLH's fragment_output connector. 
+            # FIXME: do i need to have unique names for the queue instance although is it only in the scope of one application?
+            queues += [
+                Queue(
+                    f"{dlh.name}.fragment_output",
+                    f"fragment_aggregator.fragment_input",
+                    "Fragment",
+                    f"fragment_queue",100000
+                    )
+                ]
+
         return modules, queues
 
 
@@ -702,6 +719,18 @@ class ReadoutAppGenerator:
                     )
                 ]
 
+        # Attach to the detector DLH's fragment_output connector. 
+        # FIXME: do i need to have unique names for the queue instance although is it only in the scope of one application?
+
+        queues += [
+                Queue(
+                    f"tp_datahandler_{tpset_sid}.fragment_output",
+                    f"fragment_aggregator.fragment_input",
+                    "Fragment",
+                    f"fragment_queue",100000
+                    )
+                ]
+    
         return modules, queues
 
     ###
@@ -865,8 +894,12 @@ class ReadoutAppGenerator:
         modules += cr_mods
         queues += cr_queues
 
+        # Create the FragmentAggregator
+        fa_mods = self.create_fa()
+        modules += fa_mods
+
         # Create the data-link handlers
-        dlhs_mods, _ = self.create_det_dhl(
+        dlhs_mods, dlhs_queues = self.create_det_dhl(
             # LATENCY_BUFFER_SIZE=cfg.latency_buffer_size,
             LATENCY_BUFFER_NUMA_AWARE=latency_numa,
             LATENCY_BUFFER_ALLOCATION_MODE=latency_preallocate,
@@ -885,6 +918,7 @@ class ReadoutAppGenerator:
             )
 
         modules += dlhs_mods
+        queues += dlhs_queues
 
         # Add the TP datalink handlers
         if TPG_ENABLED:
