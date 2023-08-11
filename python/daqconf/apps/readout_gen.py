@@ -272,7 +272,8 @@ class ReadoutAppGenerator:
                             emu_frame_error_rate=0
                         ) for s in RU_DESCRIPTOR.streams],
                 use_now_as_first_data_time=cfg.emulated_data_times_start_with_now,
-                generate_periodic_adc_pattern = cfg.generate_periodic_adc_pattern,                
+                generate_periodic_adc_pattern = cfg.generate_periodic_adc_pattern,  
+                TP_rate_per_ch = cfg.emulated_TP_rate_per_ch,  
                 clock_speed_hz=self.det_cfg.clock_speed_hz,
                 queue_timeout_ms = QUEUE_POP_WAIT_MS
                 )

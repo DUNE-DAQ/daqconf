@@ -56,6 +56,7 @@ local cs = {
     // Fake cards
     s.field( "use_fake_cards", types.flag, default=false, doc="Use fake cards"),
     s.field( "generate_periodic_adc_pattern", types.flag, default=false, doc="Generate a periodic ADC pattern inside the input data. Only when FakeCard reader is used"),     
+    s.field( "emulated_TP_rate_per_ch", types.count, default=1, doc="Rate of TPs per channel when using a periodic ADC pattern generation. Values expresses as multiples of the expected rate of 100 Hz/ch"),     
     s.field( "emulated_data_times_start_with_now", types.flag, default=false, doc="If active, the timestamp of the first emulated data frame is set to the current wallclock time"),
     s.field( "default_data_file", types.path, default='asset://?label=ProtoWIB&subsystem=readout', doc="File containing data frames to be replayed by the fake cards. Former -d. Uses the asset manager, can also be 'asset://?checksum=somelonghash', or 'file://somewhere/frames.bin' or 'frames.bin'"),
     s.field( "data_files", self.data_files, default=[], doc="Files to use by detector type"),
