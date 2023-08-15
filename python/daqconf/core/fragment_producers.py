@@ -13,6 +13,7 @@ import dunedaq.dfmodules.triggerrecordbuilder as trb
 
 from daqconf.core.conf_utils import Direction
 from daqconf.core.sourceid import source_id_raw_str, ensure_subsystem_string
+from daqdataformats import SourceID
 from .console import console
 
 def set_mlt_links(the_system, mlt_app_name="trigger", verbose=False):
@@ -79,8 +80,8 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
 
     # Nothing to do if there are no fragment producers. Return now so we don't create unneeded RequestReceiver and FragmentSender
     if len(producers) == 0:
-        return
-    
+        return []
+
     # Create fragment sender. We can do this before looping over the
     # producers because it doesn't need any settings from them
 #    app.modulegraph.add_module("fragment_sender",
@@ -91,8 +92,8 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
     # 1. Add it to the SourceID -> queue name map that is used in RequestReceiver
     # 2. Connect the relevant RequestReceiver output queue to the request input queue of the fragment producer
     # 3. Connect the fragment output queue of the producer module to the FragmentSender
-    
 
+    local_srcid_list = []
     for producer in producers.values():
         queue_inst = f"data_requests_for_{source_id_raw_str(producer.source_id)}"
         # Connect request receiver to TRB output in DF app
@@ -100,9 +101,9 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
                                  internal_name = producer.requests_in, 
                                  data_type = "DataRequest",
                                  inout = Direction.IN)
-        
-                               
-                               
+        if producer.source_id.subsystem == SourceID.Subsystem.kDetectorReadout:
+            local_srcid_list.append(producer.source_id.id)
+
     trb_apps = [ (name,app) for (name,app) in the_system.apps.items() if "TriggerRecordBuilder" in [n.plugin for n in app.modulegraph.module_list()] ]
 
     for trb_app_name, trb_app_conf in trb_apps:
@@ -113,18 +114,23 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         for producer in producers.values():
             queue_inst = f"data_requests_for_{source_id_raw_str(producer.source_id)}"
             df_mgraph.add_endpoint(queue_inst, f"{trb_module_name}.request_output_{source_id_raw_str(producer.source_id)}", "DataRequest", Direction.OUT)
-            
-                          
+
+    if len(local_srcid_list) > 0:
+        return [ trb.DROAppNameSrcIDEntry(appname=app_name, srcid_list=local_srcid_list) ]
+    else:
+        return []
+
 
 def connect_all_fragment_producers(the_system, dataflow_name="dataflow", verbose=False):
     """
     Connect all fragment producers in the system to the appropriate
     queues in the dataflow app.
     """
+    trb_dro_appname_srcid_map = []
     for name, app in the_system.apps.items():
         if name==dataflow_name:
             continue
-        connect_fragment_producers(name, the_system, verbose)
+        trb_dro_appname_srcid_map += connect_fragment_producers(name, the_system, verbose)
         
     trb_apps = [ (name,app) for (name,app) in the_system.apps.items() if "TriggerRecordBuilder" in [n.plugin for n in app.modulegraph.module_list()] ]
     
@@ -137,7 +143,9 @@ def connect_all_fragment_producers(the_system, dataflow_name="dataflow", verbose
         # Add the new source_id-to-connections map to the
         # TriggerRecordBuilder.
         old_trb_conf = df_mgraph.get_module(trb_module_name).conf
+        new_trb_dro_map = old_trb_conf.dro_appname_srcid_map + trb_dro_appname_srcid_map
         df_mgraph.reset_module_conf(trb_module_name, trb.ConfParams(general_queue_timeout=old_trb_conf.general_queue_timeout,
-                                                               source_id = old_trb_conf.source_id,
-                                                          max_time_window = old_trb_conf.max_time_window,
-                                                          trigger_record_timeout_ms = old_trb_conf.trigger_record_timeout_ms))
+                                                                    source_id = old_trb_conf.source_id,
+                                                                    max_time_window = old_trb_conf.max_time_window,
+                                                                    trigger_record_timeout_ms = old_trb_conf.trigger_record_timeout_ms,
+                                                                    dro_appname_srcid_map=trb.DROAppNameSrcIDMap(new_trb_dro_map)))
