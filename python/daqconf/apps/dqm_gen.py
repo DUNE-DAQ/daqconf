@@ -25,38 +25,40 @@ from daqconf.core.conf_utils import Direction
 from daqconf.core.daqmodule import DAQModule
 from daqconf.core.app import App,ModuleGraph
 
-from detdataformats._daq_detdataformats_py import *
+from detdataformats import *
 
 # Time to wait on pop()
 QUEUE_POP_WAIT_MS = 100
 
-def get_dqm_app(DQM_IMPL='',
-                DATA_RATE_SLOWDOWN_FACTOR=1,
-                CLOCK_SPEED_HZ=62500000,
-                DQMIDX=0,
-                MAX_NUM_FRAMES=32768,
-                KAFKA_ADDRESS='',
-                KAFKA_TOPIC='',
-                CMAP='HD',
-                RAW_PARAMS=[60, 50],
-                RMS_PARAMS=[10, 1000],
-                STD_PARAMS=[10, 1000],
-                FOURIER_CHANNEL_PARAMS=[600, 100],
-                FOURIER_PLANE_PARAMS=[60, 1000],
-                LINKS=[],
-                HOST="localhost",
-                MODE="readout",
-                DF_RATE=10,
-                DF_ALGS='raw std fourier_plane',
-                DF_TIME_WINDOW=0,
-                # DRO_CONFIG=None,
-                RU_STREAMS=None,
-                RU_APPNAME="ru_0",
-                TRB_DQM_SOURCEID_OFFSET=0,
-                DEBUG=False,
-                ):
+def get_dqm_app(
+        DQM_IMPL='',
+        DATA_RATE_SLOWDOWN_FACTOR=1,
+        CLOCK_SPEED_HZ=62500000,
+        DQMIDX=0,
+        MAX_NUM_FRAMES=32768,
+        KAFKA_ADDRESS='',
+        KAFKA_TOPIC='',
+        CMAP='HD',
+        RAW_PARAMS=[60, 50],
+        RMS_PARAMS=[10, 1000],
+        STD_PARAMS=[10, 1000],
+        FOURIER_CHANNEL_PARAMS=[600, 100],
+        FOURIER_PLANE_PARAMS=[60, 1000],
+        LINKS=[],
+        HOST="localhost",
+        MODE="readout",
+        DF_RATE=10,
+        DF_ALGS='raw std fourier_plane',
+        DF_TIME_WINDOW=0,
+        # DRO_CONFIG=None,
+        RU_STREAMS=None,
+        RU_APPNAME="ru_0",
+        TRB_DQM_SOURCEID_OFFSET=0,
+        DEBUG=False,
+    ):
 
     FRONTEND_TYPE = DetID.subdetector_to_string(DetID.Subdetector(RU_STREAMS[0].geo_id.det_id))
+
     if ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 50000000):
         FRONTEND_TYPE = "wib"
     elif ((FRONTEND_TYPE== "HD_TPC" or FRONTEND_TYPE== "VD_Bottom_TPC") and CLOCK_SPEED_HZ== 62500000):
@@ -65,8 +67,9 @@ def get_dqm_app(DQM_IMPL='',
         FRONTEND_TYPE = "pds_list"
     elif FRONTEND_TYPE== "VD_Top_TPC":
         FRONTEND_TYPE = "tde"
-    elif FRONTEND_TYPE== "ND_LAr":
-        FRONTEND_TYPE = "pacman"
+    # 20-Jun-2023, KAB: quick fix to get FD-specific nightly build to run
+    #elif FRONTEND_TYPE== "ND_LAr":
+    #    FRONTEND_TYPE = "pacman"
 
     if DQM_IMPL == 'cern':
         KAFKA_ADDRESS = "monkafka.cern.ch:30092"
@@ -76,7 +79,6 @@ def get_dqm_app(DQM_IMPL='',
     modules = []
 
     if MODE == 'readout':
-
         modules += [DAQModule(name='trb_dqm',
                             plugin='TriggerRecordBuilder',
                             conf=trb.ConfParams(
