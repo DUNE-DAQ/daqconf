@@ -182,7 +182,8 @@ class NICReceiverBuilder:
                 nrc.Interface(
                     ip_addr=rx_ip,
                     mac_addr=rx_mac,
-                    expected_sources=srcs
+                    expected_sources=srcs,
+                    stats_reporting_cfg=nrc.StatsReporting()
                 )
             )         
 
