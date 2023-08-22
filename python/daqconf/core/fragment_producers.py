@@ -129,8 +129,7 @@ def create_producer_connections_with_aggregation(app_name, the_system, verbose=F
         queue_inst = f"data_requests_for_{source_id_raw_str(producer.source_id)}"
         app.modulegraph.connect_modules(f"fragment_aggregator_{app_name}.data_requests_for_{source_id_raw_str(producer.source_id)}", producer.requests_in, "DataRequest", queue_name=f"data_requests_for_{source_id_raw_str(producer.source_id)}", size_hint=1000)
 
-        if producer.source_id.subsystem == SourceID.Subsystem.kDetectorReadout:
-            local_srcid_list.append(producer.source_id.id)
+        local_srcid_list.append( trb.SourceID(subsys=ensure_subsystem_string(producer.source_id.subsystem), id=producer.source_id.id) )
 
     trb_apps = [ (name,app) for (name,app) in the_system.apps.items() if "TriggerRecordBuilder" in [n.plugin for n in app.modulegraph.module_list()] ]
 
