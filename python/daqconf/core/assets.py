@@ -1,8 +1,7 @@
 
-from os.path import exists,abspath,dirname
+from os.path import exists,abspath,dirname,expandvars
 
 from .console import console
-
 
 from daq_assettools.asset_file import AssetFile
 from daq_assettools.asset_database import Database
@@ -49,10 +48,11 @@ def resolve_asset_file(data_file, verbose):
 
         return filename
 
-    if data_file != '' and not exists(data_file):
+    resolved_data_file = abspath(expandvars(data_file))
+    if resolved_data_file != '' and not exists(resolved_data_file):
         raise RuntimeError(f'Cannot find the frames.bin file {data_file}')
 
     if verbose:
-        console.log(f"Found asset in {dirname(abspath(data_file))}")
+        console.log(f"Found asset in {dirname(resolved_data_file)}")
 
-    return abspath(data_file)
+    return resolved_data_file
