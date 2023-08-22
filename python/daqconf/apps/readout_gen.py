@@ -513,12 +513,7 @@ class ReadoutAppGenerator:
 
 
 
-    ###
-    # Create the fragment aggregator
-    ###
-    def create_fa() -> list:
-        modules = [DAQModule(name = f"fragment_aggregator", plugin = "FragmentAggregator")]
-        return modules
+
 
     ###
     # Create detector datalink handlers
@@ -590,18 +585,6 @@ class ReadoutAppGenerator:
                             ))
                     )]
         queues = []
-        for dlh in modules:
-            # Attach to the detector DLH's fragment_output connector. 
-            # FIXME: do i need to have unique names for the queue instance although is it only in the scope of one application?
-            queues += [
-                Queue(
-                    f"{dlh.name}.fragment_output",
-                    f"fragment_aggregator.fragment_input",
-                    "Fragment",
-                    f"fragment_queue",100000
-                    )
-                ]
-
         return modules, queues
 
 
@@ -719,18 +702,6 @@ class ReadoutAppGenerator:
                     )
                 ]
 
-        # Attach to the detector DLH's fragment_output connector. 
-        # FIXME: do i need to have unique names for the queue instance although is it only in the scope of one application?
-
-        queues += [
-                Queue(
-                    f"tp_datahandler_{tpset_sid}.fragment_output",
-                    f"fragment_aggregator.fragment_input",
-                    "Fragment",
-                    f"fragment_queue",100000
-                    )
-                ]
-    
         return modules, queues
 
     ###
@@ -754,7 +725,7 @@ class ReadoutAppGenerator:
                 id = dro_sid, 
                 subsystem = "Detector_Readout",
                 requests_in   = f"datahandler_{dro_sid}.request_input",
-                fragments_out = f"datahandler_{dro_sid}.fragment_queue"
+                fragments_out = f"datahandler_{dro_sid}.unused_connection_name"
             )
             mgraph.add_endpoint(
                 f"timesync_ru{RUIDX}_{dro_sid}",
@@ -803,7 +774,7 @@ class ReadoutAppGenerator:
             mgraph.add_fragment_producer(
                 id = tpset_sid, subsystem = "Trigger",
                 requests_in   = f"tp_datahandler_{tpset_sid}.request_input",
-                fragments_out = f"tp_datahandler_{tpset_sid}.fragment_queue"
+                fragments_out = f"tp_datahandler_{tpset_sid}.unused_connection_name"
             )
         
 
@@ -894,12 +865,8 @@ class ReadoutAppGenerator:
         modules += cr_mods
         queues += cr_queues
 
-        # Create the FragmentAggregator
-        fa_mods = self.create_fa()
-        modules += fa_mods
-
         # Create the data-link handlers
-        dlhs_mods, dlhs_queues = self.create_det_dhl(
+        dlhs_mods, _ = self.create_det_dhl(
             # LATENCY_BUFFER_SIZE=cfg.latency_buffer_size,
             LATENCY_BUFFER_NUMA_AWARE=latency_numa,
             LATENCY_BUFFER_ALLOCATION_MODE=latency_preallocate,
@@ -918,7 +885,6 @@ class ReadoutAppGenerator:
             )
 
         modules += dlhs_mods
-        queues += dlhs_queues
 
         # Add the TP datalink handlers
         if TPG_ENABLED:
@@ -1025,7 +991,7 @@ def create_fake_readout_app(
         # Add fragment producers for fake data. This call is necessary to create the RequestReceiver instance, but we don't need the generated FragmentSender or its queues...
         mgraph.add_fragment_producer(id = stream.src_id, subsystem = "Detector_Readout",
                                         requests_in   = f"fakedataprod_{stream.src_id}.data_request_input_queue",
-                                        fragments_out = f"fakedataprod_{stream.src_id}.fragment_queue")
+                                        fragments_out = f"fakedataprod_{stream.src_id}.unused_connection_name")
         mgraph.add_endpoint(f"timesync_ru{RU_DESCRIPTOR.label}_{stream.src_id}", f"fakedataprod_{stream.src_id}.timesync_output",    "TimeSync",   Direction.OUT, is_pubsub=True, toposort=False)
 
     # Create the application
@@ -1033,5 +999,3 @@ def create_fake_readout_app(
 
     # All done
     return readout_app
-
-
