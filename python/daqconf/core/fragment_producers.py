@@ -67,33 +67,13 @@ def remove_mlt_link(the_system, source_id, mlt_app_name="trigger"):
                                                    td_readout_map=old_mlt_conf.td_readout_map,
                                                    use_bitwords=old_mlt_conf.use_bitwords,
                                                    trigger_bitwords=old_mlt_conf.trigger_bitwords))
- 
-def connect_fragment_producers(app_name, the_system, verbose=False):
-    """Connect the data request and fragment sending queues from all of
-       the fragment producers in the app with name `app_name` to the
-       appropriate endpoints of the dataflow app."""
-    if verbose:
-        console.log(f"Connecting fragment producers in {app_name}")
 
+def create_direct_producer_connections(app_name, the_system, verbose=False):
     app = the_system.apps[app_name]
     producers = app.modulegraph.fragment_producers
-
-    # Nothing to do if there are no fragment producers. Return now so we don't create unneeded RequestReceiver and FragmentSender
     if len(producers) == 0:
         return []
 
-    # Create fragment sender. We can do this before looping over the
-    # producers because it doesn't need any settings from them
-#    app.modulegraph.add_module("fragment_sender",
-#                               plugin = "FragmentSender",
-#                               conf = None)
-
-    # For each producer, we:
-    # 1. Add it to the SourceID -> queue name map that is used in RequestReceiver
-    # 2. Connect the relevant RequestReceiver output queue to the request input queue of the fragment producer
-    # 3. Connect the fragment output queue of the producer module to the FragmentSender
-
-    local_srcid_list = []
     for producer in producers.values():
         queue_inst = f"data_requests_for_{source_id_raw_str(producer.source_id)}"
         # Connect request receiver to TRB output in DF app
@@ -101,8 +81,6 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
                                  internal_name = producer.requests_in, 
                                  data_type = "DataRequest",
                                  inout = Direction.IN)
-        if producer.source_id.subsystem == SourceID.Subsystem.kDetectorReadout:
-            local_srcid_list.append(producer.source_id.id)
 
     trb_apps = [ (name,app) for (name,app) in the_system.apps.items() if "TriggerRecordBuilder" in [n.plugin for n in app.modulegraph.module_list()] ]
 
@@ -113,7 +91,57 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         trb_module_name = [n.name for n in df_mgraph.module_list() if n.plugin == "TriggerRecordBuilder"][0]
         for producer in producers.values():
             queue_inst = f"data_requests_for_{source_id_raw_str(producer.source_id)}"
-            df_mgraph.add_endpoint(queue_inst, f"{trb_module_name}.request_output_{source_id_raw_str(producer.source_id)}", "DataRequest", Direction.OUT)
+            df_mgraph.add_endpoint(queue_inst, f"{trb_module_name}.unused_connection_name", "DataRequest", Direction.OUT)
+
+    return []
+
+
+def create_producer_connections_with_aggregation(app_name, the_system, verbose=False):
+    app = the_system.apps[app_name]
+    producers = app.modulegraph.fragment_producers
+    if len(producers) == 0:
+        return []
+
+    # Create the fragment aggregator. 
+    app.modulegraph.add_module(f"fragment_aggregator_{app_name}",
+                               plugin = "FragmentAggregator",
+                               conf = None)
+
+    # Declare the fragment aggregator endpoint that receives DataRequests
+    queue_inst = f"data_requests_for_{app_name}"
+    app.modulegraph.add_endpoint(queue_inst,
+                                 internal_name = f"fragment_aggregator_{app_name}.data_req_input",
+                                 data_type = "DataRequest",
+                                 inout = Direction.IN)
+
+    # Connect the DLH Fragment output queues to the fragment aggregator
+    for producer in producers.values():
+        app.modulegraph.connect_modules(producer.fragments_out, f"fragment_aggregator_{app_name}.fragment_input", "Fragment", queue_name="fragment_queue", size_hint=100000)
+
+    # Connect the DLH DataRequest input queues to the fragment aggregator
+    local_srcid_list = []
+    for producer in producers.values():
+        # It looks like RequestReceiver wants its endpoint names to
+        # start "data_request_" for the purposes of checking the queue
+        # type, but doesn't care what the queue instance name is (as
+        # long as it matches what's in the map above), so we just set
+        # the endpoint name and queue instance name to the same thing
+        queue_inst = f"data_requests_for_{source_id_raw_str(producer.source_id)}"
+        app.modulegraph.connect_modules(f"fragment_aggregator_{app_name}.data_requests_for_{source_id_raw_str(producer.source_id)}", producer.requests_in, "DataRequest", queue_name=f"data_requests_for_{source_id_raw_str(producer.source_id)}", size_hint=1000)
+
+        if producer.source_id.subsystem == SourceID.Subsystem.kDetectorReadout:
+            local_srcid_list.append(producer.source_id.id)
+
+    trb_apps = [ (name,app) for (name,app) in the_system.apps.items() if "TriggerRecordBuilder" in [n.plugin for n in app.modulegraph.module_list()] ]
+
+    # Declare the fragment aggregator endpoints that send Fragments
+    for trb_app_name, trb_app_conf in trb_apps:
+        fragment_connection_name = f"fragments_to_{trb_app_name}"
+        app.modulegraph.add_endpoint(fragment_connection_name, None, "Fragment", Direction.OUT)
+        df_mgraph = trb_app_conf.modulegraph
+        trb_module_name = [n.name for n in df_mgraph.module_list() if n.plugin == "TriggerRecordBuilder"][0]
+        queue_inst = f"data_requests_for_{app_name}"
+        df_mgraph.add_endpoint(queue_inst, f"{trb_module_name}.unused_connection_name", "DataRequest", Direction.OUT)
 
     if len(local_srcid_list) > 0:
         return [ trb.DROAppNameSrcIDEntry(appname=app_name, srcid_list=local_srcid_list) ]
@@ -121,15 +149,38 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         return []
 
 
-def connect_all_fragment_producers(the_system, dataflow_name="dataflow", verbose=False):
+def connect_fragment_producers(app_name, the_system, verbose=False):
+    """Connect the data request and fragment sending queues from all of
+       the fragment producers in the app with name `app_name` to the
+       appropriate endpoints of the dataflow app."""
+    if verbose:
+        console.log(f"Connecting fragment producers in {app_name}")
+
+    app = the_system.apps[app_name]
+    producers = app.modulegraph.fragment_producers
+
+    # Nothing to do if there are no fragment producers. Return now so we don't create unneeded FragmentAggregator
+    if len(producers) == 0:
+        return []
+
+    dro_producer = False
+    for producer in producers.values():
+        if producer.source_id.subsystem == SourceID.Subsystem.kDetectorReadout:
+            dro_producer = True
+
+    if dro_producer:
+        return create_producer_connections_with_aggregation(app_name, the_system, verbose)
+    else:
+        return create_direct_producer_connections(app_name, the_system, verbose)
+
+
+def connect_all_fragment_producers(the_system, verbose=False):
     """
     Connect all fragment producers in the system to the appropriate
     queues in the dataflow app.
     """
     trb_dro_appname_srcid_map = []
     for name, app in the_system.apps.items():
-        if name==dataflow_name:
-            continue
         trb_dro_appname_srcid_map += connect_fragment_producers(name, the_system, verbose)
         
     trb_apps = [ (name,app) for (name,app) in the_system.apps.items() if "TriggerRecordBuilder" in [n.plugin for n in app.modulegraph.module_list()] ]
