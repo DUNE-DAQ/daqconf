@@ -526,6 +526,8 @@ def add_k8s_app_boot_data(
             "resources": app.resources,
             "affinity": app.pod_affinity,
             "anti-affinity": app.pod_anti_affinity,
+            "privileged": app.pod_privileged,
+            "capabilities": app.pod_capabilities,
         }
 
 
