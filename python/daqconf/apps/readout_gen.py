@@ -808,52 +808,55 @@ class ReadoutAppGenerator:
         readout_app = App(mgraph, host=RU_DESCRIPTOR.host_name)
 
 
-        # Kubernetes-specific extensions
-        # FELIX
-        if RU_DESCRIPTOR.kind == 'flx':
-            
-            c = card_override if card_override != -1 else RU_DESCRIPTOR.iface
-            readout_app.resources = {
-                f"felix.cern/flx{c}-data": "1", # requesting FLX{c}
-                # "memory": f"{}Gi" # yes bro
-            }
-            readout_app.pod_privileged = True
+        if cfg.use_fake_cards:
+            pass
+        else:
+            # Kubernetes-specific extensions
+            # FELIX
+            if RU_DESCRIPTOR.kind == 'flx':
+                
+                c = card_override if card_override != -1 else RU_DESCRIPTOR.iface
+                readout_app.resources = {
+                    f"felix.cern/flx{c}-data": "1", # requesting FLX{c}
+                    # "memory": f"{}Gi" # yes bro
+                }
+                readout_app.pod_privileged = True
 
-            readout_app.mounted_dirs += [{
-                'name': 'devfs',
-                'physical_location': '/dev',
-                'in_pod_location':   '/dev',
-                'read_only': False,
-            }]
-
-        # DPDK
-        elif RU_DESCRIPTOR.kind == 'eth':
-
-            readout_app.resources = {
-                f"intel.com/intel_sriov_dpdk": "1", # requesting sriov
-            }
-
-            readout_app.mounted_dirs += [
-                {
+                readout_app.mounted_dirs += [{
                     'name': 'devfs',
                     'physical_location': '/dev',
                     'in_pod_location':   '/dev',
                     'read_only': False,
-                },
-                {
-                    'name': 'linux-firmware',
-                    'physical_location': '/lib/firmware',
-                    'in_pod_location':   '/lib/firmware',
-                    'read_only': True,
-                }
-            ]
+                }]
 
-            # Remove in favour of capabilites
-            readout_app.pod_privileged = True
-            readout_app.pod_capabilities += [
-                "IPC_LOCK",
-                "CAP_NET_ADMIN"
-            ]
+            # DPDK
+            elif RU_DESCRIPTOR.kind == 'eth':
+
+                readout_app.resources = {
+                    f"intel.com/intel_sriov_dpdk": "1", # requesting sriov
+                }
+
+                readout_app.mounted_dirs += [
+                    {
+                        'name': 'devfs',
+                        'physical_location': '/dev',
+                        'in_pod_location':   '/dev',
+                        'read_only': False,
+                    },
+                    {
+                        'name': 'linux-firmware',
+                        'physical_location': '/lib/firmware',
+                        'in_pod_location':   '/lib/firmware',
+                        'read_only': True,
+                    }
+                ]
+
+                # Remove in favour of capabilites
+                readout_app.pod_privileged = True
+                readout_app.pod_capabilities += [
+                    "IPC_LOCK",
+                    "CAP_NET_ADMIN"
+                ]
 
         dir_names = set()
 
