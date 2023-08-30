@@ -63,8 +63,7 @@ def get_dataflow_app(
                           conf = trb.ConfParams(general_queue_timeout=QUEUE_POP_WAIT_MS,
                                                 max_time_window=MAX_TRIGGER_RECORD_WINDOW,
                                                 source_id = HOSTIDX,
-                                                trigger_record_timeout_ms=TRB_TIMEOUT,
-                                                dro_appname_srcid_map=trb.DROAppNameSrcIDMap([])))] # We patch this up in connect_fragmen
+                                                trigger_record_timeout_ms=TRB_TIMEOUT))]
 
     queue_size_based_on_number_of_sequences = max(10, int(MAX_EXPECTED_TR_SEQUENCES * TOKEN_COUNT * 1.1))
     for i in range(len(OUTPUT_PATHS)):     
