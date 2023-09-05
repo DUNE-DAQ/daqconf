@@ -72,7 +72,7 @@ def create_direct_producer_connections(app_name, the_system, verbose=False):
     app = the_system.apps[app_name]
     producers = app.modulegraph.fragment_producers
     if len(producers) == 0:
-        return []
+        return
 
     for producer in producers.values():
         queue_inst = f"data_requests_for_{source_id_raw_str(producer.source_id)}"
@@ -91,16 +91,14 @@ def create_direct_producer_connections(app_name, the_system, verbose=False):
         trb_module_name = [n.name for n in df_mgraph.module_list() if n.plugin == "TriggerRecordBuilder"][0]
         for producer in producers.values():
             queue_inst = f"data_requests_for_{source_id_raw_str(producer.source_id)}"
-            df_mgraph.add_endpoint(queue_inst, f"{trb_module_name}.unused_connection_name", "DataRequest", Direction.OUT)
-
-    return []
+            df_mgraph.add_endpoint(queue_inst, f"{trb_module_name}.request_destination_for_{source_id_raw_str(producer.source_id)}", "DataRequest", Direction.OUT)
 
 
 def create_producer_connections_with_aggregation(app_name, the_system, verbose=False):
     app = the_system.apps[app_name]
     producers = app.modulegraph.fragment_producers
     if len(producers) == 0:
-        return []
+        return
 
     # Create the fragment aggregator. 
     app.modulegraph.add_module(f"fragment_aggregator_{app_name}",
@@ -119,17 +117,14 @@ def create_producer_connections_with_aggregation(app_name, the_system, verbose=F
         app.modulegraph.connect_modules(producer.fragments_out, f"fragment_aggregator_{app_name}.fragment_input", "Fragment", queue_name="fragment_queue", size_hint=100000)
 
     # Connect the DLH DataRequest input queues to the fragment aggregator
-    local_srcid_list = []
     for producer in producers.values():
         # It looks like RequestReceiver wants its endpoint names to
         # start "data_request_" for the purposes of checking the queue
         # type, but doesn't care what the queue instance name is (as
         # long as it matches what's in the map above), so we just set
         # the endpoint name and queue instance name to the same thing
-        queue_inst = f"data_requests_for_{source_id_raw_str(producer.source_id)}"
-        app.modulegraph.connect_modules(f"fragment_aggregator_{app_name}.data_requests_for_{source_id_raw_str(producer.source_id)}", producer.requests_in, "DataRequest", queue_name=f"data_requests_for_{source_id_raw_str(producer.source_id)}", size_hint=1000)
-
-        local_srcid_list.append( trb.SourceID(subsys=ensure_subsystem_string(producer.source_id.subsystem), id=producer.source_id.id) )
+        # FIXME queue_inst = f"data_requests_for_{source_id_raw_str(producer.source_id)}"
+        app.modulegraph.connect_modules(f"fragment_aggregator_{app_name}.request_destination_for_{source_id_raw_str(producer.source_id)}", producer.requests_in, "DataRequest", queue_name=f"data_requests_for_{source_id_raw_str(producer.source_id)}", size_hint=1000)
 
     trb_apps = [ (name,app) for (name,app) in the_system.apps.items() if "TriggerRecordBuilder" in [n.plugin for n in app.modulegraph.module_list()] ]
 
@@ -140,12 +135,8 @@ def create_producer_connections_with_aggregation(app_name, the_system, verbose=F
         df_mgraph = trb_app_conf.modulegraph
         trb_module_name = [n.name for n in df_mgraph.module_list() if n.plugin == "TriggerRecordBuilder"][0]
         queue_inst = f"data_requests_for_{app_name}"
-        df_mgraph.add_endpoint(queue_inst, f"{trb_module_name}.unused_connection_name", "DataRequest", Direction.OUT)
-
-    if len(local_srcid_list) > 0:
-        return [ trb.DROAppNameSrcIDEntry(appname=app_name, srcid_list=local_srcid_list) ]
-    else:
-        return []
+        for producer in producers.values():
+            df_mgraph.add_endpoint(queue_inst, f"{trb_module_name}.request_destination_for_{source_id_raw_str(producer.source_id)}", "DataRequest", Direction.OUT)
 
 
 def connect_fragment_producers(app_name, the_system, verbose=False):
@@ -160,7 +151,7 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
 
     # Nothing to do if there are no fragment producers. Return now so we don't create unneeded FragmentAggregator
     if len(producers) == 0:
-        return []
+        return
 
     dro_producer = False
     for producer in producers.values():
@@ -168,9 +159,9 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
             dro_producer = True
 
     if dro_producer:
-        return create_producer_connections_with_aggregation(app_name, the_system, verbose)
+        create_producer_connections_with_aggregation(app_name, the_system, verbose)
     else:
-        return create_direct_producer_connections(app_name, the_system, verbose)
+        create_direct_producer_connections(app_name, the_system, verbose)
 
 
 def connect_all_fragment_producers(the_system, verbose=False):
@@ -178,9 +169,8 @@ def connect_all_fragment_producers(the_system, verbose=False):
     Connect all fragment producers in the system to the appropriate
     queues in the dataflow app.
     """
-    trb_dro_appname_srcid_map = []
     for name, app in the_system.apps.items():
-        trb_dro_appname_srcid_map += connect_fragment_producers(name, the_system, verbose)
+        connect_fragment_producers(name, the_system, verbose)
         
     trb_apps = [ (name,app) for (name,app) in the_system.apps.items() if "TriggerRecordBuilder" in [n.plugin for n in app.modulegraph.module_list()] ]
     
@@ -193,9 +183,7 @@ def connect_all_fragment_producers(the_system, verbose=False):
         # Add the new source_id-to-connections map to the
         # TriggerRecordBuilder.
         old_trb_conf = df_mgraph.get_module(trb_module_name).conf
-        new_trb_dro_map = old_trb_conf.dro_appname_srcid_map + trb_dro_appname_srcid_map
         df_mgraph.reset_module_conf(trb_module_name, trb.ConfParams(general_queue_timeout=old_trb_conf.general_queue_timeout,
                                                                     source_id = old_trb_conf.source_id,
                                                                     max_time_window = old_trb_conf.max_time_window,
-                                                                    trigger_record_timeout_ms = old_trb_conf.trigger_record_timeout_ms,
-                                                                    dro_appname_srcid_map=trb.DROAppNameSrcIDMap(new_trb_dro_map)))
+                                                                    trigger_record_timeout_ms = old_trb_conf.trigger_record_timeout_ms))
