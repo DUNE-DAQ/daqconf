@@ -11,6 +11,8 @@ local nc = moo.oschema.numeric_constraints;
 // A temporary schema construction context.
 local cs = {
 
+  float4 : s.number("float4", "f4", doc="A float of 4 bytes"),
+
   id_list:    s.sequence( "IDList",   types.count, doc="List of Ids"),
 
   data_file_entry: s.record("data_file_entry", [
@@ -55,6 +57,8 @@ local cs = {
     // s.field( "memory_limit_gb", types.count, default=64, doc="Application memory limit in GB")
     // Fake cards
     s.field( "use_fake_cards", types.flag, default=false, doc="Use fake cards"),
+    s.field( "generate_periodic_adc_pattern", types.flag, default=false, doc="Generate a periodic ADC pattern inside the input data. Only when FakeCard reader is used"),     
+    s.field( "emulated_TP_rate_per_ch", types.float4, default=1.0, doc="Rate of TPs per channel when using a periodic ADC pattern generation. Values expresses as multiples of the expected rate of 100 Hz/ch"),     
     s.field( "emulated_data_times_start_with_now", types.flag, default=false, doc="If active, the timestamp of the first emulated data frame is set to the current wallclock time"),
     s.field( "default_data_file", types.path, default='asset://?label=ProtoWIB&subsystem=readout', doc="File containing data frames to be replayed by the fake cards. Former -d. Uses the asset manager, can also be 'asset://?checksum=somelonghash', or 'file://somewhere/frames.bin' or 'frames.bin'"),
     s.field( "data_files", self.data_files, default=[], doc="Files to use by detector type"),
