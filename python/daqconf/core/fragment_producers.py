@@ -73,6 +73,8 @@ def create_direct_producer_connections(app_name, the_system, verbose=False):
     producers = app.modulegraph.fragment_producers
     if len(producers) == 0:
         return
+    if verbose:
+        console.log(f"Connecting fragment producers in {app_name} directly to TRBs")
 
     for producer in producers.values():
         queue_inst = f"data_requests_for_{source_id_raw_str(producer.source_id)}"
@@ -99,6 +101,8 @@ def create_producer_connections_with_aggregation(app_name, the_system, verbose=F
     producers = app.modulegraph.fragment_producers
     if len(producers) == 0:
         return
+    if verbose:
+        console.log(f"Connecting fragment producers in {app_name} to TRBs using a FragmentAggregator")
 
     # Create the fragment aggregator. 
     app.modulegraph.add_module(f"fragment_aggregator_{app_name}",
@@ -143,8 +147,6 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
     """Connect the data request and fragment sending queues from all of
        the fragment producers in the app with name `app_name` to the
        appropriate endpoints of the dataflow app."""
-    if verbose:
-        console.log(f"Connecting fragment producers in {app_name}")
 
     app = the_system.apps[app_name]
     producers = app.modulegraph.fragment_producers
@@ -164,12 +166,14 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
         create_direct_producer_connections(app_name, the_system, verbose)
 
 
-def connect_all_fragment_producers(the_system, verbose=False):
+def connect_all_fragment_producers(the_system, dataflow_name="dataflow", verbose=False):
     """
     Connect all fragment producers in the system to the appropriate
     queues in the dataflow app.
     """
     for name, app in the_system.apps.items():
+        if name==dataflow_name:
+            continue
         connect_fragment_producers(name, the_system, verbose)
         
     trb_apps = [ (name,app) for (name,app) in the_system.apps.items() if "TriggerRecordBuilder" in [n.plugin for n in app.modulegraph.module_list()] ]
@@ -184,6 +188,6 @@ def connect_all_fragment_producers(the_system, verbose=False):
         # TriggerRecordBuilder.
         old_trb_conf = df_mgraph.get_module(trb_module_name).conf
         df_mgraph.reset_module_conf(trb_module_name, trb.ConfParams(general_queue_timeout=old_trb_conf.general_queue_timeout,
-                                                                    source_id = old_trb_conf.source_id,
-                                                                    max_time_window = old_trb_conf.max_time_window,
-                                                                    trigger_record_timeout_ms = old_trb_conf.trigger_record_timeout_ms))
+                                                               source_id = old_trb_conf.source_id,
+                                                          max_time_window = old_trb_conf.max_time_window,
+                                                          trigger_record_timeout_ms = old_trb_conf.trigger_record_timeout_ms))
