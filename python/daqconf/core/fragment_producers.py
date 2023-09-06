@@ -73,14 +73,16 @@ def create_direct_producer_connections(app_name, the_system, verbose=False):
     producers = app.modulegraph.fragment_producers
     if len(producers) == 0:
         return
+    if verbose:
+        console.log(f"Connecting fragment producers in {app_name} directly to TRBs")
 
     for producer in producers.values():
         queue_inst = f"data_requests_for_{source_id_raw_str(producer.source_id)}"
         # Connect request receiver to TRB output in DF app
         app.modulegraph.add_endpoint(queue_inst,
-                                 internal_name = producer.requests_in, 
-                                 data_type = "DataRequest",
-                                 inout = Direction.IN)
+                                     internal_name = producer.requests_in, 
+                                     data_type = "DataRequest",
+                                     inout = Direction.IN)
 
     trb_apps = [ (name,app) for (name,app) in the_system.apps.items() if "TriggerRecordBuilder" in [n.plugin for n in app.modulegraph.module_list()] ]
 
@@ -99,6 +101,8 @@ def create_producer_connections_with_aggregation(app_name, the_system, verbose=F
     producers = app.modulegraph.fragment_producers
     if len(producers) == 0:
         return
+    if verbose:
+        console.log(f"Connecting fragment producers in {app_name} to TRBs using a FragmentAggregator")
 
     # Create the fragment aggregator. 
     app.modulegraph.add_module(f"fragment_aggregator_{app_name}",
@@ -143,8 +147,6 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
     """Connect the data request and fragment sending queues from all of
        the fragment producers in the app with name `app_name` to the
        appropriate endpoints of the dataflow app."""
-    if verbose:
-        console.log(f"Connecting fragment producers in {app_name}")
 
     app = the_system.apps[app_name]
     producers = app.modulegraph.fragment_producers
@@ -179,11 +181,3 @@ def connect_all_fragment_producers(the_system, verbose=False):
         df_mgraph = trb_app_conf.modulegraph
         trb_module_name = [n.name for n in df_mgraph.module_list() if n.plugin == "TriggerRecordBuilder"][0]
         df_mgraph.add_endpoint(fragment_connection_name, f"{trb_module_name}.data_fragment_all", "Fragment", Direction.IN, toposort=True)
-
-        # Add the new source_id-to-connections map to the
-        # TriggerRecordBuilder.
-        old_trb_conf = df_mgraph.get_module(trb_module_name).conf
-        df_mgraph.reset_module_conf(trb_module_name, trb.ConfParams(general_queue_timeout=old_trb_conf.general_queue_timeout,
-                                                                    source_id = old_trb_conf.source_id,
-                                                                    max_time_window = old_trb_conf.max_time_window,
-                                                                    trigger_record_timeout_ms = old_trb_conf.trigger_record_timeout_ms))

@@ -380,7 +380,7 @@ def get_trigger_app(
 
     mgraph.add_fragment_producer(id=TC_SOURCE_ID["source_id"], subsystem="Trigger",
                                  requests_in="tc_buf.data_request_source",
-                                 fragments_out="tc_buf.fragment_sink")
+                                 fragments_out="tc_buf.unused_connection_name")
 
     if len(TP_SOURCE_IDS) > 0:
         for tp_sid,tp_conf in TP_SOURCE_IDS.items():
@@ -397,13 +397,13 @@ def get_trigger_app(
 
                 mgraph.add_fragment_producer(id=tp_sid, subsystem="Trigger",
                                              requests_in=f"{buf_name}.data_request_source",
-                                             fragments_out=f"{buf_name}.fragment_sink")
+                                             fragments_out=f"{buf_name}.unused_connection_name")
 
         for region_id, ta_conf in TA_SOURCE_IDS.items():
             buf_name = f'ta_buf_region_{region_id}'
             mgraph.add_fragment_producer(id=ta_conf["source_id"], subsystem="Trigger",
                                          requests_in=f"{buf_name}.data_request_source",
-                                         fragments_out=f"{buf_name}.fragment_sink")
+                                         fragments_out=f"{buf_name}.unused_connection_name")
 
 
     trigger_app = App(modulegraph=mgraph, host=HOST, name='TriggerApp')

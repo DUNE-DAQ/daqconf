@@ -99,7 +99,7 @@ def get_fake_hsi_app(
     
     mgraph.add_fragment_producer(id = HSI_SOURCE_ID, subsystem = "HW_Signals_Interface",
                                          requests_in   = f"hsi_datahandler.request_input",
-                                         fragments_out = f"hsi_datahandler.fragment_queue")
+                                         fragments_out = f"hsi_datahandler.unused_connection_name")
     mgraph.add_endpoint(f"timesync_fake_hsi", f"hsi_datahandler.timesync_output","TimeSync", Direction.OUT, is_pubsub=True, toposort=False)
 
     mgraph.add_endpoint("hsievents", "fhsig.hsievents", "HSIEvent", Direction.OUT)
