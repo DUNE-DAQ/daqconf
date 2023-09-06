@@ -93,7 +93,7 @@ def create_direct_producer_connections(app_name, the_system, verbose=False):
         trb_module_name = [n.name for n in df_mgraph.module_list() if n.plugin == "TriggerRecordBuilder"][0]
         for producer in producers.values():
             queue_inst = f"data_requests_for_{source_id_raw_str(producer.source_id)}"
-            df_mgraph.add_endpoint(queue_inst, f"{trb_module_name}.request_destination_for_{source_id_raw_str(producer.source_id)}", "DataRequest", Direction.OUT)
+            df_mgraph.add_endpoint(queue_inst, f"{trb_module_name}.request_output_{source_id_raw_str(producer.source_id)}", "DataRequest", Direction.OUT)
 
 
 def create_producer_connections_with_aggregation(app_name, the_system, verbose=False):
@@ -122,13 +122,7 @@ def create_producer_connections_with_aggregation(app_name, the_system, verbose=F
 
     # Connect the DLH DataRequest input queues to the fragment aggregator
     for producer in producers.values():
-        # It looks like RequestReceiver wants its endpoint names to
-        # start "data_request_" for the purposes of checking the queue
-        # type, but doesn't care what the queue instance name is (as
-        # long as it matches what's in the map above), so we just set
-        # the endpoint name and queue instance name to the same thing
-        # FIXME queue_inst = f"data_requests_for_{source_id_raw_str(producer.source_id)}"
-        app.modulegraph.connect_modules(f"fragment_aggregator_{app_name}.request_destination_for_{source_id_raw_str(producer.source_id)}", producer.requests_in, "DataRequest", queue_name=f"data_requests_for_{source_id_raw_str(producer.source_id)}", size_hint=1000)
+        app.modulegraph.connect_modules(f"fragment_aggregator_{app_name}.request_output_{source_id_raw_str(producer.source_id)}", producer.requests_in, "DataRequest", queue_name=f"data_requests_for_{source_id_raw_str(producer.source_id)}", size_hint=1000)
 
     trb_apps = [ (name,app) for (name,app) in the_system.apps.items() if "TriggerRecordBuilder" in [n.plugin for n in app.modulegraph.module_list()] ]
 
@@ -140,7 +134,7 @@ def create_producer_connections_with_aggregation(app_name, the_system, verbose=F
         trb_module_name = [n.name for n in df_mgraph.module_list() if n.plugin == "TriggerRecordBuilder"][0]
         queue_inst = f"data_requests_for_{app_name}"
         for producer in producers.values():
-            df_mgraph.add_endpoint(queue_inst, f"{trb_module_name}.request_destination_for_{source_id_raw_str(producer.source_id)}", "DataRequest", Direction.OUT)
+            df_mgraph.add_endpoint(queue_inst, f"{trb_module_name}.request_output_{source_id_raw_str(producer.source_id)}", "DataRequest", Direction.OUT)
 
 
 def connect_fragment_producers(app_name, the_system, verbose=False):
@@ -151,7 +145,7 @@ def connect_fragment_producers(app_name, the_system, verbose=False):
     app = the_system.apps[app_name]
     producers = app.modulegraph.fragment_producers
 
-    # Nothing to do if there are no fragment producers. Return now so we don't create unneeded FragmentAggregator
+    # Nothing to do if there are no fragment producers. Return now so we don't create unneeded modules or connections
     if len(producers) == 0:
         return
 
