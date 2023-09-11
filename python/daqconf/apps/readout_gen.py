@@ -622,7 +622,7 @@ class ReadoutAppGenerator:
                 id = dro_sid, 
                 subsystem = "Detector_Readout",
                 requests_in   = f"datahandler_{dro_sid}.request_input",
-                fragments_out = f"datahandler_{dro_sid}.unused_connection_name"
+                fragments_out = f"datahandler_{dro_sid}.fragment_queue"
             )
             mgraph.add_endpoint(
                 f"timesync_ru{RUIDX}_{dro_sid}",
@@ -671,7 +671,7 @@ class ReadoutAppGenerator:
             mgraph.add_fragment_producer(
                 id = tpset_sid, subsystem = "Trigger",
                 requests_in   = f"tp_datahandler_{tpset_sid}.request_input",
-                fragments_out = f"tp_datahandler_{tpset_sid}.unused_connection_name"
+                fragments_out = f"tp_datahandler_{tpset_sid}.fragment_queue"
             )
         
 
@@ -920,7 +920,7 @@ def create_fake_readout_app(
         # Add fragment producers for fake data. This call is necessary to create the RequestReceiver instance, but we don't need the generated FragmentSender or its queues...
         mgraph.add_fragment_producer(id = stream.src_id, subsystem = "Detector_Readout",
                                         requests_in   = f"fakedataprod_{stream.src_id}.data_request_input_queue",
-                                        fragments_out = f"fakedataprod_{stream.src_id}.unused_connection_name")
+                                        fragments_out = f"fakedataprod_{stream.src_id}.fragment_queue")
         mgraph.add_endpoint(f"timesync_ru{RU_DESCRIPTOR.label}_{stream.src_id}", f"fakedataprod_{stream.src_id}.timesync_output",    "TimeSync",   Direction.OUT, is_pubsub=True, toposort=False)
 
     # Create the application
@@ -928,3 +928,5 @@ def create_fake_readout_app(
 
     # All done
     return readout_app
+
+
