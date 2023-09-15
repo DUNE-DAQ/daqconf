@@ -40,7 +40,6 @@ def get_timing_hsi_app(
                 hsi,
                 daq_common,
                 source_id,
-                timing_session_name,
                 UHAL_LOG_LEVEL="notice",
                 QUEUE_POP_WAIT_MS=10,
                 LATENCY_BUFFER_SIZE=100000,
@@ -59,6 +58,7 @@ def get_timing_hsi_app(
     READOUT_PERIOD_US = hsi.hsi_readout_period
     HSI_DEVICE_NAME = hsi.hsi_device_name
     HARDWARE_STATE_RECOVERY_ENABLED = hsi.enable_hardware_state_recovery
+    HSI_CONTROL_HARDWARE_IO = hsi.control_hsi_hw_io
     HSI_ENDPOINT_ADDRESS = hsi.hsi_endpoint_address
     HSI_ENDPOINT_PARTITION = hsi.hsi_endpoint_partition
     HSI_RE_MASK=hsi.hsi_re_mask
@@ -66,7 +66,6 @@ def get_timing_hsi_app(
     HSI_INV_MASK=hsi.hsi_inv_mask
     HSI_SOURCE=hsi.hsi_source
     HSI_SOURCE_ID=source_id
-    TIMING_SESSION=timing_session_name
     HOST=hsi.host_timing_hsi
 
     modules = {}
@@ -103,10 +102,12 @@ def get_timing_hsi_app(
                         DAQModule(name="hsic",
                                 plugin = "HSIController",
                                 conf = hsic.ConfParams( device=HSI_DEVICE_NAME,
+                                                        connections_file=CONNECTIONS_FILE,
+                                                        uhal_log_level=UHAL_LOG_LEVEL,
                                                         hardware_state_recovery_enabled=HARDWARE_STATE_RECOVERY_ENABLED,
-                                                        timing_session_name=TIMING_SESSION,
                                                         clock_frequency=CLOCK_SPEED_HZ,
                                                         trigger_rate=RANDOM_TRIGGER_RATE_HZ,
+                                                        control_hardware_io=HSI_CONTROL_HARDWARE_IO,
                                                         address=HSI_ENDPOINT_ADDRESS,
                                                         partition=HSI_ENDPOINT_PARTITION,
                                                         rising_edge_mask=HSI_RE_MASK,
