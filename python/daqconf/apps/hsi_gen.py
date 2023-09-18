@@ -127,11 +127,6 @@ def get_timing_hsi_app(
                                          fragments_out = f"hsi_datahandler.fragment_queue")
     mgraph.add_endpoint(f"timesync_timing_hsi", f"hsi_datahandler.timesync_output",  "TimeSync",  Direction.OUT, is_pubsub=True, toposort=False)
 
-    
-    if CONTROL_HSI_HARDWARE:
-        mgraph.add_endpoint("timing_cmds", "hsic.timing_cmds", "TimingHwCmd", Direction.OUT, check_endpoints=False)
-        mgraph.add_endpoint(HSI_DEVICE_NAME+"_info", "hsic."+HSI_DEVICE_NAME+"_info", "JSON", Direction.IN, is_pubsub=True, check_endpoints=False)
-
     mgraph.add_endpoint("hsievents", "hsir.hsievents", "HSIEvent",    Direction.OUT)
     
     # dummy subscriber
