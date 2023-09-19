@@ -37,41 +37,6 @@ def load(obj, path, merge, offset):
 
     console.print(m.as_table())
 
-@cli.command('load-hw-map', help="Load map from a hardware map file")
-@click.argument('path', type=click.Path(exists=True))
-@click.pass_obj
-def load_hw_map(obj, path):
-    console.log("Loading HarwareMap libraries")
-    from detchannelmaps._daq_detchannelmaps_py import HardwareMapService
-    # Load configuration types
-    import moo.otypes
-
-    moo.otypes.load_types('detchannelmaps/hardwaremapservice.jsonnet')
-    import dunedaq.detchannelmaps.hardwaremapservice as hwms
-
-    console.log(f"Loading '{path}'")
-
-    m = obj
-    hwmap_svc = HardwareMapService(path)
-    hw_map = hwmap_svc.get_hardware_map()
-    for hw_info in hw_map.link_infos:
-        m.add_srcid(
-            hw_info.dro_source_id, 
-            dromap.GeoID(
-                    det_id=hw_info.det_id,
-                    crate_id=hw_info.det_crate,
-                    slot_id=hw_info.det_slot,
-                    stream_id=hw_info.det_link,
-                ), 
-                'flx', 
-                host=hw_info.dro_host,
-                card=hw_info.dro_card,
-                slr=hw_info.dro_slr,
-                link=hw_info.dro_link,
-            )
-
-    console.print(m.as_table())
-
 @cli.command('rm', help="Remove a stream")
 @click.argument('src_id', type=int)
 @click.pass_obj
