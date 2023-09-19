@@ -1,4 +1,4 @@
-// This is the configuration schema for daqconf_multiru_gen
+// This is the configuration schema for common (fd/nd)daqconf_gen
 //
 
 local moo = import "moo.jsonnet";
