@@ -1,0 +1,204 @@
+#!/bin/env python3
+
+import oksdbinterfaces
+import os
+import json
+import sys
+import click
+
+def process_environment(boot_dict, env_formatter, dal, db):
+  exclude = ["CET_PLUGIN_PATH",
+             "DUNEDAQ_SHARE_PATH",
+             "LD_LIBRARY_PATH",
+             "PYTHONPATH",
+             "PATH"]
+  env = []
+  for name, value in boot_dict.items():
+    if name not in exclude:
+      value = value.format(**env_formatter)
+      if value.startswith('getenv'):
+        if name in os.environ:
+          value = os.environ[name]
+        else:
+          if value == 'getenv_ifset':
+            continue
+          else:
+            value = value.removeprefix('getenv')
+            value = value.removeprefix(':')
+      var = dal.Variable(name, name=name, value=value)
+      env.append(var)
+      db.update_dal(var)
+
+      if name=="INFO_SVC":
+        global info_svc
+        info_svc = value
+      if name == "CMD_FAC":
+        global cmd_fac
+        cmd_fac = value
+  return env
+
+
+@click.command()
+@click.option('--session_name', '-s', default='generated-session',
+              help='Name of generated session', show_default=True)
+@click.option('-d', '--datafile',
+              help='Name of generated OKS data file default: <session_name>Session.data.xml')
+@click.argument('bootfile', type=click.Path(exists=True))
+def generate(bootfile, datafile, session_name):
+  """Simple script to generate a single Segment OKS Session down to
+  the application level from a daqconf generated boot.json file."""
+  with open(bootfile) as f:
+    boot = json.loads(f.read())
+    f.close()
+
+  if datafile == None:
+    datafile = f"{session_name.removesuffix('-session')}Session.data.xml"
+
+  schemafile = "schema/coredal/dunedaq.schema.xml"
+  dal = oksdbinterfaces.dal.module('generated', schemafile)
+  db = oksdbinterfaces.Configuration("oksconfig")
+  db.create_db(datafile, [schemafile])
+
+  # ###########################################################################
+  # First deal with all the hosts physical and virtual. For now let them
+  # all use the same deinition of processing resources
+  # ###########################################################################
+  cpus = dal.ProcessingResource("cpus",cpu_cores=[0,1,2,3])
+  db.update_dal(cpus)
+
+  vhosts={}
+  phostnames=set()
+  for h, cfg in boot['hosts-ctrl'].items():
+    phostnames.add(cfg)
+    vhosts[h]=cfg
+
+  phostdals = {}
+  for h in phostnames:
+    phdal = dal.PhysicalHost(h,contains=[cpus])
+    db.update_dal(phdal)
+    phostdals[h] = phdal
+  vhostdals = {}
+  for h, ph in vhosts.items():
+    vhdal = dal.VirtualHost(h,runs_on=phostdals[ph],uses=[cpus])
+    db.update_dal(vhdal)
+    vhostdals[h] = vhdal
+
+  # ###########################################################################
+  # Create a run controller for the segment. We say it runs on the last
+  # specified virtual host for now since this is not defined in the json
+  # ###########################################################################
+  name = "my-controller"
+  args = f"--conf-type OKS {datafile} ${{PORT}} {name}"
+  runcontrol_app = dal.RCApplication(name,
+                                     application_name="drunc-controller",
+                                     commandline_parameters=args,
+                                     runs_on=vhdal)
+  db.update_dal(runcontrol_app)
+
+  # ###########################################################################
+  # Now sort out the environment variables
+  # ###########################################################################
+  env_formatter = {
+    "APP_PORT": "{port}",
+    "APP_NAME": "{name}",
+    "APP_HOST": "{host}",
+    "DUNEDAQ_PARTITION": session_name
+  }
+  env = process_environment(boot['env'], env_formatter, dal, db)
+  common_env = dal.VariableSet("common-env", contains=env)
+  db.update_dal(common_env)
+
+  exec_envs = {}
+  exec_cmd = {}
+  exec_args = {}
+  for ex, cfg in boot['exec'].items():
+    env = process_environment(cfg['env'], env_formatter, dal, db)
+    ex_env = dal.VariableSet(ex, contains=env)
+    db.update_dal(ex_env)
+    exec_envs[ex] = ex_env
+    exec_cmd[ex] = cfg['cmd']
+    exec_args[ex] = " ".join(cfg['args'])
+
+  # ###########################################################################
+  # Now create any services
+  # ###########################################################################
+  services = []
+  srvdals = []
+  for srv, cfg in boot['services'].items():
+    if srv == "connectionservice":
+      env_formatter = {
+        "APP_HOST": vhostdals[cfg['host']],
+        "DUNEDAQ_PARTITION": session_name,
+        "APP_NAME": srv,
+        "APP_PORT": cfg["port"],
+        "APP_WD": os.getcwd(),
+      }
+      args = exec_args[cfg['exec']].format(**env_formatter)
+      srvdal = dal.ConnectionService(srv,
+                                     port=cfg['port'],
+                                     application_name=exec_cmd[cfg['exec']],
+                                     commandline_parameters=args,
+                                     runs_on=vhostdals[cfg['host']],
+                                     applicationEnvironment=[exec_envs[cfg['exec']]])
+      db.update_dal(srvdal)
+      srvdals.append(srvdal)
+
+  # ###########################################################################
+  # Now create all the DAQ Applications
+  # ###########################################################################
+  applicationdals = []
+  confdir = os.path.abspath(os.path.dirname(bootfile))
+  for app, cfg in boot['apps'].items():
+    env_formatter = {
+      "APP_HOST": vhostdals[cfg['host']],
+      "DUNEDAQ_PARTITION": session_name,
+      "APP_NAME": app,
+      "name": app,
+      "APP_PORT": "${PORT}",
+      "port": "${PORT}",
+      "APP_WD": os.getcwd(),
+      "CONF_LOC": f"file://{confdir}/data" #/{app}-conf.json"
+    }
+    env_formatter["CMD_FAC"] = cmd_fac.format(**env_formatter)
+    env_formatter["INFO_SVC"] = info_svc.format(**env_formatter)
+    args = exec_args[cfg['exec']].format(**env_formatter)
+
+    appdal = dal.DaqApplication(app,
+                                application_name=exec_cmd[cfg['exec']],
+                                commandline_parameters=args,
+                                runs_on=vhostdals[cfg['host']],
+                                applicationEnvironment=[exec_envs[cfg['exec']]],
+                                modules=[])
+    db.update_dal(appdal)
+    applicationdals.append(appdal)
+
+  # ###########################################################################
+  # Finally create the Segment and Session
+  # ###########################################################################
+  segdal = dal.Segment("generated-segment",
+                       applications=applicationdals,
+                       controller=runcontrol_app)
+  db.update_dal(segdal)
+
+  # Sort out detector config
+  detconf = dal.DetectorConfig("dummy-detector")
+  db.update_dal(detconf)
+
+  # Find the rte script
+  for name in ['DBT_INSTALL_DIR','DBT_AREA_ROOT']:
+    if name in  os.environ:
+      rte_path = os.environ[name] + "/daq_app_rte.sh"
+      break
+
+  sessiondal = dal.Session(session_name,
+                           environment=[common_env],
+                           segment=segdal,
+                           detector_configuration=detconf,
+                           services=srvdals,
+                           rte_script=rte_path)
+  db.update_dal(sessiondal)
+  db.commit()
+
+
+if __name__ == '__main__':
+  generate()
