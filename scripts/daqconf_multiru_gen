@@ -666,7 +666,7 @@ def cli(
     # console.log("After connecting fragment producers, trigger mgraph:", the_system.apps['trigger'].modulegraph)
     # console.log("After connecting fragment producers, the_system.app_connections:", the_system.app_connections)
 
-    set_mlt_links(the_system, "trigger", verbose=debug)
+    set_mlt_links(the_system, tp_infos, "trigger", verbose=debug)
 
     mlt_links=the_system.apps["trigger"].modulegraph.get_module("mlt").conf.links
     if debug:

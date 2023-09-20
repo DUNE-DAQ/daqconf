@@ -13,10 +13,11 @@ import dunedaq.dfmodules.triggerrecordbuilder as trb
 
 from daqconf.core.conf_utils import Direction
 from daqconf.core.sourceid import source_id_raw_str, ensure_subsystem_string
+from daqconf.core.sourceid import TAInfo, TPInfo, TCInfo
 from daqdataformats import SourceID
 from .console import console
 
-def set_mlt_links(the_system, mlt_app_name="trigger", verbose=False):
+def set_mlt_links(the_system, tp_infos, mlt_app_name="trigger", verbose=False):
     """
     The MLT needs to know the full list of fragment producers in the
     system so it can populate the TriggerDecisions it creates. This
@@ -25,11 +26,44 @@ def set_mlt_links(the_system, mlt_app_name="trigger", verbose=False):
     lives in an application with name `mlt_app_name` and has the name
     "mlt".
     """
+    ### additional mapping to allow ROI readout
+    mlt_readout_map = {}
+
+    for trigger_sid,conf in tp_infos.items():
+        if isinstance(conf, TAInfo):
+            for key in mlt_readout_map.keys():
+                if mlt_readout_map[key]["region"] == conf.region_id:
+                    mlt_readout_map[key]["elements"].append(trigger_sid )
+        elif isinstance(conf, TCInfo):
+            for key in mlt_readout_map.keys():
+                mlt_readout_map[key]["elements"].append(trigger_sid)
+        elif isinstance(conf, TPInfo):
+            for key in mlt_readout_map.keys():
+                if key == conf.tp_ru_sid:
+                    mlt_readout_map[key]["region"] = conf.region_id
+                    mlt_readout_map[key]["elements"].append(conf.tp_ru_sid)
+                    mlt_readout_map[key]["elements"].append(trigger_sid)
+        else:
+            # readout unit
+            mlt_map_entry = { "region": trigger_sid, "elements": [] }
+            for stream in conf.streams:
+                mlt_map_entry["elements"].append( stream.src_id )
+            mlt_readout_map[trigger_sid] = mlt_map_entry
+
+    if verbose:
+        console.log(f"MLT Readout Map: {mlt_readout_map}")
+
     mlt_links = []
     for producer in the_system.get_fragment_producers():
         if producer.is_mlt_producer:
             source_id = producer.source_id
-            mlt_links.append( mlt.SourceID(subsystem=ensure_subsystem_string(source_id.subsystem), element=source_id.id) )
+            ### get associated region
+            region = []
+            if source_id.subsystem != SourceID.Subsystem.kHwSignalsInterface:
+                for key in mlt_readout_map.keys():
+                    if source_id.id in mlt_readout_map[key]["elements"]:
+                        region.append( mlt_readout_map[key]["region"] )
+            mlt_links.append( mlt.SourceID(subsystem=ensure_subsystem_string(source_id.subsystem), element=source_id.id, regions=region) )
     if verbose:
         console.log(f"Adding {len(mlt_links)} links to mlt.links: {mlt_links}")
     mgraph = the_system.apps[mlt_app_name].modulegraph
