@@ -1,6 +1,6 @@
 # daqconf
 
-This repository contains tools for generating DAQ system configurations, the [`daqconf_multiru_gen` script](https://github.com/DUNE-DAQ/daqconf/blob/develop/scripts/daqconf_multiru_gen) ("DAQ configuration, multiple readout unit generator"). It generates DAQ system configurations with different characteristics based on the configuration file and command-line parameters given to it. 
+This repository contains tools for generating DAQ system common configurations, the [`fddaqconf_gen` script](https://github.com/DUNE-DAQ/fddaqconf/blob/develop/scripts/fddaqconf_gen) ("DAQ configuration, multiple readout unit generator"). It generates DAQ system configurations with different characteristics based on the configuration file and command-line parameters given to it. 
 
 The focus of this documentation is on providing instructions for using the tools and running sample DAQ systems. If you're starting out, take a look at:
 
