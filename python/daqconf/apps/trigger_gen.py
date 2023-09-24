@@ -126,6 +126,7 @@ def get_trigger_app(
     MLT_READOUT_MAP = trigger.mlt_td_readout_map
     MLT_USE_BITWORDS = trigger.mlt_use_bitwords
     MLT_TRIGGER_BITWORDS = trigger.mlt_trigger_bitwords
+    MLT_USE_ROI_READOUT = trigger.mlt_use_roi_readout
     USE_CUSTOM_MAKER = trigger.use_custom_maker
     CTCM_TYPES = trigger.ctcm_trigger_types
     CTCM_INTERVAL = trigger.ctcm_trigger_intervals
@@ -332,9 +333,10 @@ def get_trigger_app(
                                               ignore_tc=MLT_IGNORE_TC,
                                               td_readout_limit=max_td_length_ticks,
                                               use_readout_map=MLT_USE_READOUT_MAP,
+                                              use_roi_readout=MLT_USE_ROI_READOUT,
                                               td_readout_map=MLT_READOUT_MAP,
-					      use_bitwords=MLT_USE_BITWORDS,
-					      trigger_bitwords=MLT_TRIGGER_FLAGS))]
+                                              use_bitwords=MLT_USE_BITWORDS,
+                                              trigger_bitwords=MLT_TRIGGER_FLAGS))]
 
     mgraph = ModuleGraph(modules)
 

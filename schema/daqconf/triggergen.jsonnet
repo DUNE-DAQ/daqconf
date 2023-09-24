@@ -128,6 +128,7 @@ local cs = {
     s.field( "use_custom_maker", types.flag, default=false, doc="Option to use a Custom Trigger Candidate Maker (plugin)"),
     s.field( "ctcm_trigger_types", self.tc_types, default=[4], doc="Optional list of TC types to be used by the Custom Trigger Candidate Maker (plugin)"),
     s.field( "ctcm_trigger_intervals", self.tc_intervals, default=[10000000], doc="Optional list of intervals (clock ticks) for the TC types to be used by the Custom Trigger Candidate Maker (plugin)"),
+    s.field( "mlt_use_roi_readout", types.flag, default=false, doc="Option to use ROI readout in MLT: only readout APA(s) associated with the Trigger Decision"),
   ]),
 
 };

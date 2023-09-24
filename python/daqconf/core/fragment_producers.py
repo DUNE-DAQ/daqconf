@@ -77,8 +77,9 @@ def set_mlt_links(the_system, tp_infos, mlt_app_name="trigger", verbose=False):
                                                    ignore_tc=old_mlt_conf.ignore_tc,
                                                    use_readout_map=old_mlt_conf.use_readout_map,
                                                    td_readout_map=old_mlt_conf.td_readout_map,
-						   use_bitwords=old_mlt_conf.use_bitwords,
-						   trigger_bitwords=old_mlt_conf.trigger_bitwords))
+                                                   use_roi_readout=old_mlt_conf.use_roi_readout,
+                                                   use_bitwords=old_mlt_conf.use_bitwords,
+                                                   trigger_bitwords=old_mlt_conf.trigger_bitwords))
 
 def remove_mlt_link(the_system, source_id, mlt_app_name="trigger"):
     """
@@ -99,6 +100,7 @@ def remove_mlt_link(the_system, source_id, mlt_app_name="trigger"):
                                                    ignore_tc=old_mlt_conf.ignore_tc,
                                                    use_readout_map=old_mlt_conf.use_readout_map,
                                                    td_readout_map=old_mlt_conf.td_readout_map,
+                                                   use_roi_readout=old_mlt_conf.use_roi_readout,
                                                    use_bitwords=old_mlt_conf.use_bitwords,
                                                    trigger_bitwords=old_mlt_conf.trigger_bitwords))
 
