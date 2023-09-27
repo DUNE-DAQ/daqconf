@@ -35,6 +35,8 @@ class ReadoutAppGenerator:
     """Utility class to generate readout applications"""
     
     dlh_plugin = None
+    card_override = -1 
+    numa_id = 1 # should be default_id
 
     def __init__(self, readout_cfg, det_cfg, daq_cfg):
 
