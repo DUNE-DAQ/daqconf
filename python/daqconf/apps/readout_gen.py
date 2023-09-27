@@ -61,11 +61,13 @@ class ReadoutAppGenerator:
             numa_id = ex['numa_id']
             latency_numa = ex['latency_buffer_numa_aware']
             latency_preallocate = ex['latency_buffer_preallocation']
-        except KeyError:
+            flx_card_override = ex['felix_card_id']
+       except KeyError:
             numa_id = cfg.numa_config['default_id']
             latency_numa = cfg.numa_config['default_latency_numa_aware']
             latency_preallocate = cfg.numa_config['default_latency_preallocation']
-        return (numa_id, latency_numa, latency_preallocate)
+            flx_card_override = -1
+        return (numa_id, latency_numa, latency_preallocate, flx_card_override)
 
     def get_lcore_config(self, RU_DESCRIPTOR):
         cfg = self.ro_cfg
@@ -364,7 +366,7 @@ class ReadoutAppGenerator:
         Returns:
             _type_: _description_
         """
-        numa_id, latency_numa, latency_preallocate = self.get_numa_cfg(RU_DESCRIPTOR)
+        numa_id, latency_numa, latency_preallocate, card_override = self.get_numa_cfg(RU_DESCRIPTOR)
         cfg = self.ro_cfg
         TPG_ENABLED = cfg.enable_tpg
         DATA_REQUEST_TIMEOUT=data_timeout_requests
