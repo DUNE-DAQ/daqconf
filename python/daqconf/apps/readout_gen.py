@@ -64,7 +64,7 @@ class ReadoutAppGenerator:
             latency_numa = ex['latency_buffer_numa_aware']
             latency_preallocate = ex['latency_buffer_preallocation']
             flx_card_override = ex['felix_card_id']
-       except KeyError:
+        except KeyError:
             numa_id = cfg.numa_config['default_id']
             latency_numa = cfg.numa_config['default_latency_numa_aware']
             latency_preallocate = cfg.numa_config['default_latency_preallocation']
