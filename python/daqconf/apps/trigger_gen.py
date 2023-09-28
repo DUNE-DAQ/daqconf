@@ -9,6 +9,7 @@ import moo.otypes
 moo.otypes.load_types('trigger/triggeractivitymaker.jsonnet')
 moo.otypes.load_types('trigger/triggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/customtriggercandidatemaker.jsonnet')
+moo.otypes.load_types('trigger/randomtriggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/triggerzipper.jsonnet')
 moo.otypes.load_types('trigger/moduleleveltrigger.jsonnet')
 moo.otypes.load_types('trigger/timingtriggercandidatemaker.jsonnet')
@@ -21,6 +22,7 @@ moo.otypes.load_types('trigger/tpchannelfilter.jsonnet')
 import dunedaq.trigger.triggeractivitymaker as tam
 import dunedaq.trigger.triggercandidatemaker as tcm
 import dunedaq.trigger.customtriggercandidatemaker as ctcm
+import dunedaq.trigger.randomtriggercandidatemaker as rtcm
 import dunedaq.trigger.triggerzipper as tzip
 import dunedaq.trigger.moduleleveltrigger as mlt
 import dunedaq.trigger.timingtriggercandidatemaker as ttcm
@@ -33,6 +35,8 @@ from daqconf.core.app import App, ModuleGraph
 from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Direction, Queue
 from daqconf.core.sourceid import TAInfo, TPInfo, TCInfo
+
+from trgdataformats import TriggerBits as trgbs
 
 #FIXME maybe one day, triggeralgs will define schemas... for now allow a dictionary of 4byte int, 4byte floats, and strings
 moo.otypes.make_type(schema='number', dtype='i4', name='temp_integer', path='temptypes')
@@ -70,47 +74,71 @@ def get_buffer_conf(source_id, data_request_timeout):
                                                                                request_timeout_ms = data_request_timeout,
                                                                                warn_on_timeout = False,
                                                                                enable_raw_recording = False))
+
+#===============================================================================
+### Function that converts trigger word strings to trigger word integers given TC type. Uses functions from trgdataformats.
+def get_trigger_bitwords(bitwords):
+    # create bitwords flags
+    final_bit_flags = []
+    for bitword in bitwords:
+        tmp_bits = []
+        for bit_name in bitword:
+            bit_value = trgbs.string_to_fragment_type_value(bit_name)
+            if bit_value == 0:
+                raise RuntimeError(f'One (or more) of provided MLT trigger bitwords is unknown! Please recheck the names...')
+            else:
+                tmp_bits.append(bit_value)
+        final_bit_flags.append(tmp_bits)
+ 
+    return final_bit_flags
     
 #===============================================================================
-def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
-                    DATA_RATE_SLOWDOWN_FACTOR: float = 1,
-                    TP_CONFIG: dict = {},
-                    TOLERATE_INCOMPLETENESS=False,
-                    COMPLETENESS_TOLERANCE=1,
+def get_trigger_app(
+        trigger,
+        detector,
+        daq_common,
+        tp_infos,
+        trigger_data_request_timeout,
+        USE_HSI_INPUT = True,
+        USE_CHANNEL_FILTER: bool = True,
+        DEBUG=False
+    ):
 
-                    ACTIVITY_PLUGIN: str = 'TriggerActivityMakerPrescalePlugin',
-                    ACTIVITY_PLUGINS: list = ['TriggerActivityMakerPrescalePlugin', 'TriggerActivityMakerHorizontalMuonPlugin'],
-                    ACTIVITY_CONFIG: dict = dict(prescale=10000),
-
-                    CANDIDATE_PLUGIN: str = 'TriggerCandidateMakerPrescalePlugin',
-                    CANDIDATE_CONFIG: dict = dict(prescale=10),
-
-                    USE_HSI_INPUT = True,
-                    TTCM_S1: int = 1,
-                    TTCM_S2: int = 2,
-                    TRIGGER_WINDOW_BEFORE_TICKS: int = 1000,
-                    TRIGGER_WINDOW_AFTER_TICKS: int = 1000,
-                    HSI_TRIGGER_TYPE_PASSTHROUGH: bool = False,
-
-                    USE_CUSTOM_MAKER: bool = False,
-                    CTCM_TYPES: list = [4],
-                    CTCM_INTERVAL: list = [62500000],
-
-                    MLT_MERGE_OVERLAPPING_TCS: bool = False,
-                    MLT_BUFFER_TIMEOUT: int = 100,
-                    MLT_SEND_TIMED_OUT_TDS: bool = False,
-                    MLT_MAX_TD_LENGTH_MS: int = 1000,
-                    MLT_IGNORE_TC: list = [],
-                    MLT_USE_READOUT_MAP: bool = False,
-                    MLT_READOUT_MAP: dict = {},
-
-                    USE_CHANNEL_FILTER: bool = True,
-
-                    CHANNEL_MAP_NAME = "ProtoDUNESP1ChannelMap",
-                    DATA_REQUEST_TIMEOUT = 1000,
-                    HOST="localhost",
-                    DEBUG=False):
-    
+    # Temp variables, To cleanup
+    DATA_RATE_SLOWDOWN_FACTOR = daq_common.data_rate_slowdown_factor
+    CLOCK_SPEED_HZ = detector.clock_speed_hz
+    TP_CONFIG = tp_infos
+    TOLERATE_INCOMPLETENESS=trigger.tolerate_incompleteness
+    COMPLETENESS_TOLERANCE=trigger.completeness_tolerance
+    ACTIVITY_PLUGIN = trigger.trigger_activity_plugin
+    ACTIVITY_CONFIG = trigger.trigger_activity_config
+    CANDIDATE_PLUGIN = trigger.trigger_candidate_plugin
+    CANDIDATE_CONFIG = trigger.trigger_candidate_config
+    TTCM_S1=trigger.ttcm_s1
+    TTCM_S2=trigger.ttcm_s2
+    TRIGGER_WINDOW_BEFORE_TICKS = trigger.trigger_window_before_ticks
+    TRIGGER_WINDOW_AFTER_TICKS = trigger.trigger_window_after_ticks
+    HSI_TRIGGER_TYPE_PASSTHROUGH = trigger.hsi_trigger_type_passthrough
+    MLT_MERGE_OVERLAPPING_TCS = trigger.mlt_merge_overlapping_tcs
+    MLT_BUFFER_TIMEOUT = trigger.mlt_buffer_timeout
+    MLT_MAX_TD_LENGTH_MS = trigger.mlt_max_td_length_ms
+    MLT_SEND_TIMED_OUT_TDS = trigger.mlt_send_timed_out_tds
+    MLT_IGNORE_TC = trigger.mlt_ignore_tc
+    MLT_USE_READOUT_MAP = trigger.mlt_use_readout_map
+    MLT_READOUT_MAP = trigger.mlt_td_readout_map
+    MLT_USE_BITWORDS = trigger.mlt_use_bitwords
+    MLT_TRIGGER_BITWORDS = trigger.mlt_trigger_bitwords
+    USE_CUSTOM_MAKER = trigger.use_custom_maker
+    CTCM_TYPES = trigger.ctcm_trigger_types
+    CTCM_INTERVAL = trigger.ctcm_trigger_intervals
+    CTCM_TIMESTAMP_METHOD = trigger.ctcm_timestamp_method
+    USE_RANDOM_MAKER = trigger.use_random_maker
+    RTCM_INTERVAL = trigger.rtcm_trigger_interval_ticks
+    RTCM_TIMESTAMP_METHOD = trigger.rtcm_timestamp_method
+    RTCM_DISTRIBUTION = trigger.rtcm_time_distribution
+    CHANNEL_MAP_NAME = detector.tpc_channel_map
+    DATA_REQUEST_TIMEOUT=trigger_data_request_timeout
+    HOST=trigger.host_trigger
     
     # Generate schema for each of the maker plugins on the fly in the temptypes module
     num_algs = len(ACTIVITY_PLUGIN)
@@ -153,7 +181,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
         # Get a list of TCMaker configs if more than one exists:
         for j, cm_conf in enumerate(CANDIDATE_CONFIG):
             cm_configs.append(tcm.Conf(candidate_maker=CANDIDATE_PLUGIN[j],
-            candidate_maker_config=temptypes.CandidateConf(CANDIDATE_CONFIG[j])))
+                                       candidate_maker_config=temptypes.CandidateConf(CANDIDATE_CONFIG[j])))
     
         # (PAR 2022-06-09) The max_latency_ms here should be kept
         # larger than the corresponding value in the upstream
@@ -183,11 +211,8 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
                                                            keep_collection=True,
                                                            keep_induction=True))]
             modules += [DAQModule(name = f'tpsettee_{link_id}',
-                                  plugin = 'TPSetTee'),
-#                        DAQModule(name = f'heartbeatmaker_{link_id}',
-#                                  plugin = 'FakeTPCreatorHeartbeatMaker',
-#                                  conf = heartbeater.Conf(heartbeat_interval=ticks_per_wall_clock_s//100))]
-                       ]
+                                  plugin = 'TPSetTee')]
+
             # 1 buffer per TPG channel
             modules += [DAQModule(name = f'buf_{link_id}',
                                   plugin = 'TPBuffer',
@@ -242,20 +267,14 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
                     modules += [DAQModule(name = f'tam_{region_id}_{j}',
                                           plugin = 'TriggerActivityMaker',
                                           conf = tam.Conf(activity_maker=tamaker,
-                                          geoid_element=region_id,  # 2022-02-02 PL: Same comment as above
-                                          window_time=10000,  # should match whatever makes TPSets, in principle
-                                          buffer_time=10*ticks_per_wall_clock_s//1000, # 10 wall-clock ms
-                                          activity_maker_config=temptypes.ActivityConf(ACTIVITY_CONFIG[j]))),
+                                                          geoid_element=region_id,  # 2022-02-02 PL: Same comment as above
+                                                          window_time=10000,  # should match whatever makes TPSets, in principle
+                                                          buffer_time=10*ticks_per_wall_clock_s//1000, # 10 wall-clock ms
+                                                          activity_maker_config=temptypes.ActivityConf(ACTIVITY_CONFIG[j]))),
                                 DAQModule(name = f'tasettee_region_{region_id}_{j}', plugin = "TASetTee")]
 
                 # Add the zippers and TABuffers, independant of the number of algorithms we want to run concurrently.
-                modules += [DAQModule(name = f'zip_{region_id}',
-                                      plugin = 'TPZipper',
-                                              conf = tzip.ConfParams(cardinality=len(TP_SOURCE_IDS)/len(TA_SOURCE_IDS),
-                                                                     max_latency_ms=100,
-                                                                     element_id=ta_conf["source_id"],
-                                                                     tolerate_incompleteness=TOLERATE_INCOMPLETENESS,
-                                                                     completeness_tolerance=COMPLETENESS_TOLERANCE)), 
+                modules += [
                             DAQModule(name = f'ta_buf_region_{region_id}',
                                       plugin = 'TABuffer',
                                       # PAR 2022-04-20 Not sure what to set the element id to so it doesn't collide with the region/element used by TP buffers. Make it some big number that shouldn't already be used by the TP buffer
@@ -270,6 +289,7 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
                                                                                                                  stream_buffer_size = 8388608,
                                                                                                                  request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                                                  enable_raw_recording = False))),
+
                             DAQModule(name = f'tpsettee_ma_{region_id}',
                                   plugin = 'TPSetTee'),]
 
@@ -296,7 +316,18 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
                        conf=ctcm.Conf(trigger_types=CTCM_TYPES,
                        trigger_intervals=CTCM_INTERVAL,
                        clock_frequency_hz=CLOCK_SPEED_HZ,
-                       timestamp_method="kSystemClock"))]
+                       timestamp_method=CTCM_TIMESTAMP_METHOD))]
+
+    if USE_RANDOM_MAKER:
+        modules += [DAQModule(name = 'rtcm',
+                       plugin = 'RandomTriggerCandidateMaker',
+                       conf=rtcm.Conf(trigger_interval_ticks=RTCM_INTERVAL,
+                       clock_frequency_hz=CLOCK_SPEED_HZ,
+                       timestamp_method=RTCM_TIMESTAMP_METHOD,
+                       time_distribution=RTCM_DISTRIBUTION))]
+
+    ### get trigger bitwords for mlt
+    MLT_TRIGGER_FLAGS = get_trigger_bitwords(MLT_TRIGGER_BITWORDS)
     
     # We need to populate the list of links based on the fragment
     # producers available in the system. This is a bit of a
@@ -315,7 +346,9 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
                                               ignore_tc=MLT_IGNORE_TC,
                                               td_readout_limit=max_td_length_ticks,
                                               use_readout_map=MLT_USE_READOUT_MAP,
-                                              td_readout_map=MLT_READOUT_MAP))]
+                                              td_readout_map=MLT_READOUT_MAP,
+					      use_bitwords=MLT_USE_BITWORDS,
+					      trigger_bitwords=MLT_TRIGGER_FLAGS))]
 
     mgraph = ModuleGraph(modules)
 
@@ -328,6 +361,9 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
     if USE_CUSTOM_MAKER:
         mgraph.connect_modules("ctcm.trigger_candidate_sink", "mlt.trigger_candidate_source", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
 
+    if USE_RANDOM_MAKER:
+        mgraph.connect_modules("rtcm.trigger_candidate_sink", "mlt.trigger_candidate_source", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
+
     if len(TP_SOURCE_IDS) > 0:
         for j in range(num_algs):
             mgraph.connect_modules(f"tazipper_{j}.output", f"tcm_{j}.input", data_type="TASet", size_hint=1000)
@@ -337,22 +373,11 @@ def get_trigger_app(CLOCK_SPEED_HZ: int = 62_500_000,
             if USE_CHANNEL_FILTER:
                 mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', data_type="TPSet", size_hint=1000)
 
-            #mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'heartbeatmaker_{link_id}.tpset_source', data_type="TPSet", size_hint=1000)
-            mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'tam_{tp_conf.region_id}.input', data_type="TPSet", size_hint=1000)
+            mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'tpsettee_ma_{tp_conf.region_id}.input', data_type="TPSet", size_hint=1000)
             mgraph.connect_modules(f'tpsettee_{link_id}.output2', f'buf_{link_id}.tpset_source',data_type="TPSet", size_hint=1000)
 
-        ##     #mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{tp_conf.region_id}.input","TPSet", f"{tp_conf.region_id}_tpset_q", size_hint=1000)
-
-        ## #for region_id in TA_SOURCE_IDS.keys():
-        ## #    mgraph.connect_modules(f'zip_{region_id}.output', f'tam_{region_id}.input', "TPSet", size_hint=1000)
         ## # Use connect_modules to connect up the Tees to the buffers/MLT,
         ## # as manually adding Queues doesn't give the desired behaviour
-        ## mgraph.connect_modules("tcm.output",          "tctee_chain.input",           "TriggerCandidate", "chain_input", size_hint=1000)
-        ## mgraph.connect_modules("tctee_chain.output1", "mlt.trigger_candidate_input","TriggerCandidate", "tcs_to_mlt",  size_hint=1000)
-        ## mgraph.connect_modules("tctee_chain.output2", "tc_buf.tc_source",             "TriggerCandidate","tcs_to_buf",  size_hint=1000)
-
-            #mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{tp_conf.region_id}.input","TPSet", f"{tp_conf.region_id}_tpset_q", size_hint=1000)
-            mgraph.connect_modules(f"zip_{tp_conf.region_id}.output", f'tpsettee_ma_{region_id}.input', data_type="TPSet", size_hint=1000)
 
         for region_id in TA_SOURCE_IDS.keys():
             # Send the output of the new TPSetTee module to each of the activity makers
