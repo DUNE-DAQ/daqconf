@@ -9,6 +9,7 @@ import moo.otypes
 moo.otypes.load_types('trigger/triggeractivitymaker.jsonnet')
 moo.otypes.load_types('trigger/triggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/customtriggercandidatemaker.jsonnet')
+moo.otypes.load_types('trigger/randomtriggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/triggerzipper.jsonnet')
 moo.otypes.load_types('trigger/moduleleveltrigger.jsonnet')
 moo.otypes.load_types('trigger/timingtriggercandidatemaker.jsonnet')
@@ -21,6 +22,7 @@ moo.otypes.load_types('trigger/tpchannelfilter.jsonnet')
 import dunedaq.trigger.triggeractivitymaker as tam
 import dunedaq.trigger.triggercandidatemaker as tcm
 import dunedaq.trigger.customtriggercandidatemaker as ctcm
+import dunedaq.trigger.randomtriggercandidatemaker as rtcm
 import dunedaq.trigger.triggerzipper as tzip
 import dunedaq.trigger.moduleleveltrigger as mlt
 import dunedaq.trigger.timingtriggercandidatemaker as ttcm
@@ -130,6 +132,11 @@ def get_trigger_app(
     USE_CUSTOM_MAKER = trigger.use_custom_maker
     CTCM_TYPES = trigger.ctcm_trigger_types
     CTCM_INTERVAL = trigger.ctcm_trigger_intervals
+    CTCM_TIMESTAMP_METHOD = trigger.ctcm_timestamp_method
+    USE_RANDOM_MAKER = trigger.use_random_maker
+    RTCM_INTERVAL = trigger.rtcm_trigger_interval_ticks
+    RTCM_TIMESTAMP_METHOD = trigger.rtcm_timestamp_method
+    RTCM_DISTRIBUTION = trigger.rtcm_time_distribution
     CHANNEL_MAP_NAME = detector.tpc_channel_map
     DATA_REQUEST_TIMEOUT=trigger_data_request_timeout
     HOST=trigger.host_trigger
@@ -311,7 +318,15 @@ def get_trigger_app(
                        conf=ctcm.Conf(trigger_types=CTCM_TYPES,
                        trigger_intervals=CTCM_INTERVAL,
                        clock_frequency_hz=CLOCK_SPEED_HZ,
-                       timestamp_method="kSystemClock"))]
+                       timestamp_method=CTCM_TIMESTAMP_METHOD))]
+
+    if USE_RANDOM_MAKER:
+        modules += [DAQModule(name = 'rtcm',
+                       plugin = 'RandomTriggerCandidateMaker',
+                       conf=rtcm.Conf(trigger_interval_ticks=RTCM_INTERVAL,
+                       clock_frequency_hz=CLOCK_SPEED_HZ,
+                       timestamp_method=RTCM_TIMESTAMP_METHOD,
+                       time_distribution=RTCM_DISTRIBUTION))]
 
     ### get trigger bitwords for mlt
     MLT_TRIGGER_FLAGS = get_trigger_bitwords(MLT_TRIGGER_BITWORDS)
@@ -348,6 +363,9 @@ def get_trigger_app(
 
     if USE_CUSTOM_MAKER:
         mgraph.connect_modules("ctcm.trigger_candidate_sink", "mlt.trigger_candidate_source", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
+
+    if USE_RANDOM_MAKER:
+        mgraph.connect_modules("rtcm.trigger_candidate_sink", "mlt.trigger_candidate_source", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
 
     if len(TP_SOURCE_IDS) > 0:
         mgraph.connect_modules("tazipper.output", "tcm.input", data_type="TASet", size_hint=1000)
