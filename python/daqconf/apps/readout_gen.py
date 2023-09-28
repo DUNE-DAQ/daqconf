@@ -30,12 +30,10 @@ from detdataformats import DetID
 # Time to wait on pop()
 QUEUE_POP_WAIT_MS = 10 # This affects stop time, as each link will wait this long before stop
 
-
 class ReadoutAppGenerator:
     """Utility class to generate readout applications"""
     
     dlh_plugin = None
-    card_override = -1 
     numa_id = 1 # should be default_id
 
     def __init__(self, readout_cfg, det_cfg, daq_cfg):
@@ -54,7 +52,6 @@ class ReadoutAppGenerator:
             lcores_excpt[(ex['host'], ex['iface'])] = ex
         self.lcores_excpt = lcores_excpt
 
-
     def get_numa_cfg(self, RU_DESCRIPTOR):
 
         cfg = self.ro_cfg
@@ -63,13 +60,11 @@ class ReadoutAppGenerator:
             numa_id = ex['numa_id']
             latency_numa = ex['latency_buffer_numa_aware']
             latency_preallocate = ex['latency_buffer_preallocation']
-            flx_card_override = ex['felix_card_id']
         except KeyError:
             numa_id = cfg.numa_config['default_id']
             latency_numa = cfg.numa_config['default_latency_numa_aware']
             latency_preallocate = cfg.numa_config['default_latency_preallocation']
-            flx_card_override = -1
-        return (numa_id, latency_numa, latency_preallocate, flx_card_override)
+        return (numa_id, latency_numa, latency_preallocate)
 
     def get_lcore_config(self, RU_DESCRIPTOR):
         cfg = self.ro_cfg
@@ -373,7 +368,7 @@ class ReadoutAppGenerator:
         Returns:
             _type_: _description_
         """
-        numa_id, latency_numa, latency_preallocate, card_override = self.get_numa_cfg(RU_DESCRIPTOR)
+        numa_id, latency_numa, latency_preallocate = self.get_numa_cfg(RU_DESCRIPTOR)
         cfg = self.ro_cfg
         TPG_ENABLED = cfg.enable_tpg
         DATA_REQUEST_TIMEOUT=data_timeout_requests
