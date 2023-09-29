@@ -1,4 +1,4 @@
-// This is the configuration schema for daqconf_multiru_gen
+// This is the configuration schema for common (fd/nd)daqconf_gen
 //
 
 local moo = import "moo.jsonnet";
@@ -14,6 +14,8 @@ local cs = {
   tc_types:        s.sequence( "TCTypes",       self.tc_type, doc="List of TC types"),
   tc_interval:     s.number(   "TCInterval",    "i8", nc(minimum=1, maximum=30000000000), doc="The intervals between TCs that are inserted into MLT by CTCM, in clock ticks"),
   tc_intervals:    s.sequence( "TCIntervals",   self.tc_interval, doc="List of TC intervals used by CTCM"),
+  timestamp_estimation: s.enum("timestamp_estimation", ["kTimeSync", "kSystemClock"]),
+  distribution_type: s.enum("distribution_type", ["kUniform", "kPoisson"]),
   readout_time:    s.number(   "ROTime",        "i8", doc="A readout time in ticks"),
   bitword:	   s.string(   "Bitword",       doc="A string representing the TC type name, to be set in the trigger bitword."),
   bitword_list:    s.sequence( "BitwordList",   self.bitword, doc="A sequence of bitword (TC type bits) forming a bitword."),
@@ -128,6 +130,11 @@ local cs = {
     s.field( "use_custom_maker", types.flag, default=false, doc="Option to use a Custom Trigger Candidate Maker (plugin)"),
     s.field( "ctcm_trigger_types", self.tc_types, default=[4], doc="Optional list of TC types to be used by the Custom Trigger Candidate Maker (plugin)"),
     s.field( "ctcm_trigger_intervals", self.tc_intervals, default=[10000000], doc="Optional list of intervals (clock ticks) for the TC types to be used by the Custom Trigger Candidate Maker (plugin)"),
+    s.field( "ctcm_timestamp_method", self.timestamp_estimation, "kSystemClock", doc="Option to pick source for timing (system / timesync)"),
+    s.field( "use_random_maker", types.flag, default=false, doc="Option to use a Random Trigger Candidate Maker (plugin)"),
+    s.field( "rtcm_trigger_interval_ticks", self.tc_interval, default=62500000, doc="Interval between triggers in 16 ns time ticks (default 1.024 s)"),
+    s.field( "rtcm_timestamp_method", self.timestamp_estimation, "kSystemClock", doc="Option to pick source for timing (system / timesync)"),
+    s.field( "rtcm_time_distribution", self.distribution_type, "kUniform", doc="Type of distribution used for random timestamps (uniform or poisson)"),
   ]),
 
 };
