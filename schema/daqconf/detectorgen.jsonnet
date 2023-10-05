@@ -11,7 +11,7 @@ local nc = moo.oschema.numeric_constraints;
 // A temporary schema construction context.
 local cs = {
 
-  tpc_channel_map: s.enum("TPCChannelMap", ["VDColdboxChannelMap", "ProtoDUNESP1ChannelMap", "PD2HDChannelMap", "HDColdboxChannelMap"]),
+  tpc_channel_map: s.enum("TPCChannelMap", ["VDColdboxChannelMap", "ProtoDUNESP1ChannelMap", "PD2HDChannelMap", "HDColdboxChannelMap", "FiftyLChannelMap"]),
 
   detector :  s.record("detector", [
     s.field( "op_env", types.string, default='swtest', doc="Operational environment - used for HDF5 Attribute inside the files"),
