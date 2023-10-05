@@ -61,7 +61,7 @@ def generate(bootfile, datafile, session_name):
 
   # ###########################################################################
   # First deal with all the hosts physical and virtual. For now let them
-  # all use the same deinition of processing resources
+  # all use the same definition of processing resources
   # ###########################################################################
   cpus = dal.ProcessingResource("cpus",cpu_cores=[0,1,2,3])
   db.update_dal(cpus)
@@ -124,24 +124,25 @@ def generate(bootfile, datafile, session_name):
   # ###########################################################################
   services = []
   srvdals = []
-  for srv, cfg in boot['services'].items():
-    if srv == "connectionservice":
-      env_formatter = {
-        "APP_HOST": vhostdals[cfg['host']],
-        "DUNEDAQ_PARTITION": session_name,
-        "APP_NAME": srv,
-        "APP_PORT": cfg["port"],
-        "APP_WD": os.getcwd(),
-      }
-      args = exec_args[cfg['exec']].format(**env_formatter)
-      srvdal = dal.ConnectionService(srv,
-                                     port=cfg['port'],
-                                     application_name=exec_cmd[cfg['exec']],
-                                     commandline_parameters=args,
-                                     runs_on=vhostdals[cfg['host']],
-                                     applicationEnvironment=[exec_envs[cfg['exec']]])
-      db.update_dal(srvdal)
-      srvdals.append(srvdal)
+  if 'services' in boot:
+    for srv, cfg in boot['services'].items():
+      if srv == "connectionservice":
+        env_formatter = {
+          "APP_HOST": vhostdals[cfg['host']],
+          "DUNEDAQ_PARTITION": session_name,
+          "APP_NAME": srv,
+          "APP_PORT": cfg["port"],
+          "APP_WD": os.getcwd(),
+        }
+        args = exec_args[cfg['exec']].format(**env_formatter)
+        srvdal = dal.ConnectionService(srv,
+                                       port=cfg['port'],
+                                       application_name=exec_cmd[cfg['exec']],
+                                       commandline_parameters=args,
+                                       runs_on=vhostdals[cfg['host']],
+                                       applicationEnvironment=[exec_envs[cfg['exec']]])
+        db.update_dal(srvdal)
+        srvdals.append(srvdal)
 
   # ###########################################################################
   # Now create all the DAQ Applications
@@ -173,6 +174,15 @@ def generate(bootfile, datafile, session_name):
     applicationdals.append(appdal)
 
   # ###########################################################################
+  # Create a dummy ReadoutMap for now since the real one will be read from JSON
+  # by the applications themselves
+  # ###########################################################################
+  ro_group = dal.ReadoutGroup('dummyRog')
+  db.update_dal(ro_group)
+  ro_map = dal.ReadoutMap('dummyRoMap', groups=[ro_group])
+  db.update_dal(ro_map)
+
+  # ###########################################################################
   # Finally create the Segment and Session
   # ###########################################################################
   segdal = dal.Segment("generated-segment",
@@ -195,6 +205,7 @@ def generate(bootfile, datafile, session_name):
                            segment=segdal,
                            detector_configuration=detconf,
                            services=srvdals,
+                           readout_map=ro_map,
                            rte_script=rte_path)
   db.update_dal(sessiondal)
   db.commit()
