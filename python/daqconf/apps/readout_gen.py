@@ -284,6 +284,7 @@ class ReadoutAppGenerator:
             mgraph: ModuleGraph,
             dlh_list: list,
             RUIDX: str,
+            GEN_TIMESYNC: bool,
         ) -> None: 
         """Adds detector readout endpoints and fragment producers"""
         for dlh in dlh_list:
@@ -296,13 +297,14 @@ class ReadoutAppGenerator:
                 requests_in   = f"datahandler_{dro_sid}.request_input",
                 fragments_out = f"datahandler_{dro_sid}.fragment_queue"
             )
-            mgraph.add_endpoint(
-                f"timesync_ru{RUIDX}_{dro_sid}",
-                f"datahandler_{dro_sid}.timesync_output",
-                "TimeSync",   Direction.OUT,
-                is_pubsub=True,
-                toposort=False
-            )
+            if GEN_TIMESYNC:
+                mgraph.add_endpoint(
+                    f"timesync_ru{RUIDX}_{dro_sid}",
+                    f"datahandler_{dro_sid}.timesync_output",
+                    "TimeSync",   Direction.OUT,
+                    is_pubsub=True,
+                    toposort=False
+                )
 
 
 
@@ -313,7 +315,8 @@ class ReadoutAppGenerator:
             self,
             mgraph: ModuleGraph,
             tpg_dlh_list: list,
-            RUIDX: str,  
+            RUIDX: str, 
+            GEN_TIMESYNC: bool,
         ) -> None: 
         """Adds detector readout endpoints and fragment producers"""
 
@@ -323,13 +326,14 @@ class ReadoutAppGenerator:
             tpset_sid = dlh.conf.readoutmodelconf['source_id']
 
             # Add enpointis with this source id for timesync and TPSets
-            mgraph.add_endpoint(
-                f"timesync_tp_dlh_ru{RUIDX}_{tpset_sid}",
-                f"tp_datahandler_{tpset_sid}.timesync_output",
-                "TimeSync",
-                Direction.OUT,
-                is_pubsub=True
-            )
+            if GEN_TIMESYNC:
+                mgraph.add_endpoint(
+                    f"timesync_tp_dlh_ru{RUIDX}_{tpset_sid}",
+                    f"tp_datahandler_{tpset_sid}.timesync_output",
+                    "TimeSync",
+                    Direction.OUT,
+                    is_pubsub=True
+                )
 
             mgraph.add_endpoint(
                     f"tpsets_tplink{tpset_sid}",
@@ -351,6 +355,7 @@ class ReadoutAppGenerator:
             self,
             RU_DESCRIPTOR, 
             SOURCEID_BROKER,
+            GEN_TIMESYNC,
             data_file_map,
             data_timeout_requests,
             ):
@@ -430,7 +435,8 @@ class ReadoutAppGenerator:
         self.add_dro_eps_and_fps(
             mgraph=mgraph,
             dlh_list=dlhs_mods,
-            RUIDX=RU_DESCRIPTOR.label
+            RUIDX=RU_DESCRIPTOR.label,
+            GEN_TIMESYNC=GEN_TIMESYNC
         )
 
         if TPG_ENABLED:
@@ -438,7 +444,8 @@ class ReadoutAppGenerator:
             self.add_tpg_eps_and_fps(
                 mgraph=mgraph,
                 tpg_dlh_list=tpg_mods,
-                RUIDX=RU_DESCRIPTOR.label
+                RUIDX=RU_DESCRIPTOR.label,
+                GEN_TIMESYNC=GEN_TIMESYNC
             )
 
         # Create the application
@@ -473,7 +480,8 @@ class ReadoutAppGenerator:
     def create_fake_readout_app(
             self,
             RU_DESCRIPTOR,
-            CLOCK_SPEED_HZ
+            CLOCK_SPEED_HZ,
+            GEN_TIMESYNC
     ) -> App:
         """
         """
@@ -503,7 +511,8 @@ class ReadoutAppGenerator:
             mgraph.add_fragment_producer(id = stream.src_id, subsystem = "Detector_Readout",
                                          requests_in   = f"fakedataprod_{stream.src_id}.data_request_input_queue",
                                          fragments_out = f"fakedataprod_{stream.src_id}.fragment_queue")
-            mgraph.add_endpoint(f"timesync_ru{RU_DESCRIPTOR.label}_{stream.src_id}", f"fakedataprod_{stream.src_id}.timesync_output",    "TimeSync",   Direction.OUT, is_pubsub=True, toposort=False)
+            if GEN_TIMESYNC:
+                mgraph.add_endpoint(f"timesync_ru{RU_DESCRIPTOR.label}_{stream.src_id}", f"fakedataprod_{stream.src_id}.timesync_output",    "TimeSync",   Direction.OUT, is_pubsub=True, toposort=False)
             
         # Create the application
         readout_app = App(mgraph, host=RU_DESCRIPTOR.host_name)

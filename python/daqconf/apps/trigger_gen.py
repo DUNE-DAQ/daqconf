@@ -99,7 +99,7 @@ def get_trigger_app(
         daq_common,
         tp_infos,
         trigger_data_request_timeout,
-        USE_HSI_INPUT = True,
+        use_hsi_input,
         USE_CHANNEL_FILTER: bool = True,
         DEBUG=False
     ):
@@ -118,6 +118,7 @@ def get_trigger_app(
     TTCM_S2=trigger.ttcm_s2
     TRIGGER_WINDOW_BEFORE_TICKS = trigger.trigger_window_before_ticks
     TRIGGER_WINDOW_AFTER_TICKS = trigger.trigger_window_after_ticks
+    USE_HSI_INPUT = use_hsi_input
     HSI_TRIGGER_TYPE_PASSTHROUGH = trigger.hsi_trigger_type_passthrough
     MLT_MERGE_OVERLAPPING_TCS = trigger.mlt_merge_overlapping_tcs
     MLT_BUFFER_TIMEOUT = trigger.mlt_buffer_timeout
@@ -139,7 +140,7 @@ def get_trigger_app(
     CHANNEL_MAP_NAME = detector.tpc_channel_map
     DATA_REQUEST_TIMEOUT=trigger_data_request_timeout
     HOST=trigger.host_trigger
-    
+   
     # Generate schema for the maker plugins on the fly in the temptypes module
     make_moo_record(ACTIVITY_CONFIG , 'ActivityConf' , 'temptypes')
     make_moo_record(CANDIDATE_CONFIG, 'CandidateConf', 'temptypes')
