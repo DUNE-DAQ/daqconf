@@ -21,6 +21,7 @@ local cs = {
     s.field( "hsi_device_name", types.string, default="", doc='Real HSI hardware only: device name of HSI hw'),
     s.field( "hsi_readout_period", types.count, default=1e3, doc='Real HSI hardware only: Period between HSI hardware polling [us]'),
     s.field( "control_hsi_hw", types.flag, default=false, doc='Flag to control whether we are controlling hsi hardware'),
+    s.field( "control_hsi_hw_io", types.flag, default=false, doc='Flag to control whether we are controlling hsi hardware io'),
     s.field( "hsi_endpoint_address", types.count, default=1, doc='Timing address of HSI endpoint'),
     s.field( "hsi_endpoint_partition", types.count, default=0, doc='Timing partition of HSI endpoint'),
     s.field( "hsi_re_mask",types.count, default=0, doc='Rising-edge trigger mask'),
