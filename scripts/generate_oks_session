@@ -87,12 +87,45 @@ def generate(bootfile, datafile, session_name):
   # Create a run controller for the segment. We say it runs on the last
   # specified virtual host for now since this is not defined in the json
   # ###########################################################################
+  ifname = 'user-providedirun-number'
+  iface = dal.FSMinterface('dummy-if', name=ifname, commands=[])
+  db.update_dal(iface)
+  pre_trans = dal.FSMxTransition("start", order=[ifname], mandatory=[ifname])
+  db.update_dal(pre_trans)
+  transitions = []
+  trans_conf = [
+    ("conf", "initial", "configured"),
+    ("start", "configured", "ready"),
+    ("enable_triggers", "ready", "running"),
+    ("disable_triggers", "running", "ready"),
+    ("drain_dataflow", "ready", "dataflow_drained"),
+    ("stop_trigger_sources", "dataflow_drained", "trigger_sources_stopped"),
+    ("stop", "trigger_sources_stopped", "configured"),
+    ("scrap", "configured", "initial")
+  ]
+  for trig,src,dest in trans_conf:
+    trans = dal.FSMtransition(trig, source=src, dest=dest)
+    db.update_dal(trans)
+    transitions.append(trans)
+  fsm = dal.FSMconfiguration('fsmConf-1',
+                             states = ["initial", "configured", "ready", "running",
+                                       "paused", "dataflow_drained",
+                                       "trigger_sources_stopped", "error"],
+                             initial_state = "initial",
+                             transitions = transitions,
+                             pre_transitions = [ pre_trans ]
+                             )
+  db.update_dal(fsm)
+  bcaster = dal.RCBroadcatser('bcaster')
+  db.update_dal(bcaster)
   name = "my-controller"
   args = f"--conf-type OKS {datafile} ${{PORT}} {name}"
   runcontrol_app = dal.RCApplication(name,
                                      application_name="drunc-controller",
                                      commandline_parameters=args,
-                                     runs_on=vhdal)
+                                     runs_on=vhdal,
+                                     broadcaster = bcaster,
+                                     fsm=fsm)
   db.update_dal(runcontrol_app)
 
   # ###########################################################################
