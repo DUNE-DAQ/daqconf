@@ -121,7 +121,8 @@ class ReadoutAppGenerator:
                         plugin = self.dlh_plugin, 
                         conf = rconf.Conf(
                             readoutmodelconf= rconf.ReadoutModelConf(
-                                source_queue_timeout_ms= QUEUE_POP_WAIT_MS,
+                                source_queue_timeout_ms = cfg.source_queue_timeout_ms,
+                                source_queue_sleep_us = cfg.source_queue_sleep_us,
                                 # fake_trigger_flag=0, # default
                                 source_id =  stream.src_id,
                                 send_partial_fragment_if_available = SEND_PARTIAL_FRAGMENTS
