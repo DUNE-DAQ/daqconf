@@ -12,6 +12,7 @@ local nc = moo.oschema.numeric_constraints;
 local cs = {
   monitoring_dest: s.enum(     "MonitoringDest", ["local", "cern", "pocket"]),
   pm_choice:       s.enum(     "PMChoice", ["k8s", "ssh"], doc="Process Manager choice: ssh or Kubernetes"),
+  run_control_choice: s.enum("RunControlChoice", ["nanorc", "drunc"], doc="Run control choice: nanorc or drunc"),
 
 
   boot: s.record("boot", [
@@ -28,6 +29,10 @@ local cs = {
 
     # K8S
     s.field( "k8s_image", types.string, default="dunedaq/c8-minimal", doc="Which docker image to use"),
+
+    # Run control
+    s.field( "run_control", self.run_control_choice, default="nanorc", doc="Which run control to use"),
+    s.field( "controller_host", types.host, default="localhost", doc="Which host should the controller run on (only applicable with drunc)"),
 
     # Connectivity Service
     s.field( "use_connectivity_service", types.flag, default=true, doc="Whether to use the ConnectivityService to manage connections"),
