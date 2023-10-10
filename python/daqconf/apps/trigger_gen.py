@@ -91,6 +91,11 @@ def get_trigger_bitwords(bitwords):
         final_bit_flags.append(tmp_bits)
  
     return final_bit_flags
+
+#===============================================================================
+### Function to check for the presence of TC sources.
+def tc_source_present(use_hsi, use_ctcm, use_rtcm):
+	return (use_hsi or use_ctcm or use_rtcm)
     
 #===============================================================================
 def get_trigger_app(
@@ -140,7 +145,11 @@ def get_trigger_app(
     CHANNEL_MAP_NAME = detector.tpc_channel_map
     DATA_REQUEST_TIMEOUT=trigger_data_request_timeout
     HOST=trigger.host_trigger
-   
+  
+    # Check for present of TC sources. At least 1 is required
+    if not tc_source_present(USE_HSI_INPUT, USE_CUSTOM_MAKER, USE_RANDOM_MAKER):
+        raise RuntimeError('There are no TC sources!')
+ 
     # Generate schema for the maker plugins on the fly in the temptypes module
     make_moo_record(ACTIVITY_CONFIG , 'ActivityConf' , 'temptypes')
     make_moo_record(CANDIDATE_CONFIG, 'CandidateConf', 'temptypes')
@@ -319,6 +328,8 @@ def get_trigger_app(
                        trigger_intervals=CTCM_INTERVAL,
                        clock_frequency_hz=CLOCK_SPEED_HZ,
                        timestamp_method=CTCM_TIMESTAMP_METHOD))]
+        modules += [DAQModule(name = 'tctee_ctcm',
+                       plugin = 'TCTee')]
 
     if USE_RANDOM_MAKER:
         modules += [DAQModule(name = 'rtcm',
@@ -327,6 +338,8 @@ def get_trigger_app(
                        clock_frequency_hz=CLOCK_SPEED_HZ,
                        timestamp_method=RTCM_TIMESTAMP_METHOD,
                        time_distribution=RTCM_DISTRIBUTION))]
+        modules += [DAQModule(name = 'tctee_rtcm',
+                       plugin = 'TCTee')]
 
     ### get trigger bitwords for mlt
     MLT_TRIGGER_FLAGS = get_trigger_bitwords(MLT_TRIGGER_BITWORDS)
@@ -361,10 +374,14 @@ def get_trigger_app(
         mgraph.add_endpoint("hsievents", "ttcm.hsi_input", "HSIEvent", Direction.IN)
 
     if USE_CUSTOM_MAKER:
-        mgraph.connect_modules("ctcm.trigger_candidate_sink", "mlt.trigger_candidate_source", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
+        mgraph.connect_modules("ctcm.trigger_candidate_sink", "tctee_ctcm.input",    "TriggerCandidate", "ctcm_input", size_hint=1000)
+        mgraph.connect_modules("tctee_ctcm.output1",  "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
+        mgraph.connect_modules("tctee_ctcm.output2",  "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf", size_hint=1000)
 
     if USE_RANDOM_MAKER:
-        mgraph.connect_modules("rtcm.trigger_candidate_sink", "mlt.trigger_candidate_source", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
+        mgraph.connect_modules("rtcm.trigger_candidate_sink", "tctee_rtcm.input",    "TriggerCandidate", "rtcm_input", size_hint=1000)
+        mgraph.connect_modules("tctee_rtcm.output1",  "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
+        mgraph.connect_modules("tctee_rtcm.output2",  "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf", size_hint=1000)
 
     if len(TP_SOURCE_IDS) > 0:
         mgraph.connect_modules("tazipper.output", "tcm.input", data_type="TASet", size_hint=1000)
