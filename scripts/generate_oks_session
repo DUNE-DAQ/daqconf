@@ -50,6 +50,11 @@ def generate(bootfile, datafile, session_name):
   with open(bootfile) as f:
     boot = json.loads(f.read())
     f.close()
+  controllerfile = bootfile.replace('boot','controller')
+  print(f"{controllerfile=}")
+  with open(controllerfile) as f:
+    controller = json.loads(f.read())
+    f.close()
 
   if datafile == None:
     datafile = f"{session_name.removesuffix('-session')}Session.data.xml"
@@ -84,46 +89,68 @@ def generate(bootfile, datafile, session_name):
     vhostdals[h] = vhdal
 
   # ###########################################################################
-  # Create a run controller for the segment. We say it runs on the last
-  # specified virtual host for now since this is not defined in the json
+  # Create a run controller for the segment. 
   # ###########################################################################
-  ifname = 'user-providedirun-number'
-  iface = dal.FSMinterface('dummy-if', name=ifname, commands=[])
-  db.update_dal(iface)
-  pre_trans = dal.FSMxTransition("start", order=[ifname], mandatory=[ifname])
-  db.update_dal(pre_trans)
+  fsm = controller['statefulnode']['fsm']
+  for iface in fsm['interfaces']:
+    ifname = 'user-providedirun-number'
+    iface = dal.FSMinterface('dummy-if', name=ifname, commands=[])
+    db.update_dal(iface)
+  pre_trans = []
+  for pt in fsm['pre_transitions']:
+    xtrans = fsm['pre_transitions'][pt]
+    ptdal = dal.FSMxTransition(pt,
+                               order=xtrans['order'],
+                               mandatory=xtrans['mandatory'])
+    db.update_dal(ptdal)
+    pre_trans.append(ptdal)
+  post_trans = []
+  for pt in fsm['post_transitions']:
+    xtrans = fsm['post_transitions'][pt]
+    ptdal = dal.FSMxTransition(pt,
+                               order=xtrans['order'],
+                               mandatory=xtrans['mandatory'])
+    db.update_dal(ptdal)
+    post_trans.append(ptdal)
   transitions = []
-  trans_conf = [
-    ("conf", "initial", "configured"),
-    ("start", "configured", "ready"),
-    ("enable_triggers", "ready", "running"),
-    ("disable_triggers", "running", "ready"),
-    ("drain_dataflow", "ready", "dataflow_drained"),
-    ("stop_trigger_sources", "dataflow_drained", "trigger_sources_stopped"),
-    ("stop", "trigger_sources_stopped", "configured"),
-    ("scrap", "configured", "initial")
-  ]
-  for trig,src,dest in trans_conf:
-    trans = dal.FSMtransition(trig, source=src, dest=dest)
+  for trans in fsm['transitions']:
+    trans = dal.FSMtransition(trans['trigger'],
+                              source=trans['source'],
+                              dest=trans['dest'])
     db.update_dal(trans)
     transitions.append(trans)
+  cmd_sequences = []
+  for seq in fsm['command_sequences']:
+    sequence = []
+    for cmd in fsm['command_sequences'][seq]:
+      cmd_dal = dal.FSMCommand(cmd['cmd'],
+                               cmd=cmd['cmd'],
+                               optional=cmd['optional'])
+      db.update_dal(cmd_dal)
+      sequence.append(cmd_dal)
+    seqdal = dal.FSMsequence(seq, sequence=sequence)
+    db.update_dal(seqdal)
+    cmd_sequences.append(seqdal)
   fsm = dal.FSMconfiguration('fsmConf-1',
-                             states = ["initial", "configured", "ready", "running",
-                                       "paused", "dataflow_drained",
-                                       "trigger_sources_stopped", "error"],
-                             initial_state = "initial",
+                             states = fsm['states'],
+                             initial_state = fsm['initial_state'],
                              transitions = transitions,
-                             pre_transitions = [ pre_trans ]
-                             )
+                             pre_transitions = pre_trans,
+                             post_transitions = post_trans,
+                             command_sequences=cmd_sequences)
   db.update_dal(fsm)
-  bcaster = dal.RCBroadcatser('bcaster')
+  bcaster = dal.RCBroadcatser('bcaster',
+                              type=controller['broadcaster']['type'],
+                              address=controller['broadcaster']['kafka_address'],
+                              publish_timeout=controller['broadcaster']['publish_timeout'])
   db.update_dal(bcaster)
   name = "my-controller"
   args = f"--conf-type OKS {datafile} ${{PORT}} {name}"
+  host = boot['apps']['controller']['host']
   runcontrol_app = dal.RCApplication(name,
                                      application_name="drunc-controller",
                                      commandline_parameters=args,
-                                     runs_on=vhdal,
+                                     runs_on=vhostdals[host],
                                      broadcaster = bcaster,
                                      fsm=fsm)
   db.update_dal(runcontrol_app)
@@ -183,6 +210,9 @@ def generate(bootfile, datafile, session_name):
   applicationdals = []
   confdir = os.path.abspath(os.path.dirname(bootfile))
   for app, cfg in boot['apps'].items():
+    if app == 'controller':
+      # Skip controller, we've already dealt with it
+      continue
     env_formatter = {
       "APP_HOST": vhostdals[cfg['host']],
       "DUNEDAQ_PARTITION": session_name,
