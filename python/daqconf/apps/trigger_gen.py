@@ -94,8 +94,8 @@ def get_trigger_bitwords(bitwords):
 
 #===============================================================================
 ### Function to check for the presence of TC sources.
-def tc_source_present(use_hsi, use_ctcm, use_rtcm):
-	return (use_hsi or use_ctcm or use_rtcm)
+def tc_source_present(use_hsi, use_ctcm, use_rtcm, n_tp_sources):
+	return (use_hsi or use_ctcm or use_rtcm or n_tp_sources)
     
 #===============================================================================
 def get_trigger_app(
@@ -146,10 +146,6 @@ def get_trigger_app(
     DATA_REQUEST_TIMEOUT=trigger_data_request_timeout
     HOST=trigger.host_trigger
   
-    # Check for present of TC sources. At least 1 is required
-    if not tc_source_present(USE_HSI_INPUT, USE_CUSTOM_MAKER, USE_RANDOM_MAKER):
-        raise RuntimeError('There are no TC sources!')
- 
     # Generate schema for the maker plugins on the fly in the temptypes module
     make_moo_record(ACTIVITY_CONFIG , 'ActivityConf' , 'temptypes')
     make_moo_record(CANDIDATE_CONFIG, 'CandidateConf', 'temptypes')
@@ -174,7 +170,11 @@ def get_trigger_app(
             TC_SOURCE_ID = {"source_id": trigger_sid, "conf": conf}
         elif isinstance(conf, TPInfo):
             TP_SOURCE_IDS[trigger_sid] = conf
-        
+       
+    # Check for present of TC sources. At least 1 is required
+    if not tc_source_present(USE_HSI_INPUT, USE_CUSTOM_MAKER, USE_RANDOM_MAKER, len(TP_SOURCE_IDS)):
+        raise RuntimeError('There are no TC sources!')
+ 
     # We always have a TC buffer even when there are no TPs, because we want to put the timing TC in the output file
     modules += [DAQModule(name = 'tc_buf',
                           plugin = 'TCBuffer',
