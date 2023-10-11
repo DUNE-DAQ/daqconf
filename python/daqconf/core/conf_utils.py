@@ -474,8 +474,10 @@ def update_with_ssh_boot_data (
         apps: list,
         base_command_port: int=3333,
         verbose=False,
-        control_to_data_network = None
-):
+        control_to_data_network = None,
+        use_drunc = False,
+        controller_host = 'localhost',
+        ):
     """
     Update boot_data to create the final the boot.json file
     """
@@ -492,6 +494,20 @@ def update_with_ssh_boot_data (
         }
         current_port+=1
         hosts[name] = app.host
+
+    if use_drunc:
+        controller_name = 'controller'
+        if controller_name in apps.keys():
+            raise RuntimeError(f'drunc controller is already in the apps (key: "{controller_name}")')
+
+        apps_desc[controller_name] = {
+            "exec": f"drunc_controller_ssh",
+            "host": controller_name,
+            "port": current_port,
+        }
+        current_port+=1
+        hosts[controller_name] = resolve_localhost(controller_host)
+
 
     boot_data.update({
         "apps": apps_desc,
@@ -586,6 +602,7 @@ def generate_boot(
     info_svc_uri = info_svc_uri_map[boot_conf.opmon_impl]
 
     daq_app_exec_name = f"daq_application_{boot_conf.process_manager}"
+    controller_exec_name = f"drunc_controller_{boot_conf.process_manager}"
 
     capture_paths = [
         'PATH',
@@ -595,12 +612,12 @@ def generate_boot(
     ]
 
     app_env = {
-                "TRACE_FILE": "getenv:/tmp/trace_buffer_{APP_HOST}_{DUNEDAQ_PARTITION}",
-                "CMD_FAC": "rest://localhost:{APP_PORT}",
-                "CONNECTION_SERVER": resolve_localhost(boot_conf.connectivity_service_host),
-                "CONNECTION_PORT": f"{boot_conf.connectivity_service_port}",
-                "INFO_SVC": info_svc_uri,
-            }
+        "TRACE_FILE": "getenv:/tmp/trace_buffer_{APP_HOST}_{DUNEDAQ_PARTITION}",
+        "CMD_FAC": "rest://localhost:{APP_PORT}",
+        "CONNECTION_SERVER": resolve_localhost(boot_conf.connectivity_service_host),
+        "CONNECTION_PORT": f"{boot_conf.connectivity_service_port}",
+        "INFO_SVC": info_svc_uri,
+    }
 
     app_env.update({
         p:'getenv' for p in capture_paths
@@ -630,6 +647,19 @@ def generate_boot(
         }
     }
 
+    if boot_conf.run_control == 'drunc':
+        daq_app_specs[controller_exec_name] = {
+            "comment": "Controller",
+            "env": app_env,
+            "cmd":"drunc-controller",
+            "args": [
+                "{CONF_LOC}",
+                "{APP_PORT}",
+                "{APP_NAME}",
+                "{DUNEDAQ_PARTITION}",
+            ]
+        }
+
     boot = {
         "env": {
             "DUNEDAQ_ERS_VERBOSITY_LEVEL": "getenv:1",
@@ -651,19 +681,8 @@ def generate_boot(
 
     if boot_conf.disable_trace:
         del boot["exec"][daq_app_exec_name]["env"]["TRACE_FILE"]
+
     boot['rte_script'] = get_rte_script()
-    # match boot_conf.k8s_rte:
-    #     case 'auto':
-    #         if (release_or_dev() == 'rel'):
-    #             boot['rte_script'] = get_rte_script()
-
-    #     case 'release':
-    #         boot['rte_script'] = get_rte_script()
-
-    #     case 'devarea':
-    #         pass
-
-
 
     if boot_conf.process_manager == 'ssh':
         for app in system.apps.values():
@@ -675,6 +694,8 @@ def generate_boot(
             base_command_port = boot_conf.base_command_port,
             verbose = verbose,
             control_to_data_network = control_to_data_network,
+            use_drunc = boot_conf.run_control == 'drunc',
+            controller_host = boot_conf.controller_host,
         )
     elif boot_conf.process_manager == 'k8s':
         # ARGGGGG (MASSIVE WARNING SIGN HERE)
@@ -682,6 +703,9 @@ def generate_boot(
         dfapps    = [app for app in system.apps.keys() if app[:2] == 'df']
         otherapps = [app for app in system.apps.keys() if not app in ruapps + dfapps]
         boot_order = ruapps + dfapps + otherapps
+
+        if boot_conf.run_control == 'drunc':
+            raise RuntimeError('Cannot use drunc with k8s')
 
         add_k8s_app_boot_data(
             boot_data = boot,
@@ -813,6 +837,30 @@ def make_system_command_datas(boot_conf:dict, the_system, forced_deps=[], verbos
         verbose = verbose,
         control_to_data_network=control_to_data_network
     )
+
+    if boot_conf.run_control == 'drunc':
+        from daqconf.core.drunc_conf_utils import get_controller_conf
+        apps = [
+            {
+                'name': a,
+                'port': system_command_datas['boot']['apps'][a]['port'],
+                'host': system_command_datas['boot']['hosts-ctrl'][a],
+            }
+            for a in the_system.apps.keys()
+        ]
+        kafkas_uris = {
+            'cern':   "monkafka.cern.ch:30092",
+            'pocket': f"{boot_conf.pocket_url}:30092",
+        }
+        kafka_address = kafkas_uris['pocket']
+
+        if boot_conf.ers_impl == 'cern' or boot_conf.opmon_impl == 'cern':
+            kafka_address = kafkas_uris['cern']
+
+        system_command_datas['controller'] = get_controller_conf(
+            apps = apps,
+            kafka_address = kafka_address,
+        )
 
     return system_command_datas
 
