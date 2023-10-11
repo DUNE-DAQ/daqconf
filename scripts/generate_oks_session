@@ -5,6 +5,7 @@ import os
 import json
 import sys
 import click
+from pathlib import Path
 
 def process_environment(boot_dict, env_formatter, dal, db):
   exclude = ["CET_PLUGIN_PATH",
@@ -43,21 +44,23 @@ def process_environment(boot_dict, env_formatter, dal, db):
               help='Name of generated session', show_default=True)
 @click.option('-d', '--datafile',
               help='Name of generated OKS data file default: <session_name>Session.data.xml')
+@click.option('--oks_controller', is_flag=True)
 @click.argument('bootfile', type=click.Path(exists=True))
-def generate(bootfile, datafile, session_name):
+def generate(bootfile, datafile, session_name, oks_controller):
   """Simple script to generate a single Segment OKS Session down to
   the application level from a daqconf generated boot.json file."""
   with open(bootfile) as f:
     boot = json.loads(f.read())
     f.close()
   controllerfile = bootfile.replace('boot','controller')
-  print(f"{controllerfile=}")
   with open(controllerfile) as f:
     controller = json.loads(f.read())
     f.close()
 
   if datafile == None:
     datafile = f"{session_name.removesuffix('-session')}Session.data.xml"
+
+  print(f"  Generating session {session_name} in {datafile}")
 
   schemafile = "schema/coredal/dunedaq.schema.xml"
   dal = oksdbinterfaces.dal.module('generated', schemafile)
@@ -93,9 +96,8 @@ def generate(bootfile, datafile, session_name):
   # ###########################################################################
   fsm = controller['statefulnode']['fsm']
   for iface in fsm['interfaces']:
-    ifname = 'user-providedirun-number'
-    iface = dal.FSMinterface('dummy-if', name=ifname, commands=[])
-    db.update_dal(iface)
+    iface_dal = dal.FSMinterface('dummy-if', name=iface, commands=[])
+    db.update_dal(iface_dal)
   pre_trans = []
   for pt in fsm['pre_transitions']:
     xtrans = fsm['pre_transitions'][pt]
@@ -145,7 +147,14 @@ def generate(bootfile, datafile, session_name):
                               publish_timeout=controller['broadcaster']['publish_timeout'])
   db.update_dal(bcaster)
   name = "my-controller"
-  args = f"--conf-type OKS {datafile} ${{PORT}} {name}"
+
+  if oks_controller:
+    cfg_path = Path(datafile).absolute()
+    args = f"oksconfig:{cfg_path} ${{PORT}} {name} {session_name}"
+  else:
+    ctlr_path = Path(controllerfile).absolute()
+    args = f"file://{ctlr_path} ${{PORT}} {name} {session_name}"
+
   host = boot['apps']['controller']['host']
   runcontrol_app = dal.RCApplication(name,
                                      application_name="drunc-controller",
