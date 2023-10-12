@@ -173,6 +173,7 @@ def generate(bootfile, datafile, session_name, oks_controller):
     "APP_HOST": "{host}",
     "DUNEDAQ_PARTITION": session_name
   }
+  boot['env']['DUNEDAQ_PARTITION']=session_name
   env = process_environment(boot['env'], env_formatter, dal, db)
   common_env = dal.VariableSet("common-env", contains=env)
   db.update_dal(common_env)
