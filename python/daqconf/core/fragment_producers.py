@@ -61,8 +61,22 @@ def set_mlt_links(the_system, tp_infos, mlt_app_name="trigger", verbose=False):
     for producer in the_system.get_fragment_producers():
         if producer.is_mlt_producer:
             source_id = producer.source_id
+            # case for HSI
             if source_id.subsystem == SourceID.Subsystem.kHwSignalsInterface:
-                mlt_links["mandatory"].append( mlt.SourceID(subsystem=ensure_subsystem_string(source_id.subsystem), element=source_id.id) );
+                mlt_links["mandatory"].append( mlt.SourceID(subsystem=ensure_subsystem_string(source_id.subsystem), element=source_id.id) )
+            # case for RU
+            elif source_id.subsystem == SourceID.Subsystem.kDetectorReadout:
+                matched = False
+                for key in mlt_readout_map.keys():
+                    if key != -1:
+                        if source_id.id in mlt_readout_map[key]["elements"]:
+                            mlt_links["groups"][key]["links"].append( mlt.SourceID(subsystem=ensure_subsystem_string(source_id.subsystem), element=source_id.id) )
+                            matched = True
+                # special case to cover readout that is not a TP source for trigger
+                if not matched:
+                    mlt_links["groups"].append({"group": len(mlt_links["groups"]), "links": []})
+                    mlt_links["groups"][len(mlt_links["groups"])-1]["links"].append( mlt.SourceID(subsystem=ensure_subsystem_string(source_id.subsystem), element=source_id.id) )
+            # anything else (TP, TA, TC buffers)
             else:
                 for key in mlt_readout_map.keys():
                     if source_id.id in mlt_readout_map[key]["elements"]:
