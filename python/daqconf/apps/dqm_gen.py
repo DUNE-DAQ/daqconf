@@ -72,7 +72,7 @@ def get_dqm_app(
     #    FRONTEND_TYPE = "pacman"
 
     if DQM_IMPL == 'cern':
-        KAFKA_ADDRESS = "monkafka.cern.ch:30092"
+        KAFKA_ADDRESS = "np04-srv-017.cern.ch:30092"
 
     TICKS = {'wib': 25, 'wib2': 32}
 
