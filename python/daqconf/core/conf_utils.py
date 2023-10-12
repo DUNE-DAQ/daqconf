@@ -850,11 +850,7 @@ def make_system_command_datas(boot_conf:dict, the_system, forced_deps=[], verbos
             for a in the_system.apps.keys()
         ]
         kafkas_uris = {
-<<<<<<< HEAD
-            'cern':   "dune-daq-kafka-bootstrap.kafka.svc:9092",
-=======
             'cern':   "np04-srv-017.cern.ch:30092",
->>>>>>> develop
             'pocket': f"{boot_conf.pocket_url}:30092",
         }
         kafka_address = kafkas_uris['pocket']
