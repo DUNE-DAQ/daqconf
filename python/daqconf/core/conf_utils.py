@@ -572,7 +572,7 @@ def generate_boot(
     """
 
     info_svc_uri_map = {
-        'cern':  "kafka://monkafka.cern.ch:30092/opmon",
+        'cern':  "kafka://dune-daq-kafka-bootstrap.kafka.svc:9092/opmon",
         'pocket':  f"kafka://{boot_conf.pocket_url}:30092/opmon",
         'local': "file://info_{APP_NAME}_{APP_PORT}.json"
     }
@@ -581,10 +581,10 @@ def generate_boot(
 
     if boot_conf.ers_impl == 'cern':
         use_kafka = True
-        ers_settings["INFO"] =    "erstrace,throttle,lstdout,erskafka(monkafka.cern.ch:30092)"
-        ers_settings["WARNING"] = "erstrace,throttle,lstdout,erskafka(monkafka.cern.ch:30092)"
-        ers_settings["ERROR"] =   "erstrace,throttle,lstdout,erskafka(monkafka.cern.ch:30092)"
-        ers_settings["FATAL"] =   "erstrace,lstdout,erskafka(monkafka.cern.ch:30092)"
+        ers_settings["INFO"] =    "erstrace,throttle,lstdout,erskafka(dune-daq-kafka-bootstrap.kafka.svc:9092)"
+        ers_settings["WARNING"] = "erstrace,throttle,lstdout,erskafka(dune-daq-kafka-bootstrap.kafka.svc:9092)"
+        ers_settings["ERROR"] =   "erstrace,throttle,lstdout,erskafka(dune-daq-kafka-bootstrap.kafka.svc:9092)"
+        ers_settings["FATAL"] =   "erstrace,lstdout,erskafka(dune-daq-kafka-bootstrap.kafka.svc:9092)"
     elif boot_conf.ers_impl == 'pocket':
         use_kafka = True
         ers_settings["INFO"] =    "erstrace,throttle,lstdout,erskafka(" + boot_conf.pocket_url + ":30092)"
@@ -850,7 +850,7 @@ def make_system_command_datas(boot_conf:dict, the_system, forced_deps=[], verbos
             for a in the_system.apps.keys()
         ]
         kafkas_uris = {
-            'cern':   "monkafka.cern.ch:30092",
+            'cern':   "dune-daq-kafka-bootstrap.kafka.svc:9092",
             'pocket': f"{boot_conf.pocket_url}:30092",
         }
         kafka_address = kafkas_uris['pocket']
