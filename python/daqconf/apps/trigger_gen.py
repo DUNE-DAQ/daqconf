@@ -288,10 +288,11 @@ def get_trigger_app(
                                                                                                                  # output_file = f"output_{idx + MIN_LINK}.out",
                                                                                                                  stream_buffer_size = 8388608,
                                                                                                                  request_timeout_ms = DATA_REQUEST_TIMEOUT,
-                                                                                                                 enable_raw_recording = False))),
+                                                                                                                 enable_raw_recording = False)))]
 
-                            DAQModule(name = f'tpsettee_ma_{region_id}',
-                                  plugin = 'TPSetTee'),]
+                if(num_algs > 1):
+                    modules += [DAQModule(name = f'tpsettee_ma_{region_id}',
+                                          plugin = 'TPSetTee'),]
 
         
     if USE_HSI_INPUT:
@@ -373,7 +374,10 @@ def get_trigger_app(
             if USE_CHANNEL_FILTER:
                 mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', data_type="TPSet", size_hint=1000)
 
-            mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'tpsettee_ma_{tp_conf.region_id}.input', data_type="TPSet", size_hint=1000)
+            if(num_algs > 1):
+                mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'tpsettee_ma_{tp_conf.region_id}.input', data_type="TPSet", size_hint=1000)
+            else:
+                mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'tam_{tp_conf.region_id}_0.input', data_type="TPSet", size_hint=1000)
             mgraph.connect_modules(f'tpsettee_{link_id}.output2', f'buf_{link_id}.tpset_source',data_type="TPSet", size_hint=1000)
 
         ## # Use connect_modules to connect up the Tees to the buffers/MLT,
@@ -381,8 +385,10 @@ def get_trigger_app(
 
         for region_id in TA_SOURCE_IDS.keys():
             # Send the output of the new TPSetTee module to each of the activity makers
-            for j in range(num_algs):
-                mgraph.connect_modules(f'tpsettee_ma_{region_id}.output{j+1}', f'tam_{region_id}_{j}.input', "TPSet", size_hint=1000)
+            if(num_algs > 1):
+                for j in range(num_algs):
+                    mgraph.connect_modules(f'tpsettee_ma_{region_id}.output{j+1}', f'tam_{region_id}_{j}.input', "TPSet", size_hint=1000)
+
         # For each TCMaker config applied, connect the TCMaker to it's copyer, then to the MLT and TCBuffer via that copyer.
         for j in range(len(cm_configs)):
             mgraph.connect_modules(f"tcm_{j}.output", f"tctee_chain_{j}.input", "TriggerCandidate", f"chain_input_{j}", size_hint=1000)
