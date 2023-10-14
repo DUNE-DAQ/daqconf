@@ -5,6 +5,7 @@ import os
 import json
 import sys
 import click
+from pathlib import Path
 
 def process_environment(boot_dict, env_formatter, dal, db):
   exclude = ["CET_PLUGIN_PATH",
@@ -43,16 +44,23 @@ def process_environment(boot_dict, env_formatter, dal, db):
               help='Name of generated session', show_default=True)
 @click.option('-d', '--datafile',
               help='Name of generated OKS data file default: <session_name>Session.data.xml')
+@click.option('--oks_controller', is_flag=True)
 @click.argument('bootfile', type=click.Path(exists=True))
-def generate(bootfile, datafile, session_name):
+def generate(bootfile, datafile, session_name, oks_controller):
   """Simple script to generate a single Segment OKS Session down to
   the application level from a daqconf generated boot.json file."""
   with open(bootfile) as f:
     boot = json.loads(f.read())
     f.close()
+  controllerfile = bootfile.replace('boot','controller')
+  with open(controllerfile) as f:
+    controller = json.loads(f.read())
+    f.close()
 
   if datafile == None:
     datafile = f"{session_name.removesuffix('-session')}Session.data.xml"
+
+  print(f"  Generating session {session_name} in {datafile}")
 
   schemafile = "schema/coredal/dunedaq.schema.xml"
   dal = oksdbinterfaces.dal.module('generated', schemafile)
@@ -61,7 +69,7 @@ def generate(bootfile, datafile, session_name):
 
   # ###########################################################################
   # First deal with all the hosts physical and virtual. For now let them
-  # all use the same deinition of processing resources
+  # all use the same definition of processing resources
   # ###########################################################################
   cpus = dal.ProcessingResource("cpus",cpu_cores=[0,1,2,3])
   db.update_dal(cpus)
@@ -84,15 +92,76 @@ def generate(bootfile, datafile, session_name):
     vhostdals[h] = vhdal
 
   # ###########################################################################
-  # Create a run controller for the segment. We say it runs on the last
-  # specified virtual host for now since this is not defined in the json
+  # Create a run controller for the segment. 
   # ###########################################################################
+  fsm = controller['statefulnode']['fsm']
+  for iface in fsm['interfaces']:
+    iface_dal = dal.FSMinterface('dummy-if', name=iface, commands=[])
+    db.update_dal(iface_dal)
+  pre_trans = []
+  for pt in fsm['pre_transitions']:
+    xtrans = fsm['pre_transitions'][pt]
+    ptdal = dal.FSMxTransition(pt,
+                               order=xtrans['order'],
+                               mandatory=xtrans['mandatory'])
+    db.update_dal(ptdal)
+    pre_trans.append(ptdal)
+  post_trans = []
+  for pt in fsm['post_transitions']:
+    xtrans = fsm['post_transitions'][pt]
+    ptdal = dal.FSMxTransition(pt,
+                               order=xtrans['order'],
+                               mandatory=xtrans['mandatory'])
+    db.update_dal(ptdal)
+    post_trans.append(ptdal)
+  transitions = []
+  for trans in fsm['transitions']:
+    trans = dal.FSMtransition(trans['trigger'],
+                              source=trans['source'],
+                              dest=trans['dest'])
+    db.update_dal(trans)
+    transitions.append(trans)
+  cmd_sequences = []
+  for seq in fsm['command_sequences']:
+    sequence = []
+    for cmd in fsm['command_sequences'][seq]:
+      cmd_dal = dal.FSMCommand(cmd['cmd'],
+                               cmd=cmd['cmd'],
+                               optional=cmd['optional'])
+      db.update_dal(cmd_dal)
+      sequence.append(cmd_dal)
+    seqdal = dal.FSMsequence(seq, sequence=sequence)
+    db.update_dal(seqdal)
+    cmd_sequences.append(seqdal)
+  fsm = dal.FSMconfiguration('fsmConf-1',
+                             states = fsm['states'],
+                             initial_state = fsm['initial_state'],
+                             transitions = transitions,
+                             pre_transitions = pre_trans,
+                             post_transitions = post_trans,
+                             command_sequences=cmd_sequences)
+  db.update_dal(fsm)
+  bcaster = dal.RCBroadcatser('bcaster',
+                              type=controller['broadcaster']['type'],
+                              address=controller['broadcaster']['kafka_address'],
+                              publish_timeout=controller['broadcaster']['publish_timeout'])
+  db.update_dal(bcaster)
   name = "my-controller"
-  args = f"--conf-type OKS {datafile} ${{PORT}} {name}"
+
+  if oks_controller:
+    cfg_path = Path(datafile).absolute()
+    args = f"oksconfig:{cfg_path} ${{PORT}} {name} {session_name}"
+  else:
+    ctlr_path = Path(controllerfile).absolute()
+    args = f"file://{ctlr_path} ${{PORT}} {name} {session_name}"
+
+  host = boot['apps']['controller']['host']
   runcontrol_app = dal.RCApplication(name,
                                      application_name="drunc-controller",
                                      commandline_parameters=args,
-                                     runs_on=vhdal)
+                                     runs_on=vhostdals[host],
+                                     broadcaster = bcaster,
+                                     fsm=fsm)
   db.update_dal(runcontrol_app)
 
   # ###########################################################################
@@ -104,6 +173,7 @@ def generate(bootfile, datafile, session_name):
     "APP_HOST": "{host}",
     "DUNEDAQ_PARTITION": session_name
   }
+  boot['env']['DUNEDAQ_PARTITION']=session_name
   env = process_environment(boot['env'], env_formatter, dal, db)
   common_env = dal.VariableSet("common-env", contains=env)
   db.update_dal(common_env)
@@ -124,24 +194,25 @@ def generate(bootfile, datafile, session_name):
   # ###########################################################################
   services = []
   srvdals = []
-  for srv, cfg in boot['services'].items():
-    if srv == "connectionservice":
-      env_formatter = {
-        "APP_HOST": vhostdals[cfg['host']],
-        "DUNEDAQ_PARTITION": session_name,
-        "APP_NAME": srv,
-        "APP_PORT": cfg["port"],
-        "APP_WD": os.getcwd(),
-      }
-      args = exec_args[cfg['exec']].format(**env_formatter)
-      srvdal = dal.ConnectionService(srv,
-                                     port=cfg['port'],
-                                     application_name=exec_cmd[cfg['exec']],
-                                     commandline_parameters=args,
-                                     runs_on=vhostdals[cfg['host']],
-                                     applicationEnvironment=[exec_envs[cfg['exec']]])
-      db.update_dal(srvdal)
-      srvdals.append(srvdal)
+  if 'services' in boot:
+    for srv, cfg in boot['services'].items():
+      if srv == "connectionservice":
+        env_formatter = {
+          "APP_HOST": vhostdals[cfg['host']],
+          "DUNEDAQ_PARTITION": session_name,
+          "APP_NAME": srv,
+          "APP_PORT": cfg["port"],
+          "APP_WD": os.getcwd(),
+        }
+        args = exec_args[cfg['exec']].format(**env_formatter)
+        srvdal = dal.ConnectionService(srv,
+                                       port=cfg['port'],
+                                       application_name=exec_cmd[cfg['exec']],
+                                       commandline_parameters=args,
+                                       runs_on=vhostdals[cfg['host']],
+                                       applicationEnvironment=[exec_envs[cfg['exec']]])
+        db.update_dal(srvdal)
+        srvdals.append(srvdal)
 
   # ###########################################################################
   # Now create all the DAQ Applications
@@ -149,6 +220,9 @@ def generate(bootfile, datafile, session_name):
   applicationdals = []
   confdir = os.path.abspath(os.path.dirname(bootfile))
   for app, cfg in boot['apps'].items():
+    if app == 'controller':
+      # Skip controller, we've already dealt with it
+      continue
     env_formatter = {
       "APP_HOST": vhostdals[cfg['host']],
       "DUNEDAQ_PARTITION": session_name,
@@ -173,6 +247,15 @@ def generate(bootfile, datafile, session_name):
     applicationdals.append(appdal)
 
   # ###########################################################################
+  # Create a dummy ReadoutMap for now since the real one will be read from JSON
+  # by the applications themselves
+  # ###########################################################################
+  ro_group = dal.ReadoutGroup('dummyRog')
+  db.update_dal(ro_group)
+  ro_map = dal.ReadoutMap('dummyRoMap', groups=[ro_group])
+  db.update_dal(ro_map)
+
+  # ###########################################################################
   # Finally create the Segment and Session
   # ###########################################################################
   segdal = dal.Segment("generated-segment",
@@ -195,6 +278,7 @@ def generate(bootfile, datafile, session_name):
                            segment=segdal,
                            detector_configuration=detconf,
                            services=srvdals,
+                           readout_map=ro_map,
                            rte_script=rte_path)
   db.update_dal(sessiondal)
   db.commit()
