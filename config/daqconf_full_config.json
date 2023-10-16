@@ -78,39 +78,6 @@
             "np04-srv-021"
         ]
     },
-    "dqm": {
-        "cmap": "HD",
-        "df_algs": "raw std fourier_plane",
-        "df_rate": 10,
-        "enable_dqm": false,
-        "fourier_channel_params": [
-            0,
-            0
-        ],
-        "fourier_plane_params": [
-            600,
-            1000
-        ],
-        "host_dqm": [
-            "localhost"
-        ],
-        "impl": "local",
-        "kafka_address": "",
-        "kafka_topic": "DQM",
-        "max_num_frames": 32768,
-        "raw_params": [
-            60,
-            50
-        ],
-        "rms_params": [
-            0,
-            1000
-        ],
-        "std_params": [
-            10,
-            1000
-        ]
-    },
     "hsi": {
         "control_hsi_hw": false,
         "enable_hardware_state_recovery": true,
