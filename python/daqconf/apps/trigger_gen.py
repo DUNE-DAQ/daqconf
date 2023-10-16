@@ -92,6 +92,16 @@ def get_trigger_bitwords(bitwords):
  
     return final_bit_flags
 
+def check_mlt_roi_config(mlt_roi_conf, n_groups):
+    prob = 0
+    for group in mlt_roi_conf:
+        prob += group["probability"]
+        if group["number_of_link_groups"] > n_groups:
+            raise RuntimeError(f'The MLT ROI configuration map is invalid, the number of requested link groups must be <= all link groups')
+    if prob > 1.0:
+        raise RuntimeError(f'The MLT ROI configuration map is invalid, the sum of probabilites must be <= 1.0')
+    return
+ 
 #===============================================================================
 ### Function to check for the presence of TC sources.
 def tc_source_present(use_hsi, use_ctcm, use_rtcm, n_tp_sources):
@@ -134,6 +144,8 @@ def get_trigger_app(
     MLT_READOUT_MAP = trigger.mlt_td_readout_map
     MLT_USE_BITWORDS = trigger.mlt_use_bitwords
     MLT_TRIGGER_BITWORDS = trigger.mlt_trigger_bitwords
+    MLT_USE_ROI_READOUT = trigger.mlt_use_roi_readout
+    MLT_ROI_CONF = trigger.mlt_roi_conf
     USE_CUSTOM_MAKER = trigger.use_custom_maker
     CTCM_TYPES = trigger.ctcm_trigger_types
     CTCM_INTERVAL = trigger.ctcm_trigger_intervals
@@ -344,6 +356,10 @@ def get_trigger_app(
 
     ### get trigger bitwords for mlt
     MLT_TRIGGER_FLAGS = get_trigger_bitwords(MLT_TRIGGER_BITWORDS)
+
+    ### check ROI probability is valid
+    if MLT_USE_ROI_READOUT:
+        check_mlt_roi_config(MLT_ROI_CONF, len(TP_SOURCE_IDS))
     
     # We need to populate the list of links based on the fragment
     # producers available in the system. This is a bit of a
@@ -354,7 +370,8 @@ def get_trigger_app(
     # util.connect_fragment_producers
     modules += [DAQModule(name = 'mlt',
                           plugin = 'ModuleLevelTrigger',
-                          conf=mlt.ConfParams(links=[],  # To be updated later - see comment above
+                          conf=mlt.ConfParams(mandatory_links=[],  # To be updated later - see comment above
+                                              groups_links=[],     # To be updated later - see comment above
                                               hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH,
                                               merge_overlapping_tcs=MLT_MERGE_OVERLAPPING_TCS,
                                               buffer_timeout=MLT_BUFFER_TIMEOUT,
@@ -363,6 +380,8 @@ def get_trigger_app(
                                               td_readout_limit=max_td_length_ticks,
                                               use_readout_map=MLT_USE_READOUT_MAP,
                                               td_readout_map=MLT_READOUT_MAP,
+                                              use_roi_readout=MLT_USE_ROI_READOUT,
+                                              roi_conf=MLT_ROI_CONF,
 					      use_bitwords=MLT_USE_BITWORDS,
 					      trigger_bitwords=MLT_TRIGGER_FLAGS))]
 

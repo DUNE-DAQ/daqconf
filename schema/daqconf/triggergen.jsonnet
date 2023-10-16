@@ -21,7 +21,10 @@ local cs = {
   readout_time:    s.number(   "ROTime",        "i8", doc="A readout time in ticks"),
   bitword:	   s.string(   "Bitword",       doc="A string representing the TC type name, to be set in the trigger bitword."),
   bitword_list:    s.sequence( "BitwordList",   self.bitword, doc="A sequence of bitword (TC type bits) forming a bitword."),
-  bitwords:        s.sequence( "Bitwords",      self.bitword_list, doc="List of bitwords to use when forming trigger decisions in MLT" ),
+  bitwords:        s.sequence( "Bitwords",      self.bitword_list, doc="List of bitwords to use when forming trigger decisions in MLT"),
+  number_of_groups: s.number(  "Ngroups",       "i4", nc(minimum=0, maximum=150), doc="Number of groups of detector links to readout, useful for MLT ROI"),
+  probability:      s.number(  "Prob",          "f4", nc(minimum=0.0, maximum=1.0), doc="Probability to read out a group of links, useful for MLT ROI"),
+  group_selection:  s.enum(    "GroupSelection", ["kRandom", "kSequential"]),
 
   trigger_algo_config: s.record("trigger_algo_config", [
     s.field("prescale", types.count, default=100),
@@ -100,6 +103,15 @@ local cs = {
     s.field("c9", self.c9_readout, default=self.c9_readout, doc="TC readout for TC type 9"),
   ]),
 
+  mlt_roi_group_conf: s.record("mlt_roi_group_conf", [
+    s.field("number_of_link_groups", self.number_of_groups, default=1,         doc="Number of groups of links to readout"),
+    s.field("probability",           self.probability,      default=0.1,       doc="Probability to select this configuration [0 to 1]"),
+    s.field("time_window",           self.readout_time,     default=1000,      doc="Time window to read out pre/post decision, [clock ticks]"),
+    s.field("groups_selection_mode", self.group_selection,  default="kRandom", doc="Whether to read out random groups or in sequence"), 
+  ]),
+ 
+  mlt_roi_conf_map: s.sequence("mlt_roi_conf_map", self.mlt_roi_group_conf),
+
   trigger: s.record("trigger",[
     // s.field( "trigger_rate_hz", types.rate, default=1.0, doc='Fake HSI only: rate at which fake HSIEvents are sent. 0 - disable HSIEvent generation. Former -t'),
     s.field( "trigger_window_before_ticks",types.count, default=1000, doc="Trigger window before marker. Former -b"),
@@ -128,7 +140,9 @@ local cs = {
     s.field( "mlt_use_readout_map", types.flag, default=false, doc="Option to use custom readout map in MLT"),
     s.field( "mlt_td_readout_map", self.tc_readout_map, default=self.tc_readout_map, doc="The readout windows assigned to TDs in MLT, based on TC type."),
     s.field( "mlt_use_bitwords", types.flag, default=false, doc="Option to use bitwords (ie trigger types, coincidences) when forming trigger decisions in MLT" ),
-    s.field( "mlt_trigger_bitwords", self.bitwords, default=[], doc="Optional dictionary of bitwords to use when forming trigger decisions in MLT" ),    
+    s.field( "mlt_trigger_bitwords", self.bitwords, default=[], doc="Optional dictionary of bitwords to use when forming trigger decisions in MLT" ),
+    s.field( "mlt_use_roi_readout", types.flag, default=false, doc="Option to use ROI readout in MLT: only readout selection of fragment producers"),
+    s.field( "mlt_roi_conf", self.mlt_roi_conf_map, default=[self.mlt_roi_group_conf], doc="The configuration (table) for ROI readout"),
     s.field( "use_custom_maker", types.flag, default=false, doc="Option to use a Custom Trigger Candidate Maker (plugin)"),
     s.field( "ctcm_trigger_types", self.tc_types, default=[4], doc="Optional list of TC types to be used by the Custom Trigger Candidate Maker (plugin)"),
     s.field( "ctcm_trigger_intervals", self.tc_intervals, default=[10000000], doc="Optional list of intervals (clock ticks) for the TC types to be used by the Custom Trigger Candidate Maker (plugin)"),
