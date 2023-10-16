@@ -33,21 +33,21 @@ def set_mlt_links(the_system, tp_infos, mlt_app_name="trigger", verbose=False):
         if isinstance(conf, TAInfo):
             for key in mlt_readout_map.keys():
                 if mlt_readout_map[key]["group"] == conf.region_id:
-                    mlt_readout_map[key]["elements"].append(trigger_sid )
+                    mlt_readout_map[key]["elements"]["Trigger"].append(trigger_sid)
         elif isinstance(conf, TPInfo):
             for key in mlt_readout_map.keys():
                 if key == conf.tp_ru_sid:
                     mlt_readout_map[key]["group"] = conf.region_id
-                    mlt_readout_map[key]["elements"].append(conf.tp_ru_sid)
-                    mlt_readout_map[key]["elements"].append(trigger_sid)
+                    mlt_readout_map[key]["elements"]["Trigger"].append(conf.tp_ru_sid)
+                    mlt_readout_map[key]["elements"]["Trigger"].append(trigger_sid)
         elif isinstance(conf, TCInfo):
-            mlt_map_entry = { "group": -1, "elements": [trigger_sid] }
+            mlt_map_entry = { "group": -1, "elements": {"Trigger": [trigger_sid] } }
             mlt_readout_map[-1] = mlt_map_entry
         else:
             # readout unit
-            mlt_map_entry = { "group": trigger_sid, "elements": [] }
+            mlt_map_entry = { "group": trigger_sid, "elements": { "Trigger": [], "Detector_Readout": [] } }
             for stream in conf.streams:
-                mlt_map_entry["elements"].append( stream.src_id )
+                mlt_map_entry["elements"]["Detector_Readout"].append(stream.src_id)
             mlt_readout_map[trigger_sid] = mlt_map_entry
 
     if verbose:
@@ -69,7 +69,7 @@ def set_mlt_links(the_system, tp_infos, mlt_app_name="trigger", verbose=False):
                 matched = False
                 for key in mlt_readout_map.keys():
                     if key != -1:
-                        if source_id.id in mlt_readout_map[key]["elements"]:
+                        if source_id.id in mlt_readout_map[key]["elements"]["Detector_Readout"]:
                             mlt_links["groups"][key]["links"].append( mlt.SourceID(subsystem=ensure_subsystem_string(source_id.subsystem), element=source_id.id) )
                             matched = True
                 # special case to cover readout that is not a TP source for trigger
@@ -79,7 +79,7 @@ def set_mlt_links(the_system, tp_infos, mlt_app_name="trigger", verbose=False):
             # anything else (TP, TA, TC buffers)
             else:
                 for key in mlt_readout_map.keys():
-                    if source_id.id in mlt_readout_map[key]["elements"]:
+                    if source_id.id in mlt_readout_map[key]["elements"]["Trigger"]:
                         match key:
                             case -1:
                                 mlt_links["mandatory"].append( mlt.SourceID(subsystem=ensure_subsystem_string(source_id.subsystem), element=source_id.id) )
@@ -91,7 +91,7 @@ def set_mlt_links(the_system, tp_infos, mlt_app_name="trigger", verbose=False):
         for group in mlt_links["groups"]:
             tot += len(group["links"])
         tot += len(mlt_links["mandatory"])
-        console.log(f"Adding {tot} links to mlt.links: {mlt_links}")
+        console.log(f"Adding {tot} links to mlt.links")
 
     mgraph = the_system.apps[mlt_app_name].modulegraph
     old_mlt_conf = mgraph.get_module("mlt").conf
