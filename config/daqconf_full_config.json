@@ -136,13 +136,6 @@
         "timing_session_name": ""
     },
     "trigger": {
-        "completeness_tolerance": 1,
-        "ctcm_trigger_intervals": [
-            10000000
-        ],
-        "ctcm_trigger_types": [
-            4
-        ],
         "host_trigger": "localhost",
         "hsi_trigger_type_passthrough": false,
         "mlt_buffer_timeout": 100,
@@ -150,6 +143,7 @@
         "mlt_max_td_length_ms": 1000,
         "mlt_merge_overlapping_tcs": true,
         "mlt_send_timed_out_tds": true,
+        "mlt_use_readout_map": false,
         "mlt_td_readout_map": {
             "c0": {
                 "candidate_type": 0,
@@ -202,10 +196,18 @@
                 "time_before": 1000
             }
         },
-        "mlt_trigger_bitwords": [],
         "mlt_use_bitwords": false,
-        "mlt_use_readout_map": false,
+        "mlt_trigger_bitwords": [],
+        "mlt_use_roi_readout": false,
+        "mlt_roi_conf": [
+            {
+                "groups_selection_mode": "kRandom",
+                "number_of_link_groups": 1,
+                "probability": 0.8,
+                "time_window": 1000
+            },
         "tolerate_incompleteness": false,
+        "completeness_tolerance": 1,
         "trigger_activity_config": {
             "adc_threshold": 10000,
             "adj_tolerance": 4,
@@ -237,6 +239,17 @@
         "trigger_window_before_ticks": 1000,
         "ttcm_s1": 1,
         "ttcm_s2": 2,
-        "use_custom_maker": false
+        "use_custom_maker": false,
+        "ctcm_trigger_intervals": [
+            10000000
+        ],
+        "ctcm_trigger_types": [
+            4
+        ],
+        "ctcm_timestamp_method": "kSystemClock",
+        "use_random_maker": false,
+        "rtcm_trigger_interval_ticks": 62500000,
+        "rtcm_timestamp_method": "kSystemClock",
+        "rtcm_time_distribution": "kUniform"
     }
 }
