@@ -157,10 +157,13 @@ def get_trigger_app(
     CHANNEL_MAP_NAME = detector.tpc_channel_map
     DATA_REQUEST_TIMEOUT=trigger_data_request_timeout
     HOST=trigger.host_trigger
-  
-    # Generate schema for the maker plugins on the fly in the temptypes module
-    make_moo_record(ACTIVITY_CONFIG , 'ActivityConf' , 'temptypes')
-    make_moo_record(CANDIDATE_CONFIG, 'CandidateConf', 'temptypes')
+    
+    # Generate schema for each of the maker plugins on the fly in the temptypes module
+    num_algs = len(ACTIVITY_PLUGIN)
+    for j in range(num_algs):
+        make_moo_record(ACTIVITY_CONFIG[j] , 'ActivityConf' , 'temptypes')
+        make_moo_record(CANDIDATE_CONFIG[j], 'CandidateConf', 'temptypes')
+
     import temptypes
 
     # How many clock ticks are there in a _wall clock_ second?
@@ -197,24 +200,28 @@ def get_trigger_app(
 
     
     if len(TP_SOURCE_IDS) > 0:        
-        config_tcm =  tcm.Conf(candidate_maker=CANDIDATE_PLUGIN,
-                               candidate_maker_config=temptypes.CandidateConf(**CANDIDATE_CONFIG))
-
+        cm_configs = []
+        # Get a list of TCMaker configs if more than one exists:
+        for j, cm_conf in enumerate(CANDIDATE_CONFIG):
+            cm_configs.append(tcm.Conf(candidate_maker=CANDIDATE_PLUGIN[j],
+                                       candidate_maker_config=temptypes.CandidateConf(CANDIDATE_CONFIG[j])))
+    
         # (PAR 2022-06-09) The max_latency_ms here should be kept
         # larger than the corresponding value in the upstream
         # TPZippers. See comment below for more details
-        modules += [DAQModule(name = 'tazipper',
+        for j, cm_config in enumerate(cm_configs):
+            modules += [DAQModule(name = f'tazipper_{j}',
                               plugin = 'TAZipper',
                               conf = tzip.ConfParams(cardinality=len(TA_SOURCE_IDS),
                                                      max_latency_ms=1000,
                                                      element_id=TC_SOURCE_ID["source_id"])),
-                    DAQModule(name = 'tcm',
+                        DAQModule(name = f'tcm_{j}',
                               plugin = 'TriggerCandidateMaker',
-                              conf = config_tcm),
+                              conf = tcm.Conf(candidate_maker=CANDIDATE_PLUGIN[j],
+                                     candidate_maker_config=temptypes.CandidateConf(CANDIDATE_CONFIG[j]))),
 
-                    DAQModule(name = 'tctee_chain',
-                              plugin = 'TCTee'),
-                    ]
+                        DAQModule(name = f'tctee_chain_{j}',
+                              plugin = 'TCTee'),]
 
         # Make one heartbeatmaker per link
         for tp_sid in TP_SOURCE_IDS:
@@ -227,11 +234,8 @@ def get_trigger_app(
                                                            keep_collection=True,
                                                            keep_induction=True))]
             modules += [DAQModule(name = f'tpsettee_{link_id}',
-                                  plugin = 'TPSetTee'),
-#                        DAQModule(name = f'heartbeatmaker_{link_id}',
-#                                  plugin = 'FakeTPCreatorHeartbeatMaker',
-#                                  conf = heartbeater.Conf(heartbeat_interval=ticks_per_wall_clock_s//100))]
-                       ]
+                                  plugin = 'TPSetTee')]
+
             # 1 buffer per TPG channel
             modules += [DAQModule(name = f'buf_{link_id}',
                                   plugin = 'TPBuffer',
@@ -246,7 +250,7 @@ def get_trigger_app(
                                                                                                              stream_buffer_size = 8388608,
                                                                                                              request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                                              enable_raw_recording = False)))]
-
+        
         for region_id, ta_conf in TA_SOURCE_IDS.items():
                 # (PAR 2022-06-09) The max_latency_ms here should be
                 # kept smaller than the corresponding value in the
@@ -280,27 +284,20 @@ def get_trigger_app(
                 # delays etc, the delayed TPSets's TAs _may_ arrive at
                 # the TAZipper tardily. With tpzipper.max_latency_ms <
                 # tazipper.max_latency_ms, everything should be fine.
-                modules += [
-                            #DAQModule(name = f'zip_{region_id}',
-                            #          plugin = 'TPZipper',
-                            #                  conf = tzip.ConfParams(cardinality=len(TP_SOURCE_IDS)/len(TA_SOURCE_IDS),
-                            #                                         max_latency_ms=100,
-                            #                                         element_id=ta_conf["source_id"],
-                            #                                         # Need to find out where to specify these"
-                            #                                         tolerate_incompleteness=TOLERATE_INCOMPLETENESS,
-                            #                                         completeness_tolerance=COMPLETENESS_TOLERANCE)),
-                                    
-                            DAQModule(name = f'tam_{region_id}',
-                                      plugin = 'TriggerActivityMaker',
-                                      conf = tam.Conf(activity_maker=ACTIVITY_PLUGIN,
-                                                      geoid_element=region_id,  # 2022-02-02 PL: Same comment as above
-                                                      window_time=10000,  # GLM: TO BE REMOVED 
-                                                      buffer_time=10*ticks_per_wall_clock_s//1000, # 10 wall-clock ms
-                                                      activity_maker_config=temptypes.ActivityConf(**ACTIVITY_CONFIG))),
 
-                            DAQModule(name = f'tasettee_region_{region_id}',
-                                      plugin = "TASetTee"),
-                            
+                # Add a TAMaker for each one and it's config supplied, additionally add a TASetTee:
+                for j, tamaker in enumerate(ACTIVITY_PLUGIN):
+                    modules += [DAQModule(name = f'tam_{region_id}_{j}',
+                                          plugin = 'TriggerActivityMaker',
+                                          conf = tam.Conf(activity_maker=tamaker,
+                                                          geoid_element=region_id,  # 2022-02-02 PL: Same comment as above
+                                                          window_time=10000,  # should match whatever makes TPSets, in principle
+                                                          buffer_time=10*ticks_per_wall_clock_s//1000, # 10 wall-clock ms
+                                                          activity_maker_config=temptypes.ActivityConf(ACTIVITY_CONFIG[j]))),
+                                DAQModule(name = f'tasettee_region_{region_id}_{j}', plugin = "TASetTee")]
+
+                # Add the zippers and TABuffers, independant of the number of algorithms we want to run concurrently.
+                modules += [
                             DAQModule(name = f'ta_buf_region_{region_id}',
                                       plugin = 'TABuffer',
                                       # PAR 2022-04-20 Not sure what to set the element id to so it doesn't collide with the region/element used by TP buffers. Make it some big number that shouldn't already be used by the TP buffer
@@ -315,6 +312,10 @@ def get_trigger_app(
                                                                                                                  stream_buffer_size = 8388608,
                                                                                                                  request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                                                  enable_raw_recording = False)))]
+
+                if(num_algs > 1):
+                    modules += [DAQModule(name = f'tpsettee_ma_{region_id}',
+                                          plugin = 'TPSetTee'),]
 
         
     if USE_HSI_INPUT:
@@ -403,32 +404,41 @@ def get_trigger_app(
         mgraph.connect_modules("tctee_rtcm.output2",  "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf", size_hint=1000)
 
     if len(TP_SOURCE_IDS) > 0:
-        mgraph.connect_modules("tazipper.output", "tcm.input", data_type="TASet", size_hint=1000)
+        for j in range(num_algs):
+            mgraph.connect_modules(f"tazipper_{j}.output", f"tcm_{j}.input", data_type="TASet", size_hint=1000)
 
         for tp_sid,tp_conf in TP_SOURCE_IDS.items():
             link_id = f'tplink{tp_sid}'
             if USE_CHANNEL_FILTER:
                 mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', data_type="TPSet", size_hint=1000)
 
-            #mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'heartbeatmaker_{link_id}.tpset_source', data_type="TPSet", size_hint=1000)
-            mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'tam_{tp_conf.region_id}.input', data_type="TPSet", size_hint=1000)
+            if(num_algs > 1):
+                mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'tpsettee_ma_{tp_conf.region_id}.input', data_type="TPSet", size_hint=1000)
+            else:
+                mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'tam_{tp_conf.region_id}_0.input', data_type="TPSet", size_hint=1000)
             mgraph.connect_modules(f'tpsettee_{link_id}.output2', f'buf_{link_id}.tpset_source',data_type="TPSet", size_hint=1000)
 
-            #mgraph.connect_modules(f'heartbeatmaker_{link_id}.tpset_sink', f"zip_{tp_conf.region_id}.input","TPSet", f"{tp_conf.region_id}_tpset_q", size_hint=1000)
-
-        #for region_id in TA_SOURCE_IDS.keys():
-        #    mgraph.connect_modules(f'zip_{region_id}.output', f'tam_{region_id}.input', "TPSet", size_hint=1000)
-        # Use connect_modules to connect up the Tees to the buffers/MLT,
-        # as manually adding Queues doesn't give the desired behaviour
-        mgraph.connect_modules("tcm.output",          "tctee_chain.input",           "TriggerCandidate", "chain_input", size_hint=1000)
-        mgraph.connect_modules("tctee_chain.output1", "mlt.trigger_candidate_input","TriggerCandidate", "tcs_to_mlt",  size_hint=1000)
-        mgraph.connect_modules("tctee_chain.output2", "tc_buf.tc_source",             "TriggerCandidate","tcs_to_buf",  size_hint=1000)
-
+        ## # Use connect_modules to connect up the Tees to the buffers/MLT,
+        ## # as manually adding Queues doesn't give the desired behaviour
 
         for region_id in TA_SOURCE_IDS.keys():
-            mgraph.connect_modules(f'tam_{region_id}.output',              f'tasettee_region_{region_id}.input',     data_type="TASet", size_hint=1000)
-            mgraph.connect_modules(f'tasettee_region_{region_id}.output1', f'tazipper.input', queue_name="tas_to_tazipper",     data_type="TASet", size_hint=1000)
-            mgraph.connect_modules(f'tasettee_region_{region_id}.output2', f'ta_buf_region_{region_id}.taset_source',data_type="TASet", size_hint=1000)
+            # Send the output of the new TPSetTee module to each of the activity makers
+            if(num_algs > 1):
+                for j in range(num_algs):
+                    mgraph.connect_modules(f'tpsettee_ma_{region_id}.output{j+1}', f'tam_{region_id}_{j}.input', "TPSet", size_hint=1000)
+
+        # For each TCMaker config applied, connect the TCMaker to it's copyer, then to the MLT and TCBuffer via that copyer.
+        for j in range(len(cm_configs)):
+            mgraph.connect_modules(f"tcm_{j}.output", f"tctee_chain_{j}.input", "TriggerCandidate", f"chain_input_{j}", size_hint=1000)
+            mgraph.connect_modules(f"tctee_chain_{j}.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",  size_hint=1000)
+            mgraph.connect_modules(f"tctee_chain_{j}.output2", "tc_buf.tc_source", "TriggerCandidate","tcs_to_buf", size_hint=1000)
+
+        # For each TAMaker applied, connect the makers output to it's copyer, then connect the copyer's output to the buffer and TAZipper
+        for region_id in TA_SOURCE_IDS.keys():
+            for j in range(num_algs):
+                mgraph.connect_modules(f'tam_{region_id}_{j}.output', f'tasettee_region_{region_id}_{j}.input', data_type="TASet", size_hint=1000)
+                mgraph.connect_modules(f'tasettee_region_{region_id}_{j}.output1', f'tazipper_{j}.input', queue_name=f"tas{j}_to_tazipper_{j}", data_type="TASet", size_hint=1000)
+                mgraph.connect_modules(f'tasettee_region_{region_id}_{j}.output2', f'ta_buf_region_{region_id}.taset_source',data_type="TASet", size_hint=1000)
 
     mgraph.add_endpoint("td_to_dfo", "mlt.td_output", "TriggerDecision", Direction.OUT, toposort=True)
     mgraph.add_endpoint("df_busy_signal", "mlt.dfo_inhibit_input", "TriggerInhibit", Direction.IN)
