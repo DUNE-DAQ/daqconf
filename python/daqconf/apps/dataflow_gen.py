@@ -38,7 +38,6 @@ def get_dataflow_app(
         FILE_LABEL="swtest",
         MAX_EXPECTED_TR_SEQUENCES=1,
         TRB_TIMEOUT=200,
-        HAS_DQM=False,
         SRC_GEO_ID_MAP='',
         DEBUG=False
     ):
@@ -118,10 +117,6 @@ def get_dataflow_app(
 
     for i in range(len(OUTPUT_PATHS)):
         mgraph.add_endpoint("triginh", f"datawriter_{i}.token_output", "TriggerDecisionToken", Direction.OUT, toposort=True)
-
-    if HAS_DQM:
-        mgraph.add_endpoint(f"trmon_dqm2df_{HOSTIDX}", "trb.mon_connection", "TRMonRequest", Direction.IN)
-        mgraph.add_endpoint(f"tr_df2dqm_{HOSTIDX}", None, "TriggerRecord", Direction.OUT)
 
     df_app = App(modulegraph=mgraph, host=HOST)
 

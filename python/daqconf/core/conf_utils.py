@@ -327,8 +327,7 @@ def make_system_connections(the_system, verbose=False, use_k8s=False, use_connec
                 if endpoint['app'] not in publisher_uids.keys(): publisher_uids[endpoint["app"]] = []
                 publisher_uids[endpoint["app"]] += [endpoint['endpoint'].external_name]
 
-        if len(subscribers) == 0 and check_endpoints:
-            raise ValueError(f"Data Type {topic} has no subscribers!")
+        ### previously also checked for subscribers (required some), no longer a requirement
         if len(publishers) == 0 and check_endpoints:
             raise ValueError(f"Data Type {topic} has no publishers!")
 
