@@ -352,7 +352,7 @@ class ReadoutAppGenerator:
             )
         
 
-    def add_data_paths(self, readout_app, data_file_map):
+    def add_data_volumes(self, readout_app, data_file_map):
 
         cfg = self.ro_cfg
 
@@ -377,7 +377,7 @@ class ReadoutAppGenerator:
                 'read_only': True,
             }]
 
-    def add_other_paths(readout_app, RU_DESCRIPTOR):
+    def add_volumes_resources(readout_app, RU_DESCRIPTOR):
         raise NotImplementedError("create_cardreader must be implemented in detived classes!")
 
     
@@ -479,11 +479,11 @@ class ReadoutAppGenerator:
         readout_app = App(mgraph, host=RU_DESCRIPTOR.host_name)
 
         # add patter datapaths
-        self.add_data_paths(readout_app, data_file_map)
+        self.add_data_volumes(readout_app, data_file_map)
 
 
         # add other datapaths
-        self.add_other_paths(readout_app, RU_DESCRIPTOR)
+        self.add_volumes_resources(readout_app, RU_DESCRIPTOR)
 
 
 
