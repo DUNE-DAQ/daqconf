@@ -82,6 +82,10 @@ class ReadoutAppGenerator:
         raise NotImplementedError("compute_data_types must be implemented in derived classes!")
         return [],[],[],[],[]
 
+    ###
+    # Create card readers
+    # "Abstract" method
+    ###
     def create_cardreader(self, RU_DESCRIPTOR, data_file_map):
 
         raise NotImplementedError("create_cardreader must be implemented in detived classes!")
@@ -348,6 +352,35 @@ class ReadoutAppGenerator:
             )
         
 
+    def add_data_volumes(self, readout_app, data_file_map):
+
+        cfg = self.ro_cfg
+
+        dir_names = set()
+
+        # Add data mountpoints
+        cvmfs = Path('/cvmfs')
+        ddf_path = Path(cfg.default_data_file)
+        if not cvmfs in ddf_path.parents:
+            dir_names.add(ddf_path.parent)
+
+        for file in data_file_map.values():
+            f = Path(file)
+            if not cvmfs in f.parents:
+                dir_names.add(f.parent)
+
+        for dir_idx, dir_name in enumerate(dir_names):
+            readout_app.mounted_dirs += [{
+                'name': f'data-file-{dir_idx}',
+                'physical_location': dir_name,
+                'in_pod_location':   dir_name,
+                'read_only': True,
+            }]
+
+    def add_volumes_resources(readout_app, RU_DESCRIPTOR):
+        raise NotImplementedError("create_cardreader must be implemented in detived classes!")
+
+    
     def generate(
             self,
             RU_DESCRIPTOR, 
@@ -445,25 +478,14 @@ class ReadoutAppGenerator:
         # Create the application
         readout_app = App(mgraph, host=RU_DESCRIPTOR.host_name)
 
-        dir_names = set()
+        # add patter datapaths
+        self.add_data_volumes(readout_app, data_file_map)
 
-        cvmfs = Path('/cvmfs')
-        ddf_path = Path(cfg.default_data_file)
-        if not cvmfs in ddf_path.parents:
-            dir_names.add(ddf_path.parent)
 
-        for file in data_file_map.values():
-            f = Path(file)
-            if not cvmfs in f.parents:
-                dir_names.add(f.parent)
+        # add other datapaths
+        self.add_volumes_resources(readout_app, RU_DESCRIPTOR)
 
-        for dir_idx, dir_name in enumerate(dir_names):
-            readout_app.mounted_dirs += [{
-                'name': f'data-file-{dir_idx}',
-                'physical_location': dir_name,
-                'in_pod_location':   dir_name,
-                'read_only': True,
-            }]
+
 
         # All done
         return readout_app
