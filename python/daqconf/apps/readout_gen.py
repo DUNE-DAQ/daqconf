@@ -377,7 +377,7 @@ class ReadoutAppGenerator:
                 'read_only': True,
             }]
 
-    def add_volumes_resources(readout_app, RU_DESCRIPTOR):
+    def add_volumes_resources(self, readout_app, RU_DESCRIPTOR):
         raise NotImplementedError("create_cardreader must be implemented in detived classes!")
 
     
