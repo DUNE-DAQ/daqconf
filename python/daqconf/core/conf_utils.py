@@ -612,7 +612,7 @@ def generate_boot(
     ]
 
     app_env = {
-        "TRACE_FILE": "getenv:/tmp/trace_buffer_{APP_HOST}_{DUNEDAQ_PARTITION}",
+        "TRACE_FILE": "getenv:/tmp/trace_buffer_{APP_HOST}_{DUNEDAQ_PARTITION}" if boot_conf.process_manager == 'ssh' else "getenv:/tmp/trace-buffers/trace_buffer_{APP_HOST}_{DUNEDAQ_PARTITION}",
         "CMD_FAC": "rest://localhost:{APP_PORT}",
         "CONNECTION_SERVER": resolve_localhost(boot_conf.connectivity_service_host),
         "CONNECTION_PORT": f"{boot_conf.connectivity_service_port}",
