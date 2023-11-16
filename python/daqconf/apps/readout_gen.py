@@ -134,7 +134,6 @@ class ReadoutAppGenerator:
                             latencybufferconf= rconf.LatencyBufferConf(
                                 latency_buffer_alignment_size = default_latency_buffer_alignment_size,
                                 latency_buffer_size = cfg.latency_buffer_size,
-                                source_id =  stream.src_id,
                                 latency_buffer_numa_aware = LATENCY_BUFFER_NUMA_AWARE,
                                 latency_buffer_numa_node = NUMA_ID,
                                 latency_buffer_preallocation = LATENCY_BUFFER_ALLOCATION_MODE,
@@ -142,6 +141,7 @@ class ReadoutAppGenerator:
                             ),
                             rawdataprocessorconf= rconf.RawDataProcessorConf(
                                 emulator_mode = cfg.emulator_mode,
+                                source_id =  stream.src_id,
                                 crate_id = geo_id.crate_id, 
                                 slot_id = geo_id.slot_id, 
                                 link_id = geo_id.stream_id
@@ -248,8 +248,7 @@ class ReadoutAppGenerator:
                                     source_id = tpset_sid
                                 ),
                                 latencybufferconf = rconf.LatencyBufferConf(
-                                    latency_buffer_size = default_latency_buffer_size,
-                                    source_id =  tpset_sid
+                                    latency_buffer_size = default_latency_buffer_size
                                 ),
                                 rawdataprocessorconf = rconf.RawDataProcessorConf(enable_tpg = False),
                                 requesthandlerconf= rconf.RequestHandlerConf(
