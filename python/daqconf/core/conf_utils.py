@@ -185,7 +185,7 @@ def add_one_command_data(command_data, command, default_params, app):
 def make_queue_connection(the_system, app, endpoint_name, data_type, in_apps, out_apps, size, type_hint, verbose):
     spsc_type_map = {
         'std': 'kFollySPSCQueue',
-        'perf': 'kSPSCFollyQueue'
+        'perf': 'kFollyHPSPSCQueue'
     }
 
     conn_id = conn.ConnectionId(uid=endpoint_name, data_type=data_type)
