@@ -191,7 +191,7 @@ class ModuleGraph:
         
         raise KeyError(f"Failed to remove endpoint {external_name} - not found")
 
-    def connect_modules(self, push_addr:str, pop_addr:str, data_type:str, queue_name:str = "", size_hint:int = 10, toposort = True):
+    def connect_modules(self, push_addr:str, pop_addr:str, data_type:str, queue_name:str = "", size_hint:int = 10, toposort = True, type_hint="std"):
         queue_start = push_addr.split(".")
         queue_end = pop_addr.split(".")
         if len(queue_start) < 2 or queue_start[0] not in self.module_names():
@@ -201,7 +201,7 @@ class ModuleGraph:
             raise RuntimeError(f"connect_modules called with invalid parameters. pop_addr ({pop_addr}) must be of form <module>.<internal name>, and the module must already be in the module graph!")
 
         if queue_name == "":
-            self.queues.append(Queue(push_addr, pop_addr, data_type, push_addr + "_to_" + pop_addr, size_hint, toposort))
+            self.queues.append(Queue(push_addr, pop_addr, data_type, push_addr + "_to_" + pop_addr, size=size_hint, type_hint=type_hint, toposort=toposort))
         else:
             existing_queue = False
             for queue in self.queues:
@@ -209,7 +209,7 @@ class ModuleGraph:
                     queue.add_module_link(push_addr, pop_addr)
                     existing_queue = True
             if not existing_queue:
-                self.queues.append(Queue(push_addr, pop_addr, data_type, queue_name, size_hint, toposort))
+                self.queues.append(Queue(push_addr, pop_addr, data_type, queue_name, size=size_hint, type_hint=type_hint, toposort=toposort))
 
     def endpoint_names(self, inout=None):
         if inout is not None:

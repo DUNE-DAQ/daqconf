@@ -68,10 +68,11 @@ class Endpoint:
     #     self.direction = Direction.IN
 
 class Queue:
-    def __init__(self, push_module:str, pop_module:str, data_type:str, name:str = None, size=10, toposort=False):
+    def __init__(self, push_module:str, pop_module:str, data_type:str, name:str = None, size=10, toposort=False, type_hint="std"):
         self.name = name
         self.data_type = data_type
         self.size = size
+        self.type_hint = type_hint
         self.push_modules = [push_module]
         self.pop_modules = [pop_module]
         self.toposort = toposort
@@ -181,12 +182,20 @@ def add_one_command_data(command_data, command, default_params, app):
 
     command_data[command] = acmd(mod_and_params)
 
-def make_queue_connection(the_system, app, endpoint_name, data_type, in_apps, out_apps, size, verbose):
+def make_queue_connection(the_system, app, endpoint_name, data_type, in_apps, out_apps, size, type_hint, verbose):
+    spsc_type_map = {
+        'std': 'kFollySPSCQueue',
+        'perf': 'kSPSCFollyQueue'
+    }
+
     conn_id = conn.ConnectionId(uid=endpoint_name, data_type=data_type)
     if len(in_apps) == 1 and len(out_apps) == 1:
+
+        if type_hint not in spsc_type_map:
+            raise ValueError(f"Queue type hint {type_hint} unknown, expected: {', '.join(spsc_type_map)}")
         if verbose:
-            console.log(f"Queue {endpoint_name}, SPSC Queue (data_type={data_type}, size={size})")
-        the_system.queues[app] += [conn.QueueConfig(id=conn_id, queue_type="kFollySPSCQueue", capacity=size)]
+            console.log(f"Queue '{endpoint_name}', SPSC Queue (data_type={data_type}, size={size}, type={spsc_type_map[type_hint]}")
+        the_system.queues[app] += [conn.QueueConfig(id=conn_id, queue_type=spsc_type_map[type_hint], capacity=size)]
     else:
         if verbose:
             console.log(f"Queue {endpoint_name}, MPMC Queue (data_type={data_type}, size={size})")
@@ -229,20 +238,20 @@ def make_system_connections(the_system, verbose=False, use_k8s=False, use_connec
     topic_map = defaultdict(list)
 
     for app in the_system.apps:
-      the_system.connections[app] = []
-      the_system.queues[app] = []
-      for queue in the_system.apps[app].modulegraph.queues:
-            make_queue_connection(the_system, app, queue.name, queue.data_type, queue.push_modules, queue.pop_modules, queue.size, verbose)
-      for endpoint in the_system.apps[app].modulegraph.endpoints:
-        if not endpoint.is_pubsub:
-            if verbose:
-                console.log(f"Adding endpoint {endpoint.external_name}, app {app}, direction {endpoint.direction}")
-            endpoint_map[endpoint.external_name] += [{"app": app, "endpoint": endpoint}]
-            uids.append(endpoint.external_name)
-        else:
-            if verbose:
-                console.log(f"Getting topics for endpoint {endpoint.external_name}, app {app}, direction {endpoint.direction}")
-            topic_map[endpoint.data_type] += [{"app": app, "endpoint": endpoint}]
+        the_system.connections[app] = []
+        the_system.queues[app] = []
+        for queue in the_system.apps[app].modulegraph.queues:
+            make_queue_connection(the_system, app, queue.name, queue.data_type, queue.push_modules, queue.pop_modules, queue.size, queue.type_hint, verbose)
+        for endpoint in the_system.apps[app].modulegraph.endpoints:
+            if not endpoint.is_pubsub:
+                if verbose:
+                    console.log(f"Adding endpoint {endpoint.external_name}, app {app}, direction {endpoint.direction}")
+                endpoint_map[endpoint.external_name] += [{"app": app, "endpoint": endpoint}]
+                uids.append(endpoint.external_name)
+            else:
+                if verbose:
+                    console.log(f"Getting topics for endpoint {endpoint.external_name}, app {app}, direction {endpoint.direction}")
+                topic_map[endpoint.data_type] += [{"app": app, "endpoint": endpoint}]
 
     for topic in topic_map.keys():
         if topic in uids:
@@ -255,7 +264,8 @@ def make_system_connections(the_system, verbose=False, use_k8s=False, use_connec
         check_endpoints = endpoints[0]["endpoint"].check_endpoints
         in_apps = []
         out_apps = []
-        size = 0
+        queue_size = 0
+        queue_type='std'
         data_type = endpoints[0]["endpoint"].data_type
         for endpoint in endpoints:
             direction = endpoint['endpoint'].direction
@@ -263,8 +273,8 @@ def make_system_connections(the_system, verbose=False, use_k8s=False, use_connec
                 in_apps += [endpoint["app"]]
             else:
                 out_apps += [endpoint["app"]]
-            if endpoint['endpoint'].size_hint > size:
-                size = endpoint['endpoint'].size_hint
+            if endpoint['endpoint'].size_hint > queue_size:
+                queue_size = endpoint['endpoint'].size_hint
 
         if len(in_apps) == 0 and check_endpoints:
             raise ValueError(f"Connection with name {endpoint_name} has no consumers!")
@@ -275,7 +285,7 @@ def make_system_connections(the_system, verbose=False, use_k8s=False, use_connec
             if len(in_apps) > 0:
                 make_network_connection(the_system, endpoint_name, data_type, in_apps, out_apps, verbose, use_k8s=use_k8s, use_connectivity_service=use_connectivity_service)
         elif all(first_app == elem["app"] for elem in endpoints):
-            make_queue_connection(the_system, first_app, endpoint_name, data_type, in_apps, out_apps, size, verbose)
+            make_queue_connection(the_system, first_app, endpoint_name, data_type, in_apps, out_apps, queue_size, queue_type, verbose=verbose)
         elif len(in_apps) == len(out_apps):
             paired_exactly = False
             if len(set(in_apps)) == len(in_apps) and len(set(out_apps)) == len(out_apps):
@@ -290,7 +300,7 @@ def make_system_connections(the_system, verbose=False, use_k8s=False, use_connec
                         for app_endpoint in the_system.apps[in_app].modulegraph.endpoints:
                             if app_endpoint.external_name == endpoint_name:
                                 app_endpoint.external_name = f"{in_app}.{endpoint_name}"
-                        make_queue_connection(the_system,in_app, f"{in_app}.{endpoint_name}", data_type, [in_app], [in_app], size, verbose)
+                        make_queue_connection(the_system,in_app, f"{in_app}.{endpoint_name}", data_type, [in_app], [in_app], queue_size, queue_type, verbose=verbose)
 
             if paired_exactly == False:
                 make_network_connection(the_system, endpoint_name, data_type, in_apps, out_apps, verbose, use_k8s=use_k8s, use_connectivity_service=use_connectivity_service)
