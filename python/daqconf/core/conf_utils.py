@@ -744,6 +744,7 @@ def generate_boot(
                     "--workers=1",
                     "--worker-class=gthread",
                     f"--threads={boot_conf.connectivity_service_threads}",
+                    "--graceful-timeout=0",
                     "--timeout=0",
                     "--pid={APP_NAME}_{APP_PORT}.pid",
                     "connection-service.connection-flask:app"
