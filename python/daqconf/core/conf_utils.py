@@ -612,7 +612,7 @@ def generate_boot(
     ]
 
     app_env = {
-        "TRACE_FILE": "getenv:/tmp/trace_buffer_{APP_HOST}_{DUNEDAQ_PARTITION}",
+        "TRACE_FILE": "getenv:/tmp/trace_buffer_{APP_HOST}_{DUNEDAQ_PARTITION}" if boot_conf.process_manager == 'ssh' else "getenv:/tmp/trace-buffers/trace_buffer_{APP_HOST}_{DUNEDAQ_PARTITION}",
         "CMD_FAC": "rest://localhost:{APP_PORT}",
         "CONNECTION_SERVER": resolve_localhost(boot_conf.connectivity_service_host),
         "CONNECTION_PORT": f"{boot_conf.connectivity_service_port}",
@@ -744,6 +744,7 @@ def generate_boot(
                     "--workers=1",
                     "--worker-class=gthread",
                     f"--threads={boot_conf.connectivity_service_threads}",
+                    "--graceful-timeout=0",
                     "--timeout=0",
                     "--pid={APP_NAME}_{APP_PORT}.pid",
                     "connection-service.connection-flask:app"
