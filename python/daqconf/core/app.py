@@ -254,6 +254,8 @@ class App:
         self.resources = {}
         self.pod_affinity = []
         self.pod_anti_affinity = []
+        self.pod_privileged = False
+        self.pod_capabilities = []
 
     def reset_graph(self):
         if self.modulegraph:

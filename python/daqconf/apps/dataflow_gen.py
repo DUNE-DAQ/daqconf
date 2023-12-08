@@ -29,23 +29,29 @@ from daqconf.core.conf_utils import Direction
 # Time to wait on pop()
 QUEUE_POP_WAIT_MS = 100
 
-def get_dataflow_app(HOSTIDX=0,
-                     OUTPUT_PATHS=["."],
-                     APP_NAME="dataflow0",
-                     OPERATIONAL_ENVIRONMENT="swtest",
-                     FILE_LABEL="swtest",
-                     DATA_STORE_MODE='all-per-file',
-                     MAX_FILE_SIZE=4*1024*1024*1024,
-                     MAX_TRIGGER_RECORD_WINDOW=0,
-                     MAX_EXPECTED_TR_SEQUENCES=1,
-                     TOKEN_COUNT=10,
-                     TRB_TIMEOUT=200,
-                     HOST="localhost",
-                     HAS_DQM=False,
-                     SRC_GEO_ID_MAP='',
-                     DEBUG=False):
+def get_dataflow_app(
+        df_config,
+        dataflow,
+        detector,
+        HOSTIDX=0,
+        APP_NAME="dataflow0",
+        FILE_LABEL="swtest",
+        MAX_EXPECTED_TR_SEQUENCES=1,
+        TRB_TIMEOUT=200,
+        SRC_GEO_ID_MAP='',
+        DEBUG=False
+    ):
 
     """Generate the json configuration for the readout and DF process"""
+
+    OUTPUT_PATHS = df_config.output_paths
+    OPERATIONAL_ENVIRONMENT = detector.op_env
+    DATA_STORE_MODE=df_config.data_store_mode
+    MAX_FILE_SIZE = df_config.max_file_size
+    MAX_TRIGGER_RECORD_WINDOW = df_config.max_trigger_record_window
+    TOKEN_COUNT = dataflow.token_count
+    HOST=df_config.host_df
+
 
     modules = []
     queues = []
@@ -112,10 +118,14 @@ def get_dataflow_app(HOSTIDX=0,
     for i in range(len(OUTPUT_PATHS)):
         mgraph.add_endpoint("triginh", f"datawriter_{i}.token_output", "TriggerDecisionToken", Direction.OUT, toposort=True)
 
-    if HAS_DQM:
-        mgraph.add_endpoint(f"trmon_dqm2df_{HOSTIDX}", "trb.mon_connection", "TRMonRequest", Direction.IN)
-        mgraph.add_endpoint(f"tr_df2dqm_{HOSTIDX}", None, "TriggerRecord", Direction.OUT)
-
     df_app = App(modulegraph=mgraph, host=HOST)
 
+
+    df_app.mounted_dirs += [{
+                'name': f'raw-data-{i}',
+                'physical_location': opath,
+                'in_pod_location': opath,
+                'read_only': False,
+            } for i,opath in enumerate(set(OUTPUT_PATHS))]
+    
     return df_app

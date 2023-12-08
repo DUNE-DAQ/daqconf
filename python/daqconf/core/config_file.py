@@ -2,14 +2,13 @@ import os
 import math
 import sys
 import glob
-import rich.traceback
-from rich.console import Console
+# from rich.console import Console
 from collections import defaultdict
 from os.path import exists, join
-import random
-import string
+import json
+from pathlib import Path
+from . console import console
 
-console = Console()
 # Set moo schema search path
 from dunedaq.env import get_moo_model_path
 import moo.io
@@ -19,6 +18,48 @@ moo.io.default_load_path = get_moo_model_path()
 # Load configuration types
 import moo.otypes
 import moo.oschema
+
+
+class ConfigSet:
+
+ 
+    def get(self,conf):
+        if conf in self.confs:
+            return self.confs[conf]
+        else:
+            myconf = self.base_config
+            for pname, pval in self.full_input[conf]:
+                myconf[pname] = pval
+            return myconf
+
+    def create_all_configs(self):
+        for cname, pars in self.full_input.items():
+            if(cname==self.base_name): continue
+            self.confs[cname] = dict(self.base_config)
+            for pname, pval in pars.items():
+                self.confs[cname][pname] = pval
+                
+    def get_all_configs(self):
+        return self.confs
+
+    def list_all_configs(self):
+        print(self.confs.keys())
+
+    def __init__(self,conf_file,base_name='common'):
+
+        self.base_name = base_name
+        with open(conf_file,"r+") as f:
+            self.full_input = json.load(f)
+
+        try:
+            self.base_config = self.full_input[self.base_name]
+        except KeyError as e:
+            print(f"No '{self.base_name}' config in {conf_file}.")
+            raise e
+
+        self.confs = {self.base_name: self.base_config}
+        self.create_all_configs()
+
 
 def _strict_recursive_update(dico1, dico2):
     for k, v in dico2.items():
@@ -37,70 +78,70 @@ def _strict_recursive_update(dico1, dico2):
             dico1[k] = v
     return dico1
 
+
 def parse_json(filename, schemed_object):
     console.log(f"Parsing config json file {filename}")
 
-    with open(filename, 'r') as f:
+    filepath = Path(filename)
+    # basepath = filepath.parent
+
+    # First pass, load the main json file
+    with open(filepath, 'r') as f:
         try:
-            import json
-            try:
-                new_parameters = json.load(f)
-                # Validate the heck out of this but that doesn't change the object itself (ARG)
-                _strict_recursive_update(schemed_object.pod(), new_parameters)
-                # now its validated, update the object with moo
-                schemed_object.update(new_parameters)
-            except Exception as e:
-                raise RuntimeError(f'Couldn\'t update the object {schemed_object} with the file {filename},\nError: {e}')
+            new_parameters = json.load(f)
         except Exception as e:
-            raise RuntimeError(f"Couldn't parse {filename}, error: {str(e)}")
-        return schemed_object
+            raise RuntimeError(f"Couldn't parse {filepath}, error: {str(e)}")
+        
+    # second pass, look for references
+    subkeys = [ k for k,v in schemed_object.pod().items() if isinstance(v,dict) ]
+    for k in new_parameters:
+        # look for keys that are associated to dicts in the schemed_obj but here are strings
+        v = new_parameters[k]
 
-    raise RuntimeError(f"Couldn't find file {filename}")
-
-
-# def _recursive_section(sections, data):
-#     if len(sections) == 1:
-#         d = data
-#         for k,v in d.items():
-#             if v == "true" or v == "True":
-#                 d[k] = True
-#             if v == "false" or v == "False":
-#                 d[k] = False
-#         return {sections[0]: d}
-#     else:
-#         return {sections[0]: _recursive_section(sections[1:], data)}
-
-# def parse_ini(filename, schemed_object):
-#     console.log(f"Parsing config ini file {filename}")
-
-#     import configparser
-#     config = configparser.ConfigParser()
-#     try:
-#         config.read(filename)
-#     except Exception as e:
-#         raise RuntimeError(f"Couldn't parse {filename}, error: {str(e)}")
-
-#     config_dict = {}
-
-#     for sect in config.sections():
-#         sections = sect.split('.')
-#         data = {k:v for k,v in config.items(sect)}
-#         if sections[0] in config_dict:
-#             config_dict[sections[0]].update(_recursive_section(sections, data)[sections[0]])
-#         else:
-#             config_dict[sections[0]] = _recursive_section(sections, data)[sections[0]]
-
-#     try:
-#         new_parameters = config_dict
-#         # validate the heck out of this but that doesn't change the object itself (ARG)
-#         _strict_recursive_update(schemed_object.pod(), new_parameters)
-#         # now its validated, update the object with moo
-#         schemed_object.update(new_parameters)
-#         return schemed_object
-#     except Exception as e:
-#         raise RuntimeError(f'Couldn\'t update the object {schemed_object} with the file {filename},\nError: {e}')
+        if isinstance(v,str) and k in subkeys:
+        
+            # It's a string! It's a reference! Try loading it
+            subfile_path = Path(os.path.expandvars(v)).expanduser()
+            if not subfile_path.is_absolute():
+                subfile_path = filepath.parent / subfile_path
+            if not subfile_path.exists():
+                raise RuntimeError(f'Cannot find the file {v} ({subfile_path})')
+        
+            console.log(f"Detected subconfiguration for {k} {v} - loading {subfile_path}")
+            with open(subfile_path, 'r') as f:
+                try:
+                    new_subpars = json.load(f)
+                except Exception as e:
+                    raise RuntimeError(f"Couldn't parse {subfile_path}, error: {str(e)}")
+                new_parameters[k] = new_subpars
+            
+        elif '<defaults>' in v:
+            cname = k
+            pars = v['<defaults>']
+            scname = pars['config_name']
+            scfile = pars['config_file'] if 'config_file' in pars else f'{cname}_configs.json'
+            scbase = pars['config_base'] if 'config_base' in pars else 'common'
 
 
+            scfile = Path(os.path.expandvars(scfile)).expanduser()
+            if not scfile.is_absolute():
+                scfile = filepath.parent / scfile
+
+            if not scfile.exists():
+                raise RuntimeError(f'Cannot find the file {v} ({scfile})')
+
+            scset = ConfigSet(scfile,scbase)
+            new_parameters[k] = scset.get(scname)
+
+    try:
+        # Validate the heck out of this but that doesn't change the object itself (ARG)
+        _strict_recursive_update(schemed_object.pod(), new_parameters)
+        # now its validated, update the object with moo
+        schemed_object.update(new_parameters)
+    except Exception as e:
+        raise RuntimeError(f'Couldn\'t update the object {schemed_object} with the file {filename},\nError: {e}')
+
+    return schemed_object
 
 
 def parse_config_file(filename, configurer_conf):
@@ -145,7 +186,16 @@ def generate_cli_from_schema(schema_file, schema_object_name, *args): ## doh
         module_name = schema_file.replace('.jsonnet', '').replace('/', '.')
         config_module = importlib.import_module(f'dunedaq.{module_name}')
         schema_object = getattr(config_module, schema_object_name)
-        extra_schemas = [getattr(config_module, obj)() for obj in args]
+        extra_schemas = []
+        for obj_name in args:
+            if '.' in obj_name:
+                i = obj_name.rfind('.')
+                ex_module_name, ex_schema_object_name = obj_name[:i], obj_name[i+1:]
+                extra_module = importlib.import_module(f'dunedaq.{ex_module_name}')
+                extra_schemas += [getattr(extra_module, ex_schema_object_name)()]
+            else:
+                # extra_schemas = [getattr(config_module, obj)() for obj in args]
+                extra_schemas = [getattr(config_module, obj_name)()]
 
         def configure(ctx, param, filename):
             return parse_config_file(filename, schema_object())
