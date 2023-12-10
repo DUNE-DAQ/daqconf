@@ -36,7 +36,7 @@ from daqconf.core.daqmodule import DAQModule
 from daqconf.core.conf_utils import Direction, Queue
 from daqconf.core.sourceid import TAInfo, TPInfo, TCInfo
 
-from trgdataformats import TriggerBits as trgbs
+import trgdataformats
 
 #FIXME maybe one day, triggeralgs will define schemas... for now allow a dictionary of 4byte int, 4byte floats, and strings
 moo.otypes.make_type(schema='number', dtype='i4', name='temp_integer', path='temptypes')
@@ -62,8 +62,7 @@ def make_moo_record(conf_dict,name,path='temptypes'):
 
 #===============================================================================
 def get_buffer_conf(source_id, data_request_timeout):
-    return bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 10_000_000,
-                                                                             source_id = source_id),
+    return bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 10_000_000),
                            requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = 10_000_000,
                                                                                pop_limit_pct = 0.8,
                                                                                pop_size_pct = 0.1,
@@ -83,7 +82,7 @@ def get_trigger_bitwords(bitwords):
     for bitword in bitwords:
         tmp_bits = []
         for bit_name in bitword:
-            bit_value = trgbs.string_to_fragment_type_value(bit_name)
+            bit_value = trgdataformats.string_to_fragment_type_value(bit_name)
             if bit_value == 0:
                 raise RuntimeError(f'One (or more) of provided MLT trigger bitwords is unknown! Please recheck the names...')
             else:
@@ -239,8 +238,7 @@ def get_trigger_app(
             # 1 buffer per TPG channel
             modules += [DAQModule(name = f'buf_{link_id}',
                                   plugin = 'TPBuffer',
-                                  conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 1_000_000,
-                                                                                                           source_id = tp_sid),
+                                  conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 1_000_000),
                                                          requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = 1_000_000,
                                                                                                              pop_limit_pct = 0.8,
                                                                                                              pop_size_pct = 0.1,
@@ -301,8 +299,7 @@ def get_trigger_app(
                             DAQModule(name = f'ta_buf_region_{region_id}',
                                       plugin = 'TABuffer',
                                       # PAR 2022-04-20 Not sure what to set the element id to so it doesn't collide with the region/element used by TP buffers. Make it some big number that shouldn't already be used by the TP buffer
-                                      conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 100_000,
-                                                                                                               source_id = ta_conf["source_id"]),
+                                      conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 100_000),
                                                              requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = 100_000,
                                                                                                                  pop_limit_pct = 0.8,
                                                                                                                  pop_size_pct = 0.1,
