@@ -245,6 +245,7 @@ class ReadoutAppGenerator:
                     conf = rconf.Conf(
                                 readoutmodelconf = rconf.ReadoutModelConf(
                                     source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
+                                    tpset_min_latency_ticks = self.ro_cfg.tpset_min_latency_ticks,
                                     source_id = tpset_sid
                                 ),
                                 latencybufferconf = rconf.LatencyBufferConf(
