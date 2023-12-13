@@ -205,8 +205,13 @@ def generate(bootfile, datafile, session_name, oks_controller):
           "APP_WD": os.getcwd(),
         }
         args = exec_args[cfg['exec']].format(**env_formatter)
+        
+        servicedal = dal.Service(f"{srv}-service",
+                                 protocol='tcp',
+                                 port=cfg['port'])
+        db.update_dal(servicedal)
         srvdal = dal.ConnectionService(srv,
-                                       port=cfg['port'],
+                                       exposes_service=[servicedal],
                                        application_name=exec_cmd[cfg['exec']],
                                        commandline_parameters=args,
                                        runs_on=vhostdals[cfg['host']],
@@ -277,7 +282,7 @@ def generate(bootfile, datafile, session_name, oks_controller):
                            environment=[common_env],
                            segment=segdal,
                            detector_configuration=detconf,
-                           services=srvdals,
+                           infrastructure_applications=srvdals,
                            readout_map=ro_map,
                            rte_script=rte_path)
   db.update_dal(sessiondal)

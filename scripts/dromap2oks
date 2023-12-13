@@ -1,0 +1,91 @@
+#!/bin/env python3
+
+import oksdbinterfaces
+import click
+import os
+import json
+import sys
+
+
+@click.command()
+@click.option('--src_id_offset', '-s', default=0,
+              help='Offset to add to src_ids in the generated output')
+@click.argument('jsonfile', type=click.Path(exists=True))
+@click.argument('oksfile', default='')
+def generate(jsonfile, oksfile, src_id_offset):
+  """Simple script to convert a JSON readout map file to an OKS file."""
+
+  group_name = os.path.basename(jsonfile).removesuffix(".json")
+  if oksfile == '':
+    oksfile =  group_name + ".data.xml"
+
+  print(f"Converting RO map from {jsonfile} to OKS in {oksfile} offsetting src_ids by {src_id_offset}")
+
+  with open(jsonfile) as f:
+    jsonmap = json.loads(f.read())
+    f.close()
+
+  schemafiles = ["schema/coredal/dunedaq.schema.xml",
+                 "schema/appdal/application.schema.xml",
+                 "schema/appdal/fdmodules.schema.xml" 
+                ]
+  dal = oksdbinterfaces.dal.module('generated', schemafiles[2])
+  db = oksdbinterfaces.Configuration("oksconfig")
+  db.create_db(oksfile, schemafiles)
+
+  group = []
+  last_pars = None
+  for entry in jsonmap:
+    src_id = entry['src_id'] + src_id_offset
+    if entry["kind"] == "eth":
+      pars = entry["parameters"]
+      if pars != last_pars:
+        # Only create a new dal object if the parameters are different to the last one
+        stream_pars = dal.EthStreamParameters(f"pars-{src_id}",
+                                              protocol = pars["protocol"],
+                                              rx_host = pars["rx_host"],
+                                              mode = pars["mode"],
+                                              rx_mac = pars["rx_mac"],
+                                              rx_ip = pars["rx_ip"],
+                                              rx_iface = pars["rx_iface"],
+                                              tx_host = pars["tx_host"],
+                                              tx_mac = pars["tx_mac"],
+                                              tx_ip = pars["tx_ip"]
+                                              )
+        db.update_dal(stream_pars)
+        last_pars = pars
+    elif entry["kind"] == "flx":
+      pars = entry["parameters"]
+      stream_pars = dal.FlxStreamParameters(f"pars-{src_id}",
+                                            protocol = pars["protocol"],
+                                            host = pars["host"],
+                                            mode = pars["mode"],
+                                            card = pars["card"],
+                                            slr = pars["slr"],
+                                            link = pars["link"]
+                                            )
+      db.update_dal(stream_pars)
+    else:
+      raise RuntimeError(f'Unknown kind of readout {entry["kind"]}!')
+    pars = entry["geo_id"]
+    geo_id = dal.GeoId(f"geioId-{src_id}",
+                       detector_id = pars["det_id"],
+                       crate_id = pars["crate_id"],
+                       slot_id = pars["slot_id"],
+                       stream_id = pars["stream_id"]
+                       )
+    db.update_dal(geo_id)
+    stream = dal.DROStreamConf(f"DROStream-{src_id}",
+                               src_id = entry["src_id"],
+                               stream_params = stream_pars,
+                               geo_id = geo_id
+                               )
+    db.update_dal(stream)
+    group.append(stream)
+  rogroup=dal.ReadoutGroup(group_name,
+                           contains=group)
+  db.update_dal(rogroup)
+  db.commit()
+
+if __name__ == '__main__':
+  generate()
