@@ -428,7 +428,7 @@ class ReadoutAppGenerator:
             LATENCY_BUFFER_NUMA_AWARE=latency_numa,
             LATENCY_BUFFER_ALLOCATION_MODE=latency_preallocate,
             NUMA_ID=numa_id,
-            SEND_PARTIAL_FRAGMENTS=False,
+            SEND_PARTIAL_FRAGMENTS=cfg.send_partial_fragments,
             DATA_REQUEST_TIMEOUT=DATA_REQUEST_TIMEOUT,
             RU_DESCRIPTOR=RU_DESCRIPTOR
         )
