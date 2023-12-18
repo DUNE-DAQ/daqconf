@@ -63,7 +63,7 @@ def get_tpwriter_app(
                               disable_unique_filename_suffix = False,
                               srcid_geoid_map=SRC_GEO_ID_MAP,
                               filename_parameters = hdf5ds.FileNameParams(
-                                  overall_prefix = "tpstream",
+                                  overall_prefix = file_label,
                                   digits_for_run_number = 6,
                                   file_index_prefix = "",
                                   digits_for_file_index = 4,
