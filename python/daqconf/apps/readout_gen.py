@@ -82,6 +82,10 @@ class ReadoutAppGenerator:
         raise NotImplementedError("compute_data_types must be implemented in derived classes!")
         return [],[],[],[],[]
 
+    ###
+    # Create card readers
+    # "Abstract" method
+    ###
     def create_cardreader(self, RU_DESCRIPTOR, data_file_map):
 
         raise NotImplementedError("create_cardreader must be implemented in detived classes!")
@@ -130,7 +134,6 @@ class ReadoutAppGenerator:
                             latencybufferconf= rconf.LatencyBufferConf(
                                 latency_buffer_alignment_size = default_latency_buffer_alignment_size,
                                 latency_buffer_size = cfg.latency_buffer_size,
-                                source_id =  stream.src_id,
                                 latency_buffer_numa_aware = LATENCY_BUFFER_NUMA_AWARE,
                                 latency_buffer_numa_node = NUMA_ID,
                                 latency_buffer_preallocation = LATENCY_BUFFER_ALLOCATION_MODE,
@@ -138,6 +141,7 @@ class ReadoutAppGenerator:
                             ),
                             rawdataprocessorconf= rconf.RawDataProcessorConf(
                                 emulator_mode = cfg.emulator_mode,
+                                source_id =  stream.src_id,
                                 crate_id = geo_id.crate_id, 
                                 slot_id = geo_id.slot_id, 
                                 link_id = geo_id.stream_id
@@ -241,11 +245,11 @@ class ReadoutAppGenerator:
                     conf = rconf.Conf(
                                 readoutmodelconf = rconf.ReadoutModelConf(
                                     source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
+                                    tpset_min_latency_ticks = self.ro_cfg.tpset_min_latency_ticks,
                                     source_id = tpset_sid
                                 ),
                                 latencybufferconf = rconf.LatencyBufferConf(
-                                    latency_buffer_size = default_latency_buffer_size,
-                                    source_id =  tpset_sid
+                                    latency_buffer_size = default_latency_buffer_size
                                 ),
                                 rawdataprocessorconf = rconf.RawDataProcessorConf(enable_tpg = False),
                                 requesthandlerconf= rconf.RequestHandlerConf(
@@ -348,6 +352,35 @@ class ReadoutAppGenerator:
             )
         
 
+    def add_data_volumes(self, readout_app, data_file_map):
+
+        cfg = self.ro_cfg
+
+        dir_names = set()
+
+        # Add data mountpoints
+        cvmfs = Path('/cvmfs')
+        ddf_path = Path(cfg.default_data_file)
+        if not cvmfs in ddf_path.parents:
+            dir_names.add(ddf_path.parent)
+
+        for file in data_file_map.values():
+            f = Path(file)
+            if not cvmfs in f.parents:
+                dir_names.add(f.parent)
+
+        for dir_idx, dir_name in enumerate(dir_names):
+            readout_app.mounted_dirs += [{
+                'name': f'data-file-{dir_idx}',
+                'physical_location': dir_name,
+                'in_pod_location':   dir_name,
+                'read_only': True,
+            }]
+
+    def add_volumes_resources(self, readout_app, RU_DESCRIPTOR):
+        raise NotImplementedError("create_cardreader must be implemented in detived classes!")
+
+    
     def generate(
             self,
             RU_DESCRIPTOR, 
@@ -395,7 +428,7 @@ class ReadoutAppGenerator:
             LATENCY_BUFFER_NUMA_AWARE=latency_numa,
             LATENCY_BUFFER_ALLOCATION_MODE=latency_preallocate,
             NUMA_ID=numa_id,
-            SEND_PARTIAL_FRAGMENTS=False,
+            SEND_PARTIAL_FRAGMENTS=cfg.send_partial_fragments,
             DATA_REQUEST_TIMEOUT=DATA_REQUEST_TIMEOUT,
             RU_DESCRIPTOR=RU_DESCRIPTOR
         )
@@ -445,25 +478,14 @@ class ReadoutAppGenerator:
         # Create the application
         readout_app = App(mgraph, host=RU_DESCRIPTOR.host_name)
 
-        dir_names = set()
+        # add patter datapaths
+        self.add_data_volumes(readout_app, data_file_map)
 
-        cvmfs = Path('/cvmfs')
-        ddf_path = Path(cfg.default_data_file)
-        if not cvmfs in ddf_path.parents:
-            dir_names.add(ddf_path.parent)
 
-        for file in data_file_map.values():
-            f = Path(file)
-            if not cvmfs in f.parents:
-                dir_names.add(f.parent)
+        # add other datapaths
+        self.add_volumes_resources(readout_app, RU_DESCRIPTOR)
 
-        for dir_idx, dir_name in enumerate(dir_names):
-            readout_app.mounted_dirs += [{
-                'name': f'data-file-{dir_idx}',
-                'physical_location': dir_name,
-                'in_pod_location':   dir_name,
-                'read_only': True,
-            }]
+
 
         # All done
         return readout_app
