@@ -96,9 +96,9 @@ def check_mlt_roi_config(mlt_roi_conf, n_groups):
     for group in mlt_roi_conf:
         prob += group["probability"]
         if group["number_of_link_groups"] > n_groups:
-            raise RuntimeError(f'The MLT ROI configuration map is invalid, the number of requested link groups must be <= all link groups')
+            raise RuntimeError(f'The MLT ROI configuration map is invalid, the number of requested link groups ({group["number_of_link_groups"]}) must be <= all link groups ({n_groups})')
     if prob > 1.0:
-        raise RuntimeError(f'The MLT ROI configuration map is invalid, the sum of probabilites must be <= 1.0')
+        raise RuntimeError(f'The MLT ROI configuration map is invalid, the sum of probabilites must be <= 1.0, your configured sum of probabilities: {prob}')
     return
  
 #===============================================================================
