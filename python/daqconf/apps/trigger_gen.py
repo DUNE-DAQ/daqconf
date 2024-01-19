@@ -331,8 +331,8 @@ def get_trigger_app(
                                          s2=ttcm.map_t(signal_type=TTCM_S2,
                                                        time_before=TRIGGER_WINDOW_BEFORE_TICKS,
                                                        time_after=TRIGGER_WINDOW_AFTER_TICKS),
-                                         hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH),
-                                         prescale=TTCM_PRESCALE)]
+                                         hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH,
+                                         prescale=TTCM_PRESCALE))]
 
     if USE_CUSTOM_MAKER:
         if (len(CTCM_TYPES) != len(CTCM_INTERVAL)):
