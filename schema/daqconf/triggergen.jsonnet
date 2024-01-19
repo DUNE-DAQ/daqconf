@@ -123,6 +123,7 @@ local cs = {
     s.field( "tolerate_incompleteness", types.flag, default=false, doc="Flag to tell trigger to tolerate inactive queues."),
     s.field( "ttcm_s1", types.count,default=1, doc="Timing trigger candidate maker accepted HSI signal ID 1"),
     s.field( "ttcm_s2", types.count, default=2, doc="Timing trigger candidate maker accepted HSI signal ID 2"),
+    s.field( "ttcm_prescale", types.count, default=1, doc="Option to prescale TTCM TCs"),
     s.field( "trigger_activity_plugin", self.tm_algorithms, default=['TriggerActivityMakerPrescalePlugin'], doc="List of trigger activity algorithm plugins"),
     s.field( "trigger_activity_config", self.tm_configs, default=[self.trigger_algo_config], doc="List of trigger activity algorithm configs (strings containing python dictionary)"),
     s.field( "trigger_candidate_plugin", self.tm_algorithms, default=['TriggerCandidateMakerPrescalePlugin'], doc="List of trigger candidate algorithm plugins"),
