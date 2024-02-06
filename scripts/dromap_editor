@@ -96,6 +96,7 @@ def add_flx(obj, force, src_id, **kwargs):
 @click.option('--eth-tx-ip')
 @click.option('--eth-rx-host')
 @click.option('--eth-rx-mac')
+@click.option('--eth-rx-pcie-dev')
 @click.option('--eth-rx-ip')
 @click.option('--eth-rx-iface')
 @click.pass_obj

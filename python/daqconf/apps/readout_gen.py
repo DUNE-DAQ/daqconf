@@ -134,7 +134,6 @@ class ReadoutAppGenerator:
                             latencybufferconf= rconf.LatencyBufferConf(
                                 latency_buffer_alignment_size = default_latency_buffer_alignment_size,
                                 latency_buffer_size = cfg.latency_buffer_size,
-                                source_id =  stream.src_id,
                                 latency_buffer_numa_aware = LATENCY_BUFFER_NUMA_AWARE,
                                 latency_buffer_numa_node = NUMA_ID,
                                 latency_buffer_preallocation = LATENCY_BUFFER_ALLOCATION_MODE,
@@ -142,6 +141,7 @@ class ReadoutAppGenerator:
                             ),
                             rawdataprocessorconf= rconf.RawDataProcessorConf(
                                 emulator_mode = cfg.emulator_mode,
+                                source_id =  stream.src_id,
                                 crate_id = geo_id.crate_id, 
                                 slot_id = geo_id.slot_id, 
                                 link_id = geo_id.stream_id
@@ -245,11 +245,11 @@ class ReadoutAppGenerator:
                     conf = rconf.Conf(
                                 readoutmodelconf = rconf.ReadoutModelConf(
                                     source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
+                                    tpset_min_latency_ticks = self.ro_cfg.tpset_min_latency_ticks,
                                     source_id = tpset_sid
                                 ),
                                 latencybufferconf = rconf.LatencyBufferConf(
-                                    latency_buffer_size = default_latency_buffer_size,
-                                    source_id =  tpset_sid
+                                    latency_buffer_size = default_latency_buffer_size
                                 ),
                                 rawdataprocessorconf = rconf.RawDataProcessorConf(enable_tpg = False),
                                 requesthandlerconf= rconf.RequestHandlerConf(
@@ -428,7 +428,7 @@ class ReadoutAppGenerator:
             LATENCY_BUFFER_NUMA_AWARE=latency_numa,
             LATENCY_BUFFER_ALLOCATION_MODE=latency_preallocate,
             NUMA_ID=numa_id,
-            SEND_PARTIAL_FRAGMENTS=False,
+            SEND_PARTIAL_FRAGMENTS=cfg.send_partial_fragments,
             DATA_REQUEST_TIMEOUT=DATA_REQUEST_TIMEOUT,
             RU_DESCRIPTOR=RU_DESCRIPTOR
         )
