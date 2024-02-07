@@ -194,6 +194,7 @@
         "trigger_window_before_ticks": 1000,
         "ttcm_s1": 1,
         "ttcm_s2": 2,
+	"ttcm_prescale": 1,
         "use_custom_maker": false,
         "ctcm_trigger_intervals": [
             10000000
