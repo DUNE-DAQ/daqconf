@@ -173,7 +173,7 @@ class SourceIDBroker:
             det_id = ru_desc.det_id
             crate_id = ru_desc.streams[0].geo_id.crate_id
 
-            if tp_mode:
+            if tp_mode and ru_desc.kind == "eth":
                 tp_ru_sid = self.get_next_source_id("Trigger")
                 self.register_source_id("Trigger", tp_ru_sid, ru_desc),
 
