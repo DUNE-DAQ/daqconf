@@ -11,6 +11,7 @@ from .console import console
 
 from daqdataformats import SourceID
 from detchannelmaps import *
+from detdataformats import DetID
 
 TAID = namedtuple('TAID', ['detector', 'crate'])
 TPID = namedtuple('TPID', ['detector', 'crate'])
@@ -173,7 +174,8 @@ class SourceIDBroker:
             det_id = ru_desc.det_id
             crate_id = ru_desc.streams[0].geo_id.crate_id
 
-            if tp_mode:
+            det_str = DetID.subdetector_to_string(DetID.Subdetector(ru_desc.streams[0].geo_id.det_id))
+            if tp_mode and ru_desc.kind == "eth" and det_str in ("HD_TPC","VD_Bottom_TPC"):
                 tp_ru_sid = self.get_next_source_id("Trigger")
                 self.register_source_id("Trigger", tp_ru_sid, ru_desc),
 

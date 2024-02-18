@@ -404,9 +404,11 @@ class ReadoutAppGenerator:
         """
         numa_id, latency_numa, latency_preallocate = self.get_numa_cfg(RU_DESCRIPTOR)
         cfg = self.ro_cfg
-        TPG_ENABLED = cfg.enable_tpg
         DATA_REQUEST_TIMEOUT=data_timeout_requests
-        
+
+        det_str = DetID.subdetector_to_string(DetID.Subdetector(RU_DESCRIPTOR.streams[0].geo_id.det_id))
+        TPG_ENABLED = cfg.enable_tpg and RU_DESCRIPTOR.kind == "eth" and det_str in ("HD_TPC","VD_Bottom_TPC")
+
         modules = []
         queues = []
 
