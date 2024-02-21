@@ -239,7 +239,7 @@ def get_trigger_app(
             # 1 buffer per TPG channel
             modules += [DAQModule(name = f'buf_{link_id}',
                                   plugin = 'TPBuffer',
-                                  conf = get_buffer_conf(tp_sid, DATA_REQUEST_TIMEOUT, 10_000_00))]
+                                  conf = get_buffer_conf(tp_sid, DATA_REQUEST_TIMEOUT, 10_000_000))]
         
         for region_id, ta_conf in TA_SOURCE_IDS.items():
                 # (PAR 2022-06-09) The max_latency_ms here should be
@@ -291,7 +291,7 @@ def get_trigger_app(
                             DAQModule(name = f'ta_buf_region_{region_id}',
                                       plugin = 'TABuffer',
                                       # PAR 2022-04-20 Not sure what to set the element id to so it doesn't collide with the region/element used by TP buffers. Make it some big number that shouldn't already be used by the TP buffer
-                                      conf = get_buffer_conf(ta_conf["source_id"], DATA_REQUEST_TIMEOUT, 1_000_00))]
+                                      conf = get_buffer_conf(ta_conf["source_id"], DATA_REQUEST_TIMEOUT, 1_000_000))]
 
                 if(num_algs > 1):
                     modules += [DAQModule(name = f'tpsettee_ma_{region_id}',
