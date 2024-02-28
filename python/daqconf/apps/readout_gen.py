@@ -404,7 +404,7 @@ class ReadoutAppGenerator:
         """
         numa_id, latency_numa, latency_preallocate = self.get_numa_cfg(RU_DESCRIPTOR)
         cfg = self.ro_cfg
-        TPG_ENABLED = cfg.enable_tpg
+        TPG_ENABLED = cfg.enable_tpg and RU_DESCRIPTOR.kind == "eth"
         DATA_REQUEST_TIMEOUT=data_timeout_requests
         
         modules = []

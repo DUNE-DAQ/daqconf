@@ -21,7 +21,7 @@ local cs = {
     host:   s.string("Host", pattern=moo.re.dnshost, doc="Generic string"),
     ipv4:   s.string("ipv4", pattern=moo.re.ipv4, doc="ipv4 string"),
     mac:    s.string("mac", pattern="^[a-fA-F0-9]{2}(:[a-fA-F0-9]{2}){5}$", doc="mac string"),
-    pcie:   s.string("pcie", pattern="^0{0,4}:[0-9]{2}:[0-9]{2}.[0-9]$", doc="pcie id string"),
+    pcie:   s.string("pcie", pattern="^0{0,4}:[a-fA-F0-9]{2}:[a-fA-F0-9]{2}.[0-9]$", doc="pcie id string"),
     kind:   s.enum("StreamKind", ["eth", "flx"]),
     mode:   s.enum("StreamMode", ["fix_rate", "var_rate"]),
     flx_protocol: s.enum("FlxProtocol", ["full", "half"]),
