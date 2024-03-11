@@ -208,6 +208,7 @@ class ReadoutAppGenerator:
                         tpg_rs_scale_factor = cfg.tpg_rs_scale_factor,
                         tpg_frugal_streaming_accumulator_limit = cfg.tpg_frugal_streaming_accumulator_limit,
                         tpg_algorithm = cfg.tpg_algorithm,
+                        enable_simple_threshold_on_collection = cfg.enable_simple_threshold_on_collection,
                         tpg_channel_mask = cfg.tpg_channel_mask,
                         channel_map_name = TPG_CHANNEL_MAP,
                         emulator_mode = cfg.emulator_mode,
