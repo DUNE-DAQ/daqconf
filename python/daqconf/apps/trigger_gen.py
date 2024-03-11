@@ -232,7 +232,8 @@ def get_trigger_app(
                                       plugin = 'TPChannelFilter',
                                       conf = chfilter.Conf(channel_map_name=CHANNEL_MAP_NAME,
                                                            keep_collection=True,
-                                                           keep_induction=True))]
+                                                           keep_induction=True,
+                                                           max_time_over_threshold=10_000))]
             modules += [DAQModule(name = f'tpsettee_{link_id}',
                                   plugin = 'TPSetTee')]
 
