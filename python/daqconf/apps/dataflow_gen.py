@@ -51,6 +51,7 @@ def get_dataflow_app(
     MAX_TRIGGER_RECORD_WINDOW = df_config.max_trigger_record_window
     TOKEN_COUNT = dataflow.token_count
     HOST=df_config.host_df
+    OFFLINE_DATA_STREAM = detector.offline_data_stream
 
 
     modules = []
@@ -78,6 +79,7 @@ def get_dataflow_app(
                                max_file_size_bytes = MAX_FILE_SIZE,
                                disable_unique_filename_suffix = False,
                                srcid_geoid_map=SRC_GEO_ID_MAP,
+                               offline_data_stream=OFFLINE_DATA_STREAM,
                                filename_parameters = hdf5ds.FileNameParams(
                                    overall_prefix = FILE_LABEL,
                                    digits_for_run_number = 6,
