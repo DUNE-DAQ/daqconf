@@ -13,6 +13,7 @@ moo.otypes.load_types('trigger/randomtriggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/triggerzipper.jsonnet')
 moo.otypes.load_types('trigger/moduleleveltrigger.jsonnet')
 moo.otypes.load_types('trigger/timingtriggercandidatemaker.jsonnet')
+moo.otypes.load_types('trigger/ctbtriggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/faketpcreatorheartbeatmaker.jsonnet')
 moo.otypes.load_types('trigger/txbuffer.jsonnet')
 moo.otypes.load_types('readoutlibs/readoutconfig.jsonnet')
@@ -26,6 +27,7 @@ import dunedaq.trigger.randomtriggercandidatemaker as rtcm
 import dunedaq.trigger.triggerzipper as tzip
 import dunedaq.trigger.moduleleveltrigger as mlt
 import dunedaq.trigger.timingtriggercandidatemaker as ttcm
+import dunedaq.trigger.ctbtriggercandidatemaker as ctbtcm
 import dunedaq.trigger.faketpcreatorheartbeatmaker as heartbeater
 import dunedaq.trigger.txbufferconfig as bufferconf
 import dunedaq.readoutlibs.readoutconfig as readoutconf
@@ -103,8 +105,8 @@ def check_mlt_roi_config(mlt_roi_conf, n_groups):
  
 #===============================================================================
 ### Function to check for the presence of TC sources.
-def tc_source_present(use_hsi, use_ctcm, use_rtcm, n_tp_sources):
-	return (use_hsi or use_ctcm or use_rtcm or n_tp_sources)
+def tc_source_present(use_hsi, use_ctb, use_ctcm, use_rtcm, n_tp_sources):
+	return (use_hsi or use_ctb or use_ctcm or use_rtcm or n_tp_sources)
     
 #===============================================================================
 def get_trigger_app(
@@ -114,6 +116,7 @@ def get_trigger_app(
         tp_infos,
         trigger_data_request_timeout,
         use_hsi_input,
+        use_ctb_input,
         USE_CHANNEL_FILTER: bool = True,
         DEBUG=False
     ):
@@ -135,6 +138,7 @@ def get_trigger_app(
     TRIGGER_WINDOW_AFTER_TICKS = trigger.trigger_window_after_ticks
     USE_HSI_INPUT = use_hsi_input
     HSI_TRIGGER_TYPE_PASSTHROUGH = trigger.hsi_trigger_type_passthrough
+    USE_CTB_INPUT = use_ctb_input
     MLT_MERGE_OVERLAPPING_TCS = trigger.mlt_merge_overlapping_tcs
     MLT_BUFFER_TIMEOUT = trigger.mlt_buffer_timeout
     MLT_MAX_TD_LENGTH_MS = trigger.mlt_max_td_length_ms
@@ -187,7 +191,7 @@ def get_trigger_app(
             TP_SOURCE_IDS[trigger_sid] = conf
        
     # Check for present of TC sources. At least 1 is required
-    if not tc_source_present(USE_HSI_INPUT, USE_CUSTOM_MAKER, USE_RANDOM_MAKER, len(TP_SOURCE_IDS)):
+    if not tc_source_present(USE_HSI_INPUT, USE_CTB_INPUT, USE_CUSTOM_MAKER, USE_RANDOM_MAKER, len(TP_SOURCE_IDS)):
         raise RuntimeError('There are no TC sources!')
  
     # We always have a TC buffer even when there are no TPs, because we want to put the timing TC in the output file
@@ -197,8 +201,10 @@ def get_trigger_app(
     if USE_HSI_INPUT:
         modules += [DAQModule(name = 'tctee_ttcm',
                          plugin = 'TCTee')]
+    if USE_CTB_INPUT:
+        modules += [DAQModule(name = 'tctee_ctbtcm',
+                         plugin = 'TCTee')]
 
-    
     if len(TP_SOURCE_IDS) > 0:        
         cm_configs = []
         # Get a list of TCMaker configs if more than one exists:
@@ -331,6 +337,12 @@ def get_trigger_app(
                                                        time_after=TRIGGER_WINDOW_AFTER_TICKS),
                                          hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH,
                                          prescale=TTCM_PRESCALE))]
+    
+    if USE_CTB_INPUT:
+        modules += [DAQModule(name = 'ctbtcm',
+                          plugin = 'CTBTriggerCandidateMaker',
+                          conf=ctbtcm.Conf(hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH,
+                                         prescale=TTCM_PRESCALE))]
 
     if USE_CUSTOM_MAKER:
         if (len(CTCM_TYPES) != len(CTCM_INTERVAL)):
@@ -388,10 +400,16 @@ def get_trigger_app(
     mgraph = ModuleGraph(modules)
 
     if USE_HSI_INPUT:
-        mgraph.connect_modules("ttcm.output",         "tctee_ttcm.input",             "TriggerCandidate", "ttcm_input", size_hint=1000)
-        mgraph.connect_modules("tctee_ttcm.output1",  "mlt.trigger_candidate_input", "TriggerCandidate","tcs_to_mlt", size_hint=1000)
-        mgraph.connect_modules("tctee_ttcm.output2",  "tc_buf.tc_source",             "TriggerCandidate","tcs_to_buf", size_hint=1000)
+        mgraph.connect_modules("ttcm.output",              "tctee_ttcm.input",            "TriggerCandidate", "ttcm_input", size_hint=1000)
+        mgraph.connect_modules("tctee_ttcm.output1",       "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
+        mgraph.connect_modules("tctee_ttcm.output2",       "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf", size_hint=1000)
         mgraph.add_endpoint("hsievents", "ttcm.hsi_input", "HSIEvent", Direction.IN)
+
+    if USE_CTB_INPUT:
+        mgraph.connect_modules("ctbtcm.output",              "tctee_ctbtcm.input",          "TriggerCandidate", "ctbtcm_input", size_hint=1000)
+        mgraph.connect_modules("tctee_ctbtcm.output1",       "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",   size_hint=1000)
+        mgraph.connect_modules("tctee_ctbtcm.output2",       "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf",   size_hint=1000)
+        mgraph.add_endpoint("hsievents", "ctbtcm.hsi_input", "HSIEvent", Direction.IN)
 
     if USE_CUSTOM_MAKER:
         mgraph.connect_modules("ctcm.trigger_candidate_sink", "tctee_ctcm.input",    "TriggerCandidate", "ctcm_input", size_hint=1000)
