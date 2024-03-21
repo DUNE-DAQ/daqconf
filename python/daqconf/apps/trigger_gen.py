@@ -130,6 +130,7 @@ def get_trigger_app(
     CANDIDATE_CONFIG = trigger.trigger_candidate_config
     TTCM_S1=trigger.ttcm_s1
     TTCM_S2=trigger.ttcm_s2
+    TTCM_S3=trigger.ttcm_s3
     TTCM_PRESCALE=trigger.ttcm_prescale
     TRIGGER_WINDOW_BEFORE_TICKS = trigger.trigger_window_before_ticks
     TRIGGER_WINDOW_AFTER_TICKS = trigger.trigger_window_after_ticks
@@ -327,6 +328,9 @@ def get_trigger_app(
                                                        time_before=TRIGGER_WINDOW_BEFORE_TICKS,
                                                        time_after=TRIGGER_WINDOW_AFTER_TICKS),
                                          s2=ttcm.map_t(signal_type=TTCM_S2,
+                                                       time_before=TRIGGER_WINDOW_BEFORE_TICKS,
+                                                       time_after=TRIGGER_WINDOW_AFTER_TICKS),
+                                         s3=ttcm.map_t(signal_type=TTCM_S3,
                                                        time_before=TRIGGER_WINDOW_BEFORE_TICKS,
                                                        time_after=TRIGGER_WINDOW_AFTER_TICKS),
                                          hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH,
