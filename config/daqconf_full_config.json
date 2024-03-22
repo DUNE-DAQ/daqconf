@@ -192,10 +192,33 @@
         "trigger_rate_hz": 1.0,
         "trigger_window_after_ticks": 1000,
         "trigger_window_before_ticks": 1000,
-        "ttcm_s1": 1,
-        "ttcm_s2": 2,
-        "ttcm_s3": 3,
-	"ttcm_prescale": 1,
+        "ttcm_input_map": [
+          {
+            "signal": 0,
+            "tc_type_name": "kTiming",
+            "time_after": 1000,
+            "time_before": 1000
+          },
+          {
+            "signal": 1,
+            "tc_type_name": "kTiming",
+            "time_after": 1000,
+            "time_before": 1000
+          },
+          {
+            "signal": 2,
+            "tc_type_name": "kTiming",
+            "time_after": 1000,
+            "time_before": 1000
+          },
+          {
+            "signal": 3,
+            "tc_type_name": "kTiming",
+            "time_after": 1000,
+            "time_before": 1000
+          }
+        ],
+        "ttcm_prescale": 1,
         "use_custom_maker": false,
         "ctcm_trigger_intervals": [
             10000000
