@@ -139,6 +139,9 @@ def get_trigger_app(
     USE_HSI_INPUT = use_hsi_input
     HSI_TRIGGER_TYPE_PASSTHROUGH = trigger.hsi_trigger_type_passthrough
     USE_CTB_INPUT = use_ctb_input
+    CTB_PRESCALE=trigger.ctb_prescale
+    CTB_TIME_BEFORE=trigger.ctb_time_before
+    CTB_TIME_AFTER=trigger.ctb_time_after
     MLT_MERGE_OVERLAPPING_TCS = trigger.mlt_merge_overlapping_tcs
     MLT_BUFFER_TIMEOUT = trigger.mlt_buffer_timeout
     MLT_MAX_TD_LENGTH_MS = trigger.mlt_max_td_length_ms
@@ -341,8 +344,9 @@ def get_trigger_app(
     if USE_CTB_INPUT:
         modules += [DAQModule(name = 'ctbtcm',
                           plugin = 'CTBTriggerCandidateMaker',
-                          conf=ctbtcm.Conf(hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH,
-                                         prescale=TTCM_PRESCALE))]
+                          conf=ctbtcm.Conf(prescale=CTB_PRESCALE,
+                                           time_before=CTB_TIME_BEFORE,
+                                           time_after=CTB_TIME_AFTER))]
 
     if USE_CUSTOM_MAKER:
         if (len(CTCM_TYPES) != len(CTCM_INTERVAL)):

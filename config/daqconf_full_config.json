@@ -195,6 +195,9 @@
         "ttcm_s1": 1,
         "ttcm_s2": 2,
 	"ttcm_prescale": 1,
+	"ctb_prescale": 1,
+	"ctb_time_before": 1000,
+	"ctb_time_after": 1000,
         "use_custom_maker": false,
         "ctcm_trigger_intervals": [
             10000000
