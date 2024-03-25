@@ -175,7 +175,9 @@
             "trigger_on_n_channels": false,
             "window_length": 10000,
 	    "min_tps": 20,
-	    "max_channel_distance": 50
+	    "max_channel_distance": 50,
+	    "eps": 20,
+	    "min_pts": 7
         },
         "trigger_activity_plugin": "TriggerActivityMakerPrescalePlugin",
         "trigger_candidate_config": {
