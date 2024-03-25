@@ -173,7 +173,9 @@
             "trigger_on_adc": false,
             "trigger_on_adjacency": true,
             "trigger_on_n_channels": false,
-            "window_length": 10000
+            "window_length": 10000,
+	    "eps": 20,
+	    "min_pts": 7
         },
         "trigger_activity_plugin": "TriggerActivityMakerPrescalePlugin",
         "trigger_candidate_config": {
@@ -186,7 +188,8 @@
             "trigger_on_adc": false,
             "trigger_on_adjacency": true,
             "trigger_on_n_channels": false,
-            "window_length": 10000
+            "window_length": 10000,
+	    "max_tp_count": 1000
         },
         "trigger_candidate_plugin": "TriggerCandidateMakerPrescalePlugin",
         "trigger_rate_hz": 1.0,
