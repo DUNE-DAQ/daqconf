@@ -37,6 +37,7 @@ local cs = {
     s.field("adc_threshold", types.count, default=10000),
     s.field("n_channels_threshold", types.count, default=8),
     s.field("print_tp_info", types.flag, default=false),
+    s.field("bundle_number", types.count, default=100),
   ]),
 
   tc_readout: s.record( "tc_readout", [
