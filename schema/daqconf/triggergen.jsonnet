@@ -38,7 +38,8 @@ local cs = {
     s.field("n_channels_threshold", types.count, default=8),
     s.field("print_tp_info", types.flag, default=false),
     s.field("min_pts", types.count, default=7),
-    s.field("eps", types.count, default=20)
+    s.field("eps", types.count, default=20),
+    s.field("max_tp_count", types.count, default=1000)
   ]),
 
   tc_readout: s.record( "tc_readout", [
