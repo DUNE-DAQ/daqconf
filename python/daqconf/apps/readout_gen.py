@@ -204,6 +204,7 @@ class ReadoutAppGenerator:
                         slot_id = geo_sid,
                         link_id = geo_lid,
                         enable_tpg = True,
+                        tpg_threshold = cfg.tpg_threshold,
                         tpg_rs_memory_factor = cfg.tpg_rs_memory_factor,
                         tpg_rs_scale_factor = cfg.tpg_rs_scale_factor,
                         tpg_frugal_streaming_accumulator_limit = cfg.tpg_frugal_streaming_accumulator_limit,
