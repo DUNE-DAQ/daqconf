@@ -346,7 +346,7 @@ def get_trigger_app(
                                          hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH,
                                          prescale=TTCM_PRESCALE))]
 
-       if USE_FAKE_HSI_INPUT:
+    if USE_FAKE_HSI_INPUT:
         modules += [DAQModule(name = 'ttcm_fake',
                           plugin = 'TimingTriggerCandidateMaker',
                           conf=ttcm.Conf(s0=ttcm.map_t(signal_type=0,
@@ -433,7 +433,7 @@ def get_trigger_app(
         mgraph.connect_modules("ttcm_fake.output",              "tctee_ttcm_fake.input",       "TriggerCandidate", "ttcm_fake_input", size_hint=1000)
         mgraph.connect_modules("tctee_ttcm_fake.output1",       "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
         mgraph.connect_modules("tctee_ttcm_fake.output2",       "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf", size_hint=1000)
-        mgraph.add_endpoint("fake_hsievents", "ttcm.hsi_input", "HSIEvent", Direction.IN)
+        mgraph.add_endpoint("fake_hsievents", "ttcm_fake.hsi_input", "HSIEvent", Direction.IN)
 
     if USE_CTB_INPUT:
         mgraph.connect_modules("ctbtcm.output",              "tctee_ctbtcm.input",          "TriggerCandidate", "ctbtcm_input", size_hint=1000)
