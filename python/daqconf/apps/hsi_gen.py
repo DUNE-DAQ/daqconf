@@ -126,7 +126,7 @@ def get_timing_hsi_app(
                                          fragments_out = f"hsi_datahandler.fragment_queue")
     mgraph.add_endpoint(f"timesync_timing_hsi", f"hsi_datahandler.timesync_output",  "TimeSync",  Direction.OUT, is_pubsub=True, toposort=False)
 
-    mgraph.add_endpoint("hsievents", "hsir.hsievents", "HSIEvent",    Direction.OUT)
+    mgraph.add_endpoint("dts_hsievents", "hsir.hsievents", "HSIEvent",    Direction.OUT)
     
     # dummy subscriber
     mgraph.add_endpoint(None, None, data_type="TimeSync", inout=Direction.IN, is_pubsub=True)
