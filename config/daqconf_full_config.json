@@ -137,7 +137,6 @@
     },
     "trigger": {
         "host_trigger": "localhost",
-        "hsi_trigger_type_passthrough": false,
         "mlt_buffer_timeout": 100,
         "mlt_ignore_tc": [],
         "mlt_max_td_length_ms": 1000,

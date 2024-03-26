@@ -93,7 +93,6 @@ local cs = {
     s.field( "trigger_activity_config", self.tm_configs, default=[self.trigger_algo_config], doc="List of trigger activity algorithm configs (strings containing python dictionary)"),
     s.field( "trigger_candidate_plugin", self.tm_algorithms, default=['TriggerCandidateMakerPrescalePlugin'], doc="List of trigger candidate algorithm plugins"),
     s.field( "trigger_candidate_config", self.tm_configs, default=[self.trigger_algo_config], doc="List of trigger candidate algorithm configs (strings containing python dictionary)"),
-    s.field( "hsi_trigger_type_passthrough", types.flag, default=false, doc="Option to override trigger type in the MLT"),
     s.field( "mlt_merge_overlapping_tcs", types.flag, default=true, doc="Option to turn off merging of overlapping TCs when forming TDs in MLT"),
     s.field( "mlt_buffer_timeout", types.count, default=100, doc="Timeout (buffer) to wait for new overlapping TCs before sending TD"),
     s.field( "mlt_send_timed_out_tds", types.flag, default=true, doc="Option to drop TD if TC comes out of timeout window"),

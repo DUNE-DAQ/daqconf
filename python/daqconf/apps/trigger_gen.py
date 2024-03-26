@@ -138,7 +138,6 @@ def get_trigger_app(
     TRIGGER_WINDOW_AFTER_TICKS = trigger.trigger_window_after_ticks
     USE_HSI_INPUT = use_hsi_input
     USE_FAKE_HSI_INPUT = use_fake_hsi_input
-    HSI_TRIGGER_TYPE_PASSTHROUGH = trigger.hsi_trigger_type_passthrough
     USE_CTB_INPUT = use_ctb_input
     CTB_PRESCALE=trigger.ctb_prescale
     CTB_TIME_BEFORE=trigger.ctb_time_before
@@ -334,14 +333,12 @@ def get_trigger_app(
         modules += [DAQModule(name = 'ttcm',
                           plugin = 'TimingTriggerCandidateMaker',
                           conf=ttcm.Conf(hsi_configs=TTCM_INPUT_MAP,
-                                         hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH,
                                          prescale=TTCM_PRESCALE))]
 
     if USE_FAKE_HSI_INPUT:
         modules += [DAQModule(name = 'ttcm_fake',
                           plugin = 'TimingTriggerCandidateMaker',
                           conf=ttcm.Conf(hsi_configs=TTCM_INPUT_MAP,
-                                         hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH,
                                          prescale=TTCM_PRESCALE))]
 
     if USE_CTB_INPUT:
@@ -391,7 +388,6 @@ def get_trigger_app(
                           plugin = 'ModuleLevelTrigger',
                           conf=mlt.ConfParams(mandatory_links=[],  # To be updated later - see comment above
                                               groups_links=[],     # To be updated later - see comment above
-                                              hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH,
                                               merge_overlapping_tcs=MLT_MERGE_OVERLAPPING_TCS,
                                               buffer_timeout=MLT_BUFFER_TIMEOUT,
                                               td_out_of_timeout=MLT_SEND_TIMED_OUT_TDS,
