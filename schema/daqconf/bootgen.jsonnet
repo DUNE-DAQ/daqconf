@@ -28,7 +28,7 @@ local cs = {
     s.field( "process_manager", self.pm_choice, default="ssh", doc="Choice of process manager"),
 
     # K8S
-    s.field( "k8s_image", types.string, default="dunedaq/c8-minimal", doc="Which docker image to use"),
+    s.field( "k8s_image", types.string, default="ghcr.io/dune-daq/alma9-run:develop", doc="Which docker image to use"),
 
     # Run control
     s.field( "run_control", self.run_control_choice, default="nanorc", doc="Which run control to use"),
