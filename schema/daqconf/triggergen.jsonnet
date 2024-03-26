@@ -38,6 +38,12 @@ local cs = {
     s.field("adc_threshold", types.count, default=10000),
     s.field("n_channels_threshold", types.count, default=8),
     s.field("print_tp_info", types.flag, default=false),
+    s.field("bundle_size", types.count, default=100),
+    s.field("min_tps", types.count, default=20),
+    s.field("max_channel_distance", types.count, default=50),
+    s.field("max_tp_count", types.count, default=1000),
+    s.field("min_pts", types.count, default=7),
+    s.field("eps", types.count, default=20),
   ]),
 
   tc_readout: s.record( "tc_readout", [
@@ -80,6 +86,9 @@ local cs = {
       {"signal":3, "tc_type_name":"kTiming", "time_before":1000, "time_after":1000}
     ], doc="Timing trigger candidate maker accepted HSI signal map"),
     s.field( "ttcm_prescale", types.count, default=1, doc="Option to prescale TTCM TCs"),
+    s.field( "ctb_prescale", types.count, default=1, doc="Option to prescale CTB TCs"),
+    s.field( "ctb_time_before", self.readout_time, default=1000, doc="Trigger readout window before CTB TC"),
+    s.field( "ctb_time_after", self.readout_time, default=1000, doc="Trigger readout window after CTB TC"),
     s.field( "trigger_activity_plugin", self.tm_algorithms, default=['TriggerActivityMakerPrescalePlugin'], doc="List of trigger activity algorithm plugins"),
     s.field( "trigger_activity_config", self.tm_configs, default=[self.trigger_algo_config], doc="List of trigger activity algorithm configs (strings containing python dictionary)"),
     s.field( "trigger_candidate_plugin", self.tm_algorithms, default=['TriggerCandidateMakerPrescalePlugin'], doc="List of trigger candidate algorithm plugins"),
