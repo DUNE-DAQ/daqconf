@@ -105,8 +105,8 @@ def check_mlt_roi_config(mlt_roi_conf, n_groups):
  
 #===============================================================================
 ### Function to check for the presence of TC sources.
-def tc_source_present(use_hsi, use_ctb, use_ctcm, use_rtcm, n_tp_sources):
-	return (use_hsi or use_ctb or use_ctcm or use_rtcm or n_tp_sources)
+def tc_source_present(use_hsi, use_fake_hsi, use_ctb, use_ctcm, use_rtcm, n_tp_sources):
+	return (use_hsi or use_fake_hsi or use_ctb or use_ctcm or use_rtcm or n_tp_sources)
     
 #===============================================================================
 def get_trigger_app(
