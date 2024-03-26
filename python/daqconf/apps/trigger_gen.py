@@ -116,6 +116,7 @@ def get_trigger_app(
         tp_infos,
         trigger_data_request_timeout,
         use_hsi_input,
+        use_fake_hsi_input,
         use_ctb_input,
         USE_CHANNEL_FILTER: bool = True,
         DEBUG=False
@@ -137,6 +138,7 @@ def get_trigger_app(
     TRIGGER_WINDOW_BEFORE_TICKS = trigger.trigger_window_before_ticks
     TRIGGER_WINDOW_AFTER_TICKS = trigger.trigger_window_after_ticks
     USE_HSI_INPUT = use_hsi_input
+    USE_FAKE_HSI_INPUT = use_fake_hsi_input
     HSI_TRIGGER_TYPE_PASSTHROUGH = trigger.hsi_trigger_type_passthrough
     USE_CTB_INPUT = use_ctb_input
     CTB_PRESCALE=trigger.ctb_prescale
@@ -194,7 +196,7 @@ def get_trigger_app(
             TP_SOURCE_IDS[trigger_sid] = conf
        
     # Check for present of TC sources. At least 1 is required
-    if not tc_source_present(USE_HSI_INPUT, USE_CTB_INPUT, USE_CUSTOM_MAKER, USE_RANDOM_MAKER, len(TP_SOURCE_IDS)):
+    if not tc_source_present(USE_HSI_INPUT, USE_FAKE_HSI_INPUT, USE_CTB_INPUT, USE_CUSTOM_MAKER, USE_RANDOM_MAKER, len(TP_SOURCE_IDS)):
         raise RuntimeError('There are no TC sources!')
  
     # We always have a TC buffer even when there are no TPs, because we want to put the timing TC in the output file
@@ -203,6 +205,9 @@ def get_trigger_app(
                           conf = get_buffer_conf(TC_SOURCE_ID["source_id"], DATA_REQUEST_TIMEOUT))]
     if USE_HSI_INPUT:
         modules += [DAQModule(name = 'tctee_ttcm',
+                         plugin = 'TCTee')]
+    if USE_FAKE_HSI_INPUT:
+        modules += [DAQModule(name = 'tctee_ttcm_fake',
                          plugin = 'TCTee')]
     if USE_CTB_INPUT:
         modules += [DAQModule(name = 'tctee_ctbtcm',
@@ -340,7 +345,22 @@ def get_trigger_app(
                                                        time_after=TRIGGER_WINDOW_AFTER_TICKS),
                                          hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH,
                                          prescale=TTCM_PRESCALE))]
-    
+
+       if USE_FAKE_HSI_INPUT:
+        modules += [DAQModule(name = 'ttcm_fake',
+                          plugin = 'TimingTriggerCandidateMaker',
+                          conf=ttcm.Conf(s0=ttcm.map_t(signal_type=0,
+                                                       time_before=TRIGGER_WINDOW_BEFORE_TICKS,
+                                                       time_after=TRIGGER_WINDOW_AFTER_TICKS),
+                                         s1=ttcm.map_t(signal_type=TTCM_S1,
+                                                       time_before=TRIGGER_WINDOW_BEFORE_TICKS,
+                                                       time_after=TRIGGER_WINDOW_AFTER_TICKS),
+                                         s2=ttcm.map_t(signal_type=TTCM_S2,
+                                                       time_before=TRIGGER_WINDOW_BEFORE_TICKS,
+                                                       time_after=TRIGGER_WINDOW_AFTER_TICKS),
+                                         hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH,
+                                         prescale=TTCM_PRESCALE))]
+
     if USE_CTB_INPUT:
         modules += [DAQModule(name = 'ctbtcm',
                           plugin = 'CTBTriggerCandidateMaker',
@@ -407,13 +427,19 @@ def get_trigger_app(
         mgraph.connect_modules("ttcm.output",              "tctee_ttcm.input",            "TriggerCandidate", "ttcm_input", size_hint=1000)
         mgraph.connect_modules("tctee_ttcm.output1",       "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
         mgraph.connect_modules("tctee_ttcm.output2",       "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf", size_hint=1000)
-        mgraph.add_endpoint("hsievents", "ttcm.hsi_input", "HSIEvent", Direction.IN)
+        mgraph.add_endpoint("dts_hsievents", "ttcm.hsi_input", "HSIEvent", Direction.IN)
+
+    if USE_FAKE_HSI_INPUT:
+        mgraph.connect_modules("ttcm_fake.output",              "tctee_ttcm_fake.input",       "TriggerCandidate", "ttcm_fake_input", size_hint=1000)
+        mgraph.connect_modules("tctee_ttcm_fake.output1",       "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
+        mgraph.connect_modules("tctee_ttcm_fake.output2",       "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf", size_hint=1000)
+        mgraph.add_endpoint("fake_hsievents", "ttcm.hsi_input", "HSIEvent", Direction.IN)
 
     if USE_CTB_INPUT:
         mgraph.connect_modules("ctbtcm.output",              "tctee_ctbtcm.input",          "TriggerCandidate", "ctbtcm_input", size_hint=1000)
         mgraph.connect_modules("tctee_ctbtcm.output1",       "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",   size_hint=1000)
         mgraph.connect_modules("tctee_ctbtcm.output2",       "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf",   size_hint=1000)
-        mgraph.add_endpoint("hsievents", "ctbtcm.hsi_input", "HSIEvent", Direction.IN)
+        mgraph.add_endpoint("ctb_hsievents", "ctbtcm.hsi_input", "HSIEvent", Direction.IN)
 
     if USE_CUSTOM_MAKER:
         mgraph.connect_modules("ctcm.trigger_candidate_sink", "tctee_ctcm.input",    "TriggerCandidate", "ctcm_input", size_hint=1000)
