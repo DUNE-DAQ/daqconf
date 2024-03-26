@@ -54,7 +54,8 @@ for c in [
     dromap.DROStreamEntry,
     dromap.EthStreamParameters,
     dromap.FelixStreamParameters,
-]: 
+    dromap.CRTStreamParameters,
+]:
     c_ost = c.__dict__['_ost']
     c_name = c_ost['name']
     setattr(thismodule, c_name, namedtuple(c_name, [f['name'] for f in c_ost['fields']]))
@@ -95,6 +96,7 @@ class DetReadoutMapService:
     _traits_map = {
         'flx': StreamKindTraits(FelixStreamParameters, dromap.FelixStreamParameters, 'host', 'card'),
         'eth': StreamKindTraits(EthStreamParameters, dromap.EthStreamParameters, 'rx_host', 'rx_iface'),
+        'crt': StreamKindTraits(CRTStreamParameters, dromap.CRTStreamParameters, 'host', 'usb'),
     }
 
     @classmethod
@@ -221,6 +223,7 @@ class DetReadoutMapService:
         host_label_map = {
             'flx': 'host',
             'eth': 'rx_host',
+            'crt': 'host',
         }
 
         kind_m = defaultdict(set)
@@ -400,6 +403,8 @@ class DetReadoutMapService:
             t.add_column(f"flx_{f}", style='cyan')
         for f in EthStreamParameters._fields:
             t.add_column(f"eth_{f}", style='magenta')
+        for f in CRTStreamParameters._fields:
+            t.add_column(f"crt_{f}", style='orange')
 
         for s,en in sorted(m.items(), key=lambda x: x[0]):
 
@@ -414,7 +419,12 @@ class DetReadoutMapService:
                 infos = [str(x) for x in en.parameters]
                 pads = ['-']*(len(t.columns)-len(row)-len(infos))
                 row += pads + infos
-                
+
+            elif en.kind == "crt":
+                infos = [str(x) for x in en.parameters]
+                pads = ['-']*(len(t.columns)-len(row)-len(infos))
+                row += pads + infos
+
             t.add_row(*row)
         
         return t
