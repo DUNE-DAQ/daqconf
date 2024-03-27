@@ -102,12 +102,12 @@ def check_mlt_roi_config(mlt_roi_conf, n_groups):
     if prob > 1.0:
         raise RuntimeError(f'The MLT ROI configuration map is invalid, the sum of probabilites must be <= 1.0, your configured sum of probabilities: {prob}')
     return
- 
+
 #===============================================================================
 ### Function to check for the presence of TC sources.
 def tc_source_present(use_hsi, use_fake_hsi, use_ctb, use_ctcm, use_rtcm, n_tp_sources):
 	return (use_hsi or use_fake_hsi or use_ctb or use_ctcm or use_rtcm or n_tp_sources)
-    
+
 #===============================================================================
 def get_trigger_app(
         trigger,
@@ -132,14 +132,12 @@ def get_trigger_app(
     ACTIVITY_CONFIG = trigger.trigger_activity_config
     CANDIDATE_PLUGIN = trigger.trigger_candidate_plugin
     CANDIDATE_CONFIG = trigger.trigger_candidate_config
-    TTCM_S1=trigger.ttcm_s1
-    TTCM_S2=trigger.ttcm_s2
+    TTCM_INPUT_MAP=trigger.ttcm_input_map
     TTCM_PRESCALE=trigger.ttcm_prescale
     TRIGGER_WINDOW_BEFORE_TICKS = trigger.trigger_window_before_ticks
     TRIGGER_WINDOW_AFTER_TICKS = trigger.trigger_window_after_ticks
     USE_HSI_INPUT = use_hsi_input
     USE_FAKE_HSI_INPUT = use_fake_hsi_input
-    HSI_TRIGGER_TYPE_PASSTHROUGH = trigger.hsi_trigger_type_passthrough
     USE_CTB_INPUT = use_ctb_input
     CTB_PRESCALE=trigger.ctb_prescale
     CTB_TIME_BEFORE=trigger.ctb_time_before
@@ -166,7 +164,7 @@ def get_trigger_app(
     CHANNEL_MAP_NAME = detector.tpc_channel_map
     DATA_REQUEST_TIMEOUT=trigger_data_request_timeout
     HOST=trigger.host_trigger
-    
+
     # Generate schema for each of the maker plugins on the fly in the temptypes module
     num_algs = len(ACTIVITY_PLUGIN)
     for j in range(num_algs):
@@ -334,31 +332,13 @@ def get_trigger_app(
     if USE_HSI_INPUT:
         modules += [DAQModule(name = 'ttcm',
                           plugin = 'TimingTriggerCandidateMaker',
-                          conf=ttcm.Conf(s0=ttcm.map_t(signal_type=0,
-                                                       time_before=TRIGGER_WINDOW_BEFORE_TICKS,
-                                                       time_after=TRIGGER_WINDOW_AFTER_TICKS),
-                                         s1=ttcm.map_t(signal_type=TTCM_S1,
-                                                       time_before=TRIGGER_WINDOW_BEFORE_TICKS,
-                                                       time_after=TRIGGER_WINDOW_AFTER_TICKS),
-                                         s2=ttcm.map_t(signal_type=TTCM_S2,
-                                                       time_before=TRIGGER_WINDOW_BEFORE_TICKS,
-                                                       time_after=TRIGGER_WINDOW_AFTER_TICKS),
-                                         hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH,
+                          conf=ttcm.Conf(hsi_configs=TTCM_INPUT_MAP,
                                          prescale=TTCM_PRESCALE))]
 
     if USE_FAKE_HSI_INPUT:
         modules += [DAQModule(name = 'ttcm_fake',
                           plugin = 'TimingTriggerCandidateMaker',
-                          conf=ttcm.Conf(s0=ttcm.map_t(signal_type=0,
-                                                       time_before=TRIGGER_WINDOW_BEFORE_TICKS,
-                                                       time_after=TRIGGER_WINDOW_AFTER_TICKS),
-                                         s1=ttcm.map_t(signal_type=TTCM_S1,
-                                                       time_before=TRIGGER_WINDOW_BEFORE_TICKS,
-                                                       time_after=TRIGGER_WINDOW_AFTER_TICKS),
-                                         s2=ttcm.map_t(signal_type=TTCM_S2,
-                                                       time_before=TRIGGER_WINDOW_BEFORE_TICKS,
-                                                       time_after=TRIGGER_WINDOW_AFTER_TICKS),
-                                         hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH,
+                          conf=ttcm.Conf(hsi_configs=TTCM_INPUT_MAP,
                                          prescale=TTCM_PRESCALE))]
 
     if USE_CTB_INPUT:
@@ -408,7 +388,6 @@ def get_trigger_app(
                           plugin = 'ModuleLevelTrigger',
                           conf=mlt.ConfParams(mandatory_links=[],  # To be updated later - see comment above
                                               groups_links=[],     # To be updated later - see comment above
-                                              hsi_trigger_type_passthrough=HSI_TRIGGER_TYPE_PASSTHROUGH,
                                               merge_overlapping_tcs=MLT_MERGE_OVERLAPPING_TCS,
                                               buffer_timeout=MLT_BUFFER_TIMEOUT,
                                               td_out_of_timeout=MLT_SEND_TIMED_OUT_TDS,
