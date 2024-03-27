@@ -30,8 +30,11 @@ local cs = {
     // Trigger 
     s.field( "host_tpw", types.host, default='localhost', doc='Host to run the TPWriter app on'),
     s.field( "enable_tpset_writing", types.flag, default=false, doc="Enable the writing of TPs to disk (only works with enable_tpg or enable_firmware_tpg)"),
-    s.field( "tpset_output_path", types.path,default='.', doc="Output directory for TPSet stream files"),
-    s.field( "tpset_output_file_size",types.count, default=4*1024*1024*1024, doc="The size threshold when TPSet stream files are closed (in bytes)"),
+    s.field( "tpset_output_path", types.path,default='.', doc="Output directory for TP Stream files"),
+    s.field( "tpset_output_file_size",types.count, default=4*1024*1024*1024, doc="The size threshold when TP Stream files are closed (in bytes)"),
+    s.field("tp_accumulation_interval_ticks", types.count, 62500000, doc="Size of the TP accumulation window in the TP Stream writer, measured in clock ticks"),
+    s.field("tp_accumulation_inactivity_time_before_write_sec", types.float4, 1.0,
+            doc="Amount of time in which there must be no new data arriving at the TP Stream writer before a given time slice is written out"),
   ]),
 
 };
