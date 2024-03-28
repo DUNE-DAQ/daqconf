@@ -149,42 +149,51 @@
                 "number_of_link_groups": 1,
                 "probability": 0.8,
                 "time_window": 1000
-            },
+            }
+	],
         "tolerate_incompleteness": false,
         "completeness_tolerance": 1,
-        "trigger_activity_config": {
-            "adc_threshold": 10000,
-            "adj_tolerance": 4,
-            "adjacency_threshold": 6,
-            "n_channels_threshold": 8,
-            "prescale": 100,
-            "print_tp_info": false,
-            "trigger_on_adc": false,
-            "trigger_on_adjacency": true,
-            "trigger_on_n_channels": false,
-            "window_length": 10000,
-            "bundle_size": 100,
-            "min_tps": 20,
-            "max_channel_distance": 50,
-            "eps": 20,
-            "min_pts": 7
-        },
-        "trigger_activity_plugin": "TriggerActivityMakerPrescalePlugin",
-        "trigger_candidate_config": {
-            "adc_threshold": 10000,
-            "adj_tolerance": 4,
-            "adjacency_threshold": 6,
-            "n_channels_threshold": 8,
-            "prescale": 100,
-            "print_tp_info": false,
-            "trigger_on_adc": false,
-            "trigger_on_adjacency": true,
-            "trigger_on_n_channels": false,
-            "window_length": 10000,
-            "bundle_size": 100,
-            "max_tp_count": 1000
-        },
-        "trigger_candidate_plugin": "TriggerCandidateMakerPrescalePlugin",
+        "trigger_activity_config": [
+		{
+		    "adc_threshold": 10000,
+		    "adj_tolerance": 4,
+		    "adjacency_threshold": 6,
+		    "n_channels_threshold": 8,
+		    "prescale": 100,
+		    "print_tp_info": false,
+		    "trigger_on_adc": false,
+		    "trigger_on_adjacency": true,
+		    "trigger_on_n_channels": false,
+		    "window_length": 10000,
+		    "bundle_size": 100,
+		    "min_tps": 20,
+		    "max_channel_distance": 50,
+		    "eps": 20,
+		    "min_pts": 7
+		}
+        ],
+        "trigger_activity_plugin": [
+		"TriggerActivityMakerPrescalePlugin"
+	],
+        "trigger_candidate_config": [
+		{
+		    "adc_threshold": 10000,
+		    "adj_tolerance": 4,
+		    "adjacency_threshold": 6,
+		    "n_channels_threshold": 8,
+		    "prescale": 100,
+		    "print_tp_info": false,
+		    "trigger_on_adc": false,
+		    "trigger_on_adjacency": true,
+		    "trigger_on_n_channels": false,
+		    "window_length": 10000,
+		    "bundle_size": 100,
+		    "max_tp_count": 1000
+		}
+	],
+        "trigger_candidate_plugin": [
+		"TriggerCandidateMakerPrescalePlugin"
+	],
         "trigger_window_after_ticks": 1000,
         "trigger_window_before_ticks": 1000,
         "ttcm_input_map": [
