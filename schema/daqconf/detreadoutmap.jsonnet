@@ -22,7 +22,7 @@ local cs = {
     ipv4:   s.string("ipv4", pattern=moo.re.ipv4, doc="ipv4 string"),
     mac:    s.string("mac", pattern="^[a-fA-F0-9]{2}(:[a-fA-F0-9]{2}){5}$", doc="mac string"),
     pcie:   s.string("pcie", pattern="^0{0,4}:[a-fA-F0-9]{2}:[a-fA-F0-9]{2}.[0-9]$", doc="pcie id string"),
-    kind:   s.enum("StreamKind", ["eth", "flx"]),
+    kind:   s.enum("StreamKind", ["eth", "flx", "crt"]),
     mode:   s.enum("StreamMode", ["fix_rate", "var_rate"]),
     flx_protocol: s.enum("FlxProtocol", ["full", "half"]),
     eth_protocol: s.enum("EthProtocol", ["udp", "zmq"]),
@@ -49,6 +49,11 @@ local cs = {
       s.field("tx_ip", self.ipv4, "0.0.0.0", doc="Transmitter IP"),
     ], doc="A Ethernet readout stream configuration"),
 
+    crt_conf: s.record("CRTStreamParameters", [
+      s.field("host", self.host, doc="CRT hostname"),
+      s.field("usb", self.short, 0, doc="USB ID in readout host"),
+      s.field("data_directory", self.string, doc="location of raw CRTbinary data files")
+    ], doc="A CRT readout stream configuration"),
 
     stream_parameters: s.any("DROStreamConf", doc="Stream parameters"),
 
