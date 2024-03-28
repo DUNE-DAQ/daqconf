@@ -12,7 +12,6 @@
         "disable_trace": false,
         "ers_impl": "local",
         "k8s_image": "dunedaq/c8-minimal",
-        "k8s_rte": "auto",
         "opmon_impl": "local",
         "pocket_url": "127.0.0.1",
         "process_manager": "ssh",
@@ -71,13 +70,6 @@
         "op_env": "swtest",
         "tpc_channel_map": "PD2HDChannelMap"
     },
-    "dpdk_sender": {
-        "eal_args": "-l 0-1 -n 3 -- -m [0:1].0 -j",
-        "enable_dpdk_sender": false,
-        "host_dpdk_sender": [
-            "np04-srv-021"
-        ]
-    },
     "hsi": {
         "control_hsi_hw": false,
         "enable_hardware_state_recovery": true,
@@ -104,7 +96,6 @@
         "default_data_file": "/cvmfs/dunedaq.opensciencegrid.org/assets/files/9/f/1/frames.bin",
         "detector_readout_map_file": "./DetectorReadoutMap.json",
         "dpdk_eal_args": "-l 0-1 -n 3 -- -m [0:1].0 -j",
-        "dpdk_rxqueues_per_lcore": 1,
         "emulated_data_times_start_with_now": false,
         "emulator_mode": false,
         "enable_raw_recording": false,
@@ -118,7 +109,6 @@
             "exceptions": []
         },
         "raw_recording_output_dir": ".",
-        "thread_pinning_file": "",
         "tpg_algorithm": "SimpleThreshold",
         "tpg_channel_mask": [],
         "tpg_threshold": 120,
@@ -195,7 +185,6 @@
             "max_tp_count": 1000
         },
         "trigger_candidate_plugin": "TriggerCandidateMakerPrescalePlugin",
-        "trigger_rate_hz": 1.0,
         "trigger_window_after_ticks": 1000,
         "trigger_window_before_ticks": 1000,
         "ttcm_input_map": [
