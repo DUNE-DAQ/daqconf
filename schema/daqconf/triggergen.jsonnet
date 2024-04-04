@@ -57,8 +57,8 @@ local cs = {
   hsi_input: s.record("hsi_input", [
     s.field("signal",         types.count, default=1, doc="HSI candidate maker accepted HSI signal ID"),
     s.field("tc_type_name",   self.tc_type_name, default="kTiming", doc="Name of the TC type"),
-    s.field("time_before",    self.readout_time, default=1000, doc="Time to readout before TC time [ticks]"),
-    s.field("time_after",     self.readout_time, default=1001, doc="Time to readout after TC time [ticks]"),
+    s.field("time_before",    self.readout_time, default=-1, doc="Time to readout before TC time [ticks]. -1 means override with trigger_window_before_ticks"),
+    s.field("time_after",     self.readout_time, default=-1, doc="Time to readout after TC time [ticks]. -1 means override with trigger_window_after_ticks"),
   ]),
 
   hsi_input_map: s.sequence("hsi_input_map", self.hsi_input),
