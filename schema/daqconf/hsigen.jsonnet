@@ -31,7 +31,6 @@ local cs = {
     # fake hsi options
     s.field( "use_fake_hsi", types.flag, default=true, doc='Flag to control whether fake or real hardware HSI config is generated. Default is true'),
     s.field( "host_fake_hsi", types.host, default='localhost', doc='Host to run the HSI app on'),
-    s.field( "fake_hsi_to_dts", types.flag, default=true, doc='Routing fake hsi to DTS trigger modules'),
     s.field( "fake_hsi_to_ctb", types.flag, default=false, doc='Routing fake hsi to CTB trigger modules'),
     s.field( "hsi_device_id", types.count, default=0, doc='Fake HSI only: device ID of fake HSIEvents'),
     s.field( "mean_hsi_signal_multiplicity", types.count, default=1, doc='Fake HSI only: rate of individual HSI signals in emulation mode 1'),
