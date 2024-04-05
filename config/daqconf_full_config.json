@@ -97,7 +97,8 @@
         "hsi_source": 1,
         "mean_hsi_signal_multiplicity": 1,
         "use_fake_hsi": true,
-        "use_timing_hsi": false
+        "use_timing_hsi": false,
+        "fake_hsi_to_ctb": false
     },
     "readout": {
         "data_files": [],
