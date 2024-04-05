@@ -160,8 +160,6 @@
                 "probability": 0.8,
                 "time_window": 1000
             },
-        "tolerate_incompleteness": false,
-        "completeness_tolerance": 1,
         "trigger_activity_config": {
             "adc_threshold": 10000,
             "adj_tolerance": 4,
@@ -196,8 +194,6 @@
         },
         "trigger_candidate_plugin": "TriggerCandidateMakerPrescalePlugin",
         "trigger_rate_hz": 1.0,
-        "trigger_window_after_ticks": 1000,
-        "trigger_window_before_ticks": 1000,
         "ttcm_input_map": [
           {
             "signal": 0,
