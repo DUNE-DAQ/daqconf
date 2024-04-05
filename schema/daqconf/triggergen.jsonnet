@@ -73,12 +73,8 @@ local cs = {
   mlt_roi_conf_map: s.sequence("mlt_roi_conf_map", self.mlt_roi_group_conf),
 
   trigger: s.record("trigger",[
-    s.field( "trigger_window_before_ticks",types.count, default=1000, doc="Trigger window before marker. Former -b"),
-    s.field( "trigger_window_after_ticks", types.count, default=1000, doc="Trigger window after marker. Former -a"),
     s.field( "host_trigger", types.host, default='localhost', doc='Host to run the trigger app on'),
     # trigger options
-    s.field( "completeness_tolerance", types.count, default=1, doc="Maximum number of inactive queues we will tolerate."),
-    s.field( "tolerate_incompleteness", types.flag, default=false, doc="Flag to tell trigger to tolerate inactive queues."),
     s.field( "ttcm_input_map", self.hsi_input_map, default=[
       {"signal":0, "tc_type_name":"kTiming", "time_before":1000, "time_after":1000},
       {"signal":1, "tc_type_name":"kTiming", "time_before":1000, "time_after":1000},

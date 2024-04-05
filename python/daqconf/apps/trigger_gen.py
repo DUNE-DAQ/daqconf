@@ -14,7 +14,6 @@ moo.otypes.load_types('trigger/triggerzipper.jsonnet')
 moo.otypes.load_types('trigger/moduleleveltrigger.jsonnet')
 moo.otypes.load_types('trigger/timingtriggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/ctbtriggercandidatemaker.jsonnet')
-moo.otypes.load_types('trigger/faketpcreatorheartbeatmaker.jsonnet')
 moo.otypes.load_types('trigger/txbuffer.jsonnet')
 moo.otypes.load_types('readoutlibs/readoutconfig.jsonnet')
 moo.otypes.load_types('trigger/tpchannelfilter.jsonnet')
@@ -28,7 +27,6 @@ import dunedaq.trigger.triggerzipper as tzip
 import dunedaq.trigger.moduleleveltrigger as mlt
 import dunedaq.trigger.timingtriggercandidatemaker as ttcm
 import dunedaq.trigger.ctbtriggercandidatemaker as ctbtcm
-import dunedaq.trigger.faketpcreatorheartbeatmaker as heartbeater
 import dunedaq.trigger.txbufferconfig as bufferconf
 import dunedaq.readoutlibs.readoutconfig as readoutconf
 import dunedaq.trigger.tpchannelfilter as chfilter
@@ -126,16 +124,12 @@ def get_trigger_app(
     DATA_RATE_SLOWDOWN_FACTOR = daq_common.data_rate_slowdown_factor
     CLOCK_SPEED_HZ = detector.clock_speed_hz
     TP_CONFIG = tp_infos
-    TOLERATE_INCOMPLETENESS=trigger.tolerate_incompleteness
-    COMPLETENESS_TOLERANCE=trigger.completeness_tolerance
     ACTIVITY_PLUGIN = trigger.trigger_activity_plugin
     ACTIVITY_CONFIG = trigger.trigger_activity_config
     CANDIDATE_PLUGIN = trigger.trigger_candidate_plugin
     CANDIDATE_CONFIG = trigger.trigger_candidate_config
     TTCM_INPUT_MAP=trigger.ttcm_input_map
     TTCM_PRESCALE=trigger.ttcm_prescale
-    TRIGGER_WINDOW_BEFORE_TICKS = trigger.trigger_window_before_ticks
-    TRIGGER_WINDOW_AFTER_TICKS = trigger.trigger_window_after_ticks
     USE_HSI_INPUT = use_hsi_input
     USE_FAKE_HSI_INPUT = use_fake_hsi_input
     USE_CTB_INPUT = use_ctb_input
@@ -235,7 +229,6 @@ def get_trigger_app(
                         DAQModule(name = f'tctee_chain_{j}',
                               plugin = 'TCTee'),]
 
-        # Make one heartbeatmaker per link
         for tp_sid in TP_SOURCE_IDS:
             link_id = f'tplink{tp_sid}'
 
