@@ -14,6 +14,7 @@ moo.otypes.load_types('trigger/triggerzipper.jsonnet')
 moo.otypes.load_types('trigger/moduleleveltrigger.jsonnet')
 moo.otypes.load_types('trigger/timingtriggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/ctbtriggercandidatemaker.jsonnet')
+moo.otypes.load_types('trigger/cibtriggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/faketpcreatorheartbeatmaker.jsonnet')
 moo.otypes.load_types('trigger/txbuffer.jsonnet')
 moo.otypes.load_types('readoutlibs/readoutconfig.jsonnet')
@@ -28,6 +29,7 @@ import dunedaq.trigger.triggerzipper as tzip
 import dunedaq.trigger.moduleleveltrigger as mlt
 import dunedaq.trigger.timingtriggercandidatemaker as ttcm
 import dunedaq.trigger.ctbtriggercandidatemaker as ctbtcm
+import dunedaq.trigger.cibtriggercandidatemaker as cibtcm
 import dunedaq.trigger.faketpcreatorheartbeatmaker as heartbeater
 import dunedaq.trigger.txbufferconfig as bufferconf
 import dunedaq.readoutlibs.readoutconfig as readoutconf
@@ -105,8 +107,8 @@ def check_mlt_roi_config(mlt_roi_conf, n_groups):
 
 #===============================================================================
 ### Function to check for the presence of TC sources.
-def tc_source_present(use_hsi, use_fake_hsi, use_ctb, use_ctcm, use_rtcm, n_tp_sources):
-	return (use_hsi or use_fake_hsi or use_ctb or use_ctcm or use_rtcm or n_tp_sources)
+def tc_source_present(use_hsi, use_fake_hsi, use_ctb, use_cib, use_ctcm, use_rtcm, n_tp_sources):
+	return (use_hsi or use_fake_hsi or use_ctb or use_ctcm or use_cib or use_rtcm or n_tp_sources)
 
 #===============================================================================
 def get_trigger_app(
@@ -118,6 +120,7 @@ def get_trigger_app(
         use_hsi_input,
         use_fake_hsi_input,
         use_ctb_input,
+        use_cib_input,
         USE_CHANNEL_FILTER: bool = True,
         DEBUG=False
     ):
@@ -142,6 +145,10 @@ def get_trigger_app(
     CTB_PRESCALE=trigger.ctb_prescale
     CTB_TIME_BEFORE=trigger.ctb_time_before
     CTB_TIME_AFTER=trigger.ctb_time_after
+    USE_CIB_INPUT=use_cib_input
+    CIB_PRESCALE=trigger.cib_prescale
+    CIB_TIME_BEFORE=trigger.cib_time_before
+    CIB_TIME_AFTER=trigger.cib_time_after
     MLT_MERGE_OVERLAPPING_TCS = trigger.mlt_merge_overlapping_tcs
     MLT_BUFFER_TIMEOUT = trigger.mlt_buffer_timeout
     MLT_MAX_TD_LENGTH_MS = trigger.mlt_max_td_length_ms
@@ -209,6 +216,10 @@ def get_trigger_app(
                          plugin = 'TCTee')]
     if USE_CTB_INPUT:
         modules += [DAQModule(name = 'tctee_ctbtcm',
+                         plugin = 'TCTee')]
+
+    if USE_CIB_INPUT:
+        modules += [DAQModule(name = 'tctee_cibtcm',
                          plugin = 'TCTee')]
 
     if len(TP_SOURCE_IDS) > 0:        
@@ -348,6 +359,13 @@ def get_trigger_app(
                                            time_before=CTB_TIME_BEFORE,
                                            time_after=CTB_TIME_AFTER))]
 
+    if USE_CIB_INPUT:
+        modules += [DAQModule(name = 'cibtcm',
+                          plugin = 'CIBTriggerCandidateMaker',
+                          conf=cibtcm.Conf(prescale=CIB_PRESCALE,
+                                           time_before=CIB_TIME_BEFORE,
+                                           time_after=CIB_TIME_AFTER))]
+
     if USE_CUSTOM_MAKER:
         if (len(CTCM_TYPES) != len(CTCM_INTERVAL)):
             raise RuntimeError(f'CTCM requires same size of types and intervals!')
@@ -419,6 +437,12 @@ def get_trigger_app(
         mgraph.connect_modules("tctee_ctbtcm.output1",       "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",   size_hint=1000)
         mgraph.connect_modules("tctee_ctbtcm.output2",       "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf",   size_hint=1000)
         mgraph.add_endpoint("ctb_hsievents", "ctbtcm.hsi_input", "HSIEvent", Direction.IN)
+
+    if USE_CIB_INPUT:
+        mgraph.connect_modules("cibtcm.output",              "tctee_cibtcm.input",          "TriggerCandidate", "cibtcm_input", size_hint=1000)
+        mgraph.connect_modules("tctee_cibtcm.output1",       "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",   size_hint=1000)
+        mgraph.connect_modules("tctee_cibtcm.output2",       "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf",   size_hint=1000)
+        mgraph.add_endpoint("cib_hsievents", "cibtcm.hsi_input", "HSIEvent", Direction.IN)
 
     if USE_CUSTOM_MAKER:
         mgraph.connect_modules("ctcm.trigger_candidate_sink", "tctee_ctcm.input",    "TriggerCandidate", "ctcm_input", size_hint=1000)
