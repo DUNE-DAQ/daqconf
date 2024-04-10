@@ -10,7 +10,7 @@ local s = moo.oschema.schema("dunedaq.daqconf.triggergen");
 local nc = moo.oschema.numeric_constraints;
 // A temporary schema construction context.
 local cs = {
-  tc_type:         s.number(   "TCType",        "i4", nc(minimum=0, maximum=9), doc="Number representing TC type. Currently ranging from 0 to 9"),
+  tc_type:         s.number(   "TCType",        "i4", nc(minimum=0, maximum=28), doc="Number representing TC type."),
   tc_type_name:     s.string(   "TCTypeName"),
   tc_types:        s.sequence( "TCTypes",       self.tc_type, doc="List of TC types"),
   tc_interval:     s.number(   "TCInterval",    "i8", nc(minimum=1, maximum=30000000000), doc="The intervals between TCs that are inserted into MLT by CTCM, in clock ticks"),
@@ -57,8 +57,8 @@ local cs = {
   hsi_input: s.record("hsi_input", [
     s.field("signal",         types.count, default=1, doc="HSI candidate maker accepted HSI signal ID"),
     s.field("tc_type_name",   self.tc_type_name, default="kTiming", doc="Name of the TC type"),
-    s.field("time_before",    self.readout_time, default=1000, doc="Time to readout before TC time [ticks]"),
-    s.field("time_after",     self.readout_time, default=1001, doc="Time to readout after TC time [ticks]"),
+    s.field("time_before",    self.readout_time, default=-1, doc="Time to readout before TC time [ticks]. -1 means override with trigger_window_before_ticks"),
+    s.field("time_after",     self.readout_time, default=-1, doc="Time to readout after TC time [ticks]. -1 means override with trigger_window_after_ticks"),
   ]),
 
   hsi_input_map: s.sequence("hsi_input_map", self.hsi_input),
@@ -73,25 +73,23 @@ local cs = {
   mlt_roi_conf_map: s.sequence("mlt_roi_conf_map", self.mlt_roi_group_conf),
 
   trigger: s.record("trigger",[
-    s.field( "trigger_window_before_ticks",types.count, default=1000, doc="Trigger window before marker. Former -b"),
-    s.field( "trigger_window_after_ticks", types.count, default=1000, doc="Trigger window after marker. Former -a"),
     s.field( "host_trigger", types.host, default='localhost', doc='Host to run the trigger app on'),
     # trigger options
-    s.field( "completeness_tolerance", types.count, default=1, doc="Maximum number of inactive queues we will tolerate."),
-    s.field( "tolerate_incompleteness", types.flag, default=false, doc="Flag to tell trigger to tolerate inactive queues."),
+    s.field( "trigger_window_before_ticks",types.count, default=1000, doc="Trigger window before marker. Former -b"),
+    s.field( "trigger_window_after_ticks", types.count, default=1000, doc="Trigger window after marker. Former -a"),
     s.field( "ttcm_dts_input_map", self.hsi_input_map, default=[
-      {"signal":0, "tc_type_name":"kTiming", "time_before":1000, "time_after":1000},
-      {"signal":1, "tc_type_name":"kTiming", "time_before":1000, "time_after":1000},
-      {"signal":2, "tc_type_name":"kTiming", "time_before":1000, "time_after":1000},
-      {"signal":3, "tc_type_name":"kTiming", "time_before":1000, "time_after":1000}
+      {"signal":0, "tc_type_name":"kTiming"},
+      {"signal":1, "tc_type_name":"kTiming"},
+      {"signal":2, "tc_type_name":"kTiming"},
+      {"signal":3, "tc_type_name":"kTiming"}
     ], doc="Timing trigger candidate maker accepted HSI signal map"),
     s.field( "ttcm_dts_prescale", types.count, default=1, doc="Option to prescale TTCM TCs"),
     s.field( "ttcm_fake_input_map", self.hsi_input_map, default=[
-      {"signal":0, "tc_type_name":"kTiming", "time_before":1000, "time_after":1000},
-      {"signal":1, "tc_type_name":"kTiming", "time_before":1000, "time_after":1000},
-      {"signal":2, "tc_type_name":"kTiming", "time_before":1000, "time_after":1000},
-      {"signal":3, "tc_type_name":"kTiming", "time_before":1000, "time_after":1000}
-    ], doc="Timing trigger candidate maker accepted HSI signal map"),
+      {"signal":0, "tc_type_name":"kTiming"},
+      {"signal":1, "tc_type_name":"kTiming"},
+      {"signal":2, "tc_type_name":"kTiming"},
+      {"signal":3, "tc_type_name":"kTiming"}
+    ], doc="Timing trigger candidate maker accepted (fake) HSI signal map"),
     s.field( "ttcm_fake_prescale", types.count, default=1, doc="Option to prescale TTCM TCs"),
     s.field( "ctb_prescale", types.count, default=1, doc="Option to prescale CTB TCs"),
     s.field( "ctb_time_before", self.readout_time, default=1000, doc="Trigger readout window before CTB TC"),
