@@ -201,7 +201,7 @@ def get_trigger_app(
             TP_SOURCE_IDS[trigger_sid] = conf
        
     # Check for present of TC sources. At least 1 is required
-    if not tc_source_present(USE_HSI_INPUT, USE_FAKE_HSI_INPUT, USE_CTB_INPUT, USE_CUSTOM_MAKER, USE_RANDOM_MAKER, len(TP_SOURCE_IDS)):
+    if not tc_source_present(USE_HSI_INPUT, USE_FAKE_HSI_INPUT, USE_CTB_INPUT, USE_CIB_INPUT, USE_CUSTOM_MAKER, USE_RANDOM_MAKER, len(TP_SOURCE_IDS)):
         raise RuntimeError('There are no TC sources!')
  
     # We always have a TC buffer even when there are no TPs, because we want to put the timing TC in the output file
