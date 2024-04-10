@@ -166,10 +166,14 @@ def get_trigger_app(
     ACTIVITY_CONFIG = trigger.trigger_activity_config
     CANDIDATE_PLUGIN = trigger.trigger_candidate_plugin
     CANDIDATE_CONFIG = trigger.trigger_candidate_config
-    TTCM_INPUT_MAP = update_ttcm_map(trigger.ttcm_input_map,
+    TTCM_DTS_INPUT_MAP = update_ttcm_map(trigger.ttcm_dts_input_map,
                                      trigger.trigger_window_before_ticks,
                                      trigger.trigger_window_after_ticks)
-    TTCM_PRESCALE=trigger.ttcm_prescale
+    TTCM_DTS_PRESCALE=trigger.ttcm_dts_prescale
+    TTCM_FAKE_INPUT_MAP = update_ttcm_map(trigger.ttcm_fake_input_map,
+                                     trigger.trigger_window_before_ticks,
+                                     trigger.trigger_window_after_ticks)
+    TTCM_FAKE_PRESCALE=trigger.ttcm_fake_prescale
     USE_HSI_INPUT = use_hsi_input
     USE_FAKE_HSI_INPUT = use_fake_hsi_input
     USE_CTB_INPUT = use_ctb_input
@@ -379,14 +383,14 @@ def get_trigger_app(
     if USE_HSI_INPUT:
         modules += [DAQModule(name = 'ttcm',
                           plugin = 'TimingTriggerCandidateMaker',
-                          conf=ttcm.Conf(hsi_configs=TTCM_INPUT_MAP,
-                                         prescale=TTCM_PRESCALE))]
+                          conf=ttcm.Conf(hsi_configs=TTCM_DTS_INPUT_MAP,
+                                         prescale=TTCM_DTS_PRESCALE))]
 
     if USE_FAKE_HSI_INPUT and not FAKE_HSI_CTB:
         modules += [DAQModule(name = 'ttcm_fake',
                           plugin = 'TimingTriggerCandidateMaker',
-                          conf=ttcm.Conf(hsi_configs=TTCM_INPUT_MAP,
-                                         prescale=TTCM_PRESCALE))]
+                          conf=ttcm.Conf(hsi_configs=TTCM_FAKE_INPUT_MAP,
+                                         prescale=TTCM_FAKE_PRESCALE))]
 
     if USE_CTB_INPUT:
         modules += [DAQModule(name = 'ctbtcm',
