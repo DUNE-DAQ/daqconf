@@ -161,8 +161,6 @@
                 "probability": 0.8,
                 "time_window": 1000
             },
-        "tolerate_incompleteness": false,
-        "completeness_tolerance": 1,
         "trigger_activity_config": {
             "adc_threshold": 10000,
             "adj_tolerance": 4,
