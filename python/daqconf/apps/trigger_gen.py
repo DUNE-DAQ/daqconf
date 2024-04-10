@@ -128,6 +128,8 @@ def get_trigger_app(
     ACTIVITY_CONFIG = trigger.trigger_activity_config
     CANDIDATE_PLUGIN = trigger.trigger_candidate_plugin
     CANDIDATE_CONFIG = trigger.trigger_candidate_config
+    TRIGGER_WINDOW_BEFORE_TICKS = trigger.trigger_window_before_ticks
+    TRIGGER_WINDOW_AFTER_TICKS = trigger.trigger_window_after_ticks
     TTCM_INPUT_MAP=trigger.ttcm_input_map
     TTCM_PRESCALE=trigger.ttcm_prescale
     USE_HSI_INPUT = use_hsi_input

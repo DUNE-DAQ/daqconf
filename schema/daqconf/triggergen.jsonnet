@@ -75,6 +75,8 @@ local cs = {
   trigger: s.record("trigger",[
     s.field( "host_trigger", types.host, default='localhost', doc='Host to run the trigger app on'),
     # trigger options
+    s.field( "trigger_window_before_ticks",types.count, default=1000, doc="Trigger window before marker. Former -b"),
+    s.field( "trigger_window_after_ticks", types.count, default=1000, doc="Trigger window after marker. Former -a"),
     s.field( "ttcm_input_map", self.hsi_input_map, default=[
       {"signal":0, "tc_type_name":"kTiming", "time_before":1000, "time_after":1000},
       {"signal":1, "tc_type_name":"kTiming", "time_before":1000, "time_after":1000},
