@@ -79,13 +79,20 @@ local cs = {
     # trigger options
     s.field( "completeness_tolerance", types.count, default=1, doc="Maximum number of inactive queues we will tolerate."),
     s.field( "tolerate_incompleteness", types.flag, default=false, doc="Flag to tell trigger to tolerate inactive queues."),
-    s.field( "ttcm_input_map", self.hsi_input_map, default=[
+    s.field( "ttcm_dts_input_map", self.hsi_input_map, default=[
       {"signal":0, "tc_type_name":"kTiming", "time_before":1000, "time_after":1000},
       {"signal":1, "tc_type_name":"kTiming", "time_before":1000, "time_after":1000},
       {"signal":2, "tc_type_name":"kTiming", "time_before":1000, "time_after":1000},
       {"signal":3, "tc_type_name":"kTiming", "time_before":1000, "time_after":1000}
     ], doc="Timing trigger candidate maker accepted HSI signal map"),
-    s.field( "ttcm_prescale", types.count, default=1, doc="Option to prescale TTCM TCs"),
+    s.field( "ttcm_dts_prescale", types.count, default=1, doc="Option to prescale TTCM TCs"),
+    s.field( "ttcm_fake_input_map", self.hsi_input_map, default=[
+      {"signal":0, "tc_type_name":"kTiming", "time_before":1000, "time_after":1000},
+      {"signal":1, "tc_type_name":"kTiming", "time_before":1000, "time_after":1000},
+      {"signal":2, "tc_type_name":"kTiming", "time_before":1000, "time_after":1000},
+      {"signal":3, "tc_type_name":"kTiming", "time_before":1000, "time_after":1000}
+    ], doc="Timing trigger candidate maker accepted HSI signal map"),
+    s.field( "ttcm_fake_prescale", types.count, default=1, doc="Option to prescale TTCM TCs"),
     s.field( "ctb_prescale", types.count, default=1, doc="Option to prescale CTB TCs"),
     s.field( "ctb_time_before", self.readout_time, default=1000, doc="Trigger readout window before CTB TC"),
     s.field( "ctb_time_after", self.readout_time, default=1000, doc="Trigger readout window after CTB TC"),
