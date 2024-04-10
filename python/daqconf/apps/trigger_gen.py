@@ -108,6 +108,31 @@ def check_mlt_roi_config(mlt_roi_conf, n_groups):
 def tc_source_present(use_hsi, use_fake_hsi, use_ctb, use_ctcm, use_rtcm, n_tp_sources):
 	return (use_hsi or use_fake_hsi or use_ctb or use_ctcm or use_rtcm or n_tp_sources)
 
+
+#===============================================================================
+def update_ttcm_map(ttcm_map,
+                    trigger_window_before_ticks,
+                    trigger_window_after_ticks
+    ):
+    """
+    Populates the readout window for TTCM hsi-TC map with the global values the
+    supplied values are -1 (default if readout window not supplied in TTCM map)
+
+    Args:
+        ttcm_map (dict): The TTCM hsi-TC map as defined in the schema.
+        trigger_window_before_ticks (int): N ticks to expand readout window before event
+        trigger_window_after_ticks (int): N ticks to expand readout window after event
+
+    Returns:
+        dict: Updated TTCM hsi-TC map
+    """
+    for entry in ttcm_map:
+        if entry['time_before'] == -1:
+            entry['time_before'] = trigger_window_before_ticks
+        if entry['time_after'] == -1:
+            entry['time_after'] = trigger_window_after_ticks
+    return ttcm_map
+
 #===============================================================================
 def get_trigger_app(
         trigger,
@@ -132,10 +157,10 @@ def get_trigger_app(
     ACTIVITY_CONFIG = trigger.trigger_activity_config
     CANDIDATE_PLUGIN = trigger.trigger_candidate_plugin
     CANDIDATE_CONFIG = trigger.trigger_candidate_config
-    TTCM_INPUT_MAP=trigger.ttcm_input_map
+    TTCM_INPUT_MAP = update_ttcm_map(trigger.ttcm_input_map,
+                                     trigger.trigger_window_before_ticks,
+                                     trigger.trigger_window_after_ticks)
     TTCM_PRESCALE=trigger.ttcm_prescale
-    TRIGGER_WINDOW_BEFORE_TICKS = trigger.trigger_window_before_ticks
-    TRIGGER_WINDOW_AFTER_TICKS = trigger.trigger_window_after_ticks
     USE_HSI_INPUT = use_hsi_input
     USE_FAKE_HSI_INPUT = use_fake_hsi_input
     USE_CTB_INPUT = use_ctb_input
