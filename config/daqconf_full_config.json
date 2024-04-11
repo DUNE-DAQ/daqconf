@@ -160,7 +160,8 @@
                 "number_of_link_groups": 1,
                 "probability": 0.8,
                 "time_window": 1000
-            },
+            }
+	],
         "trigger_activity_config": {
             "adc_threshold": 10000,
             "adj_tolerance": 4,
@@ -197,7 +198,7 @@
         "trigger_rate_hz": 1.0,
         "trigger_window_after_ticks": 1000,
         "trigger_window_before_ticks": 1000,
-        "ttcm_dts_input_map": [
+        "ttcm_input_map": [
           {
             "signal": 0,
             "tc_type_name": "kTiming",
@@ -223,34 +224,7 @@
             "time_before": 1000
           }
         ],
-        "ttcm_dts_prescale": 1,
-	"ttcm_fake_input_map": [
-          {
-            "signal": 0,
-            "tc_type_name": "kTiming",
-            "time_after": 1000,
-            "time_before": 1000
-          },
-          {
-            "signal": 1,
-            "tc_type_name": "kTiming",
-            "time_after": 1000,
-            "time_before": 1000
-          },
-          {
-            "signal": 2,
-            "tc_type_name": "kTiming",
-            "time_after": 1000,
-            "time_before": 1000
-          },
-          {
-            "signal": 3,
-            "tc_type_name": "kTiming",
-            "time_after": 1000,
-            "time_before": 1000
-          }
-        ],
-        "ttcm_fake_prescale": 1,
+        "ttcm_prescale": 1,
         "ctb_prescale": 1,
         "ctb_time_before": 1000,
         "ctb_time_after": 1000,
