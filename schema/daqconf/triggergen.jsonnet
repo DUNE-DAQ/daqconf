@@ -77,20 +77,13 @@ local cs = {
     # trigger options
     s.field( "trigger_window_before_ticks",types.count, default=1000, doc="Trigger window before marker. Former -b"),
     s.field( "trigger_window_after_ticks", types.count, default=1000, doc="Trigger window after marker. Former -a"),
-    s.field( "ttcm_dts_input_map", self.hsi_input_map, default=[
+    s.field( "ttcm_input_map", self.hsi_input_map, default=[
       {"signal":0, "tc_type_name":"kTiming"},
       {"signal":1, "tc_type_name":"kTiming"},
       {"signal":2, "tc_type_name":"kTiming"},
       {"signal":3, "tc_type_name":"kTiming"}
     ], doc="Timing trigger candidate maker accepted HSI signal map"),
-    s.field( "ttcm_dts_prescale", types.count, default=1, doc="Option to prescale TTCM TCs"),
-    s.field( "ttcm_fake_input_map", self.hsi_input_map, default=[
-      {"signal":0, "tc_type_name":"kTiming"},
-      {"signal":1, "tc_type_name":"kTiming"},
-      {"signal":2, "tc_type_name":"kTiming"},
-      {"signal":3, "tc_type_name":"kTiming"}
-    ], doc="Timing trigger candidate maker accepted (fake) HSI signal map"),
-    s.field( "ttcm_fake_prescale", types.count, default=1, doc="Option to prescale TTCM TCs"),
+    s.field( "ttcm_prescale", types.count, default=1, doc="Option to prescale TTCM TCs"),
     s.field( "ctb_prescale", types.count, default=1, doc="Option to prescale CTB TCs"),
     s.field( "ctb_time_before", self.readout_time, default=1000, doc="Trigger readout window before CTB TC"),
     s.field( "ctb_time_after", self.readout_time, default=1000, doc="Trigger readout window after CTB TC"),
