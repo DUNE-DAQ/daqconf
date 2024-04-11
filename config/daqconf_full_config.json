@@ -160,7 +160,8 @@
                 "number_of_link_groups": 1,
                 "probability": 0.8,
                 "time_window": 1000
-            },
+            }
+	],
         "trigger_activity_config": {
             "adc_threshold": 10000,
             "adj_tolerance": 4,
