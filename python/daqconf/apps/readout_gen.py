@@ -52,6 +52,11 @@ class ReadoutAppGenerator:
             lcores_excpt[(ex['host'], ex['iface'])] = ex
         self.lcores_excpt = lcores_excpt
 
+        raw_recording_excpt = {}
+        for ex in self.ro_cfg.raw_recording_config['exceptions']:
+            raw_recording_excpt[(ex['host'], ex['numa_id'])] = ex
+        self.raw_recording_excpt = raw_recording_excpt
+    
     def get_numa_cfg(self, RU_DESCRIPTOR):
 
         cfg = self.ro_cfg
@@ -76,6 +81,16 @@ class ReadoutAppGenerator:
 
         
         return list(dict.fromkeys(lcore_id_set))
+    
+    def get_recording_cfg(self, RU_DESCRIPTOR, numa_id):
+
+        cfg = self.ro_cfg
+        try:
+            ex = self.raw_recording_excpt[(RU_DESCRIPTOR.host_name, numa_id)]
+            raw_recording_output_dir = ex['raw_recording_output_dir']
+        except KeyError:
+            raw_recording_output_dir = cfg.raw_recording_config['default_output_dir']
+        return (raw_recording_output_dir)
 
     ## Compute the frament types from detector infos
     def compute_data_types(self, stream_entry):
@@ -116,6 +131,7 @@ class ReadoutAppGenerator:
         default_pop_size_pct = 0.1
         default_stream_buffer_size = 8388608
 
+        raw_recording_output_dir = self.get_recording_cfg(RU_DESCRIPTOR, NUMA_ID)
 
         modules = []
         for stream in RU_DESCRIPTOR.streams:
@@ -152,7 +168,7 @@ class ReadoutAppGenerator:
                                 pop_size_pct = default_pop_size_pct,
                                 source_id = stream.src_id,
                                 det_id = RU_DESCRIPTOR.det_id,
-                                output_file = path.join(cfg.raw_recording_output_dir, f"output_{RU_DESCRIPTOR.label}_{stream.src_id}.out"),
+                                output_file = path.join(raw_recording_output_dir, f"output_{RU_DESCRIPTOR.label}_{stream.src_id}.out"),
                                 stream_buffer_size = default_stream_buffer_size,
                                 request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                 fragment_send_timeout_ms = cfg.fragment_send_timeout_ms,
