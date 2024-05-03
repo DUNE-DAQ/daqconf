@@ -10,7 +10,8 @@ local s = moo.oschema.schema("dunedaq.daqconf.triggergen");
 local nc = moo.oschema.numeric_constraints;
 // A temporary schema construction context.
 local cs = {
-  tc_type:         s.number(   "TCType",        "i4", nc(minimum=0, maximum=9), doc="Number representing TC type. Currently ranging from 0 to 9"),
+  tc_type:         s.number(   "TCType",        "i4", nc(minimum=0, maximum=28), doc="Number representing TC type."),
+  tc_type_name:     s.string(   "TCTypeName"),
   tc_types:        s.sequence( "TCTypes",       self.tc_type, doc="List of TC types"),
   tc_interval:     s.number(   "TCInterval",    "i8", nc(minimum=1, maximum=30000000000), doc="The intervals between TCs that are inserted into MLT by CTCM, in clock ticks"),
   tc_intervals:    s.sequence( "TCIntervals",   self.tc_interval, doc="List of TC intervals used by CTCM"),
@@ -37,6 +38,12 @@ local cs = {
     s.field("adc_threshold", types.count, default=10000),
     s.field("n_channels_threshold", types.count, default=8),
     s.field("print_tp_info", types.flag, default=false),
+    s.field("bundle_size", types.count, default=100),
+    s.field("min_tps", types.count, default=20),
+    s.field("max_channel_distance", types.count, default=50),
+    s.field("max_tp_count", types.count, default=1000),
+    s.field("min_pts", types.count, default=7),
+    s.field("eps", types.count, default=20),
   ]),
 
   tc_readout: s.record( "tc_readout", [
@@ -46,6 +53,15 @@ local cs = {
   ]),
 
   tc_readout_map: s.sequence( "tc_readout_map", self.tc_readout),
+
+  hsi_input: s.record("hsi_input", [
+    s.field("signal",         types.count, default=1, doc="HSI candidate maker accepted HSI signal ID"),
+    s.field("tc_type_name",   self.tc_type_name, default="kTiming", doc="Name of the TC type"),
+    s.field("time_before",    self.readout_time, default=-1, doc="Time to readout before TC time [ticks]. -1 means override with trigger_window_before_ticks"),
+    s.field("time_after",     self.readout_time, default=-1, doc="Time to readout after TC time [ticks]. -1 means override with trigger_window_after_ticks"),
+  ]),
+
+  hsi_input_map: s.sequence("hsi_input_map", self.hsi_input),
 
   mlt_roi_group_conf: s.record("mlt_roi_group_conf", [
     s.field("number_of_link_groups", self.number_of_groups, default=1,         doc="Number of groups of links to readout"),
@@ -57,26 +73,27 @@ local cs = {
   mlt_roi_conf_map: s.sequence("mlt_roi_conf_map", self.mlt_roi_group_conf),
 
   trigger: s.record("trigger",[
-    // s.field( "trigger_rate_hz", types.rate, default=1.0, doc='Fake HSI only: rate at which fake HSIEvents are sent. 0 - disable HSIEvent generation. Former -t'),
+    s.field( "host_trigger", types.host, default='localhost', doc='Host to run the trigger app on'),
+    # trigger options
     s.field( "trigger_window_before_ticks",types.count, default=1000, doc="Trigger window before marker. Former -b"),
     s.field( "trigger_window_after_ticks", types.count, default=1000, doc="Trigger window after marker. Former -a"),
-    s.field( "host_trigger", types.host, default='localhost', doc='Host to run the trigger app on'),
-    // s.field( "host_tpw", types.host, default='localhost', doc='Host to run the TPWriter app on'),
-    # trigger options
-    s.field( "completeness_tolerance", types.count, default=1, doc="Maximum number of inactive queues we will tolerate."),
-    s.field( "tolerate_incompleteness", types.flag, default=false, doc="Flag to tell trigger to tolerate inactive queues."),
-    s.field( "ttcm_s1", types.count,default=1, doc="Timing trigger candidate maker accepted HSI signal ID 1"),
-    s.field( "ttcm_s2", types.count, default=2, doc="Timing trigger candidate maker accepted HSI signal ID 2"),
+    s.field( "ttcm_input_map", self.hsi_input_map, default=[
+      {"signal":0, "tc_type_name":"kTiming"},
+      {"signal":1, "tc_type_name":"kTiming"},
+      {"signal":2, "tc_type_name":"kTiming"},
+      {"signal":3, "tc_type_name":"kTiming"}
+    ], doc="Timing trigger candidate maker accepted HSI signal map"),
     s.field( "ttcm_prescale", types.count, default=1, doc="Option to prescale TTCM TCs"),
+    s.field( "ctb_prescale", types.count, default=1, doc="Option to prescale CTB TCs"),
+    s.field( "ctb_time_before", self.readout_time, default=1000, doc="Trigger readout window before CTB TC"),
+    s.field( "ctb_time_after", self.readout_time, default=1000, doc="Trigger readout window after CTB TC"),
+    s.field( "cib_prescale", types.count, default=1, doc="Option to prescale CIB TCs"),
+    s.field( "cib_time_before", self.readout_time, default=1000, doc="Trigger readout window before CIB TC"),
+    s.field( "cib_time_after", self.readout_time, default=1000, doc="Trigger readout window after CIB TC"),
     s.field( "trigger_activity_plugin", self.tm_algorithms, default=['TriggerActivityMakerPrescalePlugin'], doc="List of trigger activity algorithm plugins"),
     s.field( "trigger_activity_config", self.tm_configs, default=[self.trigger_algo_config], doc="List of trigger activity algorithm configs (strings containing python dictionary)"),
     s.field( "trigger_candidate_plugin", self.tm_algorithms, default=['TriggerCandidateMakerPrescalePlugin'], doc="List of trigger candidate algorithm plugins"),
     s.field( "trigger_candidate_config", self.tm_configs, default=[self.trigger_algo_config], doc="List of trigger candidate algorithm configs (strings containing python dictionary)"),
-    s.field( "hsi_trigger_type_passthrough", types.flag, default=false, doc="Option to override trigger type in the MLT"),
-    // s.field( "enable_tpset_writing", types.flag, default=false, doc="Enable the writing of TPs to disk (only works with enable_tpg or enable_firmware_tpg)"),
-    // s.field( "tpset_output_path", types.path,default='.', doc="Output directory for TPSet stream files"),
-    // s.field( "tpset_output_file_size",types.count, default=4*1024*1024*1024, doc="The size threshold when TPSet stream files are closed (in bytes)"),
-    // s.field( "tpg_channel_map", self.tpg_channel_map, default="ProtoDUNESP1ChannelMap", doc="Channel map for TPG"),
     s.field( "mlt_merge_overlapping_tcs", types.flag, default=true, doc="Option to turn off merging of overlapping TCs when forming TDs in MLT"),
     s.field( "mlt_buffer_timeout", types.count, default=100, doc="Timeout (buffer) to wait for new overlapping TCs before sending TD"),
     s.field( "mlt_send_timed_out_tds", types.flag, default=true, doc="Option to drop TD if TC comes out of timeout window"),

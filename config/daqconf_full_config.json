@@ -97,7 +97,8 @@
         "hsi_source": 1,
         "mean_hsi_signal_multiplicity": 1,
         "use_fake_hsi": true,
-        "use_timing_hsi": false
+        "use_timing_hsi": false,
+        "fake_hsi_to_ctb": false
     },
     "readout": {
         "data_files": [],
@@ -137,7 +138,6 @@
     },
     "trigger": {
         "host_trigger": "localhost",
-        "hsi_trigger_type_passthrough": false,
         "mlt_buffer_timeout": 100,
         "mlt_ignore_tc": [],
         "mlt_max_td_length_ms": 1000,
@@ -160,9 +160,8 @@
                 "number_of_link_groups": 1,
                 "probability": 0.8,
                 "time_window": 1000
-            },
-        "tolerate_incompleteness": false,
-        "completeness_tolerance": 1,
+            }
+	],
         "trigger_activity_config": {
             "adc_threshold": 10000,
             "adj_tolerance": 4,
@@ -173,7 +172,12 @@
             "trigger_on_adc": false,
             "trigger_on_adjacency": true,
             "trigger_on_n_channels": false,
-            "window_length": 10000
+            "window_length": 10000,
+            "bundle_size": 100,
+            "min_tps": 20,
+            "max_channel_distance": 50,
+            "eps": 20,
+            "min_pts": 7
         },
         "trigger_activity_plugin": "TriggerActivityMakerPrescalePlugin",
         "trigger_candidate_config": {
@@ -186,15 +190,44 @@
             "trigger_on_adc": false,
             "trigger_on_adjacency": true,
             "trigger_on_n_channels": false,
-            "window_length": 10000
+            "window_length": 10000,
+            "bundle_size": 100,
+            "max_tp_count": 1000
         },
         "trigger_candidate_plugin": "TriggerCandidateMakerPrescalePlugin",
         "trigger_rate_hz": 1.0,
         "trigger_window_after_ticks": 1000,
         "trigger_window_before_ticks": 1000,
-        "ttcm_s1": 1,
-        "ttcm_s2": 2,
-	"ttcm_prescale": 1,
+        "ttcm_input_map": [
+          {
+            "signal": 0,
+            "tc_type_name": "kTiming",
+            "time_after": 1000,
+            "time_before": 1000
+          },
+          {
+            "signal": 1,
+            "tc_type_name": "kTiming",
+            "time_after": 1000,
+            "time_before": 1000
+          },
+          {
+            "signal": 2,
+            "tc_type_name": "kTiming",
+            "time_after": 1000,
+            "time_before": 1000
+          },
+          {
+            "signal": 3,
+            "tc_type_name": "kTiming",
+            "time_after": 1000,
+            "time_before": 1000
+          }
+        ],
+        "ttcm_prescale": 1,
+        "ctb_prescale": 1,
+        "ctb_time_before": 1000,
+        "ctb_time_after": 1000,
         "use_custom_maker": false,
         "ctcm_trigger_intervals": [
             10000000

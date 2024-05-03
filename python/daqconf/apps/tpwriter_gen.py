@@ -47,13 +47,12 @@ def get_tpwriter_app(
     SOURCE_IDX=source_id
     HOST=dataflow.host_tpw
 
-    ONE_SECOND_INTERVAL_TICKS = CLOCK_SPEED_HZ / DATA_RATE_SLOWDOWN_FACTOR
-
     modules = []
 
     modules += [DAQModule(name = 'tpswriter',
                           plugin = "TPStreamWriter",
-                          conf = tpsw.ConfParams(tp_accumulation_interval_ticks=ONE_SECOND_INTERVAL_TICKS,
+                          conf = tpsw.ConfParams(tp_accumulation_interval_ticks=dataflow.tp_accumulation_interval_ticks,
+                                                 tp_accumulation_inactivity_time_before_write_sec=dataflow.tp_accumulation_inactivity_time_before_write_sec,
                               source_id=SOURCE_IDX,
                               data_store_parameters=hdf5ds.ConfParams(
                               name="tp_stream_writer",

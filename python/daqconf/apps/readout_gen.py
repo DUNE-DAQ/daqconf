@@ -205,7 +205,11 @@ class ReadoutAppGenerator:
                         link_id = geo_lid,
                         enable_tpg = True,
                         tpg_threshold = cfg.tpg_threshold,
+                        tpg_rs_memory_factor = cfg.tpg_rs_memory_factor,
+                        tpg_rs_scale_factor = cfg.tpg_rs_scale_factor,
+                        tpg_frugal_streaming_accumulator_limit = cfg.tpg_frugal_streaming_accumulator_limit,
                         tpg_algorithm = cfg.tpg_algorithm,
+                        enable_simple_threshold_on_collection = cfg.enable_simple_threshold_on_collection,
                         tpg_channel_mask = cfg.tpg_channel_mask,
                         channel_map_name = TPG_CHANNEL_MAP,
                         emulator_mode = cfg.emulator_mode,
@@ -246,6 +250,7 @@ class ReadoutAppGenerator:
                                 readoutmodelconf = rconf.ReadoutModelConf(
                                     source_queue_timeout_ms = QUEUE_POP_WAIT_MS,
                                     tpset_min_latency_ticks = self.ro_cfg.tpset_min_latency_ticks,
+                                    tardy_tp_quiet_time_at_start_sec = self.ro_cfg.tardy_tp_quiet_time_at_start_sec,
                                     source_id = tpset_sid
                                 ),
                                 latencybufferconf = rconf.LatencyBufferConf(
@@ -404,9 +409,11 @@ class ReadoutAppGenerator:
         """
         numa_id, latency_numa, latency_preallocate = self.get_numa_cfg(RU_DESCRIPTOR)
         cfg = self.ro_cfg
-        TPG_ENABLED = cfg.enable_tpg and RU_DESCRIPTOR.kind == "eth"
         DATA_REQUEST_TIMEOUT=data_timeout_requests
-        
+
+        det_str = DetID.subdetector_to_string(DetID.Subdetector(RU_DESCRIPTOR.streams[0].geo_id.det_id))
+        TPG_ENABLED = cfg.enable_tpg and RU_DESCRIPTOR.kind == "eth" and det_str in ("HD_TPC","VD_Bottom_TPC")
+
         modules = []
         queues = []
 
