@@ -165,6 +165,7 @@
         "trigger_activity_config": {
             "adc_threshold": 10000,
             "adj_tolerance": 4,
+            "time_tolerance": 150,
             "adjacency_threshold": 6,
             "n_channels_threshold": 8,
             "prescale": 100,

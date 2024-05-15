@@ -32,6 +32,7 @@ local cs = {
     s.field("window_length", types.count, default=10000),
     s.field("adjacency_threshold", types.count, default=6),
     s.field("adj_tolerance", types.count, default=4),
+    s.field("time_tolerance", types.count, default=150),
     s.field("trigger_on_adc", types.flag, default=false),
     s.field("trigger_on_n_channels", types.flag, default=false),
     s.field("trigger_on_adjacency", types.flag, default=true),
