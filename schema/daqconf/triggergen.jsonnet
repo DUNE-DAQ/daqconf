@@ -113,6 +113,7 @@ local cs = {
     s.field( "rtcm_trigger_interval_ticks", self.tc_interval, default=62500000, doc="Interval between triggers in 16 ns time ticks (default 1.024 s)"),
     s.field( "rtcm_timestamp_method", self.timestamp_estimation, "kSystemClock", doc="Option to pick source for timing (system / timesync)"),
     s.field( "rtcm_time_distribution", self.distribution_type, "kUniform", doc="Type of distribution used for random timestamps (uniform or poisson)"),
+    s.field( "use_latency_offset", types.flag, default=false, doc="Should an offset be applied to latency measurements (opmon)"),
   ]),
 
 };
