@@ -493,7 +493,7 @@ def get_trigger_app(
             if USE_CHANNEL_FILTER:
                 if (num_algs > 1):
                     mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_ma_{tp_conf.region_id}.input', data_type="TPSet", size_hint=1000)
-                else
+                else:
                     mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tam_{tp_conf.region_id}_0.input', data_type="TPSet", size_hint=1000)
 
         ## # Use connect_modules to connect up the Tees to the buffers/MLT,
