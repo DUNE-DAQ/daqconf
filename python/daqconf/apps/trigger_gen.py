@@ -147,7 +147,7 @@ def get_trigger_app(
         trigger,
         detector,
         daq_common,
-        tp_infos,
+        trg_infos,
         trigger_data_request_timeout,
         use_hsi_input,
         use_fake_hsi_input,
@@ -161,7 +161,7 @@ def get_trigger_app(
     # Temp variables, To cleanup
     DATA_RATE_SLOWDOWN_FACTOR = daq_common.data_rate_slowdown_factor
     CLOCK_SPEED_HZ = detector.clock_speed_hz
-    TP_CONFIG = tp_infos
+    TRG_CONFIG = trg_infos
     ACTIVITY_PLUGIN = trigger.trigger_activity_plugin
     ACTIVITY_CONFIG = trigger.trigger_activity_config
     CANDIDATE_PLUGIN = trigger.trigger_candidate_plugin
@@ -227,13 +227,14 @@ def get_trigger_app(
     TA_SOURCE_IDS = {}
     TC_SOURCE_ID = {}
 
-    for trigger_sid,conf in TP_CONFIG.items():
-        if isinstance(conf, TAInfo):
-            TA_SOURCE_IDS[conf.region_id] = {"source_id": trigger_sid, "conf": conf}
+    for trigger_sid,conf in TRG_CONFIG.items():
+        if isinstance(conf, TPInfo):
+            TP_SOURCE_IDS[trigger_sid] = conf
+        elif isinstance(conf, TAInfo):
+            TA_SOURCE_IDS[(conf.region_id, conf.plane)] = {"source_id": trigger_sid, "conf": conf}
         elif isinstance(conf, TCInfo):
             TC_SOURCE_ID = {"source_id": trigger_sid, "conf": conf}
-        elif isinstance(conf, TPInfo):
-            TP_SOURCE_IDS[trigger_sid] = conf
+
        
     # Check for present of TC sources. At least 1 is required
     if not tc_source_present(USE_HSI_INPUT, USE_FAKE_HSI_INPUT, USE_CTB_INPUT, USE_CIB_INPUT, USE_CUSTOM_MAKER, USE_RANDOM_MAKER, len(TP_SOURCE_IDS)):
@@ -311,7 +312,7 @@ def get_trigger_app(
                                                                                                              request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                                              enable_raw_recording = False)))]
         
-        for region_id, ta_conf in TA_SOURCE_IDS.items():
+        for (region_id, plane), ta_conf in TA_SOURCE_IDS.items():
                 # (PAR 2022-06-09) The max_latency_ms here should be
                 # kept smaller than the corresponding value in the
                 # downstream TAZipper. The reason is to avoid tardy
@@ -347,18 +348,18 @@ def get_trigger_app(
 
                 # Add a TAMaker for each one and it's config supplied, additionally add a TASetTee:
                 for j, tamaker in enumerate(ACTIVITY_PLUGIN):
-                    modules += [DAQModule(name = f'tam_{region_id}_{j}',
+                    modules += [DAQModule(name = f'tam_{region_id}_{plane}_{j}',
                                           plugin = 'TriggerActivityMaker',
                                           conf = tam.Conf(activity_maker=tamaker,
                                                           geoid_element=region_id,  # 2022-02-02 PL: Same comment as above
                                                           window_time=10000,  # should match whatever makes TPSets, in principle
                                                           buffer_time=10*ticks_per_wall_clock_s//1000, # 10 wall-clock ms
                                                           activity_maker_config=temptypes.ActivityConf(ACTIVITY_CONFIG[j]))),
-                                DAQModule(name = f'tasettee_region_{region_id}_{j}', plugin = "TASetTee")]
+                                DAQModule(name = f'tasettee_region_{region_id}_{plane}_{j}', plugin = "TASetTee")]
 
                 # Add the zippers and TABuffers, independant of the number of algorithms we want to run concurrently.
                 modules += [
-                            DAQModule(name = f'ta_buf_region_{region_id}',
+                            DAQModule(name = f'ta_buf_region_{region_id}_{plane}',
                                       plugin = 'TABuffer',
                                       # PAR 2022-04-20 Not sure what to set the element id to so it doesn't collide with the region/element used by TP buffers. Make it some big number that shouldn't already be used by the TP buffer
                                       conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 100_000),
@@ -373,7 +374,7 @@ def get_trigger_app(
                                                                                                                  enable_raw_recording = False)))]
 
                 if(num_algs > 1):
-                    modules += [DAQModule(name = f'tpsettee_ma_{region_id}',
+                    modules += [DAQModule(name = f'tpsettee_ma_{region_id}_{plane}',
                                           plugin = 'TPSetTee'),]
 
     if USE_HSI_INPUT:
@@ -513,7 +514,7 @@ def get_trigger_app(
             if(num_algs > 1):
                 mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'tpsettee_ma_{tp_conf.region_id}.input', data_type="TPSet", size_hint=1000)
             else:
-                mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'tam_{tp_conf.region_id}_0.input', data_type="TPSet", size_hint=1000)
+                mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'tam_{tp_conf.region_id}_{tp_conf.plane}_0.input', data_type="TPSet", size_hint=1000)
             mgraph.connect_modules(f'tpsettee_{link_id}.output2', f'buf_{link_id}.tpset_source',data_type="TPSet", size_hint=1000)
 
         ## # Use connect_modules to connect up the Tees to the buffers/MLT,
@@ -523,7 +524,7 @@ def get_trigger_app(
             # Send the output of the new TPSetTee module to each of the activity makers
             if(num_algs > 1):
                 for j in range(num_algs):
-                    mgraph.connect_modules(f'tpsettee_ma_{region_id}.output{j+1}', f'tam_{region_id}_{j}.input', "TPSet", size_hint=1000)
+                    mgraph.connect_modules(f'tpsettee_ma_{region_id}_{plane}.output{j+1}', f'tam_{region_id}_{plane}_{j}.input', "TPSet", size_hint=1000)
 
         # For each TCMaker config applied, connect the TCMaker to it's copyer, then to the MLT and TCBuffer via that copyer.
         for j in range(len(cm_configs)):
@@ -532,11 +533,11 @@ def get_trigger_app(
             mgraph.connect_modules(f"tctee_chain_{j}.output2", "tc_buf.tc_source", "TriggerCandidate","tcs_to_buf", size_hint=1000)
 
         # For each TAMaker applied, connect the makers output to it's copyer, then connect the copyer's output to the buffer and TAZipper
-        for region_id in TA_SOURCE_IDS.keys():
+        for region_id, plane in TA_SOURCE_IDS.keys():
             for j in range(num_algs):
-                mgraph.connect_modules(f'tam_{region_id}_{j}.output', f'tasettee_region_{region_id}_{j}.input', data_type="TASet", size_hint=1000)
-                mgraph.connect_modules(f'tasettee_region_{region_id}_{j}.output1', f'tazipper_{j}.input', queue_name=f"tas{j}_to_tazipper_{j}", data_type="TASet", size_hint=1000)
-                mgraph.connect_modules(f'tasettee_region_{region_id}_{j}.output2', f'ta_buf_region_{region_id}.taset_source',data_type="TASet", size_hint=1000)
+                mgraph.connect_modules(f'tam_{region_id}_{plane}_{j}.output', f'tasettee_region_{region_id}_{plane}_{j}.input', data_type="TASet", size_hint=1000)
+                mgraph.connect_modules(f'tasettee_region_{region_id}_{plane}_{j}.output1', f'tazipper_{j}.input', queue_name=f"tas{j}_to_tazipper_{j}", data_type="TASet", size_hint=1000)
+                mgraph.connect_modules(f'tasettee_region_{region_id}_{plane}_{j}.output2', f'ta_buf_region_{region_id}_{plane}.taset_source',data_type="TASet", size_hint=1000)
 
     mgraph.add_endpoint("td_to_dfo", "mlt.td_output", "TriggerDecision", Direction.OUT, toposort=True)
     mgraph.add_endpoint("df_busy_signal", "mlt.dfo_inhibit_input", "TriggerInhibit", Direction.IN)
@@ -562,8 +563,8 @@ def get_trigger_app(
                                              requests_in=f"{buf_name}.data_request_source",
                                              fragments_out=f"{buf_name}.fragment_sink")
 
-        for region_id, ta_conf in TA_SOURCE_IDS.items():
-            buf_name = f'ta_buf_region_{region_id}'
+        for (region_id, plane), ta_conf in TA_SOURCE_IDS.items():
+            buf_name = f'ta_buf_region_{region_id}_{plane}'
             mgraph.add_fragment_producer(id=ta_conf["source_id"], subsystem="Trigger",
                                          requests_in=f"{buf_name}.data_request_source",
                                          fragments_out=f"{buf_name}.fragment_sink")

@@ -46,7 +46,7 @@ def set_mlt_links(the_system, tp_infos, mlt_app_name="trigger", verbose=False):
         else:
             # readout unit
             mlt_map_entry = { "group": trigger_sid, "elements": { "Trigger": [], "Detector_Readout": [] } }
-            for stream in conf.streams:
+            for stream in conf.ru_desc.streams:
                 mlt_map_entry["elements"]["Detector_Readout"].append(stream.src_id)
             mlt_readout_map[trigger_sid] = mlt_map_entry
 
