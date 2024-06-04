@@ -240,6 +240,7 @@
         "rtcm_trigger_interval_ticks": 62500000,
         "rtcm_timestamp_method": "kSystemClock",
         "rtcm_time_distribution": "kUniform",
+        "enable_latency_monitoring": false,
         "use_latency_offset": false
     }
 }
