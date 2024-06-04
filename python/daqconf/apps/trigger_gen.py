@@ -1,4 +1,4 @@
-# Set moo schema search path
+ Set moo schema search path
 from dunedaq.env import get_moo_model_path
 import moo.io
 moo.io.default_load_path = get_moo_model_path()
@@ -467,8 +467,8 @@ def get_trigger_app(
                                               td_readout_map=MLT_READOUT_MAP,
                                               use_roi_readout=MLT_USE_ROI_READOUT,
                                               roi_conf=MLT_ROI_CONF,
-					                          use_bitwords=MLT_USE_BITWORDS,
-					                          trigger_bitwords=MLT_TRIGGER_FLAGS,
+                                              use_bitwords=MLT_USE_BITWORDS,
+                                              trigger_bitwords=MLT_TRIGGER_FLAGS,
                                               enable_latency_monit=ENABLE_LATENCY_MONITORING,
                                               use_latency_offset=USE_LATENCY_OFFSET))]
 
