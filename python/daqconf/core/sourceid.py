@@ -126,17 +126,6 @@ class SourceIDBroker:
             if self.debug: console.log(f"Registering Trigger TA Source IDs {tasid} for region {ta_info.region_id} {ta_info.plane}")
             self.register_source_id("Trigger", tasid, ta_info)
         self.register_source_id("Trigger", self.get_next_source_id("Trigger"), tc_info)
-
-
-# def get_tpg_mode(enable_fw_tpg, enable_tpg):
-#     if enable_fw_tpg and enable_tpg:
-#         raise ValueError("Cannot enable both FW and SW TPG!")
-#     if enable_fw_tpg:
-#         return TPGenMode.FWTPG
-#     if enable_tpg:
-#         return TPGenMode.SWTPG
-
-#     return TPGenMode.DISABLED
                 
 
 def source_id_raw_str(source_id: SourceID):
