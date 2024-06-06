@@ -147,7 +147,7 @@ def get_trigger_app(
         trigger,
         detector,
         daq_common,
-        trg_infos,
+        tp_infos,
         trigger_data_request_timeout,
         use_hsi_input,
         use_fake_hsi_input,
@@ -161,7 +161,7 @@ def get_trigger_app(
     # Temp variables, To cleanup
     DATA_RATE_SLOWDOWN_FACTOR = daq_common.data_rate_slowdown_factor
     CLOCK_SPEED_HZ = detector.clock_speed_hz
-    TRG_CONFIG = trg_infos
+    TRG_CONFIG = tp_infos
     ACTIVITY_PLUGIN = trigger.trigger_activity_plugin
     ACTIVITY_CONFIG = trigger.trigger_activity_config
     CANDIDATE_PLUGIN = trigger.trigger_candidate_plugin
@@ -295,22 +295,6 @@ def get_trigger_app(
                                                            keep_collection=True,
                                                            keep_induction=True,
                                                            max_time_over_threshold=10_000))]
-            modules += [DAQModule(name = f'tpsettee_{link_id}',
-                                  plugin = 'TPSetTee')]
-
-            # 1 buffer per TPG channel
-            modules += [DAQModule(name = f'buf_{link_id}',
-                                  plugin = 'TPBuffer',
-                                  conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 1_000_000),
-                                                         requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = 1_000_000,
-                                                                                                             pop_limit_pct = 0.8,
-                                                                                                             pop_size_pct = 0.1,
-                                                                                                             source_id = tp_sid,
-                                                                                                             det_id = 1,
-                                                                                                             # output_file = f"output_{idx + MIN_LINK}.out",
-                                                                                                             stream_buffer_size = 8388608,
-                                                                                                             request_timeout_ms = DATA_REQUEST_TIMEOUT,
-                                                                                                             enable_raw_recording = False)))]
         
         for (region_id, plane), ta_conf in TA_SOURCE_IDS.items():
                 # (PAR 2022-06-09) The max_latency_ms here should be
@@ -509,13 +493,10 @@ def get_trigger_app(
         for tp_sid,tp_conf in TP_SOURCE_IDS.items():
             link_id = f'tplink{tp_sid}'
             if USE_CHANNEL_FILTER:
-                mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', data_type="TPSet", size_hint=1000)
-
-            if(num_algs > 1):
-                mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'tpsettee_ma_{tp_conf.region_id}.input', data_type="TPSet", size_hint=1000)
-            else:
-                mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'tam_{tp_conf.region_id}_{tp_conf.plane}_0.input', data_type="TPSet", size_hint=1000)
-            mgraph.connect_modules(f'tpsettee_{link_id}.output2', f'buf_{link_id}.tpset_source',data_type="TPSet", size_hint=1000)
+                if(num_algs > 1):
+                    mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_ma_{tp_conf.region_id}.input', data_type="TPSet", size_hint=1000)
+                else:
+                    mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tam_{tp_conf.region_id}_{tp_conf.plane}_0.input', data_type="TPSet", size_hint=1000)
 
         ## # Use connect_modules to connect up the Tees to the buffers/MLT,
         ## # as manually adding Queues doesn't give the desired behaviour
@@ -548,20 +529,13 @@ def get_trigger_app(
 
     if len(TP_SOURCE_IDS) > 0:
         for tp_sid,tp_conf in TP_SOURCE_IDS.items():
-                # 1 buffer per link
                 link_id=f"tplink{tp_sid}"
-                buf_name=f'buf_{link_id}'
                 ru_sid = f'tplink{tp_conf.tp_ru_sid}'
               
                 if USE_CHANNEL_FILTER:
                     mgraph.add_endpoint(f"tpsets_{ru_sid}", f"channelfilter_{link_id}.tpset_source", "TPSet", Direction.IN, is_pubsub=True)
                 else:
-                    mgraph.add_endpoint(f"tpsets_{ru_sid}", f'tpsettee_{link_id}.input', "TPSet",            Direction.IN, is_pubsub=True)
-                    
-
-                mgraph.add_fragment_producer(id=tp_sid, subsystem="Trigger",
-                                             requests_in=f"{buf_name}.data_request_source",
-                                             fragments_out=f"{buf_name}.fragment_sink")
+                    mgraph.add_endpoint(f"tpsets_{ru_sid}", f'tam_{tp_conf.region_id}_{tp_conf.plane}_0.input', "TPSet", Direction.IN, is_pubsub=True)
 
         for (region_id, plane), ta_conf in TA_SOURCE_IDS.items():
             buf_name = f'ta_buf_region_{region_id}_{plane}'
