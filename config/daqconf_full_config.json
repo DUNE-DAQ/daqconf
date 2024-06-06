@@ -122,7 +122,7 @@
         "thread_pinning_file": "",
         "tpg_algorithm": "SimpleThreshold",
         "tpg_channel_mask": [],
-        "tpg_threshold": 120,
+        "tpg_threshold_default": 120,
         "use_fake_cards": false,
         "use_fake_data_producers": false
     },
