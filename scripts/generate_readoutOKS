@@ -1,0 +1,51 @@
+#!/bin/env python3
+import conffwk
+import click
+import os
+import glob
+from daqconf.generate_readoutOKS import generate_readout
+
+@click.command()
+@click.option('--include', '-i', multiple=True,
+              help='OKS files to include in addition to the core schema. '
+              'To include multiple files, specify this option multiple times.')
+@click.option('--segment', '-s', is_flag=True,
+              help='Enable generation of a Segment object containing the ReadoutApplications')
+@click.option('--session', is_flag=True,
+              help='Enable generation of a Session object containing the generated Segment (implies --segment)')
+@click.argument('readoutmap')
+@click.argument('oksfile')
+def generate(readoutmap, oksfile, include, segment, session):
+  """Simple script to create an OKS configuration file for all
+  ReadoutApplications defined in a readout map.
+
+    The file will automatically include the relevant schema files and
+  any other OKS files you specify. Any necessary objects not supplied
+  by included files will be generated and saved in the output file.
+
+   Example:
+     generate_readoutOKS -i hosts \
+       -i appdal/connections.data.xml -i appdal/moduleconfs \
+       config/np04readoutmap.data.xml readoutApps.data.xml
+
+   Will load hosts, connections and moduleconfs data files as well as
+  the readoutmap (config/np04readoutmap.data.xml) and write the
+  generated apps to readoutApps.data.xml.
+
+     generate_readoutOKS --session --segment \
+       -i appdal/fsm -i hosts \
+       -i appdal/connections.data.xml -i appdal/moduleconfs  \
+       config/np04readoutmap.data.xml np04readout-session.data.xml
+
+   Will do the same but in addition it will generate a containing
+  Segment for the apps and a containing Session for the Segment.
+
+  NB: Currently FSM generation is not implemented so you must include
+  an fsm file in order to generate a Segment
+
+  """
+
+  generate_readout(readoutmap, oksfile, include, segment, session)
+
+if __name__ == '__main__':
+  generate()

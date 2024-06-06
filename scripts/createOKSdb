@@ -1,0 +1,21 @@
+#!/bin/env python3
+import conffwk
+import click
+import os
+import glob
+from daqconf.createOKSdb import generate_file
+
+@click.command()
+@click.option('--include', '-i', multiple=True,
+              help='OKS files to include in addition to the core schema. '
+              'To include multiple files, specify this option multiple times.')
+@click.argument('oksfile')
+def generate(oksfile, include):
+  """Simple script to create an 'empty' OKS file.
+  The file will automatically include the coredal schema 
+  and any other OKS files you specify"""
+
+  generate_file(oksfile, include)
+
+if __name__ == '__main__':
+  generate()

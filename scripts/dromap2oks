@@ -1,0 +1,26 @@
+#!/bin/env python3
+
+import conffwk
+import click
+import os
+import json
+import sys
+from daqconf.dromap2oks import dro_json_to_oks
+
+
+@click.command()
+@click.option('--nomap', '-n', is_flag=True,
+              help='Disable generation of the ReadoutMap object')
+@click.option('--source_id_offset', '-s', default=0,
+              help='Offset to add to source_ids in the generated output')
+@click.option('--lcores', '-l', multiple=True,  default=[1,2,3,4],
+              help='lcore id set for eth streams. Repeat for each core in set')
+@click.argument('jsonfile', type=click.Path(exists=True))
+@click.argument('oksfile', default='')
+def generate(jsonfile, oksfile, source_id_offset, nomap, lcores):
+  """Simple script to convert a JSON readout map file to an OKS file."""
+
+  dro_json_to_oks(jsonfile, oksfile, source_id_offset, nomap, lcores)
+
+if __name__ == '__main__':
+  generate()
