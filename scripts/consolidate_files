@@ -1,0 +1,12 @@
+#!/bin/env python3
+import click
+from daqconf.consolidate import consolidate_files
+
+@click.command()
+@click.option('--oksfile', '-i', help='Input database(s) to read', multiple=True)
+@click.argument('output_file')
+def consolidate(oksfile, output_file):
+    consolidate_files(output_file, *oksfile)  
+
+if __name__ == '__main__':
+    consolidate()

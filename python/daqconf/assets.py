@@ -1,18 +1,16 @@
 
 from os.path import exists,abspath,dirname,expandvars
 
-from .console import console
-
 from daq_assettools.asset_file import AssetFile
 from daq_assettools.asset_database import Database
 from sqlite3 import OperationalError
 
-def resolve_asset_file(data_file, verbose):
+def resolve_asset_file(data_file, verbose = False):
     from urllib.parse import urlparse, parse_qsl
     data_file_url = urlparse(data_file)
 
     if verbose:
-        console.log(f"Checking asset URI {data_file_url}")
+        print(f"Checking asset URI {data_file_url}")
 
     if data_file_url.scheme == 'asset':
         asset_query = dict(parse_qsl(data_file_url.query))
@@ -25,10 +23,10 @@ def resolve_asset_file(data_file, verbose):
                 raise RuntimeError(f"Couldn\'t find a valid asset for the query {data_file_url.query}")
 
             elif len(files)>1:
-                console.log(f"Found {len(files)} assets in {dirname(asset_db.database_file)}, taking the first one")
+                print(f"Found {len(files)} assets in {dirname(asset_db.database_file)}, taking the first one")
 
             if verbose:
-                console.log(f"Found asset in {dirname(asset_db.database_file)}")
+                print(f"Found asset in {dirname(asset_db.database_file)}")
 
             root_dir = dirname(asset_db.database_file)
             return f'{root_dir}/{files[0]["path"]}/{files[0]["name"]}'
@@ -44,7 +42,7 @@ def resolve_asset_file(data_file, verbose):
             raise RuntimeError(f'Cannot find the frames.bin file {filename}')
 
         if verbose:
-            console.log(f"Found asset in {dirname(filename)}")
+            print(f"Found asset in {dirname(filename)}")
 
         return filename
 
@@ -53,6 +51,6 @@ def resolve_asset_file(data_file, verbose):
         raise RuntimeError(f'Cannot find the frames.bin file {data_file}')
 
     if verbose:
-        console.log(f"Found asset in {dirname(resolved_data_file)}")
+        print(f"Found asset in {dirname(resolved_data_file)}")
 
     return resolved_data_file
