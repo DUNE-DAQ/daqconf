@@ -195,10 +195,10 @@ class ModuleGraph:
         queue_start = push_addr.split(".")
         queue_end = pop_addr.split(".")
         if len(queue_start) < 2 or queue_start[0] not in self.module_names():
-            raise RuntimeError(f"connect_modules called with invalid parameters. push_addr ({push_addr}) must be of form <module>.<internal name>, and the module must already be in the module graph!")
+            raise RuntimeError(f"connect_modules called with invalid parameters. push_addr ({push_addr}) must be of form <module>.<internal name>, and the module must already be in the module graph! Known modules {self.module_names()}")
 
         if len(queue_end) < 2 or queue_end[0] not in self.module_names():
-            raise RuntimeError(f"connect_modules called with invalid parameters. pop_addr ({pop_addr}) must be of form <module>.<internal name>, and the module must already be in the module graph!")
+            raise RuntimeError(f"connect_modules called with invalid parameters. pop_addr ({pop_addr}) must be of form <module>.<internal name>, and the module must already be in the module graph! Known modules {self.module_names()}")
 
         if queue_name == "":
             self.queues.append(Queue(push_addr, pop_addr, data_type, push_addr + "_to_" + pop_addr, size_hint, toposort))

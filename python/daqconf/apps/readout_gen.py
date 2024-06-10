@@ -23,6 +23,7 @@ from ..core.conf_utils import Direction, Queue
 from ..core.daqmodule import DAQModule
 from ..core.app import App, ModuleGraph
 from ..detreadoutmap import ReadoutUnitDescriptor, group_by_key
+from ..core.sourceid import RUEndpointInfo
 
 # from detdataformats._daq_detdataformats_py import *
 from detdataformats import DetID
@@ -238,7 +239,7 @@ class ReadoutAppGenerator:
         dlh_list: list,
         DATA_REQUEST_TIMEOUT: int, # To Check
         FRAGMENT_SEND_TIMEOUT: int, # To Check
-        tpset_sid: int,
+        tpset_sids: int,
         )-> tuple[list, list]:
         
         default_pop_limit_pct = 0.8
@@ -278,19 +279,19 @@ class ReadoutAppGenerator:
                                 )
                             )
                     )
-                ]
+                 for tpset_sid in tpset_sids]
         
         queues = []
         for dlh in dlh_list:
             # Attach to the detector DLH's tp_out connector
             queues += [
                 Queue(
-                    f"{dlh.name}.tp_out",
+                    f"{dlh.name}.tp_out_plane_{plane}",
                     f"tp_datahandler_{tpset_sid}.raw_input",
                     "TriggerPrimitive",
                     f"tp_link_{tpset_sid}",1000000 
                     )
-                ]
+                for tpset_sid,plane in tpset_sids.items()]
 
         return modules, queues
 
@@ -459,15 +460,16 @@ class ReadoutAppGenerator:
 
         # Add the TP datalink handlers
         if TPG_ENABLED:
-            tps = { k:v for k,v in SOURCEID_BROKER.get_all_source_ids("Trigger").items() if isinstance(v, ReadoutUnitDescriptor ) and v==RU_DESCRIPTOR}
-            if len(tps) != 1:
+            tp_ru_sources = { k:v.plane for k,v in SOURCEID_BROKER.get_all_source_ids("Trigger").items() if isinstance(v, RUEndpointInfo ) and v.ru_desc==RU_DESCRIPTOR}
+
+            if len(tp_ru_sources) != 3:
                 raise RuntimeError(f"Could not retrieve unique element from source id map {tps}")
 
             tpg_mods, tpg_queues = self.create_tp_dlhs(
                 dlh_list=dlhs_mods,
                 DATA_REQUEST_TIMEOUT=DATA_REQUEST_TIMEOUT,
                 FRAGMENT_SEND_TIMEOUT=cfg.fragment_send_timeout_ms,
-                tpset_sid = next(iter(tps))
+                tpset_sids = tp_ru_sources
             )
             modules += tpg_mods
             queues += tpg_queues

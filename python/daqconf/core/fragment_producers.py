@@ -17,7 +17,7 @@ from daqconf.core.sourceid import TAInfo, TPInfo, TCInfo
 from daqdataformats import SourceID
 from .console import console
 
-def set_mlt_links(the_system, tp_infos, mlt_app_name="trigger", verbose=False):
+def set_mlt_links(the_system, trg_infos, mlt_app_name="trigger", verbose=False):
     """
     The MLT needs to know the full list of fragment producers in the
     system so it can populate the TriggerDecisions it creates. This
@@ -27,28 +27,44 @@ def set_mlt_links(the_system, tp_infos, mlt_app_name="trigger", verbose=False):
     "mlt".
     """
 
+    a_group = 0
+    mlt_readout_map = {
+        0: {
+            'elements':
+            {
+                'Trigger': [],
+                'Detector_Readout': []
+            }
+        }
+    }
     ### additional mapping to allow ROI readout
-    mlt_readout_map = {}
-    for trigger_sid,conf in tp_infos.items():
+    for trigger_sid,conf in trg_infos.items():
+
         if isinstance(conf, TAInfo):
-            for key in mlt_readout_map.keys():
-                if mlt_readout_map[key]["group"] == conf.region_id:
-                    mlt_readout_map[key]["elements"]["Trigger"].append(trigger_sid)
+            # for key in mlt_readout_map.keys():
+                # if mlt_readout_map[key]["group"] == conf.region_id:
+                    # mlt_readout_map[key]["elements"]["Trigger"].append(trigger_sid)
+            mlt_readout_map[a_group]["elements"]["Trigger"].append(trigger_sid)
+
         elif isinstance(conf, TPInfo):
-            for key in mlt_readout_map.keys():
-                if key == conf.tp_ru_sid:
-                    mlt_readout_map[key]["group"] = conf.region_id
-                    mlt_readout_map[key]["elements"]["Trigger"].append(conf.tp_ru_sid)
-                    mlt_readout_map[key]["elements"]["Trigger"].append(trigger_sid)
+            # for key in mlt_readout_map.keys():
+            #     if key == conf.tp_ru_sid:
+            #         mlt_readout_map[key]["group"] = conf.region_id
+            #         mlt_readout_map[key]["elements"]["Trigger"].append(conf.tp_ru_sid)
+            #         mlt_readout_map[key]["elements"]["Trigger"].append(trigger_sid)
+            mlt_readout_map[a_group]["elements"]["Trigger"].append(conf.tp_ru_sid)
+            mlt_readout_map[a_group]["elements"]["Trigger"].append(trigger_sid)
+            
         elif isinstance(conf, TCInfo):
-            mlt_map_entry = { "group": -1, "elements": {"Trigger": [trigger_sid] } }
-            mlt_readout_map[-1] = mlt_map_entry
+            # mlt_map_entry = { "group": -1, "elements": {"Trigger": [trigger_sid] } }
+            # mlt_readout_map[-1] = mlt_map_entry
+            mlt_readout_map[a_group]["elements"]["Trigger"].append(trigger_sid)
         else:
             # readout unit
-            mlt_map_entry = { "group": trigger_sid, "elements": { "Trigger": [], "Detector_Readout": [] } }
-            for stream in conf.streams:
-                mlt_map_entry["elements"]["Detector_Readout"].append(stream.src_id)
-            mlt_readout_map[trigger_sid] = mlt_map_entry
+            # mlt_map_entry = { "group": trigger_sid, "elements": { "Trigger": [], "Detector_Readout": [] } }
+            for stream in conf.ru_desc.streams:
+                mlt_readout_map[a_group]["elements"]["Detector_Readout"].append(stream.src_id)
+            # mlt_readout_map[trigger_sid] = mlt_map_entry
 
     if verbose:
         console.log(f"MLT Readout Map: {mlt_readout_map}")
