@@ -73,6 +73,7 @@ local cs = {
   mlt_roi_conf_map: s.sequence("mlt_roi_conf_map", self.mlt_roi_group_conf),
 
   trigger: s.record("trigger",[
+    s.field( "use_software_trigger", types.flag, default=true, doc="Option to turn off software trigger (TP->TA->TC pipeline). Standalone makers (e.g. timing) unaffected."),
     s.field( "host_trigger", types.host, default='localhost', doc='Host to run the trigger app on'),
     # trigger options
     s.field( "trigger_window_before_ticks",types.count, default=1000, doc="Trigger window before marker. Former -b"),

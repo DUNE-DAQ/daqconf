@@ -137,6 +137,7 @@
         "timing_session_name": ""
     },
     "trigger": {
+        "use_software_trigger": true,
         "host_trigger": "localhost",
         "mlt_buffer_timeout": 100,
         "mlt_ignore_tc": [],
