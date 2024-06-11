@@ -200,6 +200,8 @@ def get_trigger_app(
     RTCM_INTERVAL = trigger.rtcm_trigger_interval_ticks
     RTCM_TIMESTAMP_METHOD = trigger.rtcm_timestamp_method
     RTCM_DISTRIBUTION = trigger.rtcm_time_distribution
+    ENABLE_LATENCY_MONITORING = trigger.enable_latency_monitoring
+    USE_LATENCY_OFFSET = trigger.use_latency_offset
     CHANNEL_MAP_NAME = detector.tpc_channel_map
     DATA_REQUEST_TIMEOUT=trigger_data_request_timeout
     HOST=trigger.host_trigger
@@ -280,6 +282,8 @@ def get_trigger_app(
                         DAQModule(name = f'tcm_{j}',
                               plugin = 'TriggerCandidateMaker',
                               conf = tcm.Conf(candidate_maker=CANDIDATE_PLUGIN[j],
+                                     enable_latency_monit=ENABLE_LATENCY_MONITORING,
+                                     use_latency_offset=USE_LATENCY_OFFSET,
                                      candidate_maker_config=temptypes.CandidateConf(CANDIDATE_CONFIG[j]))),
 
                         DAQModule(name = f'tctee_chain_{j}',
@@ -294,7 +298,9 @@ def get_trigger_app(
                                       conf = chfilter.Conf(channel_map_name=CHANNEL_MAP_NAME,
                                                            keep_collection=True,
                                                            keep_induction=True,
-                                                           max_time_over_threshold=10_000))]
+                                                           max_time_over_threshold=10_000,
+                                                           enable_latency_monit=ENABLE_LATENCY_MONITORING,
+                                                           use_latency_offset=USE_LATENCY_OFFSET))]
         
         for (region_id, plane), ta_conf in TA_SOURCE_IDS.items():
                 # (PAR 2022-06-09) The max_latency_ms here should be
@@ -338,6 +344,8 @@ def get_trigger_app(
                                                           geoid_element=region_id,  # 2022-02-02 PL: Same comment as above
                                                           window_time=10000,  # should match whatever makes TPSets, in principle
                                                           buffer_time=10*ticks_per_wall_clock_s//1000, # 10 wall-clock ms
+                                                          enable_latency_monit=ENABLE_LATENCY_MONITORING,
+                                                          use_latency_offset=USE_LATENCY_OFFSET,
                                                           activity_maker_config=temptypes.ActivityConf(ACTIVITY_CONFIG[j]))),
                                 DAQModule(name = f'tasettee_region_{region_id}_{plane}_{j}', plugin = "TASetTee")]
 
@@ -444,8 +452,10 @@ def get_trigger_app(
                                               td_readout_map=MLT_READOUT_MAP,
                                               use_roi_readout=MLT_USE_ROI_READOUT,
                                               roi_conf=MLT_ROI_CONF,
-					      use_bitwords=MLT_USE_BITWORDS,
-					      trigger_bitwords=MLT_TRIGGER_FLAGS))]
+                                              use_bitwords=MLT_USE_BITWORDS,
+                                              trigger_bitwords=MLT_TRIGGER_FLAGS,
+                                              enable_latency_monit=ENABLE_LATENCY_MONITORING,
+                                              use_latency_offset=USE_LATENCY_OFFSET))]
 
     mgraph = ModuleGraph(modules)
 
