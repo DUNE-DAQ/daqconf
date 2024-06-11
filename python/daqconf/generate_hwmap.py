@@ -7,9 +7,9 @@ def generate_hwmap(oksfile, n_streams, n_apps = 1, det_id = 3, app_host = "local
                              eth_protocol = "udp", flx_mode = "fix_rate"):
 
     schemafiles = [
-        "schema/coredal/dunedaq.schema.xml",
-        "schema/appdal/application.schema.xml",
-        "schema/appdal/fdmodules.schema.xml",
+        "schema/confmodel/dunedaq.schema.xml",
+        "schema/appmodel/application.schema.xml",
+        "schema/appmodel/fdmodules.schema.xml",
     ]
     dal = conffwk.dal.module("generated", schemafiles[2])
     db = conffwk.Configuration("oksconflibs")

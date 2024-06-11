@@ -1,5 +1,5 @@
 import conffwk
-import coredal
+import confmodel
 
 import os
 import glob

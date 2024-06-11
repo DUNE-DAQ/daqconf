@@ -24,7 +24,7 @@ def generate_readout(
 
    Example:
      generate_readoutOKS -i hosts \
-       -i appdal/connections.data.xml -i appdal/moduleconfs \
+       -i appmodel/connections.data.xml -i appmodel/moduleconfs \
        config/np04readoutmap.data.xml readoutApps.data.xml
 
    Will load hosts, connections and moduleconfs data files as well as
@@ -32,8 +32,8 @@ def generate_readout(
   generated apps to readoutApps.data.xml.
 
      generate_readoutOKS --session --segment \
-       -i appdal/fsm -i hosts \
-       -i appdal/connections.data.xml -i appdal/moduleconfs  \
+       -i appmodel/fsm -i hosts \
+       -i appmodel/connections.data.xml -i appmodel/moduleconfs  \
        config/np04readoutmap.data.xml np04readout-session.data.xml
 
    Will do the same but in addition it will generate a containing
@@ -50,10 +50,10 @@ def generate_readout(
     print(f"Readout map file {readoutmap}")
 
     includefiles = [
-        "schema/coredal/dunedaq.schema.xml",
-        "schema/appdal/application.schema.xml",
-        "schema/appdal/trigger.schema.xml",
-        "schema/appdal/fdmodules.schema.xml",
+        "schema/confmodel/dunedaq.schema.xml",
+        "schema/appmodel/application.schema.xml",
+        "schema/appmodel/trigger.schema.xml",
+        "schema/appmodel/fdmodules.schema.xml",
         readoutmap,
     ]
 
