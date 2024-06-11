@@ -125,10 +125,10 @@ def generate_readout(
 
     else:
         print(f"Creating locally defined Latency buffers etc.")
-        reqhandler = dal.RequestHandler("rh-1")
+        reqhandler = dal.RequestHandler("rh-1-gen")
         db.update_dal(reqhandler)
         latencybuffer = dal.LatencyBuffer(
-            "lb-1",
+            "lb-1-gen",
             numa_aware=True,
             numa_node=1,
             size=139008,
@@ -137,7 +137,7 @@ def generate_readout(
         )
         db.update_dal(latencybuffer)
         dataproc = dal.RawDataProcessor(
-            "dataproc-1",
+            "dataproc-1-gen",
             max_ticks_tot=10000,
             mask_processing=False,            
             algorithm="SimpleThreshold",
@@ -148,7 +148,7 @@ def generate_readout(
                     
         db.update_dal(dataproc)
         linkhandler = dal.ReadoutModuleConf(
-            "linkhandler-1",
+            "linkhandler-1-gen",
             template_for="FDDataLinkHandler",
             input_data_type="WIBEthFrame",
             request_handler=reqhandler,
@@ -157,7 +157,7 @@ def generate_readout(
         )
         db.update_dal(linkhandler)
         tphandler = dal.ReadoutModuleConf(
-            "tphandler-1",
+            "tphandler-1-gen",
             template_for="TriggerDataHandler",
             input_data_type="TriggerPrimitive",
             request_handler=reqhandler,
@@ -215,7 +215,7 @@ def generate_readout(
         if type(rog.contains[0]).__name__ == "ReadoutInterface":
             if nicrec == None:
                 stream_emu = dal.StreamEmulationParameters(
-                    "stream-emu",
+                    "stream-emu-gen",
                     data_file_name=resolve_asset_file(emulated_file_name),
                     input_file_size_limit=1000000,
                     set_t0=True,
@@ -227,7 +227,7 @@ def generate_readout(
                 db.update_dal(stream_emu)
                 print("Generating NICReceiverConf")
                 nicrec = dal.NICReceiverConf(
-                    f"nicrcvr-1",
+                    f"nicrcvr-1-gen",
                     template_for="FDFakeCardReader",
                     emulation_mode=1,
                     emulation_conf=stream_emu,
@@ -237,7 +237,7 @@ def generate_readout(
         elif type(rog.contains[0]).__name__ == "NICInterface":
             if nicrec == None:
                 print("Generating NICReceiverConf")
-                nicrec = dal.NICReceiverConf(f"nicrcvr-1", template_for="NICReceiver")
+                nicrec = dal.NICReceiverConf(f"nicrcvr-1-gen", template_for="NICReceiver")
                 db.update_dal(nicrec)
             datareader = nicrec
             hermes_app = dal.DaqApplication(
@@ -313,7 +313,7 @@ def generate_net_rules(dal, db):
     db.update_dal(timeservice)
 
     newdescr = dal.NetworkConnectionDescriptor(
-        "fa-net-descr",
+        "fa-net-descr-gen",
         uid_base="data_requests_for_",
         connection_type="kSendRecv",
         data_type="DataRequest",
@@ -321,49 +321,49 @@ def generate_net_rules(dal, db):
     )
     db.update_dal(newdescr)
     newrule = dal.NetworkConnectionRule(
-        "fa-net-rule", endpoint_class="FragmentAggregator", descriptor=newdescr
+        "fa-net-rule-gen", endpoint_class="FragmentAggregator", descriptor=newdescr
     )
     db.update_dal(newrule)
     netrules.append(newrule)
 
     newdescr = dal.NetworkConnectionDescriptor(
-        "ta-net-descr",
-        uid_base="ta_",
+        "ta-net-descr-gen",
+        uid_base="tas_",
         connection_type="kPubSub",
         data_type="TriggerActivity",
         associated_service=dataservice,
     )
     db.update_dal(newdescr)
     newrule = dal.NetworkConnectionRule(
-        "ta-net-rule", endpoint_class="DataSubscriber", descriptor=newdescr
+        "ta-net-rule-gen", endpoint_class="DataSubscriber", descriptor=newdescr
     )
     db.update_dal(newrule)
     netrules.append(newrule)
 
     newdescr = dal.NetworkConnectionDescriptor(
-        "tp-net-descr",
-        uid_base="trigger_primitive_data_request",
+        "tp-net-descr-gen",
+        uid_base="tps_",
         connection_type="kPubSub",
         data_type="TPSet",
         associated_service=tpservice,
     )
     db.update_dal(newdescr)
     newrule = dal.NetworkConnectionRule(
-        "tp-net-rule", endpoint_class="FDDataLinkHandler", descriptor=newdescr
+        "tp-net-rule-gen", endpoint_class="FDDataLinkHandler", descriptor=newdescr
     )
     db.update_dal(newrule)
     netrules.append(newrule)
 
     newdescr = dal.NetworkConnectionDescriptor(
-        "ts-net-descr",
-        uid_base="timeSync",
+        "ts-net-descr-gen",
+        uid_base="time_sync_",
         connection_type="kPubSub",
         data_type="TimeSync",
         associated_service=timeservice,
     )
     db.update_dal(newdescr)
     newrule = dal.NetworkConnectionRule(
-        "ts-net-rule", endpoint_class="FDDataLinkHandler", descriptor=newdescr
+        "ts-net-rule-gen", endpoint_class="FDDataLinkHandler", descriptor=newdescr
     )
     db.update_dal(newrule)
     netrules.append(newrule)
@@ -373,11 +373,11 @@ def generate_net_rules(dal, db):
 def generate_queue_rules(dal, db):
     qrules = []
     newdescr = dal.QueueDescriptor(
-        "dataRequest", queue_type="kFollySPSCQueue", data_type="DataRequest", uid_base="data_reqs_for_"
+        "dataRequest-gen", queue_type="kFollySPSCQueue", data_type="DataRequest", uid_base="internal_data_requests_for_"
     )
     db.update_dal(newdescr)
     newrule = dal.QueueConnectionRule(
-        "data-requests-queue-rule",
+        "data-requests-queue-rule-gen",
         destination_class="FDDataLinkHandler",
         descriptor=newdescr,
     )
@@ -385,11 +385,11 @@ def generate_queue_rules(dal, db):
     qrules.append(newrule)
 
     newdescr = dal.QueueDescriptor(
-        "aggregatorInput", queue_type="kFollyMPMCQueue", data_type="Fragment", uid_base="fragments_from_"
+        "aggregatorInput-gen", queue_type="kFollyMPMCQueue", data_type="Fragment", uid_base="internal_fragments_"
     )
     db.update_dal(newdescr)
     newrule = dal.QueueConnectionRule(
-        "fa-queue-rule",
+        "fa-queue-rule-gen",
         destination_class="FragmentAggregator",
         descriptor=newdescr,
     )
@@ -397,25 +397,25 @@ def generate_queue_rules(dal, db):
     qrules.append(newrule)
 
     newdescr = dal.QueueDescriptor(
-        "rawWIBInput", queue_type="kFollySPSCQueue", data_type="WIBEthFrame", uid_base="raw_"
+        "rawWIBInput-gen", queue_type="kFollySPSCQueue", data_type="WIBEthFrame", uid_base="raw_input_"
     )
     db.update_dal(newdescr)
     newrule = dal.QueueConnectionRule(
-        "rawInputRule", destination_class="FDDataLinkHandler", descriptor=newdescr
+        "rawInputRule-gen", destination_class="FDDataLinkHandler", descriptor=newdescr
     )
     db.update_dal(newrule)
     qrules.append(newrule)
 
     newdescr = dal.QueueDescriptor(
-        "tpInput",
+        "tpInput-gen",
         queue_type="kFollyMPMCQueue",
         capacity=100000,
         data_type="TriggerPrimitive",
-        uid_base="tps_"        
+        uid_base="tp_input_"        
     )
     db.update_dal(newdescr)
     newrule = dal.QueueConnectionRule(
-        "tpRule", destination_class="FDDataLinkHandler", descriptor=newdescr
+        "tpRule-gen", destination_class="FDDataLinkHandler", descriptor=newdescr
     )
     db.update_dal(newrule)
     qrules.append(newrule)
