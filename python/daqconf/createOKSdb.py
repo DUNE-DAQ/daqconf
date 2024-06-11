@@ -5,10 +5,10 @@ import glob
 
 def generate_file(oksfile, include):
     """Simple script to create an 'empty' OKS file.
-    The file will automatically include the coredal schema
+    The file will automatically include the confmodel schema
     and any other OKS files you specify"""
 
-    includefiles = ["schema/coredal/dunedaq.schema.xml"]
+    includefiles = ["schema/confmodel/dunedaq.schema.xml"]
 
     searchdirs = [path for path in os.environ["DUNEDAQ_DB_PATH"].split(":")]
     searchdirs.append(os.path.dirname(oksfile))

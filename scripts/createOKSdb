@@ -12,7 +12,7 @@ from daqconf.createOKSdb import generate_file
 @click.argument('oksfile')
 def generate(oksfile, include):
   """Simple script to create an 'empty' OKS file.
-  The file will automatically include the coredal schema 
+  The file will automatically include the confmodel schema 
   and any other OKS files you specify"""
 
   generate_file(oksfile, include)
