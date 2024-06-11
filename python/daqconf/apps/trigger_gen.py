@@ -230,7 +230,6 @@ def get_trigger_app(
 
     for trigger_sid,conf in TRG_CONFIG.items():
         # Don't fill all the source IDs if we're not using software trigger
-        print(f'trigger_sid: {trigger_sid}, conf: {conf}')
         if USE_SOFTWARE_TRIGGER:
             if isinstance(conf, TPInfo):
                 TP_SOURCE_IDS[trigger_sid] = conf
