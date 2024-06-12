@@ -234,12 +234,12 @@ def get_trigger_app(
             TA_SOURCE_IDS[(conf.region_id, conf.plane)] = {"source_id": trigger_sid, "conf": conf}
         elif isinstance(conf, TCInfo):
             TC_SOURCE_ID = {"source_id": trigger_sid, "conf": conf}
-
        
     # Check for present of TC sources. At least 1 is required
     if not tc_source_present(USE_HSI_INPUT, USE_FAKE_HSI_INPUT, USE_CTB_INPUT, USE_CIB_INPUT, USE_CUSTOM_MAKER, USE_RANDOM_MAKER, len(TP_SOURCE_IDS)):
         raise RuntimeError('There are no TC sources!')
  
+    '''
     # We always have a TC buffer even when there are no TPs, because we want to put the timing TC in the output file
     modules += [DAQModule(name = 'tc_buf',
                           plugin = 'TCBuffer',
@@ -256,11 +256,10 @@ def get_trigger_app(
     if USE_FAKE_HSI_INPUT and FAKE_HSI_CTB:
         modules += [DAQModule(name = 'tctee_ctbtcm_fake',
                          plugin = 'TCTee')]
-
     if USE_CIB_INPUT:
         modules += [DAQModule(name = 'tctee_cibtcm',
                          plugin = 'TCTee')]
-
+    '''
     if len(TP_SOURCE_IDS) > 0:        
         cm_configs = []
         # Get a list of TCMaker configs if more than one exists:
@@ -280,10 +279,10 @@ def get_trigger_app(
                         DAQModule(name = f'tcm_{j}',
                               plugin = 'TriggerCandidateMaker',
                               conf = tcm.Conf(candidate_maker=CANDIDATE_PLUGIN[j],
-                                     candidate_maker_config=temptypes.CandidateConf(CANDIDATE_CONFIG[j]))),
+                                     candidate_maker_config=temptypes.CandidateConf(CANDIDATE_CONFIG[j])))]
 
-                        DAQModule(name = f'tctee_chain_{j}',
-                              plugin = 'TCTee'),]
+                        #DAQModule(name = f'tctee_chain_{j}',
+                        #      plugin = 'TCTee'),]
 
         for tp_sid in TP_SOURCE_IDS:
             link_id = f'tplink{tp_sid}'
@@ -338,10 +337,11 @@ def get_trigger_app(
                                                           geoid_element=region_id,  # 2022-02-02 PL: Same comment as above
                                                           window_time=10000,  # should match whatever makes TPSets, in principle
                                                           buffer_time=10*ticks_per_wall_clock_s//1000, # 10 wall-clock ms
-                                                          activity_maker_config=temptypes.ActivityConf(ACTIVITY_CONFIG[j]))),
-                                DAQModule(name = f'tasettee_region_{region_id}_{plane}_{j}', plugin = "TASetTee")]
+                                                          activity_maker_config=temptypes.ActivityConf(ACTIVITY_CONFIG[j])))]
+                                #DAQModule(name = f'tasettee_region_{region_id}_{plane}_{j}', plugin = "TASetTee")]
 
                 # Add the zippers and TABuffers, independant of the number of algorithms we want to run concurrently.
+                '''
                 modules += [
                             DAQModule(name = f'ta_buf_region_{region_id}_{plane}',
                                       plugin = 'TABuffer',
@@ -356,6 +356,7 @@ def get_trigger_app(
                                                                                                                  stream_buffer_size = 8388608,
                                                                                                                  request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                                                                                                  enable_raw_recording = False)))]
+                '''
 
                 if(num_algs > 1):
                     modules += [DAQModule(name = f'tpsettee_ma_{region_id}_{plane}',
@@ -404,8 +405,8 @@ def get_trigger_app(
                        trigger_intervals=CTCM_INTERVAL,
                        clock_frequency_hz=CLOCK_SPEED_HZ,
                        timestamp_method=CTCM_TIMESTAMP_METHOD))]
-        modules += [DAQModule(name = 'tctee_ctcm',
-                       plugin = 'TCTee')]
+        #modules += [DAQModule(name = 'tctee_ctcm',
+        #               plugin = 'TCTee')]
 
     if USE_RANDOM_MAKER:
         modules += [DAQModule(name = 'rtcm',
@@ -414,8 +415,8 @@ def get_trigger_app(
                        clock_frequency_hz=CLOCK_SPEED_HZ,
                        timestamp_method=RTCM_TIMESTAMP_METHOD,
                        time_distribution=RTCM_DISTRIBUTION))]
-        modules += [DAQModule(name = 'tctee_rtcm',
-                       plugin = 'TCTee')]
+        #modules += [DAQModule(name = 'tctee_rtcm',
+        #               plugin = 'TCTee')]
 
     ### get trigger bitwords for mlt
     MLT_TRIGGER_FLAGS = get_trigger_bitwords(MLT_TRIGGER_BITWORDS)
@@ -444,47 +445,47 @@ def get_trigger_app(
                                               td_readout_map=MLT_READOUT_MAP,
                                               use_roi_readout=MLT_USE_ROI_READOUT,
                                               roi_conf=MLT_ROI_CONF,
-					      use_bitwords=MLT_USE_BITWORDS,
-					      trigger_bitwords=MLT_TRIGGER_FLAGS))]
+					                          use_bitwords=MLT_USE_BITWORDS,
+					                          trigger_bitwords=MLT_TRIGGER_FLAGS))]
 
     mgraph = ModuleGraph(modules)
 
     if USE_HSI_INPUT:
-        mgraph.connect_modules("ttcm.output",        "tctee_ttcm.input",            "TriggerCandidate", "ttcm_input", size_hint=1000)
-        mgraph.connect_modules("tctee_ttcm.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
-        mgraph.connect_modules("tctee_ttcm.output2", "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf", size_hint=1000)
+        mgraph.connect_modules("ttcm.output",        "mlt.trigger_candidate_input",            "TriggerCandidate", "ttcm_input", size_hint=1000)
+        #mgraph.connect_modules("tctee_ttcm.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
+        #mgraph.connect_modules("tctee_ttcm.output2", "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf", size_hint=1000)
         mgraph.add_endpoint("dts_hsievents", "ttcm.hsi_input", "HSIEvent", Direction.IN)
 
     if USE_FAKE_HSI_INPUT and not FAKE_HSI_CTB:
-        mgraph.connect_modules("ttcm_fake.output",        "tctee_ttcm_fake.input",       "TriggerCandidate", "ttcm_fake_input", size_hint=1000)
-        mgraph.connect_modules("tctee_ttcm_fake.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",      size_hint=1000)
-        mgraph.connect_modules("tctee_ttcm_fake.output2", "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf",      size_hint=1000)
+        mgraph.connect_modules("ttcm_fake.output",        "mlt.trigger_candidate_input",       "TriggerCandidate", "ttcm_fake_input", size_hint=1000)
+        #mgraph.connect_modules("tctee_ttcm_fake.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",      size_hint=1000)
+        #mgraph.connect_modules("tctee_ttcm_fake.output2", "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf",      size_hint=1000)
         mgraph.add_endpoint("fake_hsievents", "ttcm_fake.hsi_input", "HSIEvent", Direction.IN)
 
     if USE_CTB_INPUT:
-        mgraph.connect_modules("ctbtcm.output",        "tctee_ctbtcm.input",          "TriggerCandidate", "ctbtcm_input", size_hint=1000)
-        mgraph.connect_modules("tctee_ctbtcm.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",   size_hint=1000)
-        mgraph.connect_modules("tctee_ctbtcm.output2", "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf",   size_hint=1000)
+        mgraph.connect_modules("ctbtcm.output",        "mlt.trigger_candidate_input",          "TriggerCandidate", "ctbtcm_input", size_hint=1000)
+        #mgraph.connect_modules("tctee_ctbtcm.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",   size_hint=1000)
+        #mgraph.connect_modules("tctee_ctbtcm.output2", "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf",   size_hint=1000)
         mgraph.add_endpoint("ctb_hsievents", "ctbtcm.hsi_input", "HSIEvent", Direction.IN)
     if USE_FAKE_HSI_INPUT and FAKE_HSI_CTB:
-        mgraph.connect_modules("ctbtcm_fake.output",        "tctee_ctbtcm_fake.input",     "TriggerCandidate", "ctbtcm_fake_input", size_hint=1000)
-        mgraph.connect_modules("tctee_ctbtcm_fake.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",        size_hint=1000)
-        mgraph.connect_modules("tctee_ctbtcm_fake.output2", "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf",        size_hint=1000)
+        mgraph.connect_modules("ctbtcm_fake.output",        "mlt.trigger_candidate_input",     "TriggerCandidate", "ctbtcm_fake_input", size_hint=1000)
+        #mgraph.connect_modules("tctee_ctbtcm_fake.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",        size_hint=1000)
+        #mgraph.connect_modules("tctee_ctbtcm_fake.output2", "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf",        size_hint=1000)
         mgraph.add_endpoint("fake_hsievents", "ctbtcm_fake.hsi_input", "HSIEvent", Direction.IN)
 
     if USE_CIB_INPUT:
-        mgraph.connect_modules("cibtcm.output",              "tctee_cibtcm.input",          "TriggerCandidate", "cibtcm_input", size_hint=1000)
-        mgraph.connect_modules("tctee_cibtcm.output1",       "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",   size_hint=1000)
-        mgraph.connect_modules("tctee_cibtcm.output2",       "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf",   size_hint=1000)
+        mgraph.connect_modules("cibtcm.output",              "mlt.trigger_candidate_input",          "TriggerCandidate", "cibtcm_input", size_hint=1000)
+        #mgraph.connect_modules("tctee_cibtcm.output1",       "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",   size_hint=1000)
+        #mgraph.connect_modules("tctee_cibtcm.output2",       "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf",   size_hint=1000)
         mgraph.add_endpoint("cib_hsievents", "cibtcm.hsi_input", "HSIEvent", Direction.IN)
     if USE_CUSTOM_MAKER:
-        mgraph.connect_modules("ctcm.trigger_candidate_sink", "tctee_ctcm.input",    "TriggerCandidate", "ctcm_input", size_hint=1000)
-        mgraph.connect_modules("tctee_ctcm.output1",  "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
-        mgraph.connect_modules("tctee_ctcm.output2",  "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf", size_hint=1000)
+        mgraph.connect_modules("ctcm.trigger_candidate_sink", "mlt.trigger_candidate_input",    "TriggerCandidate", "ctcm_input", size_hint=1000)
+        #mgraph.connect_modules("tctee_ctcm.output1",  "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
+        #mgraph.connect_modules("tctee_ctcm.output2",  "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf", size_hint=1000)
     if USE_RANDOM_MAKER:
-        mgraph.connect_modules("rtcm.trigger_candidate_sink", "tctee_rtcm.input",    "TriggerCandidate", "rtcm_input", size_hint=1000)
-        mgraph.connect_modules("tctee_rtcm.output1",  "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
-        mgraph.connect_modules("tctee_rtcm.output2",  "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf", size_hint=1000)
+        mgraph.connect_modules("rtcm.trigger_candidate_sink", "mlt.trigger_candidate_input",    "TriggerCandidate", "rtcm_input", size_hint=1000)
+        #mgraph.connect_modules("tctee_rtcm.output1",  "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
+        #mgraph.connect_modules("tctee_rtcm.output2",  "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf", size_hint=1000)
 
     if len(TP_SOURCE_IDS) > 0:
         for j in range(num_algs):
@@ -509,23 +510,23 @@ def get_trigger_app(
 
         # For each TCMaker config applied, connect the TCMaker to it's copyer, then to the MLT and TCBuffer via that copyer.
         for j in range(len(cm_configs)):
-            mgraph.connect_modules(f"tcm_{j}.output", f"tctee_chain_{j}.input", "TriggerCandidate", f"chain_input_{j}", size_hint=1000)
-            mgraph.connect_modules(f"tctee_chain_{j}.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",  size_hint=1000)
-            mgraph.connect_modules(f"tctee_chain_{j}.output2", "tc_buf.tc_source", "TriggerCandidate","tcs_to_buf", size_hint=1000)
+            mgraph.connect_modules(f"tcm_{j}.output", f"mlt.trigger_candidate_input", "TriggerCandidate", f"tcs_to_mlt", size_hint=1000)  ### MLT input here
+            #mgraph.connect_modules(f"tctee_chain_{j}.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",  size_hint=1000)
+            #mgraph.connect_modules(f"tctee_chain_{j}.output2", "tc_buf.tc_source", "TriggerCandidate","tcs_to_buf", size_hint=1000)
 
         # For each TAMaker applied, connect the makers output to it's copyer, then connect the copyer's output to the buffer and TAZipper
         for region_id, plane in TA_SOURCE_IDS.keys():
             for j in range(num_algs):
-                mgraph.connect_modules(f'tam_{region_id}_{plane}_{j}.output', f'tasettee_region_{region_id}_{plane}_{j}.input', data_type="TASet", size_hint=1000)
-                mgraph.connect_modules(f'tasettee_region_{region_id}_{plane}_{j}.output1', f'tazipper_{j}.input', queue_name=f"tas{j}_to_tazipper_{j}", data_type="TASet", size_hint=1000)
-                mgraph.connect_modules(f'tasettee_region_{region_id}_{plane}_{j}.output2', f'ta_buf_region_{region_id}_{plane}.taset_source',data_type="TASet", size_hint=1000)
+                mgraph.connect_modules(f'tam_{region_id}_{plane}_{j}.output', f'tazipper_{j}.input', data_type="TASet", size_hint=1000)
+                #mgraph.connect_modules(f'tasettee_region_{region_id}_{plane}_{j}.output1', f'tazipper_{j}.input', queue_name=f"tas{j}_to_tazipper_{j}", data_type="TASet", size_hint=1000)
+                #mgraph.connect_modules(f'tasettee_region_{region_id}_{plane}_{j}.output2', f'ta_buf_region_{region_id}_{plane}.taset_source',data_type="TASet", size_hint=1000)
 
     mgraph.add_endpoint("td_to_dfo", "mlt.td_output", "TriggerDecision", Direction.OUT, toposort=True)
     mgraph.add_endpoint("df_busy_signal", "mlt.dfo_inhibit_input", "TriggerInhibit", Direction.IN)
 
-    mgraph.add_fragment_producer(id=TC_SOURCE_ID["source_id"], subsystem="Trigger",
-                                 requests_in="tc_buf.data_request_source",
-                                 fragments_out="tc_buf.fragment_sink")
+    #mgraph.add_fragment_producer(id=TC_SOURCE_ID["source_id"], subsystem="Trigger",
+    #                             requests_in="tc_buf.data_request_source",
+    #                             fragments_out="tc_buf.fragment_sink")
 
     if len(TP_SOURCE_IDS) > 0:
         for tp_sid,tp_conf in TP_SOURCE_IDS.items():
@@ -537,11 +538,11 @@ def get_trigger_app(
                 else:
                     mgraph.add_endpoint(f"tpsets_{ru_sid}", f'tam_{tp_conf.region_id}_{tp_conf.plane}_0.input', "TPSet", Direction.IN, is_pubsub=True)
 
-        for (region_id, plane), ta_conf in TA_SOURCE_IDS.items():
-            buf_name = f'ta_buf_region_{region_id}_{plane}'
-            mgraph.add_fragment_producer(id=ta_conf["source_id"], subsystem="Trigger",
-                                         requests_in=f"{buf_name}.data_request_source",
-                                         fragments_out=f"{buf_name}.fragment_sink")
+        #for (region_id, plane), ta_conf in TA_SOURCE_IDS.items():
+        #    buf_name = f'ta_buf_region_{region_id}_{plane}'
+        #    mgraph.add_fragment_producer(id=ta_conf["source_id"], subsystem="Trigger",
+        #                                 requests_in=f"{buf_name}.data_request_source",
+        #                                 fragments_out=f"{buf_name}.fragment_sink")
 
 
     trigger_app = App(modulegraph=mgraph, host=HOST, name='TriggerApp')
