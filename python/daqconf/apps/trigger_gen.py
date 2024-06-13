@@ -538,9 +538,9 @@ def get_trigger_app(
                 plane = f'{tp_conf.plane}'
               
                 if USE_CHANNEL_FILTER:
-                    mgraph.add_endpoint(f"tpsets_{ru_sid}", f"tpcf_{region}_{plane}.tpset_source", "TPSet", Direction.IN, is_pubsub=True)
+                    mgraph.add_endpoint(f"tpsets_tplink{ru_sid}", f"tpcf_{region}_{plane}.tpset_source", "TPSet", Direction.IN, is_pubsub=True)
                 else:
-                    mgraph.add_endpoint(f"tpsets_{ru_sid}", f'tam_{region}_{plane}_0.input', "TPSet", Direction.IN, is_pubsub=True)
+                    mgraph.add_endpoint(f"tpsets_tplink{ru_sid}", f'tam_{region}_{plane}_0.input', "TPSet", Direction.IN, is_pubsub=True)
 
         for (region_id, plane), ta_conf in TA_SOURCE_IDS.items():
             buf_name = f'ta_buf_{region_id}_{plane}'
