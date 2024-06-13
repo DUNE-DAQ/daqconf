@@ -13,8 +13,8 @@ from daqconf.dromap2oks import dro_json_to_oks
               help='Disable generation of the ReadoutMap object')
 @click.option('--source_id_offset', '-s', default=0,
               help='Offset to add to source_ids in the generated output')
-@click.option('--lcores', '-l', multiple=True,  default=[1,2,3,4],
-              help='lcore id set for eth streams. Repeat for each core in set')
+@click.option('--lcores', '-l', default="1,2,3,4",
+              help='lcore id set for eth streams. A comma separated list.')
 @click.argument('jsonfile', type=click.Path(exists=True))
 @click.argument('oksfile', default='')
 def generate(jsonfile, oksfile, source_id_offset, nomap, lcores):
