@@ -287,9 +287,11 @@ def get_trigger_app(
 
         for tp_sid,tp_conf in TP_SOURCE_IDS.items():
             ru_sid = f'{tp_conf.tp_ru_sid}'
+            region = f'{tp_conf.region_id}'
+            plane = f'{tp_conf.plane}'
 
             if USE_CHANNEL_FILTER:
-                modules += [DAQModule(name = f'tpcf_{ru_sid}',
+                modules += [DAQModule(name = f'tpcf_{region}_{plane}',
                                       plugin = 'TPChannelFilter',
                                       conf = chfilter.Conf(channel_map_name=CHANNEL_MAP_NAME,
                                                            keep_collection=True,
@@ -492,11 +494,13 @@ def get_trigger_app(
 
         for tp_sid,tp_conf in TP_SOURCE_IDS.items():
             ru_sid = f'{tp_conf.tp_ru_sid}'
+            region = f'{tp_conf.region_id}'
+            plane = f'{tp_conf.plane}'
             if USE_CHANNEL_FILTER:
                 if(num_algs > 1):
-                    mgraph.connect_modules(f'tpcf_{ru_sid}.tpset_sink', f'tpsettee_ma_{tp_conf.region_id}.input', data_type="TPSet", size_hint=1000)
+                    mgraph.connect_modules(f'tpcf_{region}_{plane}.tpset_sink', f'tpsettee_ma_{region}_{plane}.input', data_type="TPSet", size_hint=1000)
                 else:
-                    mgraph.connect_modules(f'tpcf_{ru_sid}.tpset_sink', f'tam_{tp_conf.region_id}_{tp_conf.plane}_0.input', data_type="TPSet", size_hint=1000)
+                    mgraph.connect_modules(f'tpcf_{region}_{plane}.tpset_sink', f'tam_{region}_{plane}_0.input', data_type="TPSet", size_hint=1000)
 
         ## # Use connect_modules to connect up the Tees to the buffers/MLT,
         ## # as manually adding Queues doesn't give the desired behaviour
@@ -530,11 +534,13 @@ def get_trigger_app(
     if len(TP_SOURCE_IDS) > 0:
         for tp_sid,tp_conf in TP_SOURCE_IDS.items():
                 ru_sid = f'{tp_conf.tp_ru_sid}'
+                region = f'{tp_conf.region_id}'
+                plane = f'{tp_conf.plane}'
               
                 if USE_CHANNEL_FILTER:
-                    mgraph.add_endpoint(f"tpsets_{ru_sid}", f"tpcf_{ru_sid}.tpset_source", "TPSet", Direction.IN, is_pubsub=True)
+                    mgraph.add_endpoint(f"tpsets_{ru_sid}", f"tpcf_{region}_{plane}.tpset_source", "TPSet", Direction.IN, is_pubsub=True)
                 else:
-                    mgraph.add_endpoint(f"tpsets_{ru_sid}", f'tam_{tp_conf.region_id}_{tp_conf.plane}_0.input', "TPSet", Direction.IN, is_pubsub=True)
+                    mgraph.add_endpoint(f"tpsets_{ru_sid}", f'tam_{region}_{plane}_0.input', "TPSet", Direction.IN, is_pubsub=True)
 
         for (region_id, plane), ta_conf in TA_SOURCE_IDS.items():
             buf_name = f'ta_buf_{region_id}_{plane}'
