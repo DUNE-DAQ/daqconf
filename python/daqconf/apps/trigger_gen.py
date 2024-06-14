@@ -239,11 +239,12 @@ def get_trigger_app(
     if not tc_source_present(USE_HSI_INPUT, USE_FAKE_HSI_INPUT, USE_CTB_INPUT, USE_CIB_INPUT, USE_CUSTOM_MAKER, USE_RANDOM_MAKER, len(TP_SOURCE_IDS)):
         raise RuntimeError('There are no TC sources!')
  
-    '''
+    
     # We always have a TC buffer even when there are no TPs, because we want to put the timing TC in the output file
     modules += [DAQModule(name = 'tc_buf',
                           plugin = 'TCBuffer',
                           conf = get_buffer_conf(TC_SOURCE_ID["source_id"], DATA_REQUEST_TIMEOUT))]
+    '''
     if USE_HSI_INPUT:
         modules += [DAQModule(name = 'tctee_ttcm',
                          plugin = 'TCTee')]
@@ -405,8 +406,8 @@ def get_trigger_app(
                        trigger_intervals=CTCM_INTERVAL,
                        clock_frequency_hz=CLOCK_SPEED_HZ,
                        timestamp_method=CTCM_TIMESTAMP_METHOD))]
-        #modules += [DAQModule(name = 'tctee_ctcm',
-        #               plugin = 'TCTee')]
+        modules += [DAQModule(name = 'tctee_ctcm',
+                       plugin = 'TCTee')]
 
     if USE_RANDOM_MAKER:
         modules += [DAQModule(name = 'rtcm',
@@ -479,9 +480,9 @@ def get_trigger_app(
         #mgraph.connect_modules("tctee_cibtcm.output2",       "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf",   size_hint=1000)
         mgraph.add_endpoint("cib_hsievents", "cibtcm.hsi_input", "HSIEvent", Direction.IN)
     if USE_CUSTOM_MAKER:
-        mgraph.connect_modules("ctcm.trigger_candidate_sink", "mlt.trigger_candidate_input",    "TriggerCandidate", "ctcm_input", size_hint=1000)
-        #mgraph.connect_modules("tctee_ctcm.output1",  "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
-        #mgraph.connect_modules("tctee_ctcm.output2",  "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf", size_hint=1000)
+        mgraph.connect_modules("ctcm.trigger_candidate_sink", "tctee_ctcm.input",    "TriggerCandidate", "ctcm_input", size_hint=1000)
+        mgraph.connect_modules("tctee_ctcm.output1",  "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
+        mgraph.connect_modules("tctee_ctcm.output2",  "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf", size_hint=1000)
     if USE_RANDOM_MAKER:
         mgraph.connect_modules("rtcm.trigger_candidate_sink", "mlt.trigger_candidate_input",    "TriggerCandidate", "rtcm_input", size_hint=1000)
         #mgraph.connect_modules("tctee_rtcm.output1",  "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
@@ -524,9 +525,9 @@ def get_trigger_app(
     mgraph.add_endpoint("td_to_dfo", "mlt.td_output", "TriggerDecision", Direction.OUT, toposort=True)
     mgraph.add_endpoint("df_busy_signal", "mlt.dfo_inhibit_input", "TriggerInhibit", Direction.IN)
 
-    #mgraph.add_fragment_producer(id=TC_SOURCE_ID["source_id"], subsystem="Trigger",
-    #                             requests_in="tc_buf.data_request_source",
-    #                             fragments_out="tc_buf.fragment_sink")
+    mgraph.add_fragment_producer(id=TC_SOURCE_ID["source_id"], subsystem="Trigger",
+                                 requests_in="tc_buf.data_request_source",
+                                 fragments_out="tc_buf.fragment_sink")
 
     if len(TP_SOURCE_IDS) > 0:
         for tp_sid,tp_conf in TP_SOURCE_IDS.items():
