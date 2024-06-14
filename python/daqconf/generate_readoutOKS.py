@@ -110,7 +110,7 @@ def generate_readout(
     print(f"Creating OKS database file {oksfile}")
     db.create_db(oksfile, includefiles)
 
-    rogs = db.get_dals(class_name="ReadoutGroup")
+    detector_connections = db.get_dals(class_name="DetectorToDaqConnection")
     hermes_controllers = db.get_dals(class_name="HermesController")
 
     # Check tpg_enabled here, if it is False, then we want to make our own RawDataProcessor
@@ -199,20 +199,25 @@ def generate_readout(
         db.update_dal(host)
         hosts.append("vlocalhost")
 
-    rohw = dal.RoHwConfig(f"rohw-{rogs[0].id}")
+    rohw = dal.RoHwConfig(f"rohw-{detector_connections[0].id}")
     db.update_dal(rohw)
 
     appnum = 0
     nicrec = None
     flxcard = None
     ruapps = []
-    for rog in rogs:
+    for connection in detector_connections:
         hostnum = appnum % len(hosts)
         # print(f"Looking up host[{hostnum}] ({hosts[hostnum]})")
         host = db.get_dal(class_name="VirtualHost", uid=hosts[hostnum])
 
+        for resource in connection.contains:
+            if type(resource).__name__ == "ResourceSetAND":
+                rog = resource
+            else:
+                receiver = resource
         # Emulated stream
-        if type(rog.contains[0]).__name__ == "ReadoutInterface":
+        if type(receiver).__name__ == "ReadoutInterface":
             if nicrec == None:
                 stream_emu = dal.StreamEmulationParameters(
                     "stream-emu",
@@ -234,7 +239,7 @@ def generate_readout(
                 )
                 db.update_dal(nicrec)
             datareader = nicrec
-        elif type(rog.contains[0]).__name__ == "NICInterface":
+        elif type(receiver).__name__ == "DPDKReceiver":
             if nicrec == None:
                 print("Generating NICReceiverConf")
                 nicrec = dal.NICReceiverConf(f"nicrcvr-1", template_for="NICReceiver")
@@ -244,7 +249,7 @@ def generate_readout(
                 f"hermes-{rog.id}", runs_on=host, modules=hermes_controllers
             )
             db.update_dal(hermes_app)
-        elif type(rog.contains[0]).__name__ == "FelixInterface":
+        elif type(receiver).__name__ == "FelixInterface":
             if flxcard == None:
                 print("Generating Felix DataReaderConf")
                 flxcard = dal.DataReaderConf(
@@ -253,7 +258,7 @@ def generate_readout(
                 db.update_dal(flxcard)
             datareader = flxcard
         else :
-            print(f"ReadoutGroup contains unknown interface type {type(rog.contains[0]).__name__}")
+            print(f"ReadoutGroup contains unknown interface type {type(receiver).__name__}")
             continue
 
         ru = dal.ReadoutApplication(
