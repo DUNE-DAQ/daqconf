@@ -170,6 +170,7 @@ def get_trigger_app(
                                      trigger.trigger_window_before_ticks,
                                      trigger.trigger_window_after_ticks)
     TTCM_PRESCALE=trigger.ttcm_prescale
+    USE_SOFTWARE_TRIGGER = trigger.use_software_trigger
     USE_HSI_INPUT = use_hsi_input
     USE_FAKE_HSI_INPUT = use_fake_hsi_input
     USE_CTB_INPUT = use_ctb_input
@@ -228,13 +229,14 @@ def get_trigger_app(
     TC_SOURCE_ID = {}
 
     for trigger_sid,conf in TRG_CONFIG.items():
-        if isinstance(conf, TPInfo):
-            TP_SOURCE_IDS[trigger_sid] = conf
-        elif isinstance(conf, TAInfo):
-            TA_SOURCE_IDS[(conf.region_id, conf.plane)] = {"source_id": trigger_sid, "conf": conf}
-        elif isinstance(conf, TCInfo):
+        # Don't fill all the source IDs if we're not using software trigger
+        if USE_SOFTWARE_TRIGGER:
+            if isinstance(conf, TPInfo):
+                TP_SOURCE_IDS[trigger_sid] = conf
+            elif isinstance(conf, TAInfo):
+                TA_SOURCE_IDS[(conf.region_id, conf.plane)] = {"source_id": trigger_sid, "conf": conf}
+        if isinstance(conf, TCInfo):
             TC_SOURCE_ID = {"source_id": trigger_sid, "conf": conf}
-
        
     # Check for present of TC sources. At least 1 is required
     if not tc_source_present(USE_HSI_INPUT, USE_FAKE_HSI_INPUT, USE_CTB_INPUT, USE_CIB_INPUT, USE_CUSTOM_MAKER, USE_RANDOM_MAKER, len(TP_SOURCE_IDS)):
