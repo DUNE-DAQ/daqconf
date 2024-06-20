@@ -10,7 +10,7 @@ local s = moo.oschema.schema("dunedaq.daqconf.triggergen");
 local nc = moo.oschema.numeric_constraints;
 // A temporary schema construction context.
 local cs = {
-  tc_type:         s.number(   "TCType",        "i4", nc(minimum=0, maximum=28), doc="Number representing TC type."),
+  tc_type:         s.number(   "TCType",        "u8", nc(minimum=0, maximum=63), doc="Number representing TC type."),
   tc_type_name:     s.string(   "TCTypeName"),
   tc_types:        s.sequence( "TCTypes",       self.tc_type, doc="List of TC types"),
   tc_interval:     s.number(   "TCInterval",    "i8", nc(minimum=1, maximum=30000000000), doc="The intervals between TCs that are inserted into MLT by CTCM, in clock ticks"),
@@ -73,6 +73,7 @@ local cs = {
   mlt_roi_conf_map: s.sequence("mlt_roi_conf_map", self.mlt_roi_group_conf),
 
   trigger: s.record("trigger",[
+    s.field( "use_software_trigger", types.flag, default=true, doc="Option to turn off software trigger (TP->TA->TC pipeline). Standalone makers (e.g. timing) unaffected."),
     s.field( "host_trigger", types.host, default='localhost', doc='Host to run the trigger app on'),
     # trigger options
     s.field( "trigger_window_before_ticks",types.count, default=1000, doc="Trigger window before marker. Former -b"),
@@ -113,6 +114,8 @@ local cs = {
     s.field( "rtcm_trigger_interval_ticks", self.tc_interval, default=62500000, doc="Interval between triggers in 16 ns time ticks (default 1.024 s)"),
     s.field( "rtcm_timestamp_method", self.timestamp_estimation, "kSystemClock", doc="Option to pick source for timing (system / timesync)"),
     s.field( "rtcm_time_distribution", self.distribution_type, "kUniform", doc="Type of distribution used for random timestamps (uniform or poisson)"),
+    s.field( "enable_latency_monitoring", types.flag, default=false, doc="Should latency be reported to opmon"),
+    s.field( "use_latency_offset", types.flag, default=false, doc="Should an offset be applied to latency measurements (opmon)"),
   ]),
 
 };
