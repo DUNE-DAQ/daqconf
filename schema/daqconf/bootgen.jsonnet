@@ -23,6 +23,7 @@ local cs = {
     s.field( "capture_env_vars", types.strings, default=['TIMING_SHARE', 'DETCHANNELMAPS_SHARE'], doc="List of variables to capture from the environment"),
     s.field( "disable_trace", types.flag, false, doc="Do not enable TRACE (default TRACE_FILE is /tmp/trace_buffer_${HOSTNAME}_${USER})"),
     s.field( "opmon_impl", self.monitoring_dest, default='local', doc="Info collector service implementation to use"),
+    s.field( "opmon_interval", types.count, default=10, doc="Interval of monitoring rage in seconds"),
     s.field( "ers_impl", self.monitoring_dest, default='local', doc="ERS destination (Kafka used for cern and pocket)"),
     s.field( "pocket_url", types.host, default='127.0.0.1', doc="URL for connecting to Pocket services"),
     s.field( "process_manager", self.pm_choice, default="ssh", doc="Choice of process manager"),

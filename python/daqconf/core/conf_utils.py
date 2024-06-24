@@ -676,6 +676,8 @@ def generate_boot(
         "exec": daq_app_specs
     }
 
+    boot["env"]["DUNEDAQ_OPMON_INTERVAL"] = boot_conf.opmon_interval
+    
     if use_kafka:
         boot["env"]["DUNEDAQ_ERS_STREAM_LIBS"] = "erskafka"
 
