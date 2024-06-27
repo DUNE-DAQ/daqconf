@@ -111,7 +111,7 @@ def generate_readout(
     db.create_db(oksfile, includefiles)
 
     detector_connections = db.get_dals(class_name="DetectorToDaqConnection")
-    hermes_controllers = db.get_dals(class_name="HermesController")
+    hermes_controllers = db.get_dals(class_name="HermesModule")
 
     # Check tpg_enabled here, if it is False, then we want to make our own RawDataProcessor
     if len(db.get_dals(class_name="LatencyBuffer")) > 0 and tpg_enabled:
@@ -120,8 +120,8 @@ def generate_readout(
             class_name="RequestHandler", uid="def-data-request-handler"
         )
         latencybuffer = db.get_dal(class_name="LatencyBuffer", uid="def-latency-buf")
-        linkhandler = db.get_dal(class_name="ReadoutModuleConf", uid="def-link-handler")
-        tphandler = db.get_dal(class_name="ReadoutModuleConf", uid="def-tp-handler")
+        linkhandler = db.get_dal(class_name="DataHandlerConf", uid="def-link-handler")
+        tphandler = db.get_dal(class_name="DataHandlerConf", uid="def-tp-handler")
 
     else:
         print(f"Creating locally defined Latency buffers etc.")
@@ -147,18 +147,18 @@ def generate_readout(
         )
                     
         db.update_dal(dataproc)
-        linkhandler = dal.ReadoutModuleConf(
+        linkhandler = dal.DataHandlerConf(
             "linkhandler-1",
-            template_for="FDDataLinkHandler",
+            template_for="FDDataHandlerModule",
             input_data_type="WIBEthFrame",
             request_handler=reqhandler,
             latency_buffer=latencybuffer,
             data_processor=dataproc,
         )
         db.update_dal(linkhandler)
-        tphandler = dal.ReadoutModuleConf(
+        tphandler = dal.DataHandlerConf(
             "tphandler-1",
-            template_for="TriggerDataHandler",
+            template_for="TriggerDataHandlerModule",
             input_data_type="TriggerPrimitive",
             request_handler=reqhandler,
             latency_buffer=latencybuffer,
@@ -230,10 +230,10 @@ def generate_readout(
                     TP_rate_per_channel=1,
                 )
                 db.update_dal(stream_emu)
-                print("Generating NICReceiverConf")
-                nicrec = dal.NICReceiverConf(
+                print("Generating DPDKReaderConf")
+                nicrec = dal.DPDKReaderConf(
                     f"nicrcvr-1",
-                    template_for="FDFakeCardReader",
+                    template_for="FDFakeReaderModule",
                     emulation_mode=1,
                     emulation_conf=stream_emu,
                 )
@@ -241,8 +241,8 @@ def generate_readout(
             datareader = nicrec
         elif type(receiver).__name__ == "DPDKReceiver":
             if nicrec == None:
-                print("Generating NICReceiverConf")
-                nicrec = dal.NICReceiverConf(f"nicrcvr-1", template_for="NICReceiver")
+                print("Generating DPDKReaderConf")
+                nicrec = dal.DPDKReaderConf(f"nicrcvr-1", template_for="DPDKReaderModule")
                 db.update_dal(nicrec)
             datareader = nicrec
             hermes_app = dal.DaqApplication(
@@ -253,7 +253,7 @@ def generate_readout(
             if flxcard == None:
                 print("Generating Felix DataReaderConf")
                 flxcard = dal.DataReaderConf(
-                    f"flxConf-1", template_for="FelixCardReader"
+                    f"flxConf-1", template_for="FelixReaderModule"
                 )
                 db.update_dal(flxcard)
             datareader = flxcard
@@ -326,7 +326,7 @@ def generate_net_rules(dal, db):
     )
     db.update_dal(newdescr)
     newrule = dal.NetworkConnectionRule(
-        "fa-net-rule", endpoint_class="FragmentAggregator", descriptor=newdescr
+        "fa-net-rule", endpoint_class="FragmentAggregatorModule", descriptor=newdescr
     )
     db.update_dal(newrule)
     netrules.append(newrule)
@@ -340,7 +340,7 @@ def generate_net_rules(dal, db):
     )
     db.update_dal(newdescr)
     newrule = dal.NetworkConnectionRule(
-        "ta-net-rule", endpoint_class="DataSubscriber", descriptor=newdescr
+        "ta-net-rule", endpoint_class="DataSubscriberModule", descriptor=newdescr
     )
     db.update_dal(newrule)
     netrules.append(newrule)
@@ -354,7 +354,7 @@ def generate_net_rules(dal, db):
     )
     db.update_dal(newdescr)
     newrule = dal.NetworkConnectionRule(
-        "tp-net-rule", endpoint_class="FDDataLinkHandler", descriptor=newdescr
+        "tp-net-rule", endpoint_class="FDDataHandlerModule", descriptor=newdescr
     )
     db.update_dal(newrule)
     netrules.append(newrule)
@@ -368,7 +368,7 @@ def generate_net_rules(dal, db):
     )
     db.update_dal(newdescr)
     newrule = dal.NetworkConnectionRule(
-        "ts-net-rule", endpoint_class="FDDataLinkHandler", descriptor=newdescr
+        "ts-net-rule", endpoint_class="FDDataHandlerModule", descriptor=newdescr
     )
     db.update_dal(newrule)
     netrules.append(newrule)
@@ -383,7 +383,7 @@ def generate_queue_rules(dal, db):
     db.update_dal(newdescr)
     newrule = dal.QueueConnectionRule(
         "data-requests-queue-rule",
-        destination_class="FDDataLinkHandler",
+        destination_class="FDDataHandlerModule",
         descriptor=newdescr,
     )
     db.update_dal(newrule)
@@ -395,7 +395,7 @@ def generate_queue_rules(dal, db):
     db.update_dal(newdescr)
     newrule = dal.QueueConnectionRule(
         "fa-queue-rule",
-        destination_class="FragmentAggregator",
+        destination_class="FragmentAggregatorModule",
         descriptor=newdescr,
     )
     db.update_dal(newrule)
@@ -406,7 +406,7 @@ def generate_queue_rules(dal, db):
     )
     db.update_dal(newdescr)
     newrule = dal.QueueConnectionRule(
-        "rawInputRule", destination_class="FDDataLinkHandler", descriptor=newdescr
+        "rawInputRule", destination_class="FDDataHandlerModule", descriptor=newdescr
     )
     db.update_dal(newrule)
     qrules.append(newrule)
@@ -420,7 +420,7 @@ def generate_queue_rules(dal, db):
     )
     db.update_dal(newdescr)
     newrule = dal.QueueConnectionRule(
-        "tpRule", destination_class="FDDataLinkHandler", descriptor=newdescr
+        "tpRule", destination_class="FDDataHandlerModule", descriptor=newdescr
     )
     db.update_dal(newrule)
     qrules.append(newrule)
