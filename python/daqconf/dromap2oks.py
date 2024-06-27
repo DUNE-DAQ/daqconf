@@ -126,8 +126,8 @@ def dro_json_to_oks(jsonfile, oksfile, source_id_offset, nomap, lcores):
 
             if last_eth_pars != None:
                 if pars["tx_host"] != last_eth_pars['tx_host']:
-                    # print(f"Adding HermesController {hermes_id} for {pars['tx_host']=} {last_pars['tx_host']=}")
-                    hermes_controller_dal = dal.HermesController(
+                    # print(f"Adding HermesModule {hermes_id} for {pars['tx_host']=} {last_pars['tx_host']=}")
+                    hermes_controller_dal = dal.HermesModule(
                         hermes_id,
                         uri = f"ipbusudp-2.0://{last_eth_pars['tx_host']}:50001",
                         address_table = address_table_dal,
@@ -238,8 +238,8 @@ def dro_json_to_oks(jsonfile, oksfile, source_id_offset, nomap, lcores):
                 )
                 db.update_dal(link_dal)
                 links.append(link_dal)
-            print(f"Adding final HermesController {hermes_id}")
-            hermes_controller_dal = dal.HermesController(
+            print(f"Adding final HermesModule {hermes_id}")
+            hermes_controller_dal = dal.HermesModule(
                 hermes_id,
                 uri = f"ipbusudp-2.0://{last_eth_pars['tx_host']}:50001",
                 address_table = address_table_dal,
