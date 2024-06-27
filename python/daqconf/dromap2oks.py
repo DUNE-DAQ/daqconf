@@ -22,8 +22,9 @@ def dro_json_to_oks(jsonfile, oksfile, source_id_offset, nomap, lcores):
         "schema/confmodel/dunedaq.schema.xml",
         "schema/appmodel/application.schema.xml",
         "schema/appmodel/fdmodules.schema.xml",
+        "schema/appmodel/wiec.schema.xml"
     ]
-    dal = conffwk.dal.module("generated", schemafiles[2])
+    dal = conffwk.dal.module("dal", schemafiles[-1])
     db = conffwk.Configuration("oksconflibs")
     db.create_db(oksfile, schemafiles)
 
@@ -82,7 +83,7 @@ def dro_json_to_oks(jsonfile, oksfile, source_id_offset, nomap, lcores):
             if last_eth_pars == None or pars["rx_mac"] != last_eth_pars["rx_mac"]:
                 nic_name = f"nic-{pars['rx_host']}"
                 print(f"New nic adding nic {pars['rx_mac']} with id {nic_name}")
-                rxnic_dal = dal.NICInterface(
+                rxnic_dal = dal.NetworkDevice(
                     nic_name,
                     mac_address = pars["rx_mac"],
                     ip_address = pars["rx_ip"]
@@ -115,9 +116,9 @@ def dro_json_to_oks(jsonfile, oksfile, source_id_offset, nomap, lcores):
                 if last_tx_host != pars['tx_host']:
                     nic_num = -1
                 nic_num += 1
-                nic_name = f"nic-{pars['tx_host']}-{nic_num}"
-                print(f"Adding NIC {nic_name}")
-                txnic_dal = dal.NICInterface(
+                nic_name = f"nw-{pars['tx_host']}-{nic_num}"
+                print(f"Adding NetworkInterface {nic_name}")
+                txnic_dal = dal.NetworkInterface(
                     nic_name,
                     mac_address = pars["tx_mac"],
                     ip_address = pars["tx_ip"]
@@ -125,19 +126,6 @@ def dro_json_to_oks(jsonfile, oksfile, source_id_offset, nomap, lcores):
                 db.update_dal(txnic_dal)
 
             if last_eth_pars != None:
-                if pars["tx_host"] != last_eth_pars['tx_host']:
-                    # print(f"Adding HermesController {hermes_id} for {pars['tx_host']=} {last_pars['tx_host']=}")
-                    hermes_controller_dal = dal.HermesController(
-                        hermes_id,
-                        uri = f"ipbusudp-2.0://{last_eth_pars['tx_host']}:50001",
-                        address_table = address_table_dal,
-                        links = links,
-                        destination = rxnic_dal
-                    )
-                    db.update_dal(hermes_controller_dal)
-                    links = []
-                    link_number = 0
-
                 #print(f"streams in nic {pars['rx_mac']} = {len(streams)}")
                 if pars["rx_mac"] != last_eth_pars["rx_mac"]:
                     rset_dal = dal.ResourceSetAND(
@@ -238,15 +226,6 @@ def dro_json_to_oks(jsonfile, oksfile, source_id_offset, nomap, lcores):
                 )
                 db.update_dal(link_dal)
                 links.append(link_dal)
-            print(f"Adding final HermesController {hermes_id}")
-            hermes_controller_dal = dal.HermesController(
-                hermes_id,
-                uri = f"ipbusudp-2.0://{last_eth_pars['tx_host']}:50001",
-                address_table = address_table_dal,
-                links = links,
-                destination = rxnic_dal
-            )
-            db.update_dal(hermes_controller_dal)
 
 
         rset_dal = dal.ResourceSetAND(
