@@ -75,9 +75,6 @@ def dro_json_to_oks(jsonfile, oksfile, source_id_offset, nomap, lcores):
                     used_lcores = [ lcore_dal ]
                 )
                 db.update_dal(nic_config_dal)
-                address_table_dal = dal.IpbusAddressTable("Hermes-addrtab")
-                db.update_dal(address_table_dal)
-
 
             pars = entry["parameters"]
             if last_eth_pars == None or pars["rx_mac"] != last_eth_pars["rx_mac"]:
