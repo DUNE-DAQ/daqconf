@@ -235,7 +235,7 @@ def generate_readout(
                 print("Generating fake DPDKReaderConf")
                 nicrec = dal.DPDKReaderConf(
                     f"nicrcvr-1",
-                    template_for="FDFakeCardReader",
+                    template_for="FDFakeReaderModule",
                     emulation_mode=1,
                     emulation_conf=stream_emu,
                 )
@@ -272,7 +272,7 @@ def generate_readout(
             if flxcard == None:
                 print("Generating Felix DataReaderConf")
                 flxcard = dal.DataReaderConf(
-                    f"flxConf-1", template_for="FelixCardReader"
+                    f"flxConf-1", template_for="FelixReaderModule"
                 )
                 db.update_dal(flxcard)
             datareader = flxcard

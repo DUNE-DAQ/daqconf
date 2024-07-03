@@ -224,7 +224,6 @@ def dro_json_to_oks(jsonfile, oksfile, source_id_offset, nomap, lcores):
                 db.update_dal(link_dal)
                 links.append(link_dal)
 
-
         rset_dal = dal.ResourceSetAND(
             f"{last_eth_pars['rx_host']}-senders",
             contains = eth_senders
