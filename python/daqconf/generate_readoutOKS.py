@@ -219,7 +219,7 @@ def generate_readout(
             else:
                 receiver = resource
         # Emulated stream
-        if type(receiver).__name__ == "ReadoutInterface":
+        if type(receiver).__name__ == "FakeDataReceiver":
             if nicrec == None:
                 stream_emu = dal.StreamEmulationParameters(
                     "stream-emu",
@@ -232,8 +232,8 @@ def generate_readout(
                     TP_rate_per_channel=1,
                 )
                 db.update_dal(stream_emu)
-                print("Generating fake DPDKReaderConf")
-                nicrec = dal.DPDKReaderConf(
+                print("Generating fake DataReaderConf")
+                nicrec = dal.DataReaderConf(
                     f"nicrcvr-1",
                     template_for="FDFakeReaderModule",
                     emulation_mode=1,
