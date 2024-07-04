@@ -213,11 +213,11 @@ def generate_readout(
         # print(f"Looking up host[{hostnum}] ({hosts[hostnum]})")
         host = db.get_dal(class_name="VirtualHost", uid=hosts[hostnum])
 
+        # Find which type of DataReceiver we need for this connection
         for resource in connection.contains:
-            if type(resource).__name__ == "ResourceSetAND":
-                rog = resource
-            else:
+            if "DetDataReceiver" in resource.oksTypes():
                 receiver = resource
+                break
         # Emulated stream
         if type(receiver).__name__ == "FakeDataReceiver":
             if nicrec == None:
@@ -233,7 +233,7 @@ def generate_readout(
                 )
                 db.update_dal(stream_emu)
                 print("Generating fake DataReaderConf")
-                nicrec = dal.DataReaderConf(
+                nicrec = dal.DPDKReaderConf(
                     f"nicrcvr-1",
                     template_for="FDFakeReaderModule",
                     emulation_mode=1,
@@ -281,9 +281,9 @@ def generate_readout(
             continue
 
         ru = dal.ReadoutApplication(
-            f"ru-{rog.id}",
+            f"ru-{connection.id}",
             runs_on=host,
-            contains=[rog],
+            contains=[connection],
             network_rules=netrules,
             queue_rules=qrules,
             link_handler=linkhandler,
