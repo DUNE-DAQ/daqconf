@@ -146,6 +146,7 @@ def check_hsi_config(USE_FAKE_HSI_INPUT, FAKE_HSI_CTB):
 def get_trigger_app(
         trigger,
         detector,
+        src_geo_id_map,
         daq_common,
         tp_infos,
         trigger_data_request_timeout,
@@ -193,6 +194,7 @@ def get_trigger_app(
     MLT_TRIGGER_BITWORDS = trigger.mlt_trigger_bitwords
     MLT_USE_ROI_READOUT = trigger.mlt_use_roi_readout
     MLT_ROI_CONF = trigger.mlt_roi_conf
+    MLT_DETECTOR_READOUT_MAP = trigger.mlt_detector_readout_map
     USE_CUSTOM_MAKER = trigger.use_custom_maker
     CTCM_TYPES = trigger.ctcm_trigger_types
     CTCM_INTERVAL = trigger.ctcm_trigger_intervals
@@ -204,6 +206,7 @@ def get_trigger_app(
     ENABLE_LATENCY_MONITORING = trigger.enable_latency_monitoring
     USE_LATENCY_OFFSET = trigger.use_latency_offset
     CHANNEL_MAP_NAME = detector.tpc_channel_map
+    SRC_GEO_ID_MAP = src_geo_id_map
     DATA_REQUEST_TIMEOUT=trigger_data_request_timeout
     HOST=trigger.host_trigger
 
@@ -447,6 +450,7 @@ def get_trigger_app(
                           plugin = 'ModuleLevelTrigger',
                           conf=mlt.ConfParams(mandatory_links=[],  # To be updated later - see comment above
                                               groups_links=[],     # To be updated later - see comment above
+                                              detector_readout_map=MLT_DETECTOR_READOUT_MAP,
                                               merge_overlapping_tcs=MLT_MERGE_OVERLAPPING_TCS,
                                               buffer_timeout=MLT_BUFFER_TIMEOUT,
                                               td_out_of_timeout=MLT_SEND_TIMED_OUT_TDS,
@@ -459,7 +463,8 @@ def get_trigger_app(
                                               use_bitwords=MLT_USE_BITWORDS,
                                               trigger_bitwords=MLT_TRIGGER_FLAGS,
                                               enable_latency_monit=ENABLE_LATENCY_MONITORING,
-                                              use_latency_offset=USE_LATENCY_OFFSET))]
+                                              use_latency_offset=USE_LATENCY_OFFSET,
+                                              srcid_geoid_map = SRC_GEO_ID_MAP))]
 
     mgraph = ModuleGraph(modules)
 

@@ -26,6 +26,7 @@ local cs = {
   number_of_groups: s.number(  "Ngroups",       "i4", nc(minimum=0, maximum=150), doc="Number of groups of detector links to readout, useful for MLT ROI"),
   probability:      s.number(  "Prob",          "f4", nc(minimum=0.0, maximum=1.0), doc="Probability to read out a group of links, useful for MLT ROI"),
   group_selection:  s.enum(    "GroupSelection", ["kRandom", "kSequential"]),
+  subdetector_name: s.string("SubdetectorName", doc="Name of the subdetector as defined in dunedaq::detdataformats::DetID, e.g. HD_PDS"),
 
   trigger_algo_config: s.record("trigger_algo_config", [
     s.field("prescale", types.count, default=100),
@@ -72,6 +73,14 @@ local cs = {
  
   mlt_roi_conf_map: s.sequence("mlt_roi_conf_map", self.mlt_roi_group_conf),
 
+  mlt_subdetector_readout_conf: s.record("mlt_subdetector_readout_conf", [
+    s.field("subdetector",  self.subdetector_name,      default="", doc="Name of the subdetector as defined in dunedaq::detdataformats::DetID, e.g. HD_PDS"),
+    s.field("time_before",  self.readout_time,          default=1000, doc="Readout time before time stamp"),
+    s.field("time_after",   self.readout_time,          default=1000, doc="Readout time after time stamp"),
+  ]),
+
+  mlt_subdetector_readout_map : s.sequence("mlt_subdetector_readout_map", self.mlt_subdetector_readout_conf),
+
   trigger: s.record("trigger",[
     s.field( "use_software_trigger", types.flag, default=true, doc="Option to turn off software trigger (TP->TA->TC pipeline). Standalone makers (e.g. timing) unaffected."),
     s.field( "host_trigger", types.host, default='localhost', doc='Host to run the trigger app on'),
@@ -95,6 +104,7 @@ local cs = {
     s.field( "trigger_activity_config", self.tm_configs, default=[self.trigger_algo_config], doc="List of trigger activity algorithm configs (strings containing python dictionary)"),
     s.field( "trigger_candidate_plugin", self.tm_algorithms, default=['TriggerCandidateMakerPrescalePlugin'], doc="List of trigger candidate algorithm plugins"),
     s.field( "trigger_candidate_config", self.tm_configs, default=[self.trigger_algo_config], doc="List of trigger candidate algorithm configs (strings containing python dictionary)"),
+    s.field( "mlt_detector_readout_map", self.mlt_subdetector_readout_map, [], doc="Custom detector readout map per sub-dector as defined in dunedaq::detdataformats::DetID::Subdetector"),
     s.field( "mlt_merge_overlapping_tcs", types.flag, default=true, doc="Option to turn off merging of overlapping TCs when forming TDs in MLT"),
     s.field( "mlt_buffer_timeout", types.count, default=100, doc="Timeout (buffer) to wait for new overlapping TCs before sending TD"),
     s.field( "mlt_send_timed_out_tds", types.flag, default=true, doc="Option to drop TD if TC comes out of timeout window"),
