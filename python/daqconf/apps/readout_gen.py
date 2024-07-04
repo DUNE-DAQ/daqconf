@@ -154,7 +154,6 @@ class ReadoutAppGenerator:
                                 latency_buffer_numa_aware = LATENCY_BUFFER_NUMA_AWARE,
                                 latency_buffer_numa_node = NUMA_ID,
                                 latency_buffer_preallocation = LATENCY_BUFFER_ALLOCATION_MODE,
-                                latency_buffer_intrinsic_allocator = LATENCY_BUFFER_ALLOCATION_MODE,
                             ),
                             rawdataprocessorconf= rconf.RawDataProcessorConf(
                                 emulator_mode = cfg.emulator_mode,
