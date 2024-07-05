@@ -139,6 +139,7 @@
     "trigger": {
         "use_software_trigger": true,
         "host_trigger": "localhost",
+        "mlt_detector_readout_map": [],
         "mlt_buffer_timeout": 100,
         "mlt_ignore_tc": [],
         "mlt_max_td_length_ms": 1000,
