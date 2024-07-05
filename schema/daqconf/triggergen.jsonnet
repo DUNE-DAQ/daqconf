@@ -106,6 +106,7 @@ local cs = {
     s.field( "trigger_candidate_config", self.tm_configs, default=[self.trigger_algo_config], doc="List of trigger candidate algorithm configs (strings containing python dictionary)"),
     s.field( "mlt_detector_readout_map", self.mlt_subdetector_readout_map, [], doc="Custom detector readout map per sub-dector as defined in dunedaq::detdataformats::DetID::Subdetector"),
     s.field( "mlt_merge_overlapping_tcs", types.flag, default=true, doc="Option to turn off merging of overlapping TCs when forming TDs in MLT"),
+    s.field( "mlt_ignore_overlapping_tcs", types.flag, default=false, doc="Option to ignore consecutive overlapping TCs/pileup events. Cannot run with mlt_merge_overlapping_tcs"),
     s.field( "mlt_buffer_timeout", types.count, default=100, doc="Timeout (buffer) to wait for new overlapping TCs before sending TD"),
     s.field( "mlt_send_timed_out_tds", types.flag, default=true, doc="Option to drop TD if TC comes out of timeout window"),
     s.field( "mlt_max_td_length_ms", types.count, default=1000, doc="Maximum allowed time length [ms] for a readout window of a single TD"),

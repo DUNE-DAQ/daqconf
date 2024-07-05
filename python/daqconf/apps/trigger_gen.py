@@ -184,6 +184,7 @@ def get_trigger_app(
     CIB_TIME_BEFORE=trigger.cib_time_before
     CIB_TIME_AFTER=trigger.cib_time_after
     MLT_MERGE_OVERLAPPING_TCS = trigger.mlt_merge_overlapping_tcs
+    MLT_IGNORE_OVERLAPPING_TCS = trigger.mlt_ignore_overlapping_tcs
     MLT_BUFFER_TIMEOUT = trigger.mlt_buffer_timeout
     MLT_MAX_TD_LENGTH_MS = trigger.mlt_max_td_length_ms
     MLT_SEND_TIMED_OUT_TDS = trigger.mlt_send_timed_out_tds
@@ -246,6 +247,9 @@ def get_trigger_app(
     # Check for present of TC sources. At least 1 is required
     if not tc_source_present(USE_HSI_INPUT, USE_FAKE_HSI_INPUT, USE_CTB_INPUT, USE_CIB_INPUT, USE_CUSTOM_MAKER, USE_RANDOM_MAKER, len(TP_SOURCE_IDS)):
         raise RuntimeError('There are no TC sources!')
+
+    if MLT_MERGE_OVERLAPPING_TCS and MLT_IGNORE_OVERLAPPING_TCS:
+        raise RuntimeError('Cannot have both overlap merging & overlap ignoring options switched on at the same time!')
  
     # We always have a TC buffer even when there are no TPs, because we want to put the timing TC in the output file
     modules += [DAQModule(name = 'tc_buf',
@@ -452,6 +456,7 @@ def get_trigger_app(
                                               groups_links=[],     # To be updated later - see comment above
                                               detector_readout_map=MLT_DETECTOR_READOUT_MAP,
                                               merge_overlapping_tcs=MLT_MERGE_OVERLAPPING_TCS,
+                                              ignore_overlapping_tcs=MLT_IGNORE_OVERLAPPING_TCS,
                                               buffer_timeout=MLT_BUFFER_TIMEOUT,
                                               td_out_of_timeout=MLT_SEND_TIMED_OUT_TDS,
                                               ignore_tc=MLT_IGNORE_TC,
