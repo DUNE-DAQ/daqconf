@@ -166,14 +166,14 @@ def generate_readout(
         )
         db.update_dal(tphandler)
     try:
-        rule = db.get_dal(class_name="NetworkConnectionRule", uid="data-req-net-rule")
+        rule = db.get_dal(class_name="NetworkConnectionRule", uid="data-req-readout-net-rule")
     except:
         # Failed to get rule, now we have to invent some
         netrules = generate_net_rules(dal, db)
     else:
         netrules = [rule]
         # Assume we have all the other rules we need
-        for rule in ["tp-net-rule", "ts-net-rule", "ta-net-rule"]:
+        for rule in ["tpset-net-rule", "ts-net-rule", "ta-net-rule"]:
             netrules.append(db.get_dal(class_name="NetworkConnectionRule", uid=rule))
 
     try:
@@ -382,7 +382,7 @@ def generate_net_rules(dal, db):
 
     newdescr = dal.NetworkConnectionDescriptor(
         "timesync-publisher-gen",
-        uid_base="timeSync",
+        uid_base="time_sync_",
         connection_type="kPubSub",
         data_type="TimeSync",
         associated_service=timeservice,
