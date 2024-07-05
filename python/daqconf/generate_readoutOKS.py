@@ -110,6 +110,7 @@ def generate_readout(
         oksfile = oksfile + ".data.xml"
     print(f"Creating OKS database file {oksfile}")
     db.create_db(oksfile, includefiles)
+    db.set_active(oksfile)
 
     detector_connections = db.get_dals(class_name="DetectorToDaqConnection")
 
@@ -221,20 +222,25 @@ def generate_readout(
         # Emulated stream
         if type(receiver).__name__ == "FakeDataReceiver":
             if nicrec == None:
-                stream_emu = dal.StreamEmulationParameters(
-                    "stream-emu",
-                    data_file_name=resolve_asset_file(emulated_file_name),
-                    input_file_size_limit=1000000,
-                    set_t0=True,
-                    random_population_size=100000,
-                    frame_error_rate_hz=0,
-                    generate_periodic_adc_pattern=True,
-                    TP_rate_per_channel=1,
-                )
-                db.update_dal(stream_emu)
+                try:
+                    stream_emu = db.get_dal(class_name="StreamEmulationParameters",
+                                            uid="stream-emu")
+                except:
+                    stream_emu = dal.StreamEmulationParameters(
+                        "stream-emu",
+                        data_file_name=resolve_asset_file(emulated_file_name),
+                        input_file_size_limit=1000000,
+                        set_t0=True,
+                        random_population_size=100000,
+                        frame_error_rate_hz=0,
+                        generate_periodic_adc_pattern=True,
+                        TP_rate_per_channel=1,
+                    )
+                    db.update_dal(stream_emu)
+
                 print("Generating fake DataReaderConf")
                 nicrec = dal.DPDKReaderConf(
-                    f"nicrcvr-1",
+                    f"nicrcvr-fake-gen",
                     template_for="FDFakeReaderModule",
                     emulation_mode=1,
                     emulation_conf=stream_emu,
@@ -244,7 +250,8 @@ def generate_readout(
         elif type(receiver).__name__ == "DPDKReceiver":
             if nicrec == None:
                 print("Generating DPDKReaderConf")
-                nicrec = dal.DPDKReaderConf(f"nicrcvr-1", template_for="DPDKReaderModule")
+                nicrec = dal.DPDKReaderConf(
+                    f"nicrcvr-dpdk-gen", template_for="DPDKReaderModule")
                 db.update_dal(nicrec)
             if wm_conf == None:
                 try:
