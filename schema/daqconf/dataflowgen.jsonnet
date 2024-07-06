@@ -35,9 +35,9 @@ local cs = {
     s.field("tp_accumulation_interval_ticks", types.count, 62500000, doc="Size of the TP accumulation window in the TP Stream writer, measured in clock ticks"),
     s.field("tp_accumulation_inactivity_time_before_write_sec", types.float4, 1.0,
             doc="Amount of time in which there must be no new data arriving at the TP Stream writer before a given time slice is written out"),
+    s.field( "warn_user_when_tardy_tps_are_discarded", types.flag, default=true, doc="Whether to warn users when TimeSlices that contain tardy TPs are discarded"),
   ]),
 
 };
-
 
 stypes + moo.oschema.sort_select(cs)
