@@ -53,6 +53,7 @@ def get_tpwriter_app(
                           plugin = "TPStreamWriter",
                           conf = tpsw.ConfParams(tp_accumulation_interval_ticks=dataflow.tp_accumulation_interval_ticks,
                                                  tp_accumulation_inactivity_time_before_write_sec=dataflow.tp_accumulation_inactivity_time_before_write_sec,
+                                                 warn_user_when_tardy_tps_are_discarded=dataflow.warn_user_when_tardy_tps_are_discarded,
                               source_id=SOURCE_IDX,
                               data_store_parameters=hdf5ds.ConfParams(
                               name="tp_stream_writer",

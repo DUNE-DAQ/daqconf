@@ -113,8 +113,10 @@ def set_mlt_links(the_system, trg_infos, mlt_app_name="trigger", verbose=False):
     old_mlt_conf = mgraph.get_module("mlt").conf
     mgraph.reset_module_conf("mlt", mlt.ConfParams(mandatory_links=mlt_links["mandatory"],
                                                    groups_links=mlt_links["groups"],
+                                                   detector_readout_map=old_mlt_conf.detector_readout_map,
                                                    merge_overlapping_tcs=old_mlt_conf.merge_overlapping_tcs,
-						   buffer_timeout=old_mlt_conf.buffer_timeout,
+                                                   ignore_overlapping_tcs=old_mlt_conf.ignore_overlapping_tcs,
+                                                   buffer_timeout=old_mlt_conf.buffer_timeout,
                                                    td_out_of_timeout=old_mlt_conf.td_out_of_timeout,
                                                    td_readout_limit=old_mlt_conf.td_readout_limit,
                                                    ignore_tc=old_mlt_conf.ignore_tc,
@@ -125,7 +127,8 @@ def set_mlt_links(the_system, trg_infos, mlt_app_name="trigger", verbose=False):
                                                    use_bitwords=old_mlt_conf.use_bitwords,
                                                    trigger_bitwords=old_mlt_conf.trigger_bitwords,
                                                    enable_latency_monit=old_mlt_conf.enable_latency_monit,
-                                                   use_latency_offset=old_mlt_conf.use_latency_offset))
+                                                   use_latency_offset=old_mlt_conf.use_latency_offset,
+                                                   srcid_geoid_map = old_mlt_conf.srcid_geoid_map))
 
 def remove_mlt_link(the_system, source_id, mlt_app_name="trigger"):
     """
@@ -143,7 +146,9 @@ def remove_mlt_link(the_system, source_id, mlt_app_name="trigger"):
         mlt_groups_links.remove(source_id)
     mgraph.reset_module_conf("mlt", mlt.ConfParams(mandatory_links=mlt_mandatory_links,
                                                    groups_links=mlt_groups_links,
+                                                   detector_readout_map=old_mlt_conf.detector_readout_map,
                                                    merge_overlapping_tcs=old_mlt_conf.merge_overlapping_tcs,
+                                                   ignore_overlapping_tcs=old_mlt_conf.ignore_overlapping_tcs,
                                                    buffer_timeout=old_mlt_conf.buffer_timeout,
                                                    td_out_of_timeout=old_mlt_conf.td_out_of_timeout,
                                                    td_readout_limit=old_mlt_conf.td_readout_limit,
@@ -155,7 +160,8 @@ def remove_mlt_link(the_system, source_id, mlt_app_name="trigger"):
                                                    use_bitwords=old_mlt_conf.use_bitwords,
                                                    trigger_bitwords=old_mlt_conf.trigger_bitwords,
                                                    enable_latency_monit=old_mlt_conf.enable_latency_monit,
-                                                   use_latency_offset=old_mlt_conf.use_latency_offset))
+                                                   use_latency_offset=old_mlt_conf.use_latency_offset,
+                                                   srcid_geoid_map = old_mlt_conf.srcid_geoid_map))
 
 def create_direct_producer_connections(app_name, the_system, verbose=False):
     app = the_system.apps[app_name]
