@@ -351,7 +351,7 @@ def get_trigger_app(
                                                           enable_latency_monit=ENABLE_LATENCY_MONITORING,
                                                           use_latency_offset=USE_LATENCY_OFFSET,
                                                           activity_maker_config=temptypes.ActivityConf(ACTIVITY_CONFIG[j]))),
-                                DAQModule(name = f'tasettee_{region_id}_{plane}_{j}', plugin = "TASetTee")]
+                                DAQModule(name = f'tatee_{region_id}_{plane}_{j}', plugin = "TATee")]
 
                 # Add the TABuffers, independant of the number of algorithms we want to run concurrently.
                 modules += [
@@ -532,9 +532,9 @@ def get_trigger_app(
         # For each TAMaker applied, connect the makers output to it's copyer, then connect the copyer's output to the buffer
         for region_id, plane in TA_SOURCE_IDS.keys():
             for j in range(num_algs):
-                mgraph.connect_modules(f'tam_{region_id}_{plane}_{j}.output', f'tasettee_{region_id}_{plane}_{j}.input', data_type="TASet", size_hint=1000)
-                mgraph.connect_modules(f'tasettee_{region_id}_{plane}_{j}.output1', f"tcm_{j}.input", queue_name=f"tas{j}_to_tcm{j}", data_type="TASet", size_hint=1000)
-                mgraph.connect_modules(f'tasettee_{region_id}_{plane}_{j}.output2', f'ta_buf_{region_id}_{plane}.taset_source',data_type="TASet", size_hint=1000)
+                mgraph.connect_modules(f'tam_{region_id}_{plane}_{j}.output', f'tatee_{region_id}_{plane}_{j}.input', data_type="TriggerActivity", size_hint=1000)
+                mgraph.connect_modules(f'tatee_{region_id}_{plane}_{j}.output1', f"tcm_{j}.input", queue_name=f"tas{j}_to_tcm{j}", data_type="TriggerActivity", size_hint=1000)
+                mgraph.connect_modules(f'tatee_{region_id}_{plane}_{j}.output2', f'ta_buf_{region_id}_{plane}.ta_source',data_type="TriggerActivity", size_hint=1000)
 
     mgraph.add_endpoint("td_to_dfo", "mlt.td_output", "TriggerDecision", Direction.OUT, toposort=True)
     mgraph.add_endpoint("df_busy_signal", "mlt.dfo_inhibit_input", "TriggerInhibit", Direction.IN)
