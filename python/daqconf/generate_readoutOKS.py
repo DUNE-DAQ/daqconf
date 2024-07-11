@@ -319,7 +319,6 @@ def generate_readout(
         db.update_dal(seg)
 
         if session:
-            ro_maps = db.get_dals(class_name="ReadoutMap")
             detconf = dal.DetectorConfig("dummy-detector")
             db.update_dal(detconf)
             sessname = os.path.basename(readoutmap).removesuffix(".data.xml")
@@ -327,7 +326,6 @@ def generate_readout(
                 f"{sessname}-session",
                 segment=seg,
                 detector_configuration=detconf,
-                readout_map=ro_maps[0],
             )
             db.update_dal(sessiondal)
 
