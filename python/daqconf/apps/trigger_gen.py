@@ -10,7 +10,6 @@ moo.otypes.load_types('trigger/triggeractivitymaker.jsonnet')
 moo.otypes.load_types('trigger/triggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/customtriggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/randomtriggercandidatemaker.jsonnet')
-moo.otypes.load_types('trigger/triggerzipper.jsonnet')
 moo.otypes.load_types('trigger/moduleleveltrigger.jsonnet')
 moo.otypes.load_types('trigger/timingtriggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/ctbtriggercandidatemaker.jsonnet')
@@ -25,7 +24,6 @@ import dunedaq.trigger.triggeractivitymaker as tam
 import dunedaq.trigger.triggercandidatemaker as tcm
 import dunedaq.trigger.customtriggercandidatemaker as ctcm
 import dunedaq.trigger.randomtriggercandidatemaker as rtcm
-import dunedaq.trigger.triggerzipper as tzip
 import dunedaq.trigger.moduleleveltrigger as mlt
 import dunedaq.trigger.timingtriggercandidatemaker as ttcm
 import dunedaq.trigger.ctbtriggercandidatemaker as ctbtcm
@@ -283,12 +281,7 @@ def get_trigger_app(
          # larger than the corresponding value in the upstream
          # TPZippers. See comment below for more details
         for j, cm_config in enumerate(cm_configs):
-            modules += [DAQModule(name = f'tazipper_{j}',
-                              plugin = 'TAZipper',
-                              conf = tzip.ConfParams(cardinality=len(TA_SOURCE_IDS),
-                                                     max_latency_ms=1000,
-                                                     element_id=TC_SOURCE_ID["source_id"])),
-                        DAQModule(name = f'tcm_{j}',
+            modules += [DAQModule(name = f'tcm_{j}',
                               plugin = 'TriggerCandidateMaker',
                               conf = tcm.Conf(candidate_maker=CANDIDATE_PLUGIN[j],
                                      enable_latency_monit=ENABLE_LATENCY_MONITORING,
@@ -358,9 +351,9 @@ def get_trigger_app(
                                                           enable_latency_monit=ENABLE_LATENCY_MONITORING,
                                                           use_latency_offset=USE_LATENCY_OFFSET,
                                                           activity_maker_config=temptypes.ActivityConf(ACTIVITY_CONFIG[j]))),
-                                DAQModule(name = f'tasettee_{region_id}_{plane}_{j}', plugin = "TASetTee")]
+                                DAQModule(name = f'tatee_{region_id}_{plane}_{j}', plugin = "TATee")]
 
-                # Add the zippers and TABuffers, independant of the number of algorithms we want to run concurrently.
+                # Add the TABuffers, independant of the number of algorithms we want to run concurrently.
                 modules += [
                             DAQModule(name = f'ta_buf_{region_id}_{plane}',
                                       plugin = 'TABuffer',
@@ -511,9 +504,6 @@ def get_trigger_app(
         mgraph.connect_modules("tctee_rtcm.output2",          "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf", size_hint=1000)
 
     if len(TP_SOURCE_IDS) > 0:
-        for j in range(num_algs):
-            mgraph.connect_modules(f"tazipper_{j}.output", f"tcm_{j}.input", data_type="TASet", size_hint=1000)
-
         for tp_sid,tp_conf in TP_SOURCE_IDS.items():
             ru_sid = f'{tp_conf.tp_ru_sid}'
             region = f'{tp_conf.region_id}'
@@ -539,12 +529,12 @@ def get_trigger_app(
             mgraph.connect_modules(f"tctee_swt_{j}.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",  size_hint=1000)
             mgraph.connect_modules(f"tctee_swt_{j}.output2", "tc_buf.tc_source", "TriggerCandidate","tcs_to_buf", size_hint=1000)
 
-        # For each TAMaker applied, connect the makers output to it's copyer, then connect the copyer's output to the buffer and TAZipper
+        # For each TAMaker applied, connect the makers output to it's copyer, then connect the copyer's output to the buffer
         for region_id, plane in TA_SOURCE_IDS.keys():
             for j in range(num_algs):
-                mgraph.connect_modules(f'tam_{region_id}_{plane}_{j}.output', f'tasettee_{region_id}_{plane}_{j}.input', data_type="TASet", size_hint=1000)
-                mgraph.connect_modules(f'tasettee_{region_id}_{plane}_{j}.output1', f'tazipper_{j}.input', queue_name=f"tas{j}_to_tazipper{j}", data_type="TASet", size_hint=1000)
-                mgraph.connect_modules(f'tasettee_{region_id}_{plane}_{j}.output2', f'ta_buf_{region_id}_{plane}.taset_source',data_type="TASet", size_hint=1000)
+                mgraph.connect_modules(f'tam_{region_id}_{plane}_{j}.output', f'tatee_{region_id}_{plane}_{j}.input', data_type="TriggerActivity", size_hint=1000)
+                mgraph.connect_modules(f'tatee_{region_id}_{plane}_{j}.output1', f"tcm_{j}.input", queue_name=f"tas{j}_to_tcm{j}", data_type="TriggerActivity", size_hint=1000)
+                mgraph.connect_modules(f'tatee_{region_id}_{plane}_{j}.output2', f'ta_buf_{region_id}_{plane}.ta_source',data_type="TriggerActivity", size_hint=1000)
 
     mgraph.add_endpoint("td_to_dfo", "mlt.td_output", "TriggerDecision", Direction.OUT, toposort=True)
     mgraph.add_endpoint("df_busy_signal", "mlt.dfo_inhibit_input", "TriggerInhibit", Direction.IN)
