@@ -10,7 +10,6 @@ moo.otypes.load_types('trigger/triggeractivitymaker.jsonnet')
 moo.otypes.load_types('trigger/triggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/customtriggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/randomtriggercandidatemaker.jsonnet')
-moo.otypes.load_types('trigger/triggerzipper.jsonnet')
 moo.otypes.load_types('trigger/moduleleveltrigger.jsonnet')
 moo.otypes.load_types('trigger/timingtriggercandidatemaker.jsonnet')
 moo.otypes.load_types('trigger/ctbtriggercandidatemaker.jsonnet')
@@ -25,7 +24,6 @@ import dunedaq.trigger.triggeractivitymaker as tam
 import dunedaq.trigger.triggercandidatemaker as tcm
 import dunedaq.trigger.customtriggercandidatemaker as ctcm
 import dunedaq.trigger.randomtriggercandidatemaker as rtcm
-import dunedaq.trigger.triggerzipper as tzip
 import dunedaq.trigger.moduleleveltrigger as mlt
 import dunedaq.trigger.timingtriggercandidatemaker as ttcm
 import dunedaq.trigger.ctbtriggercandidatemaker as ctbtcm
@@ -146,6 +144,7 @@ def check_hsi_config(USE_FAKE_HSI_INPUT, FAKE_HSI_CTB):
 def get_trigger_app(
         trigger,
         detector,
+        src_geo_id_map,
         daq_common,
         tp_infos,
         trigger_data_request_timeout,
@@ -161,7 +160,7 @@ def get_trigger_app(
     # Temp variables, To cleanup
     DATA_RATE_SLOWDOWN_FACTOR = daq_common.data_rate_slowdown_factor
     CLOCK_SPEED_HZ = detector.clock_speed_hz
-    TP_CONFIG = tp_infos
+    TRG_CONFIG = tp_infos
     ACTIVITY_PLUGIN = trigger.trigger_activity_plugin
     ACTIVITY_CONFIG = trigger.trigger_activity_config
     CANDIDATE_PLUGIN = trigger.trigger_candidate_plugin
@@ -170,6 +169,7 @@ def get_trigger_app(
                                      trigger.trigger_window_before_ticks,
                                      trigger.trigger_window_after_ticks)
     TTCM_PRESCALE=trigger.ttcm_prescale
+    USE_SOFTWARE_TRIGGER = trigger.use_software_trigger
     USE_HSI_INPUT = use_hsi_input
     USE_FAKE_HSI_INPUT = use_fake_hsi_input
     USE_CTB_INPUT = use_ctb_input
@@ -182,6 +182,7 @@ def get_trigger_app(
     CIB_TIME_BEFORE=trigger.cib_time_before
     CIB_TIME_AFTER=trigger.cib_time_after
     MLT_MERGE_OVERLAPPING_TCS = trigger.mlt_merge_overlapping_tcs
+    MLT_IGNORE_OVERLAPPING_TCS = trigger.mlt_ignore_overlapping_tcs
     MLT_BUFFER_TIMEOUT = trigger.mlt_buffer_timeout
     MLT_MAX_TD_LENGTH_MS = trigger.mlt_max_td_length_ms
     MLT_SEND_TIMED_OUT_TDS = trigger.mlt_send_timed_out_tds
@@ -192,6 +193,7 @@ def get_trigger_app(
     MLT_TRIGGER_BITWORDS = trigger.mlt_trigger_bitwords
     MLT_USE_ROI_READOUT = trigger.mlt_use_roi_readout
     MLT_ROI_CONF = trigger.mlt_roi_conf
+    MLT_DETECTOR_READOUT_MAP = trigger.mlt_detector_readout_map
     USE_CUSTOM_MAKER = trigger.use_custom_maker
     CTCM_TYPES = trigger.ctcm_trigger_types
     CTCM_INTERVAL = trigger.ctcm_trigger_intervals
@@ -200,7 +202,10 @@ def get_trigger_app(
     RTCM_INTERVAL = trigger.rtcm_trigger_interval_ticks
     RTCM_TIMESTAMP_METHOD = trigger.rtcm_timestamp_method
     RTCM_DISTRIBUTION = trigger.rtcm_time_distribution
+    ENABLE_LATENCY_MONITORING = trigger.enable_latency_monitoring
+    USE_LATENCY_OFFSET = trigger.use_latency_offset
     CHANNEL_MAP_NAME = detector.tpc_channel_map
+    SRC_GEO_ID_MAP = src_geo_id_map
     DATA_REQUEST_TIMEOUT=trigger_data_request_timeout
     HOST=trigger.host_trigger
 
@@ -227,33 +232,38 @@ def get_trigger_app(
     TA_SOURCE_IDS = {}
     TC_SOURCE_ID = {}
 
-    for trigger_sid,conf in TP_CONFIG.items():
-        if isinstance(conf, TAInfo):
-            TA_SOURCE_IDS[conf.region_id] = {"source_id": trigger_sid, "conf": conf}
-        elif isinstance(conf, TCInfo):
+    for trigger_sid,conf in TRG_CONFIG.items():
+        # Don't fill all the source IDs if we're not using software trigger
+        if USE_SOFTWARE_TRIGGER:
+            if isinstance(conf, TPInfo):
+                TP_SOURCE_IDS[trigger_sid] = conf
+            elif isinstance(conf, TAInfo):
+                TA_SOURCE_IDS[(conf.region_id, conf.plane)] = {"source_id": trigger_sid, "conf": conf}
+        if isinstance(conf, TCInfo):
             TC_SOURCE_ID = {"source_id": trigger_sid, "conf": conf}
-        elif isinstance(conf, TPInfo):
-            TP_SOURCE_IDS[trigger_sid] = conf
        
     # Check for present of TC sources. At least 1 is required
     if not tc_source_present(USE_HSI_INPUT, USE_FAKE_HSI_INPUT, USE_CTB_INPUT, USE_CIB_INPUT, USE_CUSTOM_MAKER, USE_RANDOM_MAKER, len(TP_SOURCE_IDS)):
         raise RuntimeError('There are no TC sources!')
+
+    if MLT_MERGE_OVERLAPPING_TCS and MLT_IGNORE_OVERLAPPING_TCS:
+        raise RuntimeError('Cannot have both overlap merging & overlap ignoring options switched on at the same time!')
  
     # We always have a TC buffer even when there are no TPs, because we want to put the timing TC in the output file
     modules += [DAQModule(name = 'tc_buf',
                           plugin = 'TCBuffer',
                           conf = get_buffer_conf(TC_SOURCE_ID["source_id"], DATA_REQUEST_TIMEOUT))]
     if USE_HSI_INPUT:
-        modules += [DAQModule(name = 'tctee_ttcm',
+        modules += [DAQModule(name = 'tctee_t',
                          plugin = 'TCTee')]
     if USE_CTB_INPUT:
-        modules += [DAQModule(name = 'tctee_ctbtcm',
+        modules += [DAQModule(name = 'tctee_ctb',
                          plugin = 'TCTee')]
     if USE_FAKE_HSI_INPUT and not FAKE_HSI_CTB :
-        modules += [DAQModule(name = 'tctee_ttcm_fake',
+        modules += [DAQModule(name = 'tctee_tcmfake',
                          plugin = 'TCTee')]
     if USE_FAKE_HSI_INPUT and FAKE_HSI_CTB:
-        modules += [DAQModule(name = 'tctee_ctbtcm_fake',
+        modules += [DAQModule(name = 'tctee_ctbfake',
                          plugin = 'TCTee')]
 
     if USE_CIB_INPUT:
@@ -267,51 +277,36 @@ def get_trigger_app(
             cm_configs.append(tcm.Conf(candidate_maker=CANDIDATE_PLUGIN[j],
                                        candidate_maker_config=temptypes.CandidateConf(CANDIDATE_CONFIG[j])))
     
-        # (PAR 2022-06-09) The max_latency_ms here should be kept
-        # larger than the corresponding value in the upstream
-        # TPZippers. See comment below for more details
+         # (PAR 2022-06-09) The max_latency_ms here should be kept
+         # larger than the corresponding value in the upstream
+         # TPZippers. See comment below for more details
         for j, cm_config in enumerate(cm_configs):
-            modules += [DAQModule(name = f'tazipper_{j}',
-                              plugin = 'TAZipper',
-                              conf = tzip.ConfParams(cardinality=len(TA_SOURCE_IDS),
-                                                     max_latency_ms=1000,
-                                                     element_id=TC_SOURCE_ID["source_id"])),
-                        DAQModule(name = f'tcm_{j}',
+            modules += [DAQModule(name = f'tcm_{j}',
                               plugin = 'TriggerCandidateMaker',
                               conf = tcm.Conf(candidate_maker=CANDIDATE_PLUGIN[j],
+                                     enable_latency_monit=ENABLE_LATENCY_MONITORING,
+                                     use_latency_offset=USE_LATENCY_OFFSET,
                                      candidate_maker_config=temptypes.CandidateConf(CANDIDATE_CONFIG[j]))),
 
-                        DAQModule(name = f'tctee_chain_{j}',
+                        DAQModule(name = f'tctee_swt_{j}',
                               plugin = 'TCTee'),]
 
-        for tp_sid in TP_SOURCE_IDS:
-            link_id = f'tplink{tp_sid}'
+        for tp_sid,tp_conf in TP_SOURCE_IDS.items():
+            ru_sid = f'{tp_conf.tp_ru_sid}'
+            region = f'{tp_conf.region_id}'
+            plane = f'{tp_conf.plane}'
 
             if USE_CHANNEL_FILTER:
-                modules += [DAQModule(name = f'channelfilter_{link_id}',
+                modules += [DAQModule(name = f'tpcf_{region}_{plane}',
                                       plugin = 'TPChannelFilter',
                                       conf = chfilter.Conf(channel_map_name=CHANNEL_MAP_NAME,
                                                            keep_collection=True,
                                                            keep_induction=True,
-                                                           max_time_over_threshold=10_000))]
-            modules += [DAQModule(name = f'tpsettee_{link_id}',
-                                  plugin = 'TPSetTee')]
-
-            # 1 buffer per TPG channel
-            modules += [DAQModule(name = f'buf_{link_id}',
-                                  plugin = 'TPBuffer',
-                                  conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 1_000_000),
-                                                         requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = 1_000_000,
-                                                                                                             pop_limit_pct = 0.8,
-                                                                                                             pop_size_pct = 0.1,
-                                                                                                             source_id = tp_sid,
-                                                                                                             det_id = 1,
-                                                                                                             # output_file = f"output_{idx + MIN_LINK}.out",
-                                                                                                             stream_buffer_size = 8388608,
-                                                                                                             request_timeout_ms = DATA_REQUEST_TIMEOUT,
-                                                                                                             enable_raw_recording = False)))]
+                                                           max_time_over_threshold=10_000,
+                                                           enable_latency_monit=ENABLE_LATENCY_MONITORING,
+                                                           use_latency_offset=USE_LATENCY_OFFSET))]
         
-        for region_id, ta_conf in TA_SOURCE_IDS.items():
+        for (region_id, plane), ta_conf in TA_SOURCE_IDS.items():
                 # (PAR 2022-06-09) The max_latency_ms here should be
                 # kept smaller than the corresponding value in the
                 # downstream TAZipper. The reason is to avoid tardy
@@ -347,18 +342,20 @@ def get_trigger_app(
 
                 # Add a TAMaker for each one and it's config supplied, additionally add a TASetTee:
                 for j, tamaker in enumerate(ACTIVITY_PLUGIN):
-                    modules += [DAQModule(name = f'tam_{region_id}_{j}',
+                    modules += [DAQModule(name = f'tam_{region_id}_{plane}_{j}',
                                           plugin = 'TriggerActivityMaker',
                                           conf = tam.Conf(activity_maker=tamaker,
                                                           geoid_element=region_id,  # 2022-02-02 PL: Same comment as above
                                                           window_time=10000,  # should match whatever makes TPSets, in principle
                                                           buffer_time=10*ticks_per_wall_clock_s//1000, # 10 wall-clock ms
+                                                          enable_latency_monit=ENABLE_LATENCY_MONITORING,
+                                                          use_latency_offset=USE_LATENCY_OFFSET,
                                                           activity_maker_config=temptypes.ActivityConf(ACTIVITY_CONFIG[j]))),
-                                DAQModule(name = f'tasettee_region_{region_id}_{j}', plugin = "TASetTee")]
+                                DAQModule(name = f'tatee_{region_id}_{plane}_{j}', plugin = "TATee")]
 
-                # Add the zippers and TABuffers, independant of the number of algorithms we want to run concurrently.
+                # Add the TABuffers, independant of the number of algorithms we want to run concurrently.
                 modules += [
-                            DAQModule(name = f'ta_buf_region_{region_id}',
+                            DAQModule(name = f'ta_buf_{region_id}_{plane}',
                                       plugin = 'TABuffer',
                                       # PAR 2022-04-20 Not sure what to set the element id to so it doesn't collide with the region/element used by TP buffers. Make it some big number that shouldn't already be used by the TP buffer
                                       conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 100_000),
@@ -373,7 +370,7 @@ def get_trigger_app(
                                                                                                                  enable_raw_recording = False)))]
 
                 if(num_algs > 1):
-                    modules += [DAQModule(name = f'tpsettee_ma_{region_id}',
+                    modules += [DAQModule(name = f'tpsettee_ma_{region_id}_{plane}',
                                           plugin = 'TPSetTee'),]
 
     if USE_HSI_INPUT:
@@ -450,7 +447,9 @@ def get_trigger_app(
                           plugin = 'ModuleLevelTrigger',
                           conf=mlt.ConfParams(mandatory_links=[],  # To be updated later - see comment above
                                               groups_links=[],     # To be updated later - see comment above
+                                              detector_readout_map=MLT_DETECTOR_READOUT_MAP,
                                               merge_overlapping_tcs=MLT_MERGE_OVERLAPPING_TCS,
+                                              ignore_overlapping_tcs=MLT_IGNORE_OVERLAPPING_TCS,
                                               buffer_timeout=MLT_BUFFER_TIMEOUT,
                                               td_out_of_timeout=MLT_SEND_TIMED_OUT_TDS,
                                               ignore_tc=MLT_IGNORE_TC,
@@ -459,32 +458,35 @@ def get_trigger_app(
                                               td_readout_map=MLT_READOUT_MAP,
                                               use_roi_readout=MLT_USE_ROI_READOUT,
                                               roi_conf=MLT_ROI_CONF,
-					      use_bitwords=MLT_USE_BITWORDS,
-					      trigger_bitwords=MLT_TRIGGER_FLAGS))]
+                                              use_bitwords=MLT_USE_BITWORDS,
+                                              trigger_bitwords=MLT_TRIGGER_FLAGS,
+                                              enable_latency_monit=ENABLE_LATENCY_MONITORING,
+                                              use_latency_offset=USE_LATENCY_OFFSET,
+                                              srcid_geoid_map = SRC_GEO_ID_MAP))]
 
     mgraph = ModuleGraph(modules)
 
     if USE_HSI_INPUT:
-        mgraph.connect_modules("ttcm.output",        "tctee_ttcm.input",            "TriggerCandidate", "ttcm_input", size_hint=1000)
-        mgraph.connect_modules("tctee_ttcm.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
-        mgraph.connect_modules("tctee_ttcm.output2", "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf", size_hint=1000)
+        mgraph.connect_modules("ttcm.output",     "tctee_t.input",               "TriggerCandidate", "ttcm_input", size_hint=1000)
+        mgraph.connect_modules("tctee_t.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
+        mgraph.connect_modules("tctee_t.output2", "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf", size_hint=1000)
         mgraph.add_endpoint("dts_hsievents", "ttcm.hsi_input", "HSIEvent", Direction.IN)
 
     if USE_FAKE_HSI_INPUT and not FAKE_HSI_CTB:
-        mgraph.connect_modules("ttcm_fake.output",        "tctee_ttcm_fake.input",       "TriggerCandidate", "ttcm_fake_input", size_hint=1000)
-        mgraph.connect_modules("tctee_ttcm_fake.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",      size_hint=1000)
-        mgraph.connect_modules("tctee_ttcm_fake.output2", "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf",      size_hint=1000)
+        mgraph.connect_modules("ttcm_fake.output",      "tctee_tcmfake.input",         "TriggerCandidate", "ttcm_fake_input", size_hint=1000)
+        mgraph.connect_modules("tctee_tcmfake.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",      size_hint=1000)
+        mgraph.connect_modules("tctee_tcmfake.output2", "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf",      size_hint=1000)
         mgraph.add_endpoint("fake_hsievents", "ttcm_fake.hsi_input", "HSIEvent", Direction.IN)
 
     if USE_CTB_INPUT:
-        mgraph.connect_modules("ctbtcm.output",        "tctee_ctbtcm.input",          "TriggerCandidate", "ctbtcm_input", size_hint=1000)
-        mgraph.connect_modules("tctee_ctbtcm.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",   size_hint=1000)
-        mgraph.connect_modules("tctee_ctbtcm.output2", "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf",   size_hint=1000)
+        mgraph.connect_modules("ctbtcm.output",     "tctee_ctb.input",             "TriggerCandidate", "ctbtcm_input", size_hint=1000)
+        mgraph.connect_modules("tctee_ctb.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",   size_hint=1000)
+        mgraph.connect_modules("tctee_ctb.output2", "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf",   size_hint=1000)
         mgraph.add_endpoint("ctb_hsievents", "ctbtcm.hsi_input", "HSIEvent", Direction.IN)
     if USE_FAKE_HSI_INPUT and FAKE_HSI_CTB:
-        mgraph.connect_modules("ctbtcm_fake.output",        "tctee_ctbtcm_fake.input",     "TriggerCandidate", "ctbtcm_fake_input", size_hint=1000)
-        mgraph.connect_modules("tctee_ctbtcm_fake.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",        size_hint=1000)
-        mgraph.connect_modules("tctee_ctbtcm_fake.output2", "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf",        size_hint=1000)
+        mgraph.connect_modules("ctbtcm_fake.output",    "tctee_ctbfake.input",         "TriggerCandidate", "ctbtcm_fake_input", size_hint=1000)
+        mgraph.connect_modules("tctee_ctbfake.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",        size_hint=1000)
+        mgraph.connect_modules("tctee_ctbfake.output2", "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf",        size_hint=1000)
         mgraph.add_endpoint("fake_hsievents", "ctbtcm_fake.hsi_input", "HSIEvent", Direction.IN)
 
     if USE_CIB_INPUT:
@@ -493,28 +495,24 @@ def get_trigger_app(
         mgraph.connect_modules("tctee_cibtcm.output2",       "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf",   size_hint=1000)
         mgraph.add_endpoint("cib_hsievents", "cibtcm.hsi_input", "HSIEvent", Direction.IN)
     if USE_CUSTOM_MAKER:
-        mgraph.connect_modules("ctcm.trigger_candidate_sink", "tctee_ctcm.input",    "TriggerCandidate", "ctcm_input", size_hint=1000)
-        mgraph.connect_modules("tctee_ctcm.output1",  "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
-        mgraph.connect_modules("tctee_ctcm.output2",  "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf", size_hint=1000)
+        mgraph.connect_modules("ctcm.trigger_candidate_sink", "tctee_ctcm.input",            "TriggerCandidate", "ctcm_input", size_hint=1000)
+        mgraph.connect_modules("tctee_ctcm.output1",          "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
+        mgraph.connect_modules("tctee_ctcm.output2",          "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf", size_hint=1000)
     if USE_RANDOM_MAKER:
-        mgraph.connect_modules("rtcm.trigger_candidate_sink", "tctee_rtcm.input",    "TriggerCandidate", "rtcm_input", size_hint=1000)
-        mgraph.connect_modules("tctee_rtcm.output1",  "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
-        mgraph.connect_modules("tctee_rtcm.output2",  "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf", size_hint=1000)
+        mgraph.connect_modules("rtcm.trigger_candidate_sink", "tctee_rtcm.input",            "TriggerCandidate", "rtcm_input", size_hint=1000)
+        mgraph.connect_modules("tctee_rtcm.output1",          "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt", size_hint=1000)
+        mgraph.connect_modules("tctee_rtcm.output2",          "tc_buf.tc_source",            "TriggerCandidate", "tcs_to_buf", size_hint=1000)
 
     if len(TP_SOURCE_IDS) > 0:
-        for j in range(num_algs):
-            mgraph.connect_modules(f"tazipper_{j}.output", f"tcm_{j}.input", data_type="TASet", size_hint=1000)
-
         for tp_sid,tp_conf in TP_SOURCE_IDS.items():
-            link_id = f'tplink{tp_sid}'
+            ru_sid = f'{tp_conf.tp_ru_sid}'
+            region = f'{tp_conf.region_id}'
+            plane = f'{tp_conf.plane}'
             if USE_CHANNEL_FILTER:
-                mgraph.connect_modules(f'channelfilter_{link_id}.tpset_sink', f'tpsettee_{link_id}.input', data_type="TPSet", size_hint=1000)
-
-            if(num_algs > 1):
-                mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'tpsettee_ma_{tp_conf.region_id}.input', data_type="TPSet", size_hint=1000)
-            else:
-                mgraph.connect_modules(f'tpsettee_{link_id}.output1', f'tam_{tp_conf.region_id}_0.input', data_type="TPSet", size_hint=1000)
-            mgraph.connect_modules(f'tpsettee_{link_id}.output2', f'buf_{link_id}.tpset_source',data_type="TPSet", size_hint=1000)
+                if(num_algs > 1):
+                    mgraph.connect_modules(f'tpcf_{region}_{plane}.tpset_sink', f'tpsettee_ma_{region}_{plane}.input', data_type="TPSet", size_hint=1000)
+                else:
+                    mgraph.connect_modules(f'tpcf_{region}_{plane}.tpset_sink', f'tam_{region}_{plane}_0.input', data_type="TPSet", size_hint=1000)
 
         ## # Use connect_modules to connect up the Tees to the buffers/MLT,
         ## # as manually adding Queues doesn't give the desired behaviour
@@ -523,20 +521,20 @@ def get_trigger_app(
             # Send the output of the new TPSetTee module to each of the activity makers
             if(num_algs > 1):
                 for j in range(num_algs):
-                    mgraph.connect_modules(f'tpsettee_ma_{region_id}.output{j+1}', f'tam_{region_id}_{j}.input', "TPSet", size_hint=1000)
+                    mgraph.connect_modules(f'tpsettee_ma_{region_id}_{plane}.output{j+1}', f'tam_{region_id}_{plane}_{j}.input', "TPSet", size_hint=1000)
 
         # For each TCMaker config applied, connect the TCMaker to it's copyer, then to the MLT and TCBuffer via that copyer.
         for j in range(len(cm_configs)):
-            mgraph.connect_modules(f"tcm_{j}.output", f"tctee_chain_{j}.input", "TriggerCandidate", f"chain_input_{j}", size_hint=1000)
-            mgraph.connect_modules(f"tctee_chain_{j}.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",  size_hint=1000)
-            mgraph.connect_modules(f"tctee_chain_{j}.output2", "tc_buf.tc_source", "TriggerCandidate","tcs_to_buf", size_hint=1000)
+            mgraph.connect_modules(f"tcm_{j}.output", f"tctee_swt_{j}.input", "TriggerCandidate", f"chain_input_{j}", size_hint=1000)
+            mgraph.connect_modules(f"tctee_swt_{j}.output1", "mlt.trigger_candidate_input", "TriggerCandidate", "tcs_to_mlt",  size_hint=1000)
+            mgraph.connect_modules(f"tctee_swt_{j}.output2", "tc_buf.tc_source", "TriggerCandidate","tcs_to_buf", size_hint=1000)
 
-        # For each TAMaker applied, connect the makers output to it's copyer, then connect the copyer's output to the buffer and TAZipper
-        for region_id in TA_SOURCE_IDS.keys():
+        # For each TAMaker applied, connect the makers output to it's copyer, then connect the copyer's output to the buffer
+        for region_id, plane in TA_SOURCE_IDS.keys():
             for j in range(num_algs):
-                mgraph.connect_modules(f'tam_{region_id}_{j}.output', f'tasettee_region_{region_id}_{j}.input', data_type="TASet", size_hint=1000)
-                mgraph.connect_modules(f'tasettee_region_{region_id}_{j}.output1', f'tazipper_{j}.input', queue_name=f"tas{j}_to_tazipper_{j}", data_type="TASet", size_hint=1000)
-                mgraph.connect_modules(f'tasettee_region_{region_id}_{j}.output2', f'ta_buf_region_{region_id}.taset_source',data_type="TASet", size_hint=1000)
+                mgraph.connect_modules(f'tam_{region_id}_{plane}_{j}.output', f'tatee_{region_id}_{plane}_{j}.input', data_type="TriggerActivity", size_hint=1000)
+                mgraph.connect_modules(f'tatee_{region_id}_{plane}_{j}.output1', f"tcm_{j}.input", queue_name=f"tas{j}_to_tcm{j}", data_type="TriggerActivity", size_hint=1000)
+                mgraph.connect_modules(f'tatee_{region_id}_{plane}_{j}.output2', f'ta_buf_{region_id}_{plane}.ta_source',data_type="TriggerActivity", size_hint=1000)
 
     mgraph.add_endpoint("td_to_dfo", "mlt.td_output", "TriggerDecision", Direction.OUT, toposort=True)
     mgraph.add_endpoint("df_busy_signal", "mlt.dfo_inhibit_input", "TriggerInhibit", Direction.IN)
@@ -547,23 +545,17 @@ def get_trigger_app(
 
     if len(TP_SOURCE_IDS) > 0:
         for tp_sid,tp_conf in TP_SOURCE_IDS.items():
-                # 1 buffer per link
-                link_id=f"tplink{tp_sid}"
-                buf_name=f'buf_{link_id}'
-                ru_sid = f'tplink{tp_conf.tp_ru_sid}'
+                ru_sid = f'{tp_conf.tp_ru_sid}'
+                region = f'{tp_conf.region_id}'
+                plane = f'{tp_conf.plane}'
               
                 if USE_CHANNEL_FILTER:
-                    mgraph.add_endpoint(f"tpsets_{ru_sid}", f"channelfilter_{link_id}.tpset_source", "TPSet", Direction.IN, is_pubsub=True)
+                    mgraph.add_endpoint(f"tpsets_tplink{ru_sid}", f"tpcf_{region}_{plane}.tpset_source", "TPSet", Direction.IN, is_pubsub=True)
                 else:
-                    mgraph.add_endpoint(f"tpsets_{ru_sid}", f'tpsettee_{link_id}.input', "TPSet",            Direction.IN, is_pubsub=True)
-                    
+                    mgraph.add_endpoint(f"tpsets_tplink{ru_sid}", f'tam_{region}_{plane}_0.input', "TPSet", Direction.IN, is_pubsub=True)
 
-                mgraph.add_fragment_producer(id=tp_sid, subsystem="Trigger",
-                                             requests_in=f"{buf_name}.data_request_source",
-                                             fragments_out=f"{buf_name}.fragment_sink")
-
-        for region_id, ta_conf in TA_SOURCE_IDS.items():
-            buf_name = f'ta_buf_region_{region_id}'
+        for (region_id, plane), ta_conf in TA_SOURCE_IDS.items():
+            buf_name = f'ta_buf_{region_id}_{plane}'
             mgraph.add_fragment_producer(id=ta_conf["source_id"], subsystem="Trigger",
                                          requests_in=f"{buf_name}.data_request_source",
                                          fragments_out=f"{buf_name}.fragment_sink")

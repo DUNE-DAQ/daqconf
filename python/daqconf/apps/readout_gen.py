@@ -23,6 +23,7 @@ from ..core.conf_utils import Direction, Queue
 from ..core.daqmodule import DAQModule
 from ..core.app import App, ModuleGraph
 from ..detreadoutmap import ReadoutUnitDescriptor, group_by_key
+from ..core.sourceid import RUEndpointInfo
 
 # from detdataformats._daq_detdataformats_py import *
 from detdataformats import DetID
@@ -52,6 +53,11 @@ class ReadoutAppGenerator:
             lcores_excpt[(ex['host'], ex['iface'])] = ex
         self.lcores_excpt = lcores_excpt
 
+        raw_recording_excpt = {}
+        for ex in self.ro_cfg.raw_recording_config['exceptions']:
+            raw_recording_excpt[(ex['host'], ex['numa_id'])] = ex
+        self.raw_recording_excpt = raw_recording_excpt
+    
     def get_numa_cfg(self, RU_DESCRIPTOR):
 
         cfg = self.ro_cfg
@@ -76,6 +82,16 @@ class ReadoutAppGenerator:
 
         
         return list(dict.fromkeys(lcore_id_set))
+    
+    def get_recording_cfg(self, RU_DESCRIPTOR, numa_id):
+
+        cfg = self.ro_cfg
+        try:
+            ex = self.raw_recording_excpt[(RU_DESCRIPTOR.host_name, numa_id)]
+            raw_recording_output_dir = ex['raw_recording_output_dir']
+        except KeyError:
+            raw_recording_output_dir = cfg.raw_recording_config['default_output_dir']
+        return (raw_recording_output_dir)
 
     ## Compute the frament types from detector infos
     def compute_data_types(self, stream_entry):
@@ -116,6 +132,7 @@ class ReadoutAppGenerator:
         default_pop_size_pct = 0.1
         default_stream_buffer_size = 8388608
 
+        raw_recording_output_dir = self.get_recording_cfg(RU_DESCRIPTOR, NUMA_ID)
 
         modules = []
         for stream in RU_DESCRIPTOR.streams:
@@ -137,7 +154,6 @@ class ReadoutAppGenerator:
                                 latency_buffer_numa_aware = LATENCY_BUFFER_NUMA_AWARE,
                                 latency_buffer_numa_node = NUMA_ID,
                                 latency_buffer_preallocation = LATENCY_BUFFER_ALLOCATION_MODE,
-                                latency_buffer_intrinsic_allocator = LATENCY_BUFFER_ALLOCATION_MODE,
                             ),
                             rawdataprocessorconf= rconf.RawDataProcessorConf(
                                 emulator_mode = cfg.emulator_mode,
@@ -152,7 +168,7 @@ class ReadoutAppGenerator:
                                 pop_size_pct = default_pop_size_pct,
                                 source_id = stream.src_id,
                                 det_id = RU_DESCRIPTOR.det_id,
-                                output_file = path.join(cfg.raw_recording_output_dir, f"output_{RU_DESCRIPTOR.label}_{stream.src_id}.out"),
+                                output_file = path.join(raw_recording_output_dir, f"output_{RU_DESCRIPTOR.label}_{stream.src_id}.out"),
                                 stream_buffer_size = default_stream_buffer_size,
                                 request_timeout_ms = DATA_REQUEST_TIMEOUT,
                                 fragment_send_timeout_ms = cfg.fragment_send_timeout_ms,
@@ -238,7 +254,7 @@ class ReadoutAppGenerator:
         dlh_list: list,
         DATA_REQUEST_TIMEOUT: int, # To Check
         FRAGMENT_SEND_TIMEOUT: int, # To Check
-        tpset_sid: int,
+        tpset_sids: int,
         )-> tuple[list, list]:
         
         default_pop_limit_pct = 0.8
@@ -278,19 +294,19 @@ class ReadoutAppGenerator:
                                 )
                             )
                     )
-                ]
+                 for tpset_sid in tpset_sids]
         
         queues = []
         for dlh in dlh_list:
             # Attach to the detector DLH's tp_out connector
             queues += [
                 Queue(
-                    f"{dlh.name}.tp_out",
+                    f"{dlh.name}.tp_out_plane_{plane}",
                     f"tp_datahandler_{tpset_sid}.raw_input",
                     "TriggerPrimitive",
                     f"tp_link_{tpset_sid}",1000000 
                     )
-                ]
+                for tpset_sid,plane in tpset_sids.items()]
 
         return modules, queues
 
@@ -459,15 +475,16 @@ class ReadoutAppGenerator:
 
         # Add the TP datalink handlers
         if TPG_ENABLED:
-            tps = { k:v for k,v in SOURCEID_BROKER.get_all_source_ids("Trigger").items() if isinstance(v, ReadoutUnitDescriptor ) and v==RU_DESCRIPTOR}
-            if len(tps) != 1:
+            tp_ru_sources = { k:v.plane for k,v in SOURCEID_BROKER.get_all_source_ids("Trigger").items() if isinstance(v, RUEndpointInfo ) and v.ru_desc==RU_DESCRIPTOR}
+
+            if len(tp_ru_sources) != 3:
                 raise RuntimeError(f"Could not retrieve unique element from source id map {tps}")
 
             tpg_mods, tpg_queues = self.create_tp_dlhs(
                 dlh_list=dlhs_mods,
                 DATA_REQUEST_TIMEOUT=DATA_REQUEST_TIMEOUT,
                 FRAGMENT_SEND_TIMEOUT=cfg.fragment_send_timeout_ms,
-                tpset_sid = next(iter(tps))
+                tpset_sids = tp_ru_sources
             )
             modules += tpg_mods
             queues += tpg_queues

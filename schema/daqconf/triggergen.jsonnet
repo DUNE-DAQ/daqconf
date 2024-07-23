@@ -10,7 +10,7 @@ local s = moo.oschema.schema("dunedaq.daqconf.triggergen");
 local nc = moo.oschema.numeric_constraints;
 // A temporary schema construction context.
 local cs = {
-  tc_type:         s.number(   "TCType",        "i4", nc(minimum=0, maximum=28), doc="Number representing TC type."),
+  tc_type:         s.number(   "TCType",        "u8", nc(minimum=0, maximum=63), doc="Number representing TC type."),
   tc_type_name:     s.string(   "TCTypeName"),
   tc_types:        s.sequence( "TCTypes",       self.tc_type, doc="List of TC types"),
   tc_interval:     s.number(   "TCInterval",    "i8", nc(minimum=1, maximum=30000000000), doc="The intervals between TCs that are inserted into MLT by CTCM, in clock ticks"),
@@ -26,6 +26,7 @@ local cs = {
   number_of_groups: s.number(  "Ngroups",       "i4", nc(minimum=0, maximum=150), doc="Number of groups of detector links to readout, useful for MLT ROI"),
   probability:      s.number(  "Prob",          "f4", nc(minimum=0.0, maximum=1.0), doc="Probability to read out a group of links, useful for MLT ROI"),
   group_selection:  s.enum(    "GroupSelection", ["kRandom", "kSequential"]),
+  subdetector_name: s.string("SubdetectorName", doc="Name of the subdetector as defined in dunedaq::detdataformats::DetID, e.g. HD_PDS"),
 
   trigger_algo_config: s.record("trigger_algo_config", [
     s.field("prescale", types.count, default=100),
@@ -72,7 +73,16 @@ local cs = {
  
   mlt_roi_conf_map: s.sequence("mlt_roi_conf_map", self.mlt_roi_group_conf),
 
+  mlt_subdetector_readout_conf: s.record("mlt_subdetector_readout_conf", [
+    s.field("subdetector",  self.subdetector_name,      default="", doc="Name of the subdetector as defined in dunedaq::detdataformats::DetID, e.g. HD_PDS"),
+    s.field("time_before",  self.readout_time,          default=1000, doc="Readout time before time stamp"),
+    s.field("time_after",   self.readout_time,          default=1000, doc="Readout time after time stamp"),
+  ]),
+
+  mlt_subdetector_readout_map : s.sequence("mlt_subdetector_readout_map", self.mlt_subdetector_readout_conf),
+
   trigger: s.record("trigger",[
+    s.field( "use_software_trigger", types.flag, default=true, doc="Option to turn off software trigger (TP->TA->TC pipeline). Standalone makers (e.g. timing) unaffected."),
     s.field( "host_trigger", types.host, default='localhost', doc='Host to run the trigger app on'),
     # trigger options
     s.field( "trigger_window_before_ticks",types.count, default=1000, doc="Trigger window before marker. Former -b"),
@@ -94,7 +104,9 @@ local cs = {
     s.field( "trigger_activity_config", self.tm_configs, default=[self.trigger_algo_config], doc="List of trigger activity algorithm configs (strings containing python dictionary)"),
     s.field( "trigger_candidate_plugin", self.tm_algorithms, default=['TriggerCandidateMakerPrescalePlugin'], doc="List of trigger candidate algorithm plugins"),
     s.field( "trigger_candidate_config", self.tm_configs, default=[self.trigger_algo_config], doc="List of trigger candidate algorithm configs (strings containing python dictionary)"),
+    s.field( "mlt_detector_readout_map", self.mlt_subdetector_readout_map, [], doc="Custom detector readout map per sub-dector as defined in dunedaq::detdataformats::DetID::Subdetector"),
     s.field( "mlt_merge_overlapping_tcs", types.flag, default=true, doc="Option to turn off merging of overlapping TCs when forming TDs in MLT"),
+    s.field( "mlt_ignore_overlapping_tcs", types.flag, default=false, doc="Option to ignore consecutive overlapping TCs/pileup events. Cannot run with mlt_merge_overlapping_tcs"),
     s.field( "mlt_buffer_timeout", types.count, default=100, doc="Timeout (buffer) to wait for new overlapping TCs before sending TD"),
     s.field( "mlt_send_timed_out_tds", types.flag, default=true, doc="Option to drop TD if TC comes out of timeout window"),
     s.field( "mlt_max_td_length_ms", types.count, default=1000, doc="Maximum allowed time length [ms] for a readout window of a single TD"),
@@ -113,6 +125,8 @@ local cs = {
     s.field( "rtcm_trigger_interval_ticks", self.tc_interval, default=62500000, doc="Interval between triggers in 16 ns time ticks (default 1.024 s)"),
     s.field( "rtcm_timestamp_method", self.timestamp_estimation, "kSystemClock", doc="Option to pick source for timing (system / timesync)"),
     s.field( "rtcm_time_distribution", self.distribution_type, "kUniform", doc="Type of distribution used for random timestamps (uniform or poisson)"),
+    s.field( "enable_latency_monitoring", types.flag, default=false, doc="Should latency be reported to opmon"),
+    s.field( "use_latency_offset", types.flag, default=false, doc="Should an offset be applied to latency measurements (opmon)"),
   ]),
 
 };
