@@ -183,7 +183,7 @@ def add_one_command_data(command_data, command, default_params, app):
 
 def make_queue_connection(the_system, app, endpoint_name, data_type, in_apps, out_apps, size, verbose):
     conn_id = conn.ConnectionId(uid=endpoint_name, data_type=data_type)
-    if len(in_apps) == 1 and len(out_apps) == 1:
+    if data_type!="Fragment" and (len(in_apps) == 1 and len(out_apps) == 1):
         if verbose:
             console.log(f"Queue {endpoint_name}, SPSC Queue (data_type={data_type}, size={size})")
         the_system.queues[app] += [conn.QueueConfig(id=conn_id, queue_type="kFollySPSCQueue", capacity=size)]
