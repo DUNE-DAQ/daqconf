@@ -47,21 +47,22 @@ def check_unique_relationship(objects, relationship):
     if len(rel) < 1:
       print(f"No object found for relationship {relationship} in {obj.id}")
       continue
-    val = rel[0]
-    if val.id in seen_id:
-      print (
-        f"ERROR {obj.id}:  {val.className()} {val.id} already seen in {seen_id[val.id]}")
-      unique = False
-    else:
-      for other in seen:
-        #print (f"  Checking {val.id}=={other.id}?")
-        if compare_objects(val, other):
-          print (f"object {obj.id} {val.id} is same as {other.id}")
-          unique = False
-    if not unique:
-      break
-    seen.append(val)
-    seen_id[val.id] = obj.id
+    #print (f"Found {len(rel)} objects of type {relationship} in {obj.id}")
+    for val in rel:
+      if val.id in seen_id:
+        print (
+          f"ERROR {obj.id}:  {val.className()} {val.id} already seen in {seen_id[val.id]}")
+        unique = False
+      else:
+        for other in seen:
+          #print (f"  Checking {val.id}=={other.id}?")
+          if compare_objects(val, other):
+            print (f"object {obj.id} {val.id} is same as {other.id}")
+            unique = False
+      if not unique:
+        break
+      seen.append(val)
+      seen_id[val.id] = obj.id
   return unique
 
 
@@ -136,23 +137,6 @@ def validate_readout(db, session):
   print (f"\nChecking data senders for duplicate streams");
   if not check_unique_relationship(snd_dals, "DetectorStream"):
     errcount += 1
-  seen_ids = {}
-  seen_objs = []
-  print (f"Checking inside data senders")
-  for sender in snd_dals:
-    for res in sender.contains:
-      if res.id in seen_ids:
-        errcount += 1
-        print(f"Error in DetDataSender {sender.id} already seen {res.id} in {seen_ids[res.id]}")
-        continue
-      seen_ids[res.id] = sender.id
-      for o in seen_objs:
-        #print (f"  Checking {sender.id} {res.id}=={o.id}?")
-        if compare_objects(o, res):
-          print(f"Error {res.id} is the same as {o.id}")
-          errcount += 1
-          continue
-      seen_objs.append(res)
 
   print (f"\nChecking detector connections for duplicate geio ids")
   if not check_unique_relationship(d2d_dals, "GeoId"):
