@@ -2,6 +2,7 @@
 from typing import Union
 from rich import print
 from rich.tree import Tree
+from rich.table import Table
 
 import click
 
@@ -14,20 +15,36 @@ class DaqInspectorContext:
     pass
 
 def make_segment_tree(cfg, segment, session: None, show_path: bool = False) -> Tree:
+    '''
+    Create segment branch of the configuration tree
+    '''
 
-    def enabled_to_emoji(enabled: Union[bool, None]) -> str:
+    def enabled_to_emoji(enabled: Union[int, None]) -> str:
         match enabled:
-    
-            case True:
+            case 1:
                 return ':white_check_mark:'
-            case False:
+            case 0:
+                return ':heavy_large_circle:' 
+            case -1:
                 return ':x:' 
             case _:
                 return ''
+            
+    def get_enabled(cfg, session, obj):
+        enabled = not confmodel.component_disabled(cfg._obj, session.id, obj.id)
+        if enabled:
+            return enabled
+        
+        enabled -= (obj in session.disabled)
+        return enabled
+        
+
+
+
 
     path = f"[blue]{cfg.get_obj(segment.className(), segment.id).contained_in()}[/blue]" if show_path else ""
-    enabled = not confmodel.component_disabled(cfg._obj, session.id, segment.id) if session else None
-    tree = Tree(f"[yellow]{segment.id}[/yellow] {enabled_to_emoji(enabled)} {path}")
+    enabled = get_enabled(cfg, session, segment) if session else None
+    tree = Tree(f"{enabled_to_emoji(enabled)} [yellow]{segment.id}[/yellow] {path}")
 
     c = segment.controller
     path = f"[blue]{cfg.get_obj(c.className(), c.id).contained_in()}[/blue]" if show_path else ""
@@ -41,12 +58,13 @@ def make_segment_tree(cfg, segment, session: None, show_path: bool = False) -> T
             if a is None:
                 print(f"Detected None application in {segment.id}")
                 continue
+
             path = f"[blue]{cfg.get_obj(a.className(), a.id).contained_in()}[/blue]" if show_path else ""
             ports = ', '.join([f'{svc.port}({svc.protocol})' for svc in c.exposes_service ])
             host = f"[medium_purple1]{a.runs_on.runs_on.id}[/medium_purple1]"
-            enabled = not confmodel.component_disabled(cfg._obj, session.id, a.id) if session else None
+            enabled = get_enabled(cfg, session, a) if session else None
 
-            app_tree.add(f"[green]{a.id}[/green][magenta]@{a.className()}[/magenta] {enabled_to_emoji(enabled)} on {host} [{ports}] {path}")
+            app_tree.add(f"{enabled_to_emoji(enabled)} [green]{a.id}[/green][magenta]@{a.className()}[/magenta] on {host} [{ports}] {path}")
 
     if segment.segments:
         seg_tree = tree.add(f"[cyan]segments[/cyan]")
@@ -107,19 +125,33 @@ def show_class(obj, klass):
         print('f[red]Class {klass} unknow to configuration[/red]')
         print(f'Known classes: {cfg.classes()}')
         raise SystemExit(-1)
-    print(f"Showing objects belonging to {klass}")
 
     attrs = cfg.attributes(klass)
     rels = cfg.relations(klass)
 
+    dals = cfg.get_dals(klass)
 
+    table = Table(title=klass)
+    table.add_column('id', style="cyan")
     for a in attrs:
-        print(a)
+        table.add_column(a)
+
+    for r in rels.keys():
+        table.add_column(r)
+    
+    for do in dals:
+        attr_vals = [str(getattr(do,a)) for a in attrs]
+        rel_vals = [getattr(do,r) for r in rels]
+        rel_strs = []
+        for rv in rel_vals:
+            if isinstance(rv,list):
+                rel_strs += [','.join([getattr(v,'id', 'None') for v in rv])]
+            else:
+                rel_strs += [getattr(rv,'id', 'None')]
+        table.add_row(*([do.id]+attr_vals+rel_strs))
 
 
-
-    IPython.embed(colors="neutral")
-
+    print(table)
 
 
 @cli.command()
