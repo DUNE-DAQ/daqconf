@@ -1,26 +1,40 @@
 #!/usr/bin/env python
+from typing import Union
 from rich import print
 from rich.tree import Tree
 
 import click
 
 import conffwk
+import confmodel
 
 import IPython
 
 class DaqInspectorContext:
     pass
 
+def make_segment_tree(cfg, segment, session: None, show_path: bool = False) -> Tree:
 
-def segment_tree(cfg, segment, show_path = False):
+    def enabled_to_emoji(enabled: Union[bool, None]) -> str:
+        match enabled:
+    
+            case True:
+                return ':white_check_mark:'
+            case False:
+                return ':x:' 
+            case _:
+                return ''
 
     path = f"[blue]{cfg.get_obj(segment.className(), segment.id).contained_in()}[/blue]" if show_path else ""
-    tree = Tree(f"[yellow]{segment.id}[/yellow] {path}")
+    enabled = not confmodel.component_disabled(cfg._obj, session.id, segment.id) if session else None
+    tree = Tree(f"[yellow]{segment.id}[/yellow] {enabled_to_emoji(enabled)} {path}")
+
     c = segment.controller
     path = f"[blue]{cfg.get_obj(c.className(), c.id).contained_in()}[/blue]" if show_path else ""
     ports = ', '.join([f'{svc.port}({svc.protocol})' for svc in c.exposes_service ])
     host = f"[medium_purple1]{c.runs_on.runs_on.id}[/medium_purple1]"
     tree.add(f"[cyan]controller[/cyan]: [green]{c.id}[/green][magenta]@{c.className()}[/magenta] on {host} [{ports}] {path}")
+
     if segment.applications:
         app_tree = tree.add(f"[cyan]applicationss[/cyan]")
         for a in segment.applications:
@@ -30,14 +44,17 @@ def segment_tree(cfg, segment, show_path = False):
             path = f"[blue]{cfg.get_obj(a.className(), a.id).contained_in()}[/blue]" if show_path else ""
             ports = ', '.join([f'{svc.port}({svc.protocol})' for svc in c.exposes_service ])
             host = f"[medium_purple1]{a.runs_on.runs_on.id}[/medium_purple1]"
-            app_tree.add(f"[green]{a.id}[/green][magenta]@{a.className()}[/magenta] on {host} [{ports}] {path}")
+            enabled = not confmodel.component_disabled(cfg._obj, session.id, a.id) if session else None
+
+            app_tree.add(f"[green]{a.id}[/green][magenta]@{a.className()}[/magenta] {enabled_to_emoji(enabled)} on {host} [{ports}] {path}")
+
     if segment.segments:
         seg_tree = tree.add(f"[cyan]segments[/cyan]")
         for s in segment.segments:
             if s is None:
                 print(f"Detected None segment in {segment.id}")
                 continue
-            seg_tree.add(segment_tree(cfg, s, show_path))
+            seg_tree.add(make_segment_tree(cfg, s, session, show_path))
 
     return tree
     
@@ -75,7 +92,7 @@ def show_sessions(obj, show_paths):
         s = cfg.get_dal('Session', so.UID())
         tree = Tree(f"Session [yellow]{s.id}[/yellow]")
 
-        tree.add(segment_tree(cfg, s.segment, show_paths))
+        tree.add(make_segment_tree(cfg, s.segment, s, show_paths))
         print(tree)
     print()
 
