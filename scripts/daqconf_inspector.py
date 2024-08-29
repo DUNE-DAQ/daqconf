@@ -123,11 +123,11 @@ def show_class(obj, klass):
     
     if klass not in cfg.classes():
         print('f[red]Class {klass} unknow to configuration[/red]')
-        print(f'Known classes: {cfg.classes()}')
+        print(f'Known classes: {sorted(cfg.classes())}')
         raise SystemExit(-1)
 
-    attrs = cfg.attributes(klass)
-    rels = cfg.relations(klass)
+    attrs = cfg.attributes(klass, True)
+    rels = cfg.relations(klass, True)
 
     dals = cfg.get_dals(klass)
 
@@ -136,8 +136,8 @@ def show_class(obj, klass):
     for a in attrs:
         table.add_column(a)
 
-    for r in rels.keys():
-        table.add_column(r)
+    for r,ri in rels.items():
+        table.add_column(f"{r} ([yellow]{rels[r]['type']}[/yellow])")
     
     for do in dals:
         attr_vals = [str(getattr(do,a)) for a in attrs]
@@ -152,6 +152,92 @@ def show_class(obj, klass):
 
 
     print(table)
+
+    table = Table(title=klass)
+    table.add_column('Member', style="cyan")
+
+    for do in dals:
+        table.add_column(do.id)
+
+    for a in attrs:
+        table.add_row(*([a]+[str(getattr(do,a)) for do in dals]))
+
+    for r in rels:
+        rel_vals = [getattr(do,r) for do in dals]
+        rel_strs = []
+        for rv in rel_vals:
+            if isinstance(rv,list):
+                rel_strs += [','.join([getattr(v,'id', 'None') for v in rv])]
+            else:
+                rel_strs += [getattr(rv,'id', 'None')]
+        table.add_row(*([f"{r} ([yellow]{rels[r]['type']}[/yellow])"]+rel_strs))
+
+    print(table)
+
+@cli.command()
+@click.argument('klass')
+@click.argument('id')
+@click.pass_obj
+def show_object(obj, klass, id):
+
+    cfg = obj.cfg
+
+    if klass not in cfg.classes():
+        print('f[red]Class {klass} unknow to configuration[/red]')
+        print(f'Known classes: {sorted(cfg.classes())}')
+        raise SystemExit(-1)
+
+    do = cfg.get_dal(klass, id)
+
+    def make_obj_tree(dal_obj):
+        tree = Tree(f"[green]{dal_obj.id}[/green][magenta]@{dal_obj.className()}[/magenta]")
+        attr_tree = tree.add('[yellow]attributes[/yellow]')
+        attrs = cfg.attributes(dal_obj.className(), True)
+        for a in attrs:
+            attr_tree.add(f"[cyan]{a}[/cyan] = {getattr(dal_obj, a)}")
+        
+        rel_tree = tree.add('[yellow]relationships[/yellow]')
+        rels = cfg.relations(dal_obj.className(), True)
+        for rel, rinfo in rels.items():
+            rel_val = getattr(dal_obj, rel)
+            r_tree = rel_tree.add(f"[cyan]{rel}[/cyan]@[magenta]{rinfo['type']}[/magenta] {('['+str(len(rel_val))+']' if isinstance(rel_val, list) else '')}")
+            if not isinstance(rel_val,list):
+                rel_val = [rel_val]
+            for v in rel_val:
+                if v is None:
+                    continue
+                r_tree.add(make_obj_tree(v))
+        return tree
+    
+
+    def make_obj_tree(dal_obj):
+        tree = Tree(f"[green]{dal_obj.id}[/green][magenta]@{dal_obj.className()}[/magenta]")
+        # attr_tree = tree.add('[yellow]attributes[/yellow]')
+        attrs = cfg.attributes(dal_obj.className(), True)
+        for a in attrs:
+            tree.add(f"[cyan]{a}[/cyan] = {getattr(dal_obj, a)}")
+        
+        # rel_tree = tree.add('[yellow]relationships[/yellow]')
+        rels = cfg.relations(dal_obj.className(), True)
+        for rel, rinfo in rels.items():
+            rel_val = getattr(dal_obj, rel)
+            r_tree = tree.add(f"[yellow]{rel}[/yellow]@[magenta]{rinfo['type']}[/magenta] {('['+str(len(rel_val))+']' if isinstance(rel_val, list) else '')}")
+            if not isinstance(rel_val,list):
+                rel_val = [rel_val]
+            for v in rel_val:
+                if v is None:
+                    continue
+                r_tree.add(make_obj_tree(v))
+        return tree
+
+
+    tree = make_obj_tree(do)
+    print(tree)
+
+
+    if False:
+        import IPython
+        IPython.embed(colors='neutral')
 
 
 @cli.command()
