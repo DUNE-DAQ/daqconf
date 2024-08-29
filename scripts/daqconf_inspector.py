@@ -116,8 +116,9 @@ def show_sessions(obj, show_paths):
 
 @cli.command()
 @click.argument('klass')
+@click.option('-v/-h','--vertical/--horizontal', "vtable", default=True)
 @click.pass_obj
-def show_class(obj, klass):
+def show_class(obj, klass,vtable):
 
     cfg = obj.cfg
     
@@ -131,46 +132,45 @@ def show_class(obj, klass):
 
     dals = cfg.get_dals(klass)
 
-    table = Table(title=klass)
-    table.add_column('id', style="cyan")
-    for a in attrs:
-        table.add_column(a)
+    if vtable:
+        table = Table(title=klass)
+        table.add_column('Member', style="cyan")
 
-    for r,ri in rels.items():
-        table.add_column(f"{r} ([yellow]{rels[r]['type']}[/yellow])")
-    
-    for do in dals:
-        attr_vals = [str(getattr(do,a)) for a in attrs]
-        rel_vals = [getattr(do,r) for r in rels]
-        rel_strs = []
-        for rv in rel_vals:
-            if isinstance(rv,list):
-                rel_strs += [','.join([getattr(v,'id', 'None') for v in rv])]
-            else:
-                rel_strs += [getattr(rv,'id', 'None')]
-        table.add_row(*([do.id]+attr_vals+rel_strs))
+        for do in dals:
+            table.add_column(do.id)
 
+        for a in attrs:
+            table.add_row(*([a]+[str(getattr(do,a)) for do in dals]))
 
-    print(table)
+        for r in rels:
+            rel_vals = [getattr(do,r) for do in dals]
+            rel_strs = []
+            for rv in rel_vals:
+                if isinstance(rv,list):
+                    rel_strs += [','.join([getattr(v,'id', 'None') for v in rv])]
+                else:
+                    rel_strs += [getattr(rv,'id', 'None')]
+            table.add_row(*([f"{r} ([yellow]{rels[r]['type']}[/yellow])"]+rel_strs))
+    else:
 
-    table = Table(title=klass)
-    table.add_column('Member', style="cyan")
+        table = Table(title=klass)
+        table.add_column('id', style="cyan")
+        for a in attrs:
+            table.add_column(a)
 
-    for do in dals:
-        table.add_column(do.id)
-
-    for a in attrs:
-        table.add_row(*([a]+[str(getattr(do,a)) for do in dals]))
-
-    for r in rels:
-        rel_vals = [getattr(do,r) for do in dals]
-        rel_strs = []
-        for rv in rel_vals:
-            if isinstance(rv,list):
-                rel_strs += [','.join([getattr(v,'id', 'None') for v in rv])]
-            else:
-                rel_strs += [getattr(rv,'id', 'None')]
-        table.add_row(*([f"{r} ([yellow]{rels[r]['type']}[/yellow])"]+rel_strs))
+        for r,ri in rels.items():
+            table.add_column(f"{r} ([yellow]{rels[r]['type']}[/yellow])")
+        
+        for do in dals:
+            attr_vals = [str(getattr(do,a)) for a in attrs]
+            rel_vals = [getattr(do,r) for r in rels]
+            rel_strs = []
+            for rv in rel_vals:
+                if isinstance(rv,list):
+                    rel_strs += [','.join([getattr(v,'id', 'None') for v in rv])]
+                else:
+                    rel_strs += [getattr(rv,'id', 'None')]
+            table.add_row(*([do.id]+attr_vals+rel_strs))
 
     print(table)
 
@@ -178,7 +178,7 @@ def show_class(obj, klass):
 @click.argument('klass')
 @click.argument('id')
 @click.pass_obj
-def show_object(obj, klass, id):
+def show_object_tree(obj, klass, id):
 
     cfg = obj.cfg
 
