@@ -1,0 +1,6 @@
+/* Prototype style sheet */
+#config_tree {
+    dock: left;
+    width: 60;
+    height: 100%;
+}

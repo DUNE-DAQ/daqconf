@@ -7,10 +7,9 @@ import os.path
 
 from textual import on, log
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Tree, Static, Input, Pretty, Label, Log, DataTable
+from textual.widgets import Header, Footer, Tree, Static, Input, Pretty, Label, Button
 from textual.reactive import reactive
 
-from search_bar import FileSearchBar, UidSearchBar, ClassSearchBar
 """
 Python class containing configuration tree object
 """
@@ -22,16 +21,13 @@ class ConfigTree(Static):
 
         ##############
     # HACK: Hardcoding in variables for test example
-    class_uid=reactive("")#"test-session"
-    root_class_type=reactive("")#"Session"
-    input_file="/afs/cern.ch/work/h/hwallace/private/software/dune-software/daq/runs/test_case_2/test-session.data.xml"
-
-    input_config = reactive(conffwk.Configuration(f"oksconflibs:{input_file}"))      #conffwk.Configuration(f"oksconflibs:{input_file}")
-    dal_input_config = reactive(None) #input_config.get_dal(root_class_type, class_uid) #input_config.get_dal(root_class_type, class_uid)
+    _input_config = reactive(None)#reactive(conffwk.Configuration(f"oksconflibs:{input_file}"))      #conffwk.Configuration(f"oksconflibs:{input_file}")
+    _dal_input_config = reactive(None) #input_config.get_dal(root_class_type, class_uid) #input_config.get_dal(root_class_type, class_uid)
     ###########
     tree = None
 
-    COLS = reactive([("Attribute", "Value"), ("", "")])
+
+    CSS_PATH="textual_css/style_sheet.tcss"
 
     def compose(self) -> ComposeResult:
         """
@@ -39,16 +35,11 @@ class ConfigTree(Static):
 
         :return: ComposeResult
         """
-        yield Label("Class Name")
-        yield Input(id="class_search")
-        yield Label("Class UID")
-        yield Input(id="uid_search")
         self.tree = self.make_tree()
         yield self.tree
-        yield DataTable(id="main_table")
 
     def make_tree(self)->Tree:
-        tree: tree[dict] = Tree(f"[green]{self.input_file}[/green]", id="main_tree")
+        tree: tree[dict] = Tree(f"[red]Open Files[/red]", id="main_tree", data=None)
         tree.root.expand()
         return tree
 
@@ -59,21 +50,10 @@ class ConfigTree(Static):
 
         :returns
         """
-
-        if self.class_uid=="" or self.root_class_type=="" or self.input_file=="":
+        if self._input_config is None or self._dal_input_config is None:
             return
 
-        # attributes = self.input_config.attributes(dal_object.className(), True)
-
-        # for a in attributes:
-        #     if getattr(dal_object, a) == '':
-        #         attr_str="[red]Not Set[/red]"
-        #     else:
-        #         attr_str = f"[blue]{getattr(dal_object, a)}[/blue]"
-        #     input_tree_node.add_leaf(f"{a} = {attr_str}")
-
-
-        relations = self.input_config.relations(dal_object.className(), True)
+        relations = self._input_config.relations(dal_object.className(), True)
         for rel, rinfo in relations.items():
             rel_val = getattr(dal_object, rel)
             if not isinstance(rel_val,list):
@@ -83,63 +63,23 @@ class ConfigTree(Static):
                     continue
 
                 # HW : Ugly
-                if len(self.input_config.relations(v.className(), True)) == 0:
+                if len(self._input_config.relations(v.className(), True)) == 0:
                     input_tree_node.add_leaf(f"[green]{getattr(v,'id')}[/green]@[yellow]{rinfo['type']}[/yellow]", data=v)
                 else:
                     new_node  = input_tree_node.add(f"[green]{getattr(v,'id')}[/green]@[yellow]{rinfo['type']}[/yellow]", data=v, expand=False)
                     self.get_branch_info(v, new_node)
 
+    def refresh_ui(self, input_config, dal_input_config):
+
+        self._input_config = input_config
+        self._dal_input_config = dal_input_config
+
+        self.tree.data = self._input_config
+
+        new_node = self.tree.root.add(f"[green]{getattr(self._dal_input_config, 'id')}[/green]@[yellow]{type(self._dal_input_config)}[/yellow]", data=self._dal_input_config)
 
 
-
-
-    def on_input_submitted(self, event: Input.Submitted):
-        input_id = event.input.id
-        input_value = event.input.value
-
-        if input_id == "uid_search":
-            self.class_uid=input_value
-        elif input_id == "class_search":
-            self.root_class_type = input_value
-
-        if self.class_uid!="" and self.root_class_type!="":
-            self.refresh_ui()
-
-    def refresh_ui(self):
-        self.dal_input_config =  self.input_config.get_dal(self.root_class_type, self.class_uid)
-
-        new_node = self.tree.root.add(f"[green]{self.class_uid}[/green]@[yellow]{self.root_class_type}[/yellow]", data=self.dal_input_config)
-
-        self.get_branch_info(self.dal_input_config, new_node)
+        self.get_branch_info(self._dal_input_config, new_node)
         self.tree.refresh()
 
 
-    def on_mount(self):
-        table = self.query_one(DataTable)
-        table.add_columns(*self.COLS[0])
-        table.add_rows(self.COLS[1:])
-
-        table.fixed_rows = 1
-        table.zebra_stripes = True
-
-    def on_tree_node_selected(self, event):
-        node_value = event.node.data
-
-        table = self.query_one(DataTable)
-
-        table.clear()
-
-
-        attributes = self.input_config.attributes(node_value.className(), True)
-
-        if len(attributes) == 0:
-            table.add_row('', '')
-            return
-
-        for a in attributes:
-
-            attr = getattr(node_value, a)
-            if attr == '':
-                table.add_row(a, '')
-            else:
-                table.add_row(a, attr)

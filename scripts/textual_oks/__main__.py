@@ -1,24 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python 3
 
 # DAQ imports
-import conffwk
-import confmodel
 
-from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Tree, Static
-
-from config_tree import ConfigTree
+from app_controller import AppController
 
 
-class ConffwkApp(App):
-    """
-    Main class containing conffwk app
-    """
-    def compose(self)->ComposeResult:
-        yield Header()
-        yield ConfigTree()
-        yield Footer()
-
-if __name__=="__main__":
-    app =  ConffwkApp()
-    app.run()
+app = AppController()
+app.run()
