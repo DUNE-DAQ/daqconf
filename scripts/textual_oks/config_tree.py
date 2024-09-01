@@ -51,6 +51,8 @@ class ConfigTree(Static):
         :returns
         """
         if self._input_config is None or self._dal_input_config is None:
+            log = self.query_one("RichLog")
+            log.write("Error, couldn't find input configs")
             return
 
         relations = self._input_config.relations(dal_object.className(), True)

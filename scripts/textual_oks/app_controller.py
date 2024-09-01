@@ -24,12 +24,14 @@ class MainScreen(Screen):
     """
 
     def compose(self):
-        yield SearchBar()
-        yield ConfigTable()
+        yield ConfigTable(id="config_table")
         yield ConfigTree(id="config_tree")
 
+        yield SearchBar(id="search_bar")
         yield Header()
         yield Footer()
+        yield RichLog(id="logbar")
+
 
     def on_button_pressed(self, event):
 
@@ -40,7 +42,9 @@ class MainScreen(Screen):
         if search.open_configs():
             tree.refresh_ui(*search.get_configs())
             table.update_config(search.get_configs()[0])
-
+        else:
+            log = self.query_one("#logbar")
+            log.write("Couldn't find specified configs")
 
 
     def on_tree_node_selected(self, event):

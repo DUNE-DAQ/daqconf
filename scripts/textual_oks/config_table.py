@@ -69,7 +69,8 @@ class ConfigTable(Static):
             self._input_config.update_dal(self._input_dal_config)
             self._input_config.commit(f"Changed {input_attr}")
         except:
-            return
+            log = self.query_one("RichLog")
+            log.write("Couldn't write attribute: {input_attr}")
 
 
     def on_data_table_cell_selected(self, event: DataTable.CellSelected) -> None:
