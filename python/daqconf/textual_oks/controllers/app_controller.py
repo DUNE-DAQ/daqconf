@@ -12,6 +12,7 @@ import os.path
 from custom_search_bar import SearchBar
 from config_table import ConfigTable
 from config_tree import ConfigTree
+from context_handler import ContextHandler
 
 from textual.widgets import Header, Footer, Tree, RichLog
 from textual.app import App
@@ -24,6 +25,8 @@ class MainScreen(Screen):
     """
 
     def compose(self):
+
+        yield ContextHandler(id="object_handler")
         yield ConfigTable(id="config_table")
         yield ConfigTree(id="config_tree")
 
