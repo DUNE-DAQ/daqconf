@@ -1,0 +1,12 @@
+#!/bin/env python3
+import click
+from daqconf.oks_format import oks_format
+
+@click.command()
+@click.argument('oksfiles', type=click.Path(exists=True), nargs=-1)
+def oks_format_main(oksfiles):
+    for file in oksfiles:
+        oks_format(file)  
+
+if __name__ == '__main__':
+    oks_format_main()
