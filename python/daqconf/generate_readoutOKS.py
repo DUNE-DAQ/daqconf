@@ -115,7 +115,7 @@ def generate_readout(
     detector_connections = db.get_dals(class_name="DetectorToDaqConnection")
 
     # Check tpg_enabled here, if it is False, then we want to make our own RawDataProcessor
-    if len(db.get_dals(class_name="LatencyBuffer")) > 0 and tpg_enabled:
+    if len(db.get_dals(class_name="LatencyBuffer")) > 0:
         print(f"Using predefined Latency buffers etc.")
         reqhandler = db.get_dal(
             class_name="RequestHandler", uid="def-data-request-handler"
@@ -275,12 +275,16 @@ def generate_readout(
                     hermes_conf = generate_hermesmoduleconf(dal, db)
 
             datareader = nicrec
+            wiec_control = dal.Service(f"wiec-{connection.id}_control", protocol="rest", port=5600 + appnum)
+            db.update_dal(wiec_control)
+
             wiec_app = dal.WIECApplication(
                 f"wiec-{connection.id}",
                 runs_on=host,
                 contains=[connection],
                 wib_module_conf=wm_conf,
                 hermes_module_conf=hermes_conf,
+                exposes_service=[wiec_control]
             )
             db.update_dal(wiec_app)
 
@@ -298,6 +302,8 @@ def generate_readout(
             )
             continue
 
+        ru_control = dal.Service(f"ru-{connection.id}_control", protocol="rest", port=5500 + appnum)
+        db.update_dal(ru_control)
         ru = dal.ReadoutApplication(
             f"ru-{connection.id}",
             runs_on=host,
@@ -306,7 +312,10 @@ def generate_readout(
             queue_rules=qrules,
             link_handler=linkhandler,
             data_reader=datareader,
+            tp_generation_enabled=tpg_enabled,
+            ta_generation_enabled=tpg_enabled,
             uses=rohw,
+            exposes_service=[ru_control]
         )
         if tpg_enabled:
             ru.tp_handler = tphandler
@@ -321,9 +330,14 @@ def generate_readout(
         return
 
     if segment or session:
-        fsm = db.get_dal(class_name="FSMconfiguration", uid="fsmConf-test")
-        controller = dal.RCApplication("ru-controller", runs_on=host, fsm=fsm)
+        # fsm = db.get_dal(class_name="FSMconfiguration", uid="fsmConf-test")
+        fsm = db.get_dal(class_name="FSMconfiguration", uid="FSMconfiguration_noAction")
+        controller_service = dal.Service("ru-controller_control", protocol="grpc", port=5500)
+        db.update_dal(controller_service)
+        controller = dal.RCApplication("ru-controller", runs_on=host, fsm=fsm, exposes_service=[controller_service])
         db.update_dal(controller)
+
+
         seg = dal.Segment(f"ru-segment", controller=controller, applications=ruapps)
         db.update_dal(seg)
 
