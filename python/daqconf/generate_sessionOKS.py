@@ -52,8 +52,10 @@ def generate_session(
 
 
     hosts = []
-    for host in db.get_dals(class_name="VirtualHost"):
-        hosts.append(host.id)
+    for vhost in db.get_dals(class_name="VirtualHost"):
+        hosts.append(vhost.id)
+        if vhost.id == "vlocalhost":
+            host = vhost
     if "vlocalhost" not in hosts:
         cpus = dal.ProcessingResource("cpus", cpu_cores=[0, 1, 2, 3])
         db.update_dal(cpus)
@@ -76,17 +78,26 @@ def generate_session(
     db.update_dal(session_name_env)
     partition_name_env=dal.Variable("session-env-session-name-1", name="DUNEDAQ_PARTITION", value=session_name)
     db.update_dal(partition_name_env)
+    cli_config = dal.Variable("daqapp-cli-configuration", name="DAQAPP_CLI_CONFIG_SVC", value=f"oksconflibs:{oksfile}")
+    db.update_dal(cli_config)
+    session_variables = [session_name_env, partition_name_env, cli_config]
+    for var in variables:
+        if "session-env" in var.id:
+            session_variables.append(var)
 
     seg = dal.Segment(f"root-segment", controller=controller, segments=segments)
     db.update_dal(seg)
 
     detconf=db.get_dal(class_name="DetectorConfig", uid="dummy-detector")
+    conn_svc=db.get_dal(class_name="ConnectionService", uid="local-connection-server")
+    opmon_svc=db.get_dal(class_name="OpMonService", uid="local-opmon-application-service")
 
     sessiondal = dal.Session(
                 session_name,
-                environment=variables +[session_name_env,partition_name_env],
+                environment=session_variables,
                 segment=seg,
                 detector_configuration=detconf,
+        infrastructure_applications=[conn_svc, opmon_svc]
     )
     db.update_dal(sessiondal)
 

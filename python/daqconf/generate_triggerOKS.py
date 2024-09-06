@@ -61,8 +61,10 @@ def generate_trigger(
     db.set_active(oksfile)
 
     hosts = []
-    for host in db.get_dals(class_name="VirtualHost"):
-        hosts.append(host.id)
+    for vhost in db.get_dals(class_name="VirtualHost"):
+        hosts.append(vhost.id)
+        if vhost.id == "vlocalhost":
+            host = vhost
     if "vlocalhost" not in hosts:
         cpus = dal.ProcessingResource("cpus", cpu_cores=[0, 1, 2, 3])
         db.update_dal(cpus)
