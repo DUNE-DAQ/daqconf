@@ -12,6 +12,7 @@ def generate_session(
     oksfile,
     include,
     session_name,
+    op_env
 ):
     """Simple script to create an OKS configuration file for a session.
 
@@ -89,6 +90,10 @@ def generate_session(
     db.update_dal(seg)
 
     detconf=db.get_dal(class_name="DetectorConfig", uid="dummy-detector")
+
+    detconf.op_env = op_env
+    db.update_dal(detconf)
+
     conn_svc=db.get_dal(class_name="ConnectionService", uid="local-connection-server")
     opmon_svc=db.get_dal(class_name="OpMonService", uid="local-opmon-application-service")
 

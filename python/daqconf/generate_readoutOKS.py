@@ -305,8 +305,18 @@ def generate_readout(
             )
             continue
 
-        ru_control = dal.Service(f"ru-{connection.id}_control", protocol="rest", port=5500 + appnum)
+        # Services
+        dataRequests = db.get_dal(class_name="Service", uid="dataRequests")
+        timeSyncs = db.get_dal(class_name="Service", uid="timeSyncs")
+        triggerActivities = db.get_dal(class_name="Service", uid="triggerActivities")
+        triggerPrimitives = db.get_dal(class_name="Service", uid="triggerPrimitives")
+        ru_control = dal.Service(f"ru-{connection.id}_control", protocol="rest", port=5501 + appnum)
         db.update_dal(ru_control)
+
+        # Action Plans
+        readout_start = db.get_dal(class_name="ActionPlan", uid="readout-start")
+        readout_stop = db.get_dal(class_name="ActionPlan", uid="readout-stop")
+
         ru = dal.ReadoutApplication(
             f"ru-{connection.id}",
             application_name="daq_application",
@@ -319,11 +329,13 @@ def generate_readout(
             tp_generation_enabled=tpg_enabled,
             ta_generation_enabled=tpg_enabled,
             uses=rohw,
-            exposes_service=[ru_control]
+            exposes_service=[ru_control, dataRequests, timeSyncs],
+            action_plans=[readout_start, readout_stop]
         )
         if tpg_enabled:
             ru.tp_handler = tphandler
             ru.tp_source_id = appnum + 100
+            ru.exposes_service += [triggerActivities,  triggerPrimitives]
         appnum = appnum + 1
         print(f"{ru=}")
         db.update_dal(ru)
