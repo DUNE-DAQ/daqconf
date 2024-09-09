@@ -101,6 +101,7 @@ def generate_hsi(
 
     hsi = dal.FakeHSIApplication("hsi-01",
         runs_on=host,
+        application_name="daq_application",
         exposes_service = [hsi_control],
         source_id=hsi_source_id,
         queue_rules = hsi_qrules,
@@ -114,6 +115,7 @@ def generate_hsi(
 
     hsi_to_tc = dal.HSIEventToTCApplication("hsi-to-tc-app",
         runs_on=host,
+        application_name="daq_application",
         exposes_service = [dataRequests, hsievents, tc_app_control],
         source_id = hsi_tc_source_id,
         network_rules = tc_netrules,
@@ -124,7 +126,7 @@ def generate_hsi(
         fsm = db.get_dal(class_name="FSMconfiguration", uid="FSMconfiguration_noAction")
         controller_service = dal.Service("hsi-controller_control", protocol="grpc", port=5800)
         db.update_dal(controller_service)
-        controller = dal.RCApplication("hsi-controller", runs_on=host, fsm=fsm, exposes_service=[controller_service])
+        controller = dal.RCApplication("hsi-controller", application_name="drunc-controller", runs_on=host, fsm=fsm, exposes_service=[controller_service])
         db.update_dal(controller)
 
 

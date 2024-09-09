@@ -282,6 +282,7 @@ def generate_readout(
 
             wiec_app = dal.WIECApplication(
                 f"wiec-{connection.id}",
+                application_name="daq_application",
                 runs_on=host,
                 contains=[connection],
                 wib_module_conf=wm_conf,
@@ -308,6 +309,7 @@ def generate_readout(
         db.update_dal(ru_control)
         ru = dal.ReadoutApplication(
             f"ru-{connection.id}",
+            application_name="daq_application",
             runs_on=host,
             contains=[connection],
             network_rules=netrules,
@@ -322,7 +324,6 @@ def generate_readout(
         if tpg_enabled:
             ru.tp_handler = tphandler
             ru.tp_source_id = appnum + 100
-            ru.ta_source_id = appnum + 1000
         appnum = appnum + 1
         print(f"{ru=}")
         db.update_dal(ru)
@@ -336,7 +337,7 @@ def generate_readout(
         fsm = db.get_dal(class_name="FSMconfiguration", uid="FSMconfiguration_noAction")
         controller_service = dal.Service("ru-controller_control", protocol="grpc", port=5500)
         db.update_dal(controller_service)
-        controller = dal.RCApplication("ru-controller", runs_on=host, fsm=fsm, exposes_service=[controller_service])
+        controller = dal.RCApplication("ru-controller", application_name="drunc-controller", runs_on=host, fsm=fsm, exposes_service=[controller_service])
         db.update_dal(controller)
 
 

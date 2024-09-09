@@ -105,6 +105,7 @@ def generate_dataflow(
     dfo_conf=db.get_dal(class_name="DFOConf", uid="dfoconf-01")
     dfo = dal.DFOApplication("dfo-01",
         runs_on=host,
+        application_name="daq_application",
         exposes_service=[dfo_control],
         network_rules=dfo_netrules,
         dfo=dfo_conf
@@ -127,6 +128,7 @@ def generate_dataflow(
 
         dfapp = dal.DFApplication(f"df-{dfapp_id:02}",
             runs_on=host,
+            application_name="daq_application",
             exposes_service=[dfapp_control],
             source_id=dfapp_source_id,
             queue_rules=dfapp_qrules,
@@ -144,6 +146,7 @@ def generate_dataflow(
 
         tpwapp = dal.TPStreamWriterApplication("tp-stream-writer",
             runs_on=host,
+            application_name="daq_application",
             exposes_service=[tpw_control],
             source_id=tpw_source_id,
             network_rules=tpw_netrules,
@@ -156,7 +159,7 @@ def generate_dataflow(
         fsm = db.get_dal(class_name="FSMconfiguration", uid="FSMconfiguration_noAction")
         controller_service = dal.Service("df-controller_control", protocol="grpc", port=5600)
         db.update_dal(controller_service)
-        controller = dal.RCApplication("df-controller", runs_on=host, fsm=fsm, exposes_service=[controller_service])
+        controller = dal.RCApplication("df-controller",  application_name="drunc-controller", runs_on=host, fsm=fsm, exposes_service=[controller_service])
         db.update_dal(controller)
 
 

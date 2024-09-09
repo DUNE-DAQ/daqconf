@@ -68,7 +68,7 @@ def generate_session(
     fsm = db.get_dal(class_name="FSMconfiguration", uid="fsmConf-test")
     controller_service = dal.Service("root-controller_control", protocol="grpc", port=3333)
     db.update_dal(controller_service)
-    controller = dal.RCApplication("root-controller", runs_on=host, fsm=fsm, exposes_service=[controller_service])
+    controller = dal.RCApplication("root-controller", application_name="drunc-controller", runs_on=host, fsm=fsm, exposes_service=[controller_service])
     db.update_dal(controller)
 
     segments = db.get_dals(class_name="Segment")

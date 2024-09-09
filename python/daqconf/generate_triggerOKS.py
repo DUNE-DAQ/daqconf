@@ -111,6 +111,7 @@ def generate_trigger(
 
     mlt = dal.MLTApplication("mlt",
             runs_on=host,
+            application_name="daq_application",
             exposes_service=[mlt_control, triggerCandidates, triggerInhibits, dataRequests],
             source_id=mlt_source_id,
             queue_rules=mlt_qrules,
@@ -127,6 +128,7 @@ def generate_trigger(
     
     tcmaker = dal.TriggerApplication("tc-maker-1",
             runs_on=host,
+            application_name="daq_application",
             exposes_service=[tc_maker_control, triggerActivities, dataRequests],
             source_id=tc_source_id,
             queue_rules=tapp_qrules,
@@ -140,7 +142,7 @@ def generate_trigger(
         fsm = db.get_dal(class_name="FSMconfiguration", uid="FSMconfiguration_noAction")
         controller_service = dal.Service("trg-controller_control", protocol="grpc", port=5700)
         db.update_dal(controller_service)
-        controller = dal.RCApplication("trg-controller", runs_on=host, fsm=fsm, exposes_service=[controller_service])
+        controller = dal.RCApplication("trg-controller",  application_name="drunc-controller", runs_on=host, fsm=fsm, exposes_service=[controller_service])
         db.update_dal(controller)
 
 
