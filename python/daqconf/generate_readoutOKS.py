@@ -187,7 +187,7 @@ def generate_readout(
 
     try:
         rule = db.get_dal(
-            class_name="QueueConnectionRule", uid="data-requests-queue-rule"
+            class_name="QueueConnectionRule", uid="fd-dlh-data-requests-queue-rule"
         )
     except:
         qrules = generate_queue_rules(dal, db)
