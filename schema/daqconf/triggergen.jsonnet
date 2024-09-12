@@ -34,6 +34,7 @@ local cs = {
     s.field("tc_type_name",   self.tc_type_name, default="kUnknown"),
     s.field("adjacency_threshold", types.count, default=6),
     s.field("adj_tolerance", types.count, default=4),
+    s.field("time_tolerance", types.count, default=150),
     s.field("trigger_on_adc", types.flag, default=false),
     s.field("trigger_on_n_channels", types.flag, default=false),
     s.field("trigger_on_adjacency", types.flag, default=true),
