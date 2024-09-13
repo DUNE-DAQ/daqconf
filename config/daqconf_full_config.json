@@ -195,7 +195,8 @@
             "trigger_on_n_channels": false,
             "window_length": 10000,
             "bundle_size": 100,
-            "max_tp_count": 1000
+            "max_tp_count": 1000,
+            "tc_type_name": "kUnknown"
         },
         "trigger_candidate_plugin": "TriggerCandidateMakerPrescalePlugin",
         "trigger_rate_hz": 1.0,
