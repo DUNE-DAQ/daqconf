@@ -104,7 +104,7 @@ def generate_readout(
             print(f"Error could not find include file for {inc}")
             return
 
-    dal = conffwk.dal.module("generated", includefiles[4])
+    dal = conffwk.dal.module("generated", includefiles)
     db = conffwk.Configuration("oksconflibs")
     if not oksfile.endswith(".data.xml"):
         oksfile = oksfile + ".data.xml"
@@ -115,7 +115,7 @@ def generate_readout(
     detector_connections = db.get_dals(class_name="DetectorToDaqConnection")
 
     # Check tpg_enabled here, if it is False, then we want to make our own RawDataProcessor
-    if len(db.get_dals(class_name="LatencyBuffer")) > 0 and tpg_enabled:
+    if len(db.get_dals(class_name="LatencyBuffer")) > 0:
         print(f"Using predefined Latency buffers etc.")
         reqhandler = db.get_dal(
             class_name="RequestHandler", uid="def-data-request-handler"
@@ -137,16 +137,22 @@ def generate_readout(
             intrinsic_allocator=True,
         )
         db.update_dal(latencybuffer)
+
+        pedsub = dal.AVXFrugalPedestalSubtractProcessor(
+            "tpg-pedsub-proc-gen", accum_limit=10
+        )
+        db.update_dal(pedsub)
+        thresh = dal.AVXThresholdProcessor(
+            "tpg-threshold-proc-gen", plane0=100, plane1=100, plane2=100
+        )
+        db.update_dal(thresh)
+
         dataproc = dal.RawDataProcessor(
             "dataproc-1-gen",
-            max_ticks_tot=10000,
-            mask_processing=False,            
-            algorithm="SimpleThreshold",
-            threshold=1900,
             channel_map="PD2HDChannelMap",
-            tpg_enabled=tpg_enabled,
+            processing_steps=[pedsub, thresh],
         )
-                    
+
         db.update_dal(dataproc)
         linkhandler = dal.DataHandlerConf(
             "linkhandler-1-gen",
@@ -167,7 +173,9 @@ def generate_readout(
         )
         db.update_dal(tphandler)
     try:
-        rule = db.get_dal(class_name="NetworkConnectionRule", uid="data-req-readout-net-rule")
+        rule = db.get_dal(
+            class_name="NetworkConnectionRule", uid="data-req-readout-net-rule"
+        )
     except:
         # Failed to get rule, now we have to invent some
         netrules = generate_net_rules(dal, db)
@@ -179,7 +187,7 @@ def generate_readout(
 
     try:
         rule = db.get_dal(
-            class_name="QueueConnectionRule", uid="data-requests-queue-rule"
+            class_name="QueueConnectionRule", uid="fd-dlh-data-requests-queue-rule"
         )
     except:
         qrules = generate_queue_rules(dal, db)
@@ -189,8 +197,10 @@ def generate_readout(
             qrules.append(db.get_dal(class_name="QueueConnectionRule", uid=rule))
 
     hosts = []
-    for host in db.get_dals(class_name="VirtualHost"):
-        hosts.append(host.id)
+    for vhost in db.get_dals(class_name="VirtualHost"):
+        hosts.append(vhost.id)
+        if vhost.id == "vlocalhost":
+            host = vhost
     if "vlocalhost" not in hosts:
         cpus = dal.ProcessingResource("cpus", cpu_cores=[0, 1, 2, 3])
         db.update_dal(cpus)
@@ -202,6 +212,8 @@ def generate_readout(
 
     rohw = dal.RoHwConfig(f"rohw-{detector_connections[0].id}")
     db.update_dal(rohw)
+
+    opmon_conf = db.get_dal(class_name="OpMonConf", uid="slow-all-monitoring")
 
     appnum = 0
     nicrec = None
@@ -223,8 +235,9 @@ def generate_readout(
         if type(receiver).__name__ == "FakeDataReceiver":
             if nicrec == None:
                 try:
-                    stream_emu = db.get_dal(class_name="StreamEmulationParameters",
-                                            uid="stream-emu")
+                    stream_emu = db.get_dal(
+                        class_name="StreamEmulationParameters", uid="stream-emu"
+                    )
                 except:
                     stream_emu = dal.StreamEmulationParameters(
                         "stream-emu",
@@ -251,7 +264,8 @@ def generate_readout(
             if nicrec == None:
                 print("Generating DPDKReaderConf")
                 nicrec = dal.DPDKReaderConf(
-                    f"nicrcvr-dpdk-gen", template_for="DPDKReaderModule")
+                    f"nicrcvr-dpdk-gen", template_for="DPDKReaderModule"
+                )
                 db.update_dal(nicrec)
             if wm_conf == None:
                 try:
@@ -265,15 +279,21 @@ def generate_readout(
                     hermes_conf = generate_hermesmoduleconf(dal, db)
 
             datareader = nicrec
+            wiec_control = dal.Service(
+                f"wiec-{connection.id}_control", protocol="rest", port=5600 + appnum
+            )
+            db.update_dal(wiec_control)
+
             wiec_app = dal.WIECApplication(
                 f"wiec-{connection.id}",
+                application_name="daq_application",
                 runs_on=host,
                 contains=[connection],
                 wib_module_conf=wm_conf,
-                hermes_module_conf=hermes_conf
+                hermes_module_conf=hermes_conf,
+                exposes_service=[wiec_control],
             )
             db.update_dal(wiec_app)
-
 
         elif type(receiver).__name__ == "FelixInterface":
             if flxcard == None:
@@ -283,40 +303,81 @@ def generate_readout(
                 )
                 db.update_dal(flxcard)
             datareader = flxcard
-        else :
-            print(f"ReadoutGroup contains unknown interface type {type(receiver).__name__}")
+        else:
+            print(
+                f"ReadoutGroup contains unknown interface type {type(receiver).__name__}"
+            )
             continue
+
+        db.commit()
+
+        # Services
+        dataRequests = db.get_dal(class_name="Service", uid="dataRequests")
+        timeSyncs = db.get_dal(class_name="Service", uid="timeSyncs")
+        triggerActivities = db.get_dal(class_name="Service", uid="triggerActivities")
+        triggerPrimitives = db.get_dal(class_name="Service", uid="triggerPrimitives")
+        ru_control = dal.Service(
+            f"ru-{connection.id}_control", protocol="rest", port=5501 + appnum
+        )
+        db.update_dal(ru_control)
+
+        # Action Plans
+        readout_start = db.get_dal(class_name="ActionPlan", uid="readout-start")
+        readout_stop = db.get_dal(class_name="ActionPlan", uid="readout-stop")
 
         ru = dal.ReadoutApplication(
             f"ru-{connection.id}",
+            application_name="daq_application",
             runs_on=host,
             contains=[connection],
             network_rules=netrules,
             queue_rules=qrules,
             link_handler=linkhandler,
             data_reader=datareader,
+            opmon_conf=opmon_conf,
+            tp_generation_enabled=tpg_enabled,
+            ta_generation_enabled=tpg_enabled,
             uses=rohw,
+            exposes_service=[ru_control, dataRequests, timeSyncs],
+            action_plans=[readout_start, readout_stop],
         )
         if tpg_enabled:
             ru.tp_handler = tphandler
-            ru.tp_source_id=appnum + 100
-            ru.ta_source_id=appnum + 1000
+            ru.tp_source_id = appnum + 100
+            ru.exposes_service += [triggerActivities, triggerPrimitives]
         appnum = appnum + 1
         print(f"{ru=}")
         db.update_dal(ru)
+        db.commit()
         ruapps.append(ru)
     if appnum == 0:
         print(f"No ReadoutApplications generated\n")
         return
 
-
+    db.commit()
 
     if segment or session:
-        fsm = db.get_dal(class_name="FSMconfiguration", uid="fsmConf-test")
-        controller = dal.RCApplication("ru-controller", runs_on=host, fsm=fsm)
+        # fsm = db.get_dal(class_name="FSMconfiguration", uid="fsmConf-test")
+        fsm = db.get_dal(class_name="FSMconfiguration", uid="FSMconfiguration_noAction")
+        controller_service = dal.Service(
+            "ru-controller_control", protocol="grpc", port=5500
+        )
+        db.update_dal(controller_service)
+        db.commit()
+        controller = dal.RCApplication(
+            "ru-controller",
+            application_name="drunc-controller",
+            runs_on=host,
+            fsm=fsm,
+            opmon_conf=opmon_conf,
+            exposes_service=[controller_service],
+        )
         db.update_dal(controller)
+        db.commit()
+
         seg = dal.Segment(f"ru-segment", controller=controller, applications=ruapps)
         db.update_dal(seg)
+        db.commit()
 
         if session:
             detconf = dal.DetectorConfig("dummy-detector")
@@ -352,7 +413,9 @@ def generate_net_rules(dal, db):
     )
     db.update_dal(newdescr)
     newrule = dal.NetworkConnectionRule(
-        "fa-net-rule-gen", endpoint_class="FragmentAggregatorModule", descriptor=newdescr
+        "fa-net-rule-gen",
+        endpoint_class="FragmentAggregatorModule",
+        descriptor=newdescr,
     )
     db.update_dal(newrule)
     netrules.append(newrule)
@@ -404,7 +467,10 @@ def generate_net_rules(dal, db):
 def generate_queue_rules(dal, db):
     qrules = []
     newdescr = dal.QueueDescriptor(
-        "dataRequest-gen", queue_type="kFollySPSCQueue", data_type="DataRequest", uid_base="data_reqs_for_"
+        "dataRequest-gen",
+        queue_type="kFollySPSCQueue",
+        data_type="DataRequest",
+        uid_base="data_reqs_for_",
     )
     db.update_dal(newdescr)
     newrule = dal.QueueConnectionRule(
@@ -416,7 +482,10 @@ def generate_queue_rules(dal, db):
     qrules.append(newrule)
 
     newdescr = dal.QueueDescriptor(
-        "aggregatorInput-gen", queue_type="kFollyMPMCQueue", data_type="Fragment", uid_base="fragments_from_"
+        "aggregatorInput-gen",
+        queue_type="kFollyMPMCQueue",
+        data_type="Fragment",
+        uid_base="fragments_from_",
     )
     db.update_dal(newdescr)
     newrule = dal.QueueConnectionRule(
@@ -428,7 +497,10 @@ def generate_queue_rules(dal, db):
     qrules.append(newrule)
 
     newdescr = dal.QueueDescriptor(
-        "rawWIBInput-gen", queue_type="kFollySPSCQueue", data_type="WIBEthFrame", uid_base="raw_"
+        "rawWIBInput-gen",
+        queue_type="kFollySPSCQueue",
+        data_type="WIBEthFrame",
+        uid_base="raw_",
     )
     db.update_dal(newdescr)
     newrule = dal.QueueConnectionRule(
@@ -442,7 +514,7 @@ def generate_queue_rules(dal, db):
         queue_type="kFollyMPMCQueue",
         capacity=100000,
         data_type="TriggerPrimitive",
-        uid_base="tps_"        
+        uid_base="tps_",
     )
     db.update_dal(newdescr)
     newrule = dal.QueueConnectionRule(
@@ -453,42 +525,39 @@ def generate_queue_rules(dal, db):
 
     return qrules
 
+
 def generate_wibmoduleconf(dal, db):
     try:
         femb_settings = db.get_dal("FEMBSettings", "def-femb-settings")
     except:
-        femb_settings = dal.FEMBSettings(
-            "def-femb-settings-gen")
+        femb_settings = dal.FEMBSettings("def-femb-settings-gen")
         db.update_dal(femb_settings)
 
     try:
         coldadc_settings = db.get_dal("ColdADCSettings", "def-coldadc-settings")
     except:
-        coldadc_settings = dal.ColdADCSettings(
-            "def-coldadc-settings-gen")
+        coldadc_settings = dal.ColdADCSettings("def-coldadc-settings-gen")
         db.update_dal(coldadc_settings)
     try:
         wibpulser = db.get_dal("WIBPulserSettings", "def-wib-pulser-setting")
     except:
-        wibpulser = dal.WIBPulserSettings(
-            "def-wib-pulser-setting-gen")
+        wibpulser = dal.WIBPulserSettings("def-wib-pulser-setting-gen")
         db.update_dal(wibpulser)
 
     wib_settings = dal.WIBSettings(
         "def-wib-settings-gen",
-        femb0 = femb_settings,
-        femb1 = femb_settings,
-        femb2 = femb_settings,
-        femb3 = femb_settings,
-        coldadc_settings = coldadc_settings,
-        wib_pulser = wibpulser
+        femb0=femb_settings,
+        femb1=femb_settings,
+        femb2=femb_settings,
+        femb3=femb_settings,
+        coldadc_settings=coldadc_settings,
+        wib_pulser=wibpulser,
     )
     db.update_dal(wib_settings)
-    wm_conf=dal.WIBModuleConf(
-        "def-wibmodule-conf-gen",
-        settings = wib_settings)
+    wm_conf = dal.WIBModuleConf("def-wibmodule-conf-gen", settings=wib_settings)
     db.update_dal(wm_conf)
     return wm_conf
+
 
 def generate_hermesmoduleconf(dal, db):
     try:
@@ -497,8 +566,6 @@ def generate_hermesmoduleconf(dal, db):
         addr_table = dal.IpbusAddressTable("Hermes-addrtab-gen")
         db.update_dal(addr_table)
 
-    hermes_conf=dal.HermesModuleConf(
-        "def-hermes-conf-gen",
-        address_table = addr_table)
+    hermes_conf = dal.HermesModuleConf("def-hermes-conf-gen", address_table=addr_table)
     db.update_dal(hermes_conf)
     return hermes_conf

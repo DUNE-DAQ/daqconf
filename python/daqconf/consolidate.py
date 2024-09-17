@@ -33,10 +33,10 @@ def consolidate_db(oksfile, output_file):
     print(f"Copying objects to new db")
     for dal in dals:
 
-        print(f"Loading object {dal} into cache")
+        # print(f"Loading object {dal} into cache")
         db.get_dal(dals[dal].className(), dals[dal].id)
 
-        print(f"Copying object: {dal}")
+        # print(f"Copying object: {dal}")
         new_db.add_dal(dals[dal])
 
     print("Saving database")
@@ -75,7 +75,7 @@ def consolidate_files(oksfile, *input_files):
                 new_db.get_dal(dals[dal].className(), dals[dal].id)
                 #print(f"ERROR: Database already contains object {dal}")  
             except:            
-                print(f"Copying object: {dal}")
+                # print(f"Copying object: {dal}")
                 new_db.add_dal(dals[dal])
             new_db.commit()
 

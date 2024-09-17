@@ -1,0 +1,23 @@
+#!/bin/env python3
+import conffwk
+import confmodel
+
+import click
+import os
+import glob
+from daqconf.enable_tpg import enable_tpg
+
+@click.command()
+@click.option('--disable', '-d', default=False, is_flag=True,
+              help='disable rather than enable the specified resources')
+@click.option('--session_name', '-s', type=str, default='',
+              help='Name of session to manipulate if not specified the first '
+              'session found in the database will be used')
+@click.argument('oksfile')
+def oks_enable(oksfile, disable, session_name):
+  """Script to enable or disable (-d) TP generation from the Session of the
+  specified OKS database file"""
+  enable_tpg(oksfile, disable, session_name)
+
+if __name__ == '__main__':
+  oks_enable()
