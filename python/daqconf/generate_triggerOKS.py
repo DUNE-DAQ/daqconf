@@ -51,7 +51,7 @@ def generate_trigger(
         includefiles += extra_includes
     else:
         return
-    
+
     dal = conffwk.dal.module("generated", includefiles)
     db = conffwk.Configuration("oksconflibs")
     if not oksfile.endswith(".data.xml"):
@@ -75,7 +75,7 @@ def generate_trigger(
         hosts.append("vlocalhost")
 
     # Services
-    mlt_control=db.get_dal(class_name="Service", uid="mlt_control")
+    mlt_control = db.get_dal(class_name="Service", uid="mlt_control")
     dataRequests = db.get_dal(class_name="Service", uid="dataRequests")
     tc_maker_control = db.get_dal(class_name="Service", uid="tc-maker-1_control")
     triggerActivities = db.get_dal(class_name="Service", uid="triggerActivities")
@@ -87,66 +87,93 @@ def generate_trigger(
     tc_source_id = db.get_dal(class_name="SourceIDConf", uid="ta-srcid-1")
 
     # Queue Rules
-    tc_queue_rule=db.get_dal(class_name="QueueConnectionRule", uid="tc-queue-rule")
-    td_queue_rule=db.get_dal(class_name="QueueConnectionRule", uid="td-queue-rule")
-    ta_queue_rule=db.get_dal(class_name="QueueConnectionRule", uid="ta-queue-rule")
-    mlt_qrules=[tc_queue_rule, td_queue_rule]
-    tapp_qrules=[ta_queue_rule]
+    tc_queue_rule = db.get_dal(class_name="QueueConnectionRule", uid="tc-queue-rule")
+    td_queue_rule = db.get_dal(class_name="QueueConnectionRule", uid="td-queue-rule")
+    ta_queue_rule = db.get_dal(class_name="QueueConnectionRule", uid="ta-queue-rule")
+    mlt_qrules = [tc_queue_rule, td_queue_rule]
+    tapp_qrules = [ta_queue_rule]
 
     # Net Rules
-    tc_net_rule=db.get_dal(class_name="NetworkConnectionRule", uid="tc-net-rule")
-    ta_net_rule=db.get_dal(class_name="NetworkConnectionRule", uid="ta-net-rule")
-    ts_net_rule=db.get_dal(class_name="NetworkConnectionRule", uid="ts-net-rule")
-    ti_net_rule=db.get_dal(class_name="NetworkConnectionRule", uid="ti-net-rule")
-    td_dfo_net_rule=db.get_dal(class_name="NetworkConnectionRule", uid="td-dfo-net-rule")
-    data_req_trig_net_rule=db.get_dal(class_name="NetworkConnectionRule", uid="data-req-trig-net-rule")
-    mlt_netrules=[tc_net_rule, ti_net_rule, td_dfo_net_rule, data_req_trig_net_rule, ts_net_rule]
-    tapp_netrules=[ta_net_rule, tc_net_rule, data_req_trig_net_rule]
+    tc_net_rule = db.get_dal(class_name="NetworkConnectionRule", uid="tc-net-rule")
+    ta_net_rule = db.get_dal(class_name="NetworkConnectionRule", uid="ta-net-rule")
+    ts_net_rule = db.get_dal(class_name="NetworkConnectionRule", uid="ts-net-rule")
+    ti_net_rule = db.get_dal(class_name="NetworkConnectionRule", uid="ti-net-rule")
+    td_dfo_net_rule = db.get_dal(
+        class_name="NetworkConnectionRule", uid="td-dfo-net-rule"
+    )
+    data_req_trig_net_rule = db.get_dal(
+        class_name="NetworkConnectionRule", uid="data-req-trig-net-rule"
+    )
+    mlt_netrules = [
+        tc_net_rule,
+        ti_net_rule,
+        td_dfo_net_rule,
+        data_req_trig_net_rule,
+        ts_net_rule,
+    ]
+    tapp_netrules = [ta_net_rule, tc_net_rule, data_req_trig_net_rule]
 
-    tc_subscriber=db.get_dal(class_name="DataReaderConf", uid="tc-subscriber-1")
+    opmon_conf = db.get_dal(class_name="OpMonConf", uid="slow-all-monitoring")
+    tc_subscriber = db.get_dal(class_name="DataReaderConf", uid="tc-subscriber-1")
     tc_handler = db.get_dal(class_name="DataHandlerConf", uid="def-tc-handler")
     mlt_conf = db.get_dal(class_name="MLTConf", uid="def-mlt-conf")
-    random_tc_generator = db.get_dal(class_name="RandomTCMakerConf", uid="random-tc-generator")
-    tc_confs =[random_tc_generator]
+    random_tc_generator = db.get_dal(
+        class_name="RandomTCMakerConf", uid="random-tc-generator"
+    )
+    tc_confs = [random_tc_generator]
 
-    mlt = dal.MLTApplication("mlt",
-            runs_on=host,
-            application_name="daq_application",
-            exposes_service=[mlt_control, triggerCandidates, triggerInhibits, dataRequests],
-            source_id=mlt_source_id,
-            queue_rules=mlt_qrules,
-            network_rules=mlt_netrules,
-            data_subscriber=tc_subscriber,
-            trigger_inputs_handler=tc_handler,
-            mlt_conf=mlt_conf,
-            standalone_candidate_maker_confs=tc_confs,
+    mlt = dal.MLTApplication(
+        "mlt",
+        runs_on=host,
+        application_name="daq_application",
+        exposes_service=[mlt_control, triggerCandidates, triggerInhibits, dataRequests],
+        source_id=mlt_source_id,
+        queue_rules=mlt_qrules,
+        network_rules=mlt_netrules,
+        opmon_conf=opmon_conf,
+        data_subscriber=tc_subscriber,
+        trigger_inputs_handler=tc_handler,
+        mlt_conf=mlt_conf,
+        standalone_candidate_maker_confs=tc_confs,
     )
     db.update_dal(mlt)
 
-    ta_subscriber=db.get_dal(class_name="DataReaderConf", uid="ta-subscriber-1")
+    ta_subscriber = db.get_dal(class_name="DataReaderConf", uid="ta-subscriber-1")
     ta_handler = db.get_dal(class_name="DataHandlerConf", uid="def-ta-handler")
-    
-    tcmaker = dal.TriggerApplication("tc-maker-1",
-            runs_on=host,
-            application_name="daq_application",
-            exposes_service=[tc_maker_control, triggerActivities, dataRequests],
-            source_id=tc_source_id,
-            queue_rules=tapp_qrules,
-            network_rules=tapp_netrules,
-            data_subscriber=ta_subscriber,
-            trigger_inputs_handler=ta_handler,
+
+    tcmaker = dal.TriggerApplication(
+        "tc-maker-1",
+        runs_on=host,
+        application_name="daq_application",
+        exposes_service=[tc_maker_control, triggerActivities, dataRequests],
+        source_id=tc_source_id,
+        queue_rules=tapp_qrules,
+        network_rules=tapp_netrules,
+        opmon_conf=opmon_conf,
+        data_subscriber=ta_subscriber,
+        trigger_inputs_handler=ta_handler,
     )
     db.update_dal(tcmaker)
 
     if segment or session != "":
         fsm = db.get_dal(class_name="FSMconfiguration", uid="FSMconfiguration_noAction")
-        controller_service = dal.Service("trg-controller_control", protocol="grpc", port=5700)
+        controller_service = dal.Service(
+            "trg-controller_control", protocol="grpc", port=5700
+        )
         db.update_dal(controller_service)
-        controller = dal.RCApplication("trg-controller",  application_name="drunc-controller", runs_on=host, fsm=fsm, exposes_service=[controller_service])
+        controller = dal.RCApplication(
+            "trg-controller",
+            application_name="drunc-controller",
+            opmon_conf=opmon_conf,
+            runs_on=host,
+            fsm=fsm,
+            exposes_service=[controller_service],
+        )
         db.update_dal(controller)
 
-
-        seg = dal.Segment(f"trg-segment", controller=controller, applications=[mlt, tcmaker])
+        seg = dal.Segment(
+            f"trg-segment", controller=controller, applications=[mlt, tcmaker]
+        )
         db.update_dal(seg)
 
         if session != "":
@@ -161,4 +188,3 @@ def generate_trigger(
 
     db.commit()
     return
-

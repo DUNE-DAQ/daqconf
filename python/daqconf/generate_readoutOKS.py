@@ -213,6 +213,8 @@ def generate_readout(
     rohw = dal.RoHwConfig(f"rohw-{detector_connections[0].id}")
     db.update_dal(rohw)
 
+    opmon_conf = db.get_dal(class_name="OpMonConf", uid="slow-all-monitoring")
+
     appnum = 0
     nicrec = None
     flxcard = None
@@ -277,7 +279,9 @@ def generate_readout(
                     hermes_conf = generate_hermesmoduleconf(dal, db)
 
             datareader = nicrec
-            wiec_control = dal.Service(f"wiec-{connection.id}_control", protocol="rest", port=5600 + appnum)
+            wiec_control = dal.Service(
+                f"wiec-{connection.id}_control", protocol="rest", port=5600 + appnum
+            )
             db.update_dal(wiec_control)
 
             wiec_app = dal.WIECApplication(
@@ -287,7 +291,7 @@ def generate_readout(
                 contains=[connection],
                 wib_module_conf=wm_conf,
                 hermes_module_conf=hermes_conf,
-                exposes_service=[wiec_control]
+                exposes_service=[wiec_control],
             )
             db.update_dal(wiec_app)
 
@@ -305,12 +309,16 @@ def generate_readout(
             )
             continue
 
+        db.commit()
+
         # Services
         dataRequests = db.get_dal(class_name="Service", uid="dataRequests")
         timeSyncs = db.get_dal(class_name="Service", uid="timeSyncs")
         triggerActivities = db.get_dal(class_name="Service", uid="triggerActivities")
         triggerPrimitives = db.get_dal(class_name="Service", uid="triggerPrimitives")
-        ru_control = dal.Service(f"ru-{connection.id}_control", protocol="rest", port=5501 + appnum)
+        ru_control = dal.Service(
+            f"ru-{connection.id}_control", protocol="rest", port=5501 + appnum
+        )
         db.update_dal(ru_control)
 
         # Action Plans
@@ -326,35 +334,50 @@ def generate_readout(
             queue_rules=qrules,
             link_handler=linkhandler,
             data_reader=datareader,
+            opmon_conf=opmon_conf,
             tp_generation_enabled=tpg_enabled,
             ta_generation_enabled=tpg_enabled,
             uses=rohw,
             exposes_service=[ru_control, dataRequests, timeSyncs],
-            action_plans=[readout_start, readout_stop]
+            action_plans=[readout_start, readout_stop],
         )
         if tpg_enabled:
             ru.tp_handler = tphandler
             ru.tp_source_id = appnum + 100
-            ru.exposes_service += [triggerActivities,  triggerPrimitives]
+            ru.exposes_service += [triggerActivities, triggerPrimitives]
         appnum = appnum + 1
         print(f"{ru=}")
         db.update_dal(ru)
+        db.commit()
         ruapps.append(ru)
     if appnum == 0:
         print(f"No ReadoutApplications generated\n")
         return
 
+    db.commit()
+
     if segment or session:
         # fsm = db.get_dal(class_name="FSMconfiguration", uid="fsmConf-test")
         fsm = db.get_dal(class_name="FSMconfiguration", uid="FSMconfiguration_noAction")
-        controller_service = dal.Service("ru-controller_control", protocol="grpc", port=5500)
+        controller_service = dal.Service(
+            "ru-controller_control", protocol="grpc", port=5500
+        )
         db.update_dal(controller_service)
-        controller = dal.RCApplication("ru-controller", application_name="drunc-controller", runs_on=host, fsm=fsm, exposes_service=[controller_service])
+        db.commit()
+        controller = dal.RCApplication(
+            "ru-controller",
+            application_name="drunc-controller",
+            runs_on=host,
+            fsm=fsm,
+            opmon_conf=opmon_conf,
+            exposes_service=[controller_service],
+        )
         db.update_dal(controller)
-
+        db.commit()
 
         seg = dal.Segment(f"ru-segment", controller=controller, applications=ruapps)
         db.update_dal(seg)
+        db.commit()
 
         if session:
             detconf = dal.DetectorConfig("dummy-detector")

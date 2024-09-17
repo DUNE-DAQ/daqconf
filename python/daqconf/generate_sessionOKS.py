@@ -8,12 +8,7 @@ import glob
 from daqconf.utils import find_oksincludes
 
 
-def generate_session(
-    oksfile,
-    include,
-    session_name,
-    op_env
-):
+def generate_session(oksfile, include, session_name, op_env):
     """Simple script to create an OKS configuration file for a session.
 
     The file will automatically include the relevant schema files and
@@ -42,7 +37,7 @@ def generate_session(
         includefiles += extra_includes
     else:
         return
-    
+
     dal = conffwk.dal.module("generated", includefiles)
     db = conffwk.Configuration("oksconflibs")
     if not oksfile.endswith(".data.xml"):
@@ -50,7 +45,6 @@ def generate_session(
     print(f"Creating OKS database file {oksfile} with includes {includefiles}")
     db.create_db(oksfile, includefiles)
     db.set_active(oksfile)
-
 
     hosts = []
     for vhost in db.get_dals(class_name="VirtualHost"):
@@ -67,19 +61,35 @@ def generate_session(
         hosts.append("vlocalhost")
 
     fsm = db.get_dal(class_name="FSMconfiguration", uid="fsmConf-test")
-    controller_service = dal.Service("root-controller_control", protocol="grpc", port=3333)
+    controller_service = dal.Service(
+        "root-controller_control", protocol="grpc", port=3333
+    )
     db.update_dal(controller_service)
-    controller = dal.RCApplication("root-controller", application_name="drunc-controller", runs_on=host, fsm=fsm, exposes_service=[controller_service])
+    controller = dal.RCApplication(
+        "root-controller",
+        application_name="drunc-controller",
+        runs_on=host,
+        fsm=fsm,
+        exposes_service=[controller_service],
+    )
     db.update_dal(controller)
 
     segments = db.get_dals(class_name="Segment")
     variables = db.get_dals(class_name="Variable")
 
-    session_name_env = dal.Variable("session-env-session-name-0", name="DUNEDAQ_SESSION", value=session_name)
+    session_name_env = dal.Variable(
+        "session-env-session-name-0", name="DUNEDAQ_SESSION", value=session_name
+    )
     db.update_dal(session_name_env)
-    partition_name_env=dal.Variable("session-env-session-name-1", name="DUNEDAQ_PARTITION", value=session_name)
+    partition_name_env = dal.Variable(
+        "session-env-session-name-1", name="DUNEDAQ_PARTITION", value=session_name
+    )
     db.update_dal(partition_name_env)
-    cli_config = dal.Variable("daqapp-cli-configuration", name="DAQAPP_CLI_CONFIG_SVC", value=f"oksconflibs:{oksfile}")
+    cli_config = dal.Variable(
+        "daqapp-cli-configuration",
+        name="DAQAPP_CLI_CONFIG_SVC",
+        value=f"oksconflibs:{oksfile}",
+    )
     db.update_dal(cli_config)
     session_variables = [session_name_env, partition_name_env, cli_config]
     for var in variables:
@@ -89,23 +99,23 @@ def generate_session(
     seg = dal.Segment(f"root-segment", controller=controller, segments=segments)
     db.update_dal(seg)
 
-    detconf=db.get_dal(class_name="DetectorConfig", uid="dummy-detector")
+    detconf = db.get_dal(class_name="DetectorConfig", uid="dummy-detector")
 
     detconf.op_env = op_env
     db.update_dal(detconf)
 
-    conn_svc=db.get_dal(class_name="ConnectionService", uid="local-connection-server")
-    opmon_svc=db.get_dal(class_name="OpMonService", uid="local-opmon-application-service")
+    conn_svc = db.get_dal(class_name="ConnectionService", uid="local-connection-server")
+    opmon_svc = db.get_dal(class_name="OpMonURI", uid="local-opmon-uri")
 
     sessiondal = dal.Session(
-                session_name,
-                environment=session_variables,
-                segment=seg,
-                detector_configuration=detconf,
-        infrastructure_applications=[conn_svc, opmon_svc]
+        session_name,
+        environment=session_variables,
+        segment=seg,
+        detector_configuration=detconf,
+        infrastructure_applications=[conn_svc],
+        opmon_uri=opmon_svc,
     )
     db.update_dal(sessiondal)
 
     db.commit()
     return
-
