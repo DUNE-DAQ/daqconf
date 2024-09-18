@@ -77,7 +77,6 @@ def generate_trigger(
     # Services
     mlt_control = db.get_dal(class_name="Service", uid="mlt_control")
     dataRequests = db.get_dal(class_name="Service", uid="dataRequests")
-    tc_maker_control = db.get_dal(class_name="Service", uid="tc-maker-1_control")
     triggerActivities = db.get_dal(class_name="Service", uid="triggerActivities")
     triggerCandidates = db.get_dal(class_name="Service", uid="triggerCandidates")
     triggerInhibits = db.get_dal(class_name="Service", uid="triggerInhibits")
@@ -141,20 +140,6 @@ def generate_trigger(
     ta_subscriber = db.get_dal(class_name="DataReaderConf", uid="ta-subscriber-1")
     ta_handler = db.get_dal(class_name="DataHandlerConf", uid="def-ta-handler")
 
-    tcmaker = dal.TriggerApplication(
-        "tc-maker-1",
-        runs_on=host,
-        application_name="daq_application",
-        exposes_service=[tc_maker_control, triggerActivities, dataRequests],
-        source_id=tc_source_id,
-        queue_rules=tapp_qrules,
-        network_rules=tapp_netrules,
-        opmon_conf=opmon_conf,
-        data_subscriber=ta_subscriber,
-        trigger_inputs_handler=ta_handler,
-    )
-    db.update_dal(tcmaker)
-
     if segment or session != "":
         fsm = db.get_dal(class_name="FSMconfiguration", uid="FSMconfiguration_noAction")
         controller_service = dal.Service(
@@ -172,7 +157,7 @@ def generate_trigger(
         db.update_dal(controller)
 
         seg = dal.Segment(
-            f"trg-segment", controller=controller, applications=[mlt, tcmaker]
+            f"trg-segment", controller=controller, applications=[mlt]
         )
         db.update_dal(seg)
 
