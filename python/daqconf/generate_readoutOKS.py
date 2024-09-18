@@ -391,11 +391,14 @@ def generate_readout(
         if session:
             detconf = dal.DetectorConfig("dummy-detector")
             db.update_dal(detconf)
-            opmon = dal.OpMonURI("gen-opmon",
-                                 type="file",
-                                 path="./info.json"
-                                 )
-            db.update_dal(opmon)
+            try:
+                opmon = db.get_dal(class_name="OpMonURI", uid="local-opmon-uri")
+            except:
+                opmon = dal.OpMonURI("gen-opmon",
+                                     type="file",
+                                     path="./info.json"
+                                     )
+                db.update_dal(opmon)
             sessname = os.path.basename(readoutmap).removesuffix(".data.xml")
             sessiondal = dal.Session(
                 f"{sessname}-session",
