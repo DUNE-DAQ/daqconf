@@ -1,6 +1,5 @@
 from calendar import day_abbr
 from curses import qiflush
-from re import I
 import conffwk
 import os
 import glob
