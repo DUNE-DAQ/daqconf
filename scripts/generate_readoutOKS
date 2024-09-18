@@ -13,9 +13,10 @@ from daqconf.generate_readoutOKS import generate_readout
               help='Enable generation of a Segment object containing the ReadoutApplications')
 @click.option('--session', is_flag=True,
               help='Enable generation of a Session object containing the generated Segment (implies --segment)')
+@click.option('--host', multiple=True, help='Hosts that can run readout applications. Should match a declared VirtualHost in the included configuration files. Specify this option multiple times to set up ReadoutApplications on multiple hosts.')
 @click.argument('readoutmap')
 @click.argument('oksfile')
-def generate(readoutmap, oksfile, include, segment, session):
+def generate(readoutmap, oksfile, include, segment, session, host):
   """Simple script to create an OKS configuration file for all
   ReadoutApplications defined in a readout map.
 
@@ -45,7 +46,7 @@ def generate(readoutmap, oksfile, include, segment, session):
 
   """
 
-  generate_readout(readoutmap, oksfile, include, segment, session)
+  generate_readout(readoutmap, oksfile, include, segment, session, hosts_to_use=host)
 
 if __name__ == '__main__':
   generate()
