@@ -343,7 +343,16 @@ def generate_readout(
         )
         if tpg_enabled:
             ru.tp_handler = tphandler
-            ru.tp_source_id = appnum + 100
+            tp_sources = []
+            tpbaseid = (appnum * 3) + 100
+            for plane in range(3):
+                s_id = tpbaseid+plane
+                tps_dal = dal.SourceIDConf(f"tp-srcid-{s_id}",
+                                           sid = s_id,
+                                           subsystem = "Trigger")
+                db.update_dal(tps_dal)
+                tp_sources.append(tps_dal)
+            ru.tp_source_ids = tp_sources
             ru.exposes_service += [triggerActivities, triggerPrimitives]
         appnum = appnum + 1
         print(f"{ru=}")
@@ -382,11 +391,17 @@ def generate_readout(
         if session:
             detconf = dal.DetectorConfig("dummy-detector")
             db.update_dal(detconf)
+            opmon = dal.OpMonURI("gen-opmon",
+                                 type="file",
+                                 path="./info.json"
+                                 )
+            db.update_dal(opmon)
             sessname = os.path.basename(readoutmap).removesuffix(".data.xml")
             sessiondal = dal.Session(
                 f"{sessname}-session",
                 segment=seg,
                 detector_configuration=detconf,
+                opmon_uri=opmon,
             )
             db.update_dal(sessiondal)
 
