@@ -13,6 +13,7 @@ def generate_trigger(
     segment,
     session="",
     tpg_enabled=True,
+    hsi_enabled=False,
 ):
     """Simple script to create an OKS configuration file for a trigger segment.
 
@@ -121,7 +122,7 @@ def generate_trigger(
     random_tc_generator = db.get_dal(
         class_name="RandomTCMakerConf", uid="random-tc-generator"
     )
-    tc_confs = [random_tc_generator]
+    tc_confs = [] if hsi_enabled else [random_tc_generator]
 
     mlt = dal.MLTApplication(
         "mlt",
