@@ -1,4 +1,4 @@
-from pathlib import PosixPath
+from pathlib import Path
 import conffwk
 import sys
 import os
@@ -45,11 +45,12 @@ def consolidate_db(oksfile, output_file):
     new_db.commit()
     print("DONE")
 
-def copy_configuration(dest_dir : PosixPath, input_files: list):
+def copy_configuration(dest_dir : Path, input_files: list):
     if len(input_files) == 0:
         return []
 
     print(f"Copying configuration represented by databases: {input_files} to {dest_dir}")
+    dest_dir = dest_dir.resolve() # Always include by absolute path when copying
     sys.setrecursionlimit(10000)  # for example
 
     output_dbs = []
