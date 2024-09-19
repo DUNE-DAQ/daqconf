@@ -12,6 +12,7 @@ def generate_trigger(
     include,
     segment,
     session="",
+    tpg_enabled=True,
 ):
     """Simple script to create an OKS configuration file for a trigger segment.
 
@@ -138,22 +139,23 @@ def generate_trigger(
     )
     db.update_dal(mlt)
 
-    ta_subscriber = db.get_dal(class_name="DataReaderConf", uid="ta-subscriber-1")
-    ta_handler = db.get_dal(class_name="DataHandlerConf", uid="def-ta-handler")
+    if tpg_enabled:
+        ta_subscriber = db.get_dal(class_name="DataReaderConf", uid="ta-subscriber-1")
+        ta_handler = db.get_dal(class_name="DataHandlerConf", uid="def-ta-handler")
 
-    tcmaker = dal.TriggerApplication(
-        "tc-maker-1",
-        runs_on=host,
-        application_name="daq_application",
-        exposes_service=[tc_maker_control, triggerActivities, dataRequests],
-        source_id=tc_source_id,
-        queue_rules=tapp_qrules,
-        network_rules=tapp_netrules,
-        opmon_conf=opmon_conf,
-        data_subscriber=ta_subscriber,
-        trigger_inputs_handler=ta_handler,
-    )
-    db.update_dal(tcmaker)
+        tcmaker = dal.TriggerApplication(
+            "tc-maker-1",
+            runs_on=host,
+            application_name="daq_application",
+            exposes_service=[tc_maker_control, triggerActivities, dataRequests],
+            source_id=tc_source_id,
+            queue_rules=tapp_qrules,
+            network_rules=tapp_netrules,
+            opmon_conf=opmon_conf,
+            data_subscriber=ta_subscriber,
+            trigger_inputs_handler=ta_handler,
+        )
+        db.update_dal(tcmaker)
 
     if segment or session != "":
         fsm = db.get_dal(class_name="FSMconfiguration", uid="FSMconfiguration_noAction")
@@ -172,7 +174,7 @@ def generate_trigger(
         db.update_dal(controller)
 
         seg = dal.Segment(
-            f"trg-segment", controller=controller, applications=[mlt, tcmaker]
+            f"trg-segment", controller=controller, applications=[mlt] + ([tcmaker] if tpg_enabled else [])
         )
         db.update_dal(seg)
 

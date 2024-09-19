@@ -1,5 +1,7 @@
+from pathlib import PosixPath
 import conffwk
 import sys
+import os
 
 
 def get_all_includes(db, file):
@@ -42,6 +44,48 @@ def consolidate_db(oksfile, output_file):
     print("Saving database")
     new_db.commit()
     print("DONE")
+
+def copy_configuration(dest_dir : PosixPath, input_files: list):
+    if len(input_files) == 0:
+        return []
+
+    print(f"Copying configuration represented by databases: {input_files} to {dest_dir}")
+    sys.setrecursionlimit(10000)  # for example
+
+    output_dbs = []
+
+    for input_file in input_files:
+        db = conffwk.Configuration("oksconflibs:" + input_file)
+        includes = db.get_includes(None)
+        schemas = [i for i in includes if "schema.xml" in i]
+        dbs = [i for i in includes if "data.xml" in i]
+        newdbs = copy_configuration(dest_dir, dbs)
+
+        #print("Creating new database")
+        output_file = dest_dir / os.path.basename(input_file)
+
+        new_db = conffwk.Configuration("oksconflibs")
+        new_db.create_db(str(output_file), schemas + newdbs)
+        new_db.commit()
+
+        #print("Reading dal objects from old db")
+        dals = db.get_all_dals()
+
+        #print(f"Copying objects to new db")
+        for dal in dals:
+
+            # print(f"Loading object {dal} into cache")
+            db.get_dal(dals[dal].className(), dals[dal].id)
+
+            # print(f"Copying object: {dal}")
+            new_db.add_dal(dals[dal])
+
+        #print("Saving database")
+        new_db.commit()
+        output_dbs.append(str(output_file))
+    print("DONE")
+        
+    return output_dbs
 
 
 def consolidate_files(oksfile, *input_files):
