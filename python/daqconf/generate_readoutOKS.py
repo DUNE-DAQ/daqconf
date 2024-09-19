@@ -14,6 +14,7 @@ def generate_readout(
     session,
     emulated_file_name="asset://?checksum=e96fd6efd3f98a9a3bfaba32975b476e",
     tpg_enabled=True,
+    hosts_to_use=[],
 ):
     """Simple script to create an OKS configuration file for all
   ReadoutApplications defined in a readout map.
@@ -197,18 +198,23 @@ def generate_readout(
             qrules.append(db.get_dal(class_name="QueueConnectionRule", uid=rule))
 
     hosts = []
-    for vhost in db.get_dals(class_name="VirtualHost"):
-        hosts.append(vhost.id)
-        if vhost.id == "vlocalhost":
-            host = vhost
-    if "vlocalhost" not in hosts:
-        cpus = dal.ProcessingResource("cpus", cpu_cores=[0, 1, 2, 3])
-        db.update_dal(cpus)
-        phdal = dal.PhysicalHost("localhost", contains=[cpus])
-        db.update_dal(phdal)
-        host = dal.VirtualHost("vlocalhost", runs_on=phdal, uses=[cpus])
-        db.update_dal(host)
-        hosts.append("vlocalhost")
+    if len(hosts_to_use) == 0:
+        for vhost in db.get_dals(class_name="VirtualHost"):
+            if vhost.id == "vlocalhost":
+                hosts.append(vhost.id)
+        if "vlocalhost" not in hosts:
+            cpus = dal.ProcessingResource("cpus", cpu_cores=[0, 1, 2, 3])
+            db.update_dal(cpus)
+            phdal = dal.PhysicalHost("localhost", contains=[cpus])
+            db.update_dal(phdal)
+            host = dal.VirtualHost("vlocalhost", runs_on=phdal, uses=[cpus])
+            db.update_dal(host)
+            hosts.append("vlocalhost")
+    else:
+        for vhost in db.get_dals(class_name="VirtualHost"):
+            if vhost.id in hosts_to_use:
+                hosts.append(vhost.id)
+    assert(len(hosts) > 0)
 
     rohw = dal.RoHwConfig(f"rohw-{detector_connections[0].id}")
     db.update_dal(rohw)
