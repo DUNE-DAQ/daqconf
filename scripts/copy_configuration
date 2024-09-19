@@ -8,7 +8,7 @@ from daqconf.consolidate import copy_configuration
 @click.argument('databases', nargs=-1)
 def copy_config(output_directory, databases):
     """Copy to OUTPUT_DIRECTORY configuration represented by DATABASES"""
-    copy_configuration(pathlib.PosixPath(output_directory), databases)  
+    copy_configuration(pathlib.Path(output_directory), databases)  
 
 if __name__ == '__main__':
     copy_config()
