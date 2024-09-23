@@ -1,9 +1,4 @@
-#!/usr/bin/env python 3
+from daq_app.test_app import TestApp
 
-# DAQ imports
-
-from app_controller import AppController
-
-
-app = AppController()
-app.run()
+x = TestApp()
+x.run()
