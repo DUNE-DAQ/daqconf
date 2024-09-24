@@ -1,4 +1,4 @@
-from data_structures.controller import ConfigurationController
+from textual_oks.data_structures.configuration_controller import ConfigurationController
 
 from textual.widgets import Static, Tree
 from textual.widgets.tree import TreeNode
@@ -8,19 +8,10 @@ class SelectionMenu(Static):
     Basic selection menu, builds tree from selection objects
     '''
     _tree = None
-    _interface_label = ""
-    
+        
     def compose(self):
         self._build_tree()
         yield self._tree
-    
-    @property
-    def interface_label(self):
-        return self._interface_label
-    
-    @interface_label.setter
-    def interface_label(self, new_lab: str)->None:
-        self._interface_label = new_lab    
     
     def _build_tree(self):
         # Iteratively builds tree via dictionary
@@ -28,14 +19,14 @@ class SelectionMenu(Static):
 
         controller = self.app.query_one("ConfigurationController")
         
-        if self._interface_label not in controller.interface.keys():
+        if self.id not in controller.get_interface().keys():
             raise ValueError(f"Cannot find {self._interface_label} in controller. \n  \
-                             available interfaces are {controller.interface}")
+                             available interfaces are {controller.get_interface()}")
         
         tree_root = self._tree.root
         
-        for key, branch in controller.interface[self._interface_label].relationships.items():
-            tree_node = tree_root.add(repr(key), expand=False)
+        for key, branch in controller.get_interface()[self.id].relationships.items():
+            tree_node = tree_root.add(repr(key), expand=True)
             self.__build_tree_node(tree_node, branch)
             
     def __build_tree_node(self, input_node: TreeNode, input_list: list):

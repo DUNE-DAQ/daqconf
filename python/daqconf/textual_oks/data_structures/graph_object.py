@@ -4,7 +4,7 @@ Slightly abstract graph object, used for relational depedencies
 
 import numpy as np
 from numpy.typing import NDArray
-from data_structures.configuration import ConfigurationHandler
+from textual_oks.data_structures.configuration_handler import ConfigurationHandler
 from collections import deque
 from typing import List
 

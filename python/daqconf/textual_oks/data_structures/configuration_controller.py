@@ -1,7 +1,8 @@
 from textual.widgets import Static
 
-from data_structures.configuration import ConfigurationHandler
-from data_structures.relationships import SelectionInterface
+from textual_oks.data_structures.configuration_handler import ConfigurationHandler
+from textual_oks.data_structures.selection_interface_factory import SelectionInterfaceFactory
+from textual_oks.data_structures.selection_interface import SelectionInterface
 from typing import Dict, Type, Any
 from textual.message import Message
 from textual.reactive import reactive
@@ -40,11 +41,12 @@ class ConfigurationController(Static):
         self._handler.commit(update_message)
 
     def update_configuration(self, attr_name, update_value):
-        try:
-            setattr(self._current_selected_object, attr_name, update_value)
-            self._handler.configuration.update_dal(self._current_selected_object)
-        except:
-            raise AttributeError(f"Cannot find attribute {attr_name}")
+        # try:
+        setattr(self._current_selected_object, attr_name, update_value)
+        self._handler.configuration.update_dal(self._current_selected_object)        
+        # except:
+        #     raise Exception()
+            
 
     def new_handler_from_str(self, file_name: str):
         self._handler = ConfigurationHandler(file_name)
@@ -61,15 +63,13 @@ class ConfigurationController(Static):
     def configuration(self):
         return self._handler.configuration
 
-    @property
-    def interface(self):
+    def get_interface(self):
         return self._selection_interfaces
 
-    @interface.setter
-    def interface(self, selection_handler: Type[SelectionInterface]):
+    def add_interface(self, interface_label: str)->None:
         self.__no_handler_error()
-        interface = selection_handler(self._handler)
-        self._selection_interfaces[repr(interface)] = interface
+        self._selection_interfaces[interface_label]= \
+            SelectionInterfaceFactory.get_interface(interface_label, self._handler)
 
     def __no_handler_error(self):
         if self._handler is None:

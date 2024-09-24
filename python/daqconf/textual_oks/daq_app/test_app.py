@@ -2,10 +2,10 @@
 App for testing configuration 
 '''
 
-from interface.config_table import ConfigTable
-from interface.selection_menu import SelectionMenu
-from data_structures.controller import ConfigurationController
-from data_structures.relationships import ClassSelectionMenu, RelationalSelectionMenu
+from textual_oks.interface.config_table import ConfigTable
+from textual_oks.interface.selection_menu import SelectionMenu
+from textual_oks.data_structures.configuration_controller import ConfigurationController
+from textual_oks.data_structures.selection_interface import ClassSelectionMenu, RelationalSelectionMenu
 from textual.containers import Horizontal, VerticalScroll
 
 from textual.app import App
@@ -19,21 +19,18 @@ class MainScreen(Screen):
         # Import for app control
         config_controller = ConfigurationController()
         config_controller.new_handler_from_str(file_name="/home/hwallace/scratch/dune_software/daq/daq_work_areas/fddaq-v5.1.0-a9-1/test_case_2/test-session.data.xml")
-        config_controller.interface = RelationalSelectionMenu
-        config_controller.interface = ClassSelectionMenu
-
+        config_controller.add_interface("class-selection")
+        config_controller.add_interface("relation-selection")
         yield config_controller
 
-        self._class_menu = SelectionMenu(id="class_menu")
-        self._class_menu.interface_label = "ClassSelectionMenu"
-        self._relational_menu = SelectionMenu(id = "relational_menu")
-        self._relational_menu.interface_label="RelationalSelectionMenu"
+        self._class_menu = SelectionMenu(id="class-selection")
+        self._relational_menu = SelectionMenu(id = "relation-selection")
         
         with Horizontal(id="buttons"):
-            yield Button("By Class", id="class_menu")
-            yield Button("By Relation", id="relational_menu")
+            yield Button("By Class", id="class-selection")
+            yield Button("By Relation", id="relation-selection")
         
-        with ContentSwitcher(initial="class_menu"):
+        with ContentSwitcher(initial="class-selection"):
             yield self._class_menu
             yield self._relational_menu            
 
@@ -50,7 +47,7 @@ class MainScreen(Screen):
 
 class TestApp(App):
     SCREENS = {"main": MainScreen}
-    CSS_PATH = "content_switcher.tcss"
+    CSS_PATH = "dummy_layout.tcss"
     
     def on_mount(self):        
         self.push_screen("main")
