@@ -17,4 +17,3 @@ class SelectionPanel(Static):
         with ContentSwitcher(initial=list(menu_ids.values())[0]):
             for id in menu_ids.values():
                 yield SelectionMenu(id=id)
-

@@ -7,6 +7,8 @@ from typing import Dict, Type, Any
 from textual.message import Message
 from textual.reactive import reactive
 
+
+
 from dataclasses import dataclass
 """
 TODO: Implement logger
@@ -18,6 +20,8 @@ ABSTRACT THINGS
 
 
 class ConfigurationController(Static):    
+
+    BINDINGS = [("ctrl+s", "save_configuration", "Save Configuration")]
 
     _handler: ConfigurationHandler | None = None
     _selection_interfaces: Dict[str, SelectionInterface] = {}
@@ -44,9 +48,6 @@ class ConfigurationController(Static):
         # try:
         setattr(self._current_selected_object, attr_name, update_value)
         self._handler.configuration.update_dal(self._current_selected_object)        
-        # except:
-        #     raise Exception()
-            
 
     def new_handler_from_str(self, file_name: str):
         self._handler = ConfigurationHandler(file_name)
@@ -70,6 +71,10 @@ class ConfigurationController(Static):
         self.__no_handler_error()
         self._selection_interfaces[interface_label]= \
             SelectionInterfaceFactory.get_interface(interface_label, self._handler)
+
+    # One small shortcut
+    def commit_configuration(self, message: str)->None:
+        self._handler.commit(message)
 
     def __no_handler_error(self):
         if self._handler is None:

@@ -24,9 +24,10 @@ class SelectionMenu(Static):
                              available interfaces are {controller.get_interface()}")
         
         tree_root = self._tree.root
+        tree_root.expand()
         
         for key, branch in controller.get_interface()[self.id].relationships.items():
-            tree_node = tree_root.add(repr(key), expand=True)
+            tree_node = tree_root.add(repr(key), expand=False)
             self.__build_tree_node(tree_node, branch)
             
     def __build_tree_node(self, input_node: TreeNode, input_list: list):

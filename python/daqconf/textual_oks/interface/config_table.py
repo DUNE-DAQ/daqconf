@@ -66,9 +66,11 @@ class EditCellScreen(ModalScreen):
         
         main_screen = self.app.get_screen("main")
         self._data_table  = main_screen.query_one("DataTable")
+        self._config_table = main_screen.query_one("ConfigTable")
         # self._config_table = main_screen.query_one("ConfigTable")
 
         # Get necessary info
+        self._row_key = event.row_key
         self._current_row = self._data_table.get_row(event.row_key)
         self._controller = main_screen.query_one(ConfigurationController)
 
@@ -82,9 +84,6 @@ class EditCellScreen(ModalScreen):
         cell_input.focus()
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        
-
-        
         attr_name     = self._current_row[0]
         update_value  = event.value
         attr_type     = self._current_row[2]
@@ -96,12 +95,8 @@ class EditCellScreen(ModalScreen):
         else:
             update_value = self.cast_to_type_by_str(update_value, attr_type)
         
-        self._data_table.update_cell_at(
-            self._data_table.cursor_coordinate,
-            update_value,
-        )
-        
         self._controller.update_configuration(attr_name, update_value)        
+        self._config_table.update_table(self._controller.current_dal)
 
         self.app.pop_screen()
 
