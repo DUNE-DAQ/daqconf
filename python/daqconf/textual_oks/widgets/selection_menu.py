@@ -1,4 +1,4 @@
-from textual_oks.data_structures.configuration_controller import ConfigurationController
+from textual_oks.widgets.configuration_controller import ConfigurationController
 
 from textual.widgets import Static, Tree
 from textual.widgets.tree import TreeNode

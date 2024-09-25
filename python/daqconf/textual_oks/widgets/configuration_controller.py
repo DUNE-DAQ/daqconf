@@ -16,6 +16,9 @@ class ConfigurationController(Static):
     _selection_interfaces: Dict[str, SelectionInterface] = {}
     _current_selected_object = None
 
+    def on_mount(self):
+        self._logger = self.app.query_one("RichLogWError")
+
     # Useful wrappers    
     def select_new_dal_from_id(self, new_id: str, new_class: str):
         """Swap currently selected DAL object via its unique ID and class
@@ -43,14 +46,6 @@ class ConfigurationController(Static):
             self._current_selected_object=new_dal
             self.post_message(self.Changed(self._current_selected_object))
     
-    def save_configuration(self, update_message: str = "Updated config "):
-        """Save configuration set up to file
-
-        Keyword Arguments:
-            update_message -- Message to put in top-level database (default: {"Updated config "})
-        """        
-        self._handler.commit(update_message)
-
     def update_configuration(self, attr_name, update_value):
         """Update an attribute of the currently loaded dal object.
         NOTE This does not update the database file itself
@@ -115,6 +110,7 @@ class ConfigurationController(Static):
     # One small shortcut
     def commit_configuration(self, message: str)->None:
         self._handler.commit(message)
+        self._logger.write(f"[green]Saved schema with message:[/green] [red]{message}[/red]")
 
     def __no_handler_error(self):
         if self._handler is None:

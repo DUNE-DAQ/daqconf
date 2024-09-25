@@ -2,21 +2,24 @@
 App for testing configuration 
 '''
 
-from textual_oks.interface.config_table import ConfigTable
-from textual_oks.data_structures.configuration_controller import ConfigurationController
+from textual_oks.widgets.config_table import ConfigTable
+from textual_oks.widgets.configuration_controller import ConfigurationController
+from textual_oks.widgets.popups.save_menu import SaveWithMessageScreen
 
 from textual_oks.app_structures.selection_panel import SelectionPanel
 
 from textual.app import App
 from textual.screen import Screen
 from textual.widgets import ContentSwitcher, Button, Footer
-from textual.containers import Horizontal
+from textual_oks.widgets.custom_rich_log import RichLogWError
 
 
+from textual import events
 
 class MainScreen(Screen):
 
-    BINDINGS = [("ctrl+s", "save_configuration", "Save Configuration")]
+    BINDINGS = [("ctrl+s", "save_configuration", "Save Configuration"),
+                ("S", "save_configuration_with_message", "Save Configuration with Message")]
     
     def compose(self):
         # Import for app control
@@ -29,6 +32,7 @@ class MainScreen(Screen):
         self._config_table= ConfigTable(id="main_table")
         yield self._config_table
         yield SelectionPanel()
+        yield RichLogWError(id="main_log", highlight=True, markup=True)
         # yield Header()
         yield Footer()
         
@@ -42,11 +46,13 @@ class MainScreen(Screen):
         config = self.query_one(ConfigurationController)
         config.commit_configuration("Update configuration")
 
+    def action_save_configuration_with_message(self)->None:
+        self.app.push_screen(SaveWithMessageScreen())
+
 class TestApp(App):
-    CSS_PATH = "dummy_layout.tcss"
+    CSS_PATH = "../textual_css/dummy_layout.tcss"
 
     SCREENS = {"main": MainScreen}
-    CSS_PATH = "dummy_layout.tcss"
     
     def on_mount(self):        
         self.push_screen("main")

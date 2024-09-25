@@ -1,0 +1,21 @@
+#save_box{
+    background: $panel;
+    border: tall $background;
+    height: auto;
+}
+
+Button{
+    width: 50%;
+}
+
+.save_message {
+    text-style: bold;
+    height: auto;
+    content-align: center top;
+}
+.buttons {
+    height: auto;
+    width: 100%;
+    content-align: center bottom;
+    dock: bottom;
+}

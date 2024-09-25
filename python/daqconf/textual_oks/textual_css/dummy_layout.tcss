@@ -1,9 +1,14 @@
 
 /* Prototype style sheet */
 
+
 #buttons {
     height: 3;
-    width: auto;
+    width: 97%;
+    Button{
+        width: 50%
+    }
+
 }
 
 SelectionPanel {
@@ -12,3 +17,4 @@ SelectionPanel {
     width: 30%;
     height: 100%;
 }
+ 

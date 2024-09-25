@@ -1,66 +1,14 @@
-'''
-Table for displaying DAL information
-'''
-from textual.app import ComposeResult
-from textual.widgets import Static, DataTable, Input
-from textual.reactive import reactive
 from textual.screen import ModalScreen
+from textual.app import ComposeResult
+from textual.widgets import Input
+
+from textual_oks.widgets.configuration_controller import ConfigurationController
 
 from typing import Any
 
-from textual_oks.data_structures.configuration_controller import ConfigurationController
-
-class ConfigTable(Static):
-    __COLS = reactive([("Attribute", "Value", "Type", "Is Multivalue"), ("", "","")])
-    _data_table = DataTable()
-    
-    def on_mount(self):
-        self._controller: ConfigurationController = self.app.query_one("ConfigurationController") #type: ignore
-
-        self._data_table.add_columns(*self.__COLS[0])
-        self._data_table.add_rows(self.__COLS[1:])
-        
-        self._data_table.fixed_rows = 0
-        self._data_table.fixed_width = True
-        self._data_table.cursor_type = "row"
-        self._data_table.zebra_stripes=True
-    
-    def compose(self):
-        yield self._data_table
-    
-    def update_table(self, config_instance):
-        
-        self._data_table.clear()
-        
-        # Get attributes
-        attributes = self._controller.configuration.attributes(config_instance.className(), True)
-        
-        for attr_name, attr_properties in attributes.items():
-            attr_val = getattr(config_instance, attr_name)
-            if attr_val=='':
-                attr_val = attr_properties['init-value']
-            else:
-                self._data_table.add_row(attr_name, attr_val, attr_properties['type'], attr_properties['multivalue'])
-                
-    @property
-    def data_table(self)->DataTable:
-        return self._data_table
-    
-    def on_configuration_controller_changed(self, event: ConfigurationController.Changed):
-        raise Exception("hello")
-        self.update_table(event.dal)
-
-    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        self.app.push_screen(EditCellScreen(event))
-
 class EditCellScreen(ModalScreen):
     def __init__(
-        self,
-        event: Any,
-        name: str | None = None,
-        id: str | None = None,
-        classes: str | None = None,
-    ) -> None:
+        self, event: Any, name: str | None = None, id: str | None = None, classes: str | None = None) -> None:
         super().__init__(name=name, id=id, classes=classes)
         
         

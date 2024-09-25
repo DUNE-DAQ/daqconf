@@ -1,7 +1,7 @@
 from textual.app import ComposeResult
 from textual.widgets import Static, Button, ContentSwitcher
 from textual.containers import Horizontal
-from textual_oks.interface.selection_menu import SelectionMenu
+from textual_oks.widgets.selection_menu import SelectionMenu
 
 
 class SelectionPanel(Static):
