@@ -77,25 +77,6 @@ def generate_session(oksfile, include, session_name, op_env):
     segments = db.get_dals(class_name="Segment")
     variables = db.get_dals(class_name="Variable")
 
-    session_name_env = dal.Variable(
-        "session-env-session-name-0", name="DUNEDAQ_SESSION", value=session_name
-    )
-    db.update_dal(session_name_env)
-    partition_name_env = dal.Variable(
-        "session-env-session-name-1", name="DUNEDAQ_PARTITION", value=session_name
-    )
-    db.update_dal(partition_name_env)
-    cli_config = dal.Variable(
-        "daqapp-cli-configuration",
-        name="DAQAPP_CLI_CONFIG_SVC",
-        value=f"oksconflibs:{oksfile}",
-    )
-    db.update_dal(cli_config)
-    session_variables = [session_name_env, partition_name_env, cli_config]
-    for var in variables:
-        if "session-env" in var.id:
-            session_variables.append(var)
-
     seg = dal.Segment(f"root-segment", controller=controller, segments=segments)
     db.update_dal(seg)
 
@@ -109,7 +90,7 @@ def generate_session(oksfile, include, session_name, op_env):
 
     sessiondal = dal.Session(
         session_name,
-        environment=session_variables,
+        environment=db.get_dal(class_name="VariableSet", uid='local-variables').contains,
         segment=seg,
         detector_configuration=detconf,
         infrastructure_applications=[conn_svc],
