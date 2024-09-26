@@ -8,12 +8,22 @@
     Button{
         width: 50%
     }
-
 }
 
 SelectionPanel {
     dock: left;
-    align-vertical: bottom;
+    align-vertical: top;
     width: 30%;
-    height: 100%;
+    height: 98.5%;
 }
+
+RichLogWError{
+    align-vertical: bottom;
+}
+
+ConfigTable{
+    width: 100%;
+    height: 50%;
+    align-vertical: top;
+}
+

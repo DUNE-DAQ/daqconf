@@ -26,7 +26,10 @@ class SelectionMenu(Static):
         tree_root = self._tree.root
         tree_root.expand()
         
-        for key, branch in controller.get_interface()[self.id].relationships.items():
+        # Sort out the tree
+                
+        
+        for key, branch in sorted(controller.get_interface()[self.id].relationships.items()):
             tree_node = tree_root.add(repr(key), expand=False)
             self.__build_tree_node(tree_node, branch)
             

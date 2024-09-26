@@ -63,8 +63,11 @@ class ConfigurationController(Static):
 
         Arguments:
             file_name -- New database to load
-        """        
-        self._handler = ConfigurationHandler(file_name)
+        """ 
+        try:
+            self._handler = ConfigurationHandler(file_name)
+        except:
+            pass
 
     @property
     def handler(self)->ConfigurationHandler | None:
