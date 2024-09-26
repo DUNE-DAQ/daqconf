@@ -12,7 +12,9 @@ class ConfigTable(Static):
     _data_table = DataTable()
     
     def on_mount(self):
-        self._controller: ConfigurationController = self.app.query_one("ConfigurationController") #type: ignore
+        
+        main_screen = self.app.get_screen("main")
+        self._controller: ConfigurationController = main_screen.query_one("ConfigurationController") #type: ignore
 
         for col in self.__COLS[0]:
 

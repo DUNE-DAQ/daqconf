@@ -10,6 +10,8 @@ from textual_oks.widgets.popups.directory_tree import DatabaseDirectoryTree
 
 from typing import Dict
 
+from os import path
+
 class __MenuWithButtons(Static):
     def __init__(self, button_labels: Dict[str, str], name: str | None=None, id: str | None = None, classes: str | None = None) -> None:
         super().__init__(name=name, id=id, classes=classes)
@@ -71,9 +73,6 @@ class SaveWithMessageScreen(ModalScreen[bool]):
     def __init__(self, name: str | None=None, id: str | None = None, classes: str | None = None) -> None:
         super().__init__(name=name, id=id, classes=classes)
                 
-        main_screen = self.app.get_screen("#main")
-        self._controller = main_screen.query_one(ConfigurationController)
-
     def compose(self)->ComposeResult:     
         yield SaveWithMessage()
     
@@ -124,7 +123,16 @@ class OpenFile(__MenuWithButtons):
             self._main_screen.mount(config_table)
 
         self._main_screen.refresh()
-
+        
+        
+        logger = self._main_screen.query_one("RichLogWError")
+        
+        current_database_path = self._config_controller.configuration.databases[0]
+        data_base_name = path.basename(current_database_path)
+        
+        logger.write(f"[green]Opened new configuration file: [/green][red]{data_base_name}[/red][green].\nConnected databases are:[/green]\n" \
+                     + "".join([f"   - [red]{db}[/red] \n" for db in self._config_controller.configuration.get_includes()]))
+        
 
 class OpenFileScreen(Screen):
     CSS_PATH = "../../textual_css/save_menu_layout.tcss"

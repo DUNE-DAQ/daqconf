@@ -17,7 +17,9 @@ class SelectionMenu(Static):
         # Iteratively builds tree via dictionary
         self._tree = Tree(f"File Browser:")
 
-        controller = self.app.query_one("ConfigurationController")
+        
+        main_screen = self.app.get_screen("main")
+        controller = main_screen.query_one("ConfigurationController")
         
         if self.id not in controller.get_interface().keys():
             raise ValueError(f"Cannot find {self._interface_label} in controller. \n  \

@@ -1,11 +1,24 @@
+SaveWithMessageScreen{
+    width: 50%;
+    align: center middle;
+}
+
+OpenFileScreen{
+    width: 50%;
+    align: center middle;
+}
+
 #save_box{
     background: $panel;
     border: tall $background;
     height: auto;
+    padding: 0 1;
+    width: 100%;
+    content-align: center middle
 }
 
 Button{
-    width: 50%;
+    width: auto;
 }
 
 .save_message {
