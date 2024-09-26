@@ -14,6 +14,7 @@ def generate_dataflow(
     tpwriting_enabled,
     segment,
     session: str = "",
+    n_data_writers = 1,
 ):
     """Simple script to create an OKS configuration file for a dataflow segment.
 
@@ -165,7 +166,7 @@ def generate_dataflow(
             network_rules=dfapp_netrules,
             opmon_conf=opmon_conf,
             trb=trb_conf,
-            data_writers=[dw_conf],
+            data_writers=[dw_conf] * n_data_writers,
             uses=dfhw,
         )
         db.update_dal(dfapp)
