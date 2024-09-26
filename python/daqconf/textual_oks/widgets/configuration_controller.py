@@ -112,10 +112,12 @@ class ConfigurationController(Static):
         self._handler.commit(message)
         self._logger.write(f"[green]Saved schema with message:[/green] [red]{message}[/red]")
 
+    def rename_dal(self, new_name: str)->None:
+        self._current_selected_object.rename_object(new_name)
+
     def __no_handler_error(self):
         if self._handler is None:
             raise Exception("No handler has been setup")
-
 
     class Changed(Message):
         def __init__(self, dal: object):

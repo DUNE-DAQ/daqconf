@@ -8,7 +8,7 @@ class SelectionMenu(Static):
     Basic selection menu, builds tree from selection objects
     '''
     _tree = None
-        
+    
     def compose(self):
         self._build_tree()
         yield self._tree
@@ -52,4 +52,4 @@ class SelectionMenu(Static):
         
         if event.node.data is not None: 
             controller.current_dal = event.node.data
-        
+    
