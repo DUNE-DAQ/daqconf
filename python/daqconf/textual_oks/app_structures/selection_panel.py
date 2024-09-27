@@ -1,4 +1,5 @@
 from textual.app import ComposeResult
+from textual.geometry import Region
 from textual.widgets import Static, Button, ContentSwitcher
 from textual.containers import Horizontal
 from textual_oks.widgets.selection_menu import SelectionMenu

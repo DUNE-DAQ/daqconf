@@ -13,6 +13,9 @@ class SelectionInterface(ABC):
         self._handler = config_handler
         self._relational_dict: dict = self._build_relational_dict()
     
+    def recompose(self)->None:
+        self._relational_dict = self._build_relational_dict()
+    
     @abstractmethod
     def _build_relational_dict(self):
         return {}
@@ -34,13 +37,10 @@ class ClassSelectionMenu(SelectionInterface):
     
 class RelationalSelectionMenu(SelectionInterface):
     ''' Selection menu based on class relationships
-    '''
-    def __init__(self, config_handler: ConfigurationHandler):
-        self._relational_graph = RelationalGraph(config_handler)
-        super().__init__(config_handler)
-    
+    '''    
     def _build_relational_dict(self):
-        return {f"Configuration": [self.__build_node(top_node) for top_node in self._relational_graph.top_level_nodes]}
+        self._relational_graph = RelationalGraph(self._handler)
+        return {"Configuration" : [self.__build_node(top_node) for top_node in self._relational_graph.top_level_nodes]}
 
     
     def __build_node(self, conf_obj):
@@ -53,4 +53,3 @@ class RelationalSelectionMenu(SelectionInterface):
     
     def __repr__(self):
         return "RelationalSelectionMenu"
-    

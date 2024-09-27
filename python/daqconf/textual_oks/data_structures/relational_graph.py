@@ -21,11 +21,9 @@ class RelationalGraph:
         self._adjacency_matrix = np.zeros((self._handler.n_dals, self._handler.n_dals))
         self._max_distance = np.zeros(self._handler.n_dals)-np.inf
 
-
         self.__generate_adjacency_matrix()
         self.__calculate_longest_paths()
-        
-    
+            
     # Need to generate a graph
     def __generate_adjacency_matrix(self):
         for i, dal in enumerate(self._handler.conf_obj_list):

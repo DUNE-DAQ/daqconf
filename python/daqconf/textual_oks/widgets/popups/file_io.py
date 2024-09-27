@@ -124,7 +124,6 @@ class OpenFile(__MenuWithButtons):
 
         self._main_screen.refresh()
         
-        
         logger = self._main_screen.query_one("RichLogWError")
         
         current_database_path = self._config_controller.configuration.databases[0]

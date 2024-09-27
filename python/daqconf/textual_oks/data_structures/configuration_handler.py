@@ -6,6 +6,7 @@ import os
 import conffwk 
 from typing import Any, Dict, List
 
+
 class ConfigurationHandler:
     # Contains the full configuration of a single configuration instance
     def __init__(self, configuration_file_name: str):
@@ -82,3 +83,14 @@ class ConfigurationHandler:
     @property
     def n_dals(self)->int:
         return len(self._loaded_dals)
+    
+    def add_new_conf_obj(self, class_id: str, uid: str):
+        self.configuration.create_obj(class_id, uid, at=self.configuration.active_database)
+        config_as_dal = self.configuration.get_dal(class_id, uid)
+        self.configuration.update_dal(config_as_dal)
+        self._loaded_dals.append(config_as_dal)
+
+    def destroy_conf_obj(self, class_id: str, uid: str):
+        dal = self.configuration.get_dal(class_id, uid)
+        self.configuration.destroy_dal(dal)
+        self._loaded_dals.remove(dal)

@@ -118,6 +118,14 @@ class ConfigurationController(Static):
     def rename_dal(self, new_name: str)->None:
         self._current_selected_object.rename_object(new_name)
 
+    def add_new_conf_obj(self, class_id: str, uid: str):
+        self._handler.add_new_conf_obj(class_id, uid)
+        self._logger.write(f"[green]Added new configuration object[/green] [red]{class_id}[/red]@[yellow]{uid}[/yellow]")
+        
+    def destroy_conf_obj(self, class_id: str, uid: str):
+        self._handler.destroy_conf_obj(class_id, uid)
+        self._logger.write(f"[green]Destroyed configuration object[/green] [red]{class_id}[/red]@[yellow]{uid}[/yellow]")
+
     def __no_handler_error(self):
         if self._handler is None:
             raise Exception("No handler has been setup")
