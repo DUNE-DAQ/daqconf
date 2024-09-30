@@ -130,8 +130,9 @@ def generate_hsi(
         source_id=hsi_tc_source_id,
         network_rules=tc_netrules,
         opmon_conf=opmon_conf,
-        hsievent_conf=hsi_to_tc_conf,
+        hsevent_to_tc_conf=hsi_to_tc_conf,
     )
+    db.update_dal(hsi_to_tc)
 
     if segment or session != "":
         fsm = db.get_dal(class_name="FSMconfiguration", uid="FSMconfiguration_noAction")
