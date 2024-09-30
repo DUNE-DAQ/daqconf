@@ -411,6 +411,8 @@ def generate_readout(
                 segment=seg,
                 detector_configuration=detconf,
                 opmon_uri=opmon,
+                environment=db.get_dal(class_name="VariableSet", uid='local-variables').contains,
+
             )
             db.update_dal(sessiondal)
 

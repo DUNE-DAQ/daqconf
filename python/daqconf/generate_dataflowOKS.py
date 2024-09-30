@@ -219,6 +219,7 @@ def generate_dataflow(
                 f"{session}-session",
                 segment=seg,
                 detector_configuration=detconf,
+                environment=db.get_dal(class_name="VariableSet", uid='local-variables').contains,
             )
             db.update_dal(sessiondal)
 
