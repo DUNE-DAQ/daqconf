@@ -22,7 +22,7 @@ class SelectionInterface(ABC):
     
     @property
     def relationships(self):
-        return self._relational_xdict
+        return self._relational_dict
     
     
 # Couple of concrete classes

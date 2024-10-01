@@ -38,7 +38,7 @@ class SelectionMenu(Static):
         
         # Sort out the tree        
         for key, branch in sorted(self._controller.get_interface()[self.id].relationships.items()):
-            tree_node = tree_root.add(f"[green]{key}[]", expand=False)
+            tree_node = tree_root.add(f"[green]{key}[/green]", expand=False)
             self.__build_tree_node(tree_node, branch)
             
 
