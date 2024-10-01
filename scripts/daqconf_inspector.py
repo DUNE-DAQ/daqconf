@@ -479,7 +479,7 @@ def show_object_tree(obj, uid, show_attrs, path, level):
 #     IPython.embed(colors="neutral")
 
 
-@cli.command(short_help="Validate detector strams in the database")
+@cli.command(short_help="Validate detector streams in the database")
 @click.pass_obj
 def validate_detstreams(obj):
     """
