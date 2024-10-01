@@ -14,7 +14,7 @@ def start_ipython(loc):
         import IPython
         IPython.embed(colors="neutral")
     except ImportError:
-        pass
+        print(f"[red]IPython not available[/red]")
 
 def is_enabled(cfg, session, obj):
     import confmodel
