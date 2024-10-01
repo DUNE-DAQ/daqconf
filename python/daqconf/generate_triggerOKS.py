@@ -107,13 +107,16 @@ def generate_trigger(
         class_name="NetworkConnectionRule", uid="data-req-trig-net-rule"
     )
     mlt_netrules = [
-        tc_net_rule,
         ti_net_rule,
         td_dfo_net_rule,
         data_req_trig_net_rule,
         ts_net_rule,
     ]
-    tapp_netrules = [ta_net_rule, tc_net_rule, data_req_trig_net_rule]
+
+    tapp_netrules = [ta_net_rule, data_req_trig_net_rule]
+    if hsi_enabled:
+        mlt_netrules += [tc_net_rule]
+        tapp_netrules += [tc_net_rule]
 
     opmon_conf = db.get_dal(class_name="OpMonConf", uid="slow-all-monitoring")
     tc_subscriber = db.get_dal(class_name="DataReaderConf", uid="tc-subscriber-1")
@@ -133,7 +136,7 @@ def generate_trigger(
         queue_rules=mlt_qrules,
         network_rules=mlt_netrules,
         opmon_conf=opmon_conf,
-        data_subscriber=tc_subscriber,
+        data_subscriber=tc_subscriber if hsi_enabled else None,
         trigger_inputs_handler=tc_handler,
         mlt_conf=mlt_conf,
         standalone_candidate_maker_confs=tc_confs,
