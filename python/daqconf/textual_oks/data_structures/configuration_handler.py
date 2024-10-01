@@ -29,7 +29,7 @@ class ConfigurationHandler:
         # Adds all configuration objects to 
         for conf_class in  self._configuration.classes():
             for conf_obj in self._configuration.get_dals(conf_class):                
-                if conf_obj ing self._loaded_dals: continue
+                if conf_obj in self._loaded_dals: continue
                 
                 self._loaded_dals.append(conf_obj)
 
