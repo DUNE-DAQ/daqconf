@@ -11,7 +11,7 @@ class ConfigurationHandler:
     def __init__(self, configuration_file_name: str):
         self._configuration = self.__open_configuration(configuration_file_name)
         self._loaded_dals = []
-    self.__cache_all_conf_objects()
+        self.__cache_all_conf_objects()
         
     def __open_configuration(self, configuration_file_name: str)->conffwk.Configuration:
         '''Opens configuration object safely '''
