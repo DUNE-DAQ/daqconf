@@ -8,8 +8,13 @@ import click
 
 import conffwk
 
-import IPython
-
+def start_ipython(loc):
+    try:
+        locals().update(loc)
+        import IPython
+        IPython.embed(colors="neutral")
+    except ImportError:
+        pass
 
 def is_enabled(cfg, session, obj):
     import confmodel
@@ -166,6 +171,7 @@ def validate_oks_uid(ctx, param, value):
     """
     Helper function to validate OKS UID options or arguments accorinf to the format id@class
     """
+
     if isinstance(value, tuple):
         return value
 
@@ -192,7 +198,7 @@ def cli(obj, interactive, config_file):
     obj.cfg = cfg
 
     if interactive:
-        IPython.embed(colors="neutral")
+        start_ipython(locals())
 
 
 @cli.command(short_help="Show sessions information")
@@ -263,8 +269,6 @@ def show_sessions(obj, show_file_paths):
             for e in s.environment:
                 env_objs.add(e)
                 find_related_dals(e, env_objs)
-            # print(env_objs)
-            # continue
 
             env_var = sorted(env_objs, key=lambda x: x.id)
 
@@ -280,7 +284,6 @@ def show_sessions(obj, show_file_paths):
             print(grid)
             print()
 
-    # IPython.embed(colors="neutral")
 
 @cli.command(short_help="List known classes and objects for each class")
 @click.pass_obj
@@ -369,15 +372,19 @@ def show_obj_of_class(obj, klass, vtable):
     print(table)
 
 @cli.command(short_help="Show relationship tree")
-@click.argument('klass')
-@click.argument('id')
+@click.argument('uid', type=click.UNPROCESSED, callback=validate_oks_uid, default=None)
 @click.option('+a/-a','--show-attributes/--hide-attributes', "show_attrs", default=True, help="Show/Hide attributes")
-@click.option('-l','--level', "level", default=True, help="Recursion level in the object tree")
+@click.option('-l','--level', "level", type=int, default=None, help="Recursion level in the object tree")
+@click.option('-p','--path', "path", default=None, help="Path within the object relationships to visualise")
 @click.pass_obj
-def show_relation_tree(obj, klass, id, show_attrs):
+def show_object_tree(obj, uid, show_attrs, path, level):
     """
-    Show the relationship tree of the OKS object with ID@KLASS identifier.
+    Show the relationship tree of the OKS object with identifier UID.
+
+    The format of UID is <object name>@<class>
     """
+    id, klass = uid
+
     from rich.highlighter import ReprHighlighter
     rh = ReprHighlighter()
     cfg = obj.cfg
@@ -388,19 +395,19 @@ def show_relation_tree(obj, klass, id, show_attrs):
         raise SystemExit(-1)
 
     
-    path = id.split('.')
-    parent = path[0]
+    path = path.split('.') if path is not None else []
 
     try:
-        do = cfg.get_dal(klass, parent)
+        do = cfg.get_dal(klass, id)
     except RuntimeError as e:
         raise click.BadArgumentUsage(f"Object '{id}' does not exist")
 
 
 
-    def make_obj_tree(dal_obj, show_attrs, path=[]):
-
+    def make_obj_tree(dal_obj, show_attrs, path=[], level=None):
         tree = Tree(f"[green]{dal_obj.id}[/green][magenta]@{dal_obj.className()}[/magenta]")
+        if level == 0:
+            return tree
 
         attrs = cfg.attributes(dal_obj.className(), True)
         rels = cfg.relations(dal_obj.className(), True)
@@ -417,10 +424,11 @@ def show_relation_tree(obj, klass, id, show_attrs):
             for a in attrs:
                 tree.add(f"[cyan]{a}[/cyan] = {getattr(dal_obj, a)}")
             
-        rels = cfg.relations(dal_obj.className(), True)
+        # rels = cfg.relations(dal_obj.className(), True)
+        rels = get_relation_info(dal_obj)
         for rel, rinfo in rels.items():
             # Filter on relationship name if path is specified
-            if rel_sel and rel != rel_sel:
+            if rel_sel and rel != rel_sel:  
                 continue
 
             rel_val = getattr(dal_obj, rel)
@@ -434,47 +442,52 @@ def show_relation_tree(obj, klass, id, show_attrs):
                     continue
                 if val is None:
                     continue
-                r_tree.add(make_obj_tree(val, show_attrs, path[1:]))
+                r_tree.add(make_obj_tree(val, show_attrs, path[1:], level-1 if level is not None else None))
         return tree
 
 
-    tree = make_obj_tree(do, show_attrs, path[1:])
+    tree = make_obj_tree(do, show_attrs, path, level)
     print(tree)
 
         
-@cli.command()
-@click.argument('uid', type=click.UNPROCESSED, callback=validate_oks_uid, default=None)
-@click.pass_obj
-def test_find_relations(obj, uid):
+# @cli.command()
+# @click.argument('uid', type=click.UNPROCESSED, callback=validate_oks_uid, default=None)
+# @click.pass_obj
+# def test_find_relations(obj, uid):
 
-    cfg = obj.cfg
-    id, klass = uid
+#     cfg = obj.cfg
+#     id, klass = uid
 
 
-    if klass not in cfg.classes():
-        print(f'[red]Class {klass} unknow to configuration[/red]')
-        print(f'Known classes: {sorted(cfg.classes())}')
-        raise SystemExit(-1)
+#     if klass not in cfg.classes():
+#         print(f'[red]Class {klass} unknow to configuration[/red]')
+#         print(f'Known classes: {sorted(cfg.classes())}')
+#         raise SystemExit(-1)
 
-    try:
-        dal_obj = cfg.get_dal(klass, id)
-    except RuntimeError as e:
-        raise click.BadArgumentUsage(f"Object '{id}' does not exist")
+#     try:
+#         dal_obj = cfg.get_dal(klass, id)
+#     except RuntimeError as e:
+#         raise click.BadArgumentUsage(f"Object '{id}' does not exist")
     
-    print(dal_obj)
+#     print(dal_obj)
     
-    grp = set()
-    find_related_dals(dal_obj, grp)
+#     grp = set()
+#     find_related_dals(dal_obj, grp)
 
-    print(f"Found {len(grp)} objects related to {id}@{klass}")
-    # print(grp)
-    IPython.embed(colors="neutral")
+#     print(f"Found {len(grp)} objects related to {id}@{klass}")
+#     # print(grp)
+#     IPython.embed(colors="neutral")
 
 
-@cli.command()
+@cli.command(short_help="Validate detector strams in the database")
 @click.pass_obj
-def check_detstreams(obj):
+def validate_detstreams(obj):
+    """
+    Validates detector datastreams in a database.
 
+    The command checks the collection of all detastreans in the database for uiniqueness.
+    It also checks that all geo_ids references by detecor streams are unique.
+    """
     from rich.highlighter import ReprHighlighter
     rh = ReprHighlighter()
     cfg = obj.cfg
@@ -509,7 +522,7 @@ def check_detstreams(obj):
     table.add_column('geo_id.id')
 
     for a in gid_attrs:
-        table.add_column(f"geoid.{a}")
+        table.add_column(f"{a}")
 
 
     for strm in streams:
@@ -540,8 +553,7 @@ def check_detstreams(obj):
 
 
 
-
-    IPython.embed(colors="neutral")
+    # start_ipython(locals())
 
 if __name__== "__main__":
     cli(obj=DaqInspectorContext())
