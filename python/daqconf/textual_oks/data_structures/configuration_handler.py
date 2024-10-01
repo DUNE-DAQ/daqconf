@@ -1,7 +1,7 @@
 '''
 HW : Simple wrapper to go around configuration object
 '''
-
+x-x
 import os
 import conffwk 
 from typing import Any, Dict, List
@@ -12,7 +12,7 @@ class ConfigurationHandler:
     def __init__(self, configuration_file_name: str):
         self._configuration = self.__open_configuration(configuration_file_name)
         self._loaded_dals = []
-        self.__cache_all_conf_objects()
+    self.__cache_all_conf_objects()
         
     def __open_configuration(self, configuration_file_name: str)->conffwk.Configuration:
         '''Opens configuration object safely '''
@@ -36,11 +36,11 @@ class ConfigurationHandler:
 
     #==============================  Getters + Setters ==============================#
     def get_relationships_for_conf_object(self, conf_object)->List[Any]:
-        relations = self._configuration.relations(conf_object.className(), True)
+        relations = self.get_related_classes(conf_object.className())
 
         relations_list = []
                 
-        for rel in relations.keys():
+        for rel in relations:
             rel_val = getattr(conf_object, rel)
             # Hacky but pybind got fussy about casting
             if not isinstance(rel_val, list):
@@ -53,13 +53,22 @@ class ConfigurationHandler:
 
         return relations_list
     
-    
     def get_conf_objects_class(self, conf_class: str):
         return self._configuration.get_dals(conf_class)
         
     def get_all_conf_classes(self)->Dict[str, Any]:
         return {conf_class: self.get_conf_objects_class(conf_class)
                 for conf_class in self._configuration.classes()}
+    
+    def get_related_classes(self, class_id: str)->List[str]:
+        related_classes = [class_ for class_ in self._configuration.relations(class_id, True).keys()]
+        return related_classes
+        
+    def get_inherited_classes(self, class_id: str)->List[str]:
+        inherited_classes = [class_ for class_ in self._configuration.classes()\
+                                if self._configuration.is_subclass(class_, class_id)]
+        return inherited_classes            
+
     
     @property
     def configuration(self)->conffwk.Configuration:

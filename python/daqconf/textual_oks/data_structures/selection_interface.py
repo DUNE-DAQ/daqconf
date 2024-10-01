@@ -22,7 +22,7 @@ class SelectionInterface(ABC):
     
     @property
     def relationships(self):
-        return self._relational_dict
+        return self._relational_xdict
     
     
 # Couple of concrete classes
@@ -40,8 +40,11 @@ class RelationalSelectionMenu(SelectionInterface):
     '''    
     def _build_relational_dict(self):
         self._relational_graph = RelationalGraph(self._handler)
-        return {"Configuration" : [self.__build_node(top_node) for top_node in self._relational_graph.top_level_nodes]}
-
+        
+        configuration_dict = {f"[green]Sessions" : [self.__build_node(top_node) for top_node in self._relational_graph.top_level_nodes if top_node.className() == "Session"],
+                        f"[green]Objects outside of Session" : [self.__build_node(top_node) for top_node in self._relational_graph.top_level_nodes if top_node.className() != "Session"]}
+        
+        return configuration_dict
     
     def __build_node(self, conf_obj):
         relationships = self._handler.get_relationships_for_conf_object(conf_obj)

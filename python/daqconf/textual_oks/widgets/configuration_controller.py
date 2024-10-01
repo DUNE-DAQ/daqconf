@@ -54,9 +54,11 @@ class ConfigurationController(Static):
             attr_name -- Attribute to update
             update_value -- New value for attribute
         """        
-        # try:
-        setattr(self._current_selected_object, attr_name, update_value)
-        self._handler.configuration.update_dal(self._current_selected_object)        
+        try:
+            setattr(self._current_selected_object, attr_name, update_value)
+            self._handler.configuration.update_dal(self._current_selected_object)        
+        except Exception as _:
+            self._logger.write_error(f"Could not update [yellow]{attr_name}[/yellow] to [yellow]{update_value}[/yellow] for {self.generate_rich_string(self._current_selected_object)}")
 
     def new_handler_from_str(self, file_name: str):
         """Set new handler object by file name
@@ -64,10 +66,10 @@ class ConfigurationController(Static):
         Arguments:
             file_name -- New database to load
         """ 
-        try:
-            self._handler = ConfigurationHandler(file_name)
-        except:
-            pass
+        # try:
+        self._handler = ConfigurationHandler(file_name)
+        # except:
+        #     raise Exception(f"Could not open {file_name}")
 
     @property
     def handler(self)->ConfigurationHandler | None:
@@ -95,6 +97,11 @@ class ConfigurationController(Static):
             Access the raw configuration
         """        
         return self._handler.configuration
+
+    @classmethod
+    def generate_rich_string(cls, dal_obj)->str:
+        return f"[yellow]{dal_obj.className()}[/yellow]@[red]{getattr(dal_obj, 'id')}[/red]"
+
 
     def get_interface(self):
         """get all interface objects. The interface defines an "ordering" for objects

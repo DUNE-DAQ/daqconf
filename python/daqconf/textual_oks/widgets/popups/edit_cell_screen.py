@@ -38,7 +38,7 @@ class EditCellScreen(ModalScreen):
         is_multivalue = self._current_row[3]  
 
         # Need to properly cast to list        
-        if is_multivalue:
+        if is_multivalue: 
             update_value=self.process_multivalue_input(update_value, attr_type)
         else:
             update_value = self.cast_to_type_by_str(update_value, attr_type)
