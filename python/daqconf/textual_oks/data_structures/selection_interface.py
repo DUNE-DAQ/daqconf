@@ -14,14 +14,17 @@ class SelectionInterface(ABC):
         self._relational_dict: dict = self._build_relational_dict()
     
     def recompose(self)->None:
+        # Regenerates the GUI
         self._relational_dict = self._build_relational_dict()
     
     @abstractmethod
     def _build_relational_dict(self):
+        # Abstract method to be implemented by concrete classes
         return {}
     
     @property
     def relationships(self):
+        # Return the relationships between objects
         return self._relational_dict
     
     
@@ -30,6 +33,8 @@ class ClassSelectionMenu(SelectionInterface):
     '''Selection menu based purely on the class of objects
     '''
     def _build_relational_dict(self):
+        """Returns all classes + conf objs for class/derived classes
+        """        
         return self._handler.get_all_conf_classes()
     
     def __repr__(self):
@@ -47,6 +52,11 @@ class RelationalSelectionMenu(SelectionInterface):
         return configuration_dict
     
     def __build_node(self, conf_obj):
+        """Build each node of the relational graph
+
+        Arguments:
+            conf_obj -- Configuration object
+        """        
         relationships = self._handler.get_relationships_for_conf_object(conf_obj)
         
         if not len(relationships):

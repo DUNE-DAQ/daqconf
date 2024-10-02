@@ -119,25 +119,35 @@ class ConfigurationController(Static):
 
     # One small shortcut
     def commit_configuration(self, message: str)->None:
+        """Save configuration with a message to database
+        """        
         self._handler.commit(message)
-        self._logger.write(f"[green]Saved schema with message:[/green] [red]{message}[/red]")
+        self._logger.write(f"[green]Saved configuration with message:[/green] [red]{message}[/red]")
 
     def rename_dal(self, new_name: str)->None:
+        """Rename the currently selected object [NOT TESTED]
+        """        
         self._current_selected_object.rename_object(new_name)
 
     def add_new_conf_obj(self, class_id: str, uid: str):
+        """Add new object to configuration
+        """        
         self._handler.add_new_conf_obj(class_id, uid)
         self._logger.write(f"[green]Added new configuration object[/green] [red]{class_id}[/red]@[yellow]{uid}[/yellow]")
         
     def destroy_conf_obj(self, class_id: str, uid: str):
+        """Destroy object in configuration
+        """
         self._handler.destroy_conf_obj(class_id, uid)
         self._logger.write(f"[green]Destroyed configuration object[/green] [red]{class_id}[/red]@[yellow]{uid}[/yellow]")
 
     def __no_handler_error(self):
+        """Raise error if no handler is setup"""
         if self._handler is None:
             raise Exception("No handler has been setup")
 
     class Changed(Message):
         def __init__(self, dal: object):
+            """Notify if/when configuration is changed"""
             super().__init__()
             self.dal = dal

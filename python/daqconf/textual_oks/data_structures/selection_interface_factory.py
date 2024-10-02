@@ -2,7 +2,19 @@ from textual_oks.data_structures.configuration_handler import ConfigurationHandl
 
 class SelectionInterfaceFactory:
     @classmethod
-    def get_interface(cls, interface_name: str, configuration):
+    def get_interface(cls, interface_name: str, configuration: ConfigurationHandler):
+        """Very simple factory for generating selection interfaces
+
+        Arguments:
+            interface_name -- Name of interface (either "class-selection" or "relation-selection")
+            configuration -- ConfigurationHandler object
+
+        Raises:
+            Exception: If interface_name is not recognised
+
+        Returns:
+            SelectionInterface -- Either ClassSelectionMenu or RelationalSelectionMenu
+        """
         match(interface_name):
             case "class-selection":
                 from textual_oks.data_structures.selection_interface import ClassSelectionMenu
