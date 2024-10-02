@@ -1,0 +1,6 @@
+from daqconf.textual_oks.daq_app.main_app import TestApp
+
+# Run dbe-screen
+if __name__=="__main__":
+    app = TestApp()
+    app.run()
