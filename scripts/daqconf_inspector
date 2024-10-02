@@ -192,7 +192,9 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.pass_obj
 def cli(obj, interactive, config_file):
     """
-    A collection of helper commands to inspect dunedaq OKS databases and objects
+    An utility script to develop ways to meaningfully inspect and 
+    visualise DAQ configuration databases and to prototype validation algorithms.
+    
     """
     cfg = conffwk.Configuration(f"oksconflibs:{config_file}")
     obj.cfg = cfg
@@ -206,7 +208,31 @@ def cli(obj, interactive, config_file):
 @click.pass_obj
 def show_sessions(obj, show_file_paths):
     """
-    Show high level information about the sessions from the configuration database
+    Show details of each session available in the configuration database
+
+    For each session found in the the database, `show-session` displays:
+
+    \b
+    - The high-level session view, including segments, controllers and applications as
+      hierarchical tree.
+      ID and Class are shown for applications and controllers, along with their host and services (open ports)
+      The icon in front of segments and appliations indicate the enable/disable.
+
+      Optionally, it displays the path of the the database file where the object is define 
+
+    \b
+      Legend
+      ------
+        ✅ : Resource enabled
+        ❌ : Resource directly disabled (listed in the Session disable list)
+        ⭕️ : Resource indirectly disabled by algorithm
+
+    - The summary of session objects, including the count of referenced objects, the list of directly
+      disabled objects and the list of all disabled objects (directly or indirectly)
+    
+    - The session environment table.
+
+
     """
     from rich.highlighter import ReprHighlighter
     rh = ReprHighlighter()
@@ -233,7 +259,7 @@ def show_sessions(obj, show_file_paths):
 
         tree.add(make_segment_tree(cfg, s.segment, s, show_file_paths))
 
-        t = Table("body", title='Session Tree', show_header=False, expand=True)
+        t = Table("body", title=f'{s.id} tree', show_header=False, expand=True)
         t.add_row(tree)
         grid.add_row(t)
         
@@ -249,7 +275,7 @@ def show_sessions(obj, show_file_paths):
 
 
 
-        t = Table(title=s.id, show_header=False, expand=True)
+        t = Table(title=f"{s.id} objects", show_header=False, expand=True)
         t.add_column('name')
         t.add_column('value')
 
@@ -272,13 +298,13 @@ def show_sessions(obj, show_file_paths):
 
             env_var = sorted(env_objs, key=lambda x: x.id)
 
-            t = Table(title="Environment", show_header=False,  expand=True)
+            t = Table(title=f"{s.id} environment", show_header=False,  expand=True)
             t.add_column('name')
             t.add_column('value')
             for e in env_var:
                 if 'Variable' not in e.oksTypes():
                     continue
-                t.add_row(e.id, e.value)
+                t.add_row(e.id, rh(e.value))
             # print(t)
             grid.add_row(t)
             print(grid)
@@ -304,11 +330,11 @@ def list_classes(obj, show_derived):
         table.add_row(k, rh(str([o.UID() for o in cfg.get_objs(k) if (o.class_name() == k or show_derived)])))
     print(table)
 
-@cli.command(short_help="Show properties of objects forma class")
+@cli.command(short_help="Show properties of objects belonging to a class")
 @click.argument('klass')
-@click.option('-v/-h','--vertical/--horizontal', "vtable", default=True, help="Vertical or horizontal orientation")
+@click.option('-v/-h','--vertical/--horizontal', "vtable", default=True, help="Toggle vertical or horizontal orientation")
 @click.pass_obj
-def show_obj_of_class(obj, klass, vtable):
+def show_objects_of_class(obj, klass, vtable):
     """
     Show attributes and relationships of all objects in the database belonging to KLASS
     """
@@ -375,14 +401,28 @@ def show_obj_of_class(obj, klass, vtable):
 @click.argument('uid', type=click.UNPROCESSED, callback=validate_oks_uid, default=None)
 @click.option('+a/-a','--show-attributes/--hide-attributes', "show_attrs", default=True, help="Show/Hide attributes")
 @click.option('-l','--level', "level", type=int, default=None, help="Recursion level in the object tree")
-@click.option('-p','--path', "path", default=None, help="Path within the object relationships to visualise")
+@click.option('-f','--focus', "focus_path", default=None, help="Path within the object relationships to visualise")
 @click.pass_obj
-def show_object_tree(obj, uid, show_attrs, path, level):
+def show_object_tree(obj, uid, show_attrs, focus_path, level):
     """
     Show the relationship tree of the OKS object with identifier UID.
 
-    The format of UID is <object name>@<class>
+    UID is the unique object identifier in the database, composed by object name and class name. 
+    The UID format argument is <object name>@<class>.
+
+    Starting from the selected object, attributes and objects refererd by relationships are shown recursively as hierarchical tree.
+    By default the command recursively crawls through relationship without limits. The recursion level can be limited with the corresponding optional parameter (see below).
+    In case focussing on a relationship branch is helpful, the focus path option (see below for details) allows to specify the branch to focus on, starting trom the top object.
+    The focus path syntax combines relationhsip and object names, using `.` separators, and `[]` to select a single item in multi-value relatiosnips.
+    The structure of the focus path specifier is `<relationship>[<optional object name>].<relationship>[<optional object name>]`.
+    Note: specifiying the object name is required 
+
+    \b
+    `show-object-tree` subcommand example:
+        Focus on the uses.dfhw-01 relationship of df-03@DFApplication and limit the output to 5 levels below df-03
+        `show-object-tree df-03@DFApplication  -f network_rules[td-trb-net-rule].descriptor -l 5`
     """
+    import re
     id, klass = uid
 
     from rich.highlighter import ReprHighlighter
@@ -395,14 +435,20 @@ def show_object_tree(obj, uid, show_attrs, path, level):
         raise SystemExit(-1)
 
     
-    path = path.split('.') if path is not None else []
+    focus_path = focus_path.split('.') if focus_path is not None else []
+    re_index = re.compile('([\w-]*)(\[([\w-]*)\])?')
+    path = []
+    for p in focus_path:
+        m = re_index.match(p)
+        if m is None:
+            raise RuntimeError("Incorrect systax of path specifier p")
+        rel,_,name = m.groups()
+        path.append((rel, name))
 
     try:
         do = cfg.get_dal(klass, id)
     except RuntimeError as e:
         raise click.BadArgumentUsage(f"Object '{id}' does not exist")
-
-
 
     def make_obj_tree(dal_obj, show_attrs, path=[], level=None):
         tree = Tree(f"[green]{dal_obj.id}[/green][magenta]@{dal_obj.className()}[/magenta]")
@@ -412,13 +458,11 @@ def show_object_tree(obj, uid, show_attrs, path, level):
         attrs = cfg.attributes(dal_obj.className(), True)
         rels = cfg.relations(dal_obj.className(), True)
 
-        rel_sel = None
+        rel_sel, obj_sel = None, None
         if path:
-            if path[0] not in rels:
-                raise click.BadArgumentUsage(f"Object '{path[0]}' does not exist in {dal_obj.id}")
-            else:
-                rel_sel = path[0]
-                path = path[1:]
+            rel_sel, obj_sel = path[0]
+            if rel_sel not in rels:
+                raise click.BadArgumentUsage(f"Object '{rel_sel}' does not exist in {dal_obj.id}")
 
         if show_attrs:
             for a in attrs:
@@ -438,7 +482,8 @@ def show_object_tree(obj, uid, show_attrs, path, level):
                 rel_val = [rel_val]
 
             for val in rel_val:
-                if path and val.id != path[0]:
+
+                if obj_sel and val.id != obj_sel:
                     continue
                 if val is None:
                     continue
