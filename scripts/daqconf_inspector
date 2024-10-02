@@ -9,6 +9,9 @@ import click
 import conffwk
 
 def start_ipython(loc):
+    """
+    Usage: start_ipython(locals())
+    """
     try:
         locals().update(loc)
         import IPython
@@ -138,7 +141,7 @@ def make_segment_tree(cfg, segment, session: None, show_path: bool = False) -> T
 
     c = segment.controller
     path = f"[blue]{cfg.get_obj(c.className(), c.id).contained_in()}[/blue]" if show_path else ""
-    ports = ', '.join([f'{svc.port}([orange1]{svc.protocol}[/orange1])' for svc in c.exposes_service ])
+    ports = ', '.join([f'{svc.port}([orange1]{svc.id}[/orange1])' for svc in c.exposes_service ])
     host = f"[medium_purple1]{c.runs_on.runs_on.id}[/medium_purple1]"
     tree.add(f"[cyan]controller[/cyan]: [green]{c.id}[/green][magenta]@{c.className()}[/magenta] on {host} [{ports}] {path}")
 
@@ -150,7 +153,7 @@ def make_segment_tree(cfg, segment, session: None, show_path: bool = False) -> T
                 continue
 
             path = f"[blue]{cfg.get_obj(a.className(), a.id).contained_in()}[/blue]" if show_path else ""
-            ports = ', '.join([f'{svc.port}([orange1]{svc.protocol}[/orange1])' for svc in c.exposes_service ])
+            ports = ', '.join([f'{svc.port}([orange1]{svc.id}[/orange1])' for svc in a.exposes_service ])
             host = f"[medium_purple1]{a.runs_on.runs_on.id}[/medium_purple1]"
             enabled = is_enabled(cfg, session, a) if session else None
 
@@ -528,9 +531,9 @@ def show_object_tree(obj, uid, show_attrs, focus_path, level):
 @click.pass_obj
 def validate_detstreams(obj):
     """
-    Validates detector datastreams in a database.
+    Performs basic validation of detector datastreams in a database.
 
-    The command checks the collection of all detastreans in the database for uiniqueness.
+    It checks the collection of all detastreans in the database for uiniqueness.
     It also checks that all geo_ids references by detecor streams are unique.
     """
     from rich.highlighter import ReprHighlighter
@@ -557,6 +560,7 @@ def validate_detstreams(obj):
     streams = sorted(streams, key=lambda x: x.source_id)
 
 
+    # Print an expanded detector stream table, including geo_id attributes
     table = Table(title='DetectorStreams')
     table.add_column('id')
     table.add_column('status')
@@ -586,7 +590,7 @@ def validate_detstreams(obj):
     if strm_duplicates:
         print(f"[yellow]WARNING: found duplicates in detector streams {strm_duplicates}[/yellow]")
     else:
-        print(f"[green]:white_check_mark: No duplicates among detector streams[/green]")
+        print(f"[green]:white_check_mark : No duplicates among detector streams[/green]")
 
 
     gid_duplicates = find_duplicates([strm.geo_id for strm in streams])
@@ -594,11 +598,74 @@ def validate_detstreams(obj):
     if gid_duplicates:
         print(f"[yellow]WARNING: found duplicates in geo ids {strm_duplicates}[/yellow]")
     else:
-        print(f"[green]:white_check_mark: No duplicates among geo ids[/green]")
+        print(f"[green]:white_check_mark : No duplicates among geo ids[/green]")
 
 
 
-    # start_ipython(locals())
+@cli.command(short_help="Validate smart applications in database")
+@click.pass_obj
+def validate_smart_apps(obj):
+    """
+    Performs basic validation on smart daq applications a database.
+
+    Implemented tests:
+    - `services`: The exposed service consistency between application interface and network rules is checked.
+      the services referenced in network rules are compared with the list in the `exposes_service` attribute.
+      The tedt fails if any of the network rules services is not present in `exposes_service`.
+    """
+
+    from dataclasses import dataclass
+
+    @dataclass
+    class TestReport:
+        passed: bool
+        details : list
+
+    from rich.highlighter import ReprHighlighter
+    rh = ReprHighlighter()
+    cfg = obj.cfg
+
+    sapps = cfg.get_dals('SmartDaqApplication')
+
+    reports = {}
+    for sa in sapps:
+        print(f"Validating '{sa.id}'")
+        test_reports = {}
+
+        missing_services = []
+        for r in sa.network_rules:
+            if r.descriptor.associated_service not in sa.exposes_service:
+                missing_services.append(r.descriptor.associated_service)
+
+        test_reports['services'] = TestReport(not bool(missing_services), missing_services)
+        
+        reports[sa.id] = test_reports
+        
+
+
+    # Prepare report table
+    rep_cols = set()
+    for rep in reports.values():
+        rep_cols.update(rep.keys())
+
+    
+    t = Table(title="SmartDaqApp Validation Report")
+    t.add_column("app name")
+    for c in rep_cols:
+        t.add_column(c)
+
+    for name, rep in reports.items():
+        row = [name]
+        for c in rep_cols:
+            # TODO: specific to the services case
+            icon  = ':white_check_mark:' if rep[c].passed else ':x:'
+            details = str([i.id for i in rep[c].details])
+            row.append( f"{icon} {details}")
+
+
+        t.add_row(*row)
+
+    print(t)
 
 if __name__== "__main__":
     cli(obj=DaqInspectorContext())
