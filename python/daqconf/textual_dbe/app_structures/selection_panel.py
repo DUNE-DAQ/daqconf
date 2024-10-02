@@ -24,7 +24,7 @@ class SelectionPanel(Static):
             for id in menu_ids.values():
                 yield SelectionMenu(id=id)
                 
-        def on_button_pressed(self, event: Button.Pressed)->None:
-            """Swap between different configuration views via button. Currently bound here for...reasons
-            """        
-            self.query_one(ContentSwitcher).current = event.button.id
+    def on_button_pressed(self, event: Button.Pressed)->None:
+        """Swap between different configuration views via button. Currently bound here for...reasons
+        """        
+        self.query_one(ContentSwitcher).current = event.button.id
