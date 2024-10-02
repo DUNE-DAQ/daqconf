@@ -473,10 +473,11 @@ def show_object_tree(obj, uid, show_attrs, focus_path, level):
             
         # rels = cfg.relations(dal_obj.className(), True)
         rels = get_relation_info(dal_obj)
+        if rel_sel:
+            rels = { rel_sel: rels[rel_sel] }
+
+
         for rel, rinfo in rels.items():
-            # Filter on relationship name if path is specified
-            if rel_sel and rel != rel_sel:  
-                continue
 
             rel_val = getattr(dal_obj, rel)
             r_tree = tree.add(f"[yellow]{rel}[/yellow]@[magenta]{rinfo['type']}[/magenta] {('['+str(len(rel_val))+']' if isinstance(rel_val, list) else '')}")
@@ -484,10 +485,14 @@ def show_object_tree(obj, uid, show_attrs, focus_path, level):
             if not isinstance(rel_val,list):
                 rel_val = [rel_val]
 
+            if obj_sel:
+                if obj_sel not in [r.id for r in rel_val]:
+                    raise click.BadArgumentUsage(f"Object '{obj_sel}' does not exist in {dal_obj.id}.{rel_sel}")
+            else:
+                rel_val = [o for o in rel_val if o is not None and o.id == obj_sel ]
+
             for val in rel_val:
 
-                if obj_sel and val.id != obj_sel:
-                    continue
                 if val is None:
                     continue
                 r_tree.add(make_obj_tree(val, show_attrs, path[1:], level-1 if level is not None else None))
