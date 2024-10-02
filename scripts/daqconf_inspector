@@ -170,9 +170,9 @@ def make_segment_tree(cfg, segment, session: None, show_path: bool = False) -> T
     return tree
 
 
-def validate_oks_uid(ctx, param, value):
+def verify_oks_uid(ctx, param, value):
     """
-    Helper function to validate OKS UID options or arguments accorinf to the format id@class
+    Helper function to Verify OKS UID options or arguments accorinf to the format id@class
     """
 
     if isinstance(value, tuple):
@@ -401,7 +401,7 @@ def show_objects_of_class(obj, klass, vtable):
     print(table)
 
 @cli.command(short_help="Show relationship tree")
-@click.argument('uid', type=click.UNPROCESSED, callback=validate_oks_uid, default=None)
+@click.argument('uid', type=click.UNPROCESSED, callback=verify_oks_uid, default=None)
 @click.option('+a/-a','--show-attributes/--hide-attributes', "show_attrs", default=True, help="Show/Hide attributes")
 @click.option('-l','--level', "level", type=int, default=None, help="Recursion level in the object tree")
 @click.option('-f','--focus', "focus_path", default=None, help="Path within the object relationships to visualise")
@@ -504,7 +504,7 @@ def show_object_tree(obj, uid, show_attrs, focus_path, level):
 
         
 # @cli.command()
-# @click.argument('uid', type=click.UNPROCESSED, callback=validate_oks_uid, default=None)
+# @click.argument('uid', type=click.UNPROCESSED, callback=verify_oks_uid, default=None)
 # @click.pass_obj
 # def test_find_relations(obj, uid):
 
@@ -532,9 +532,9 @@ def show_object_tree(obj, uid, show_attrs, focus_path, level):
 #     IPython.embed(colors="neutral")
 
 
-@cli.command(short_help="Validate detector streams in the database")
+@cli.command(short_help="Verify detector streams in the database")
 @click.pass_obj
-def validate_detstreams(obj):
+def verify_detstreams(obj):
     """
     Performs basic validation of detector datastreams in a database.
 
@@ -607,9 +607,9 @@ def validate_detstreams(obj):
 
 
 
-@cli.command(short_help="Validate smart applications in database")
+@cli.command(short_help="Verify smart applications in database")
 @click.pass_obj
-def validate_smart_apps(obj):
+def verify_smart_apps(obj):
     """
     Performs basic validation on smart daq applications a database.
 
