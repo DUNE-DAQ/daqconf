@@ -1,4 +1,4 @@
-from textual_dbe.data_structures.configuration_handler import ConfigurationHandler
+from daqconf.textual_dbe.data_structures.configuration_handler import ConfigurationHandler
 
 class SelectionInterfaceFactory:
     @classmethod
@@ -17,11 +17,11 @@ class SelectionInterfaceFactory:
         """
         match(interface_name):
             case "class-selection":
-                from textual_dbe.data_structures.selection_interface import ClassSelectionMenu
+                from daqconf.textual_dbe.data_structures.selection_interface import ClassSelectionMenu
                 return ClassSelectionMenu(configuration)
 
             case "relation-selection":
-                from textual_dbe.data_structures.selection_interface import RelationalSelectionMenu
+                from daqconf.textual_dbe.data_structures.selection_interface import RelationalSelectionMenu
                 return RelationalSelectionMenu(configuration)
             
             case _:

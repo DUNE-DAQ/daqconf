@@ -13,7 +13,7 @@ import numpy as np
 from numpy.typing import NDArray
 from collections import deque
 
-from textual_dbe.data_structures.configuration_handler import ConfigurationHandler
+from daqconf.textual_dbe.data_structures.configuration_handler import ConfigurationHandler
 
 class RelationalGraph:
     def __init__(self, config_handler: ConfigurationHandler):

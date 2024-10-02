@@ -2,8 +2,8 @@ from textual import on
 from textual.screen import Screen
 from textual.widgets import Input, Select, Button, Static
 
-from textual_dbe.widgets.config_table import ConfigTable
-from textual_dbe.widgets.configuration_controller import ConfigurationController
+from daqconf.textual_dbe.widgets.config_table import ConfigTable
+from daqconf.textual_dbe.widgets.configuration_controller import ConfigurationController
 
 """
 Collection of objects that define the configuration object

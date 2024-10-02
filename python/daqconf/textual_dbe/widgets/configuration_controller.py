@@ -1,10 +1,11 @@
+from typing import Dict
+
 from textual.widgets import Static
 from textual.message import Message
 
-from textual_dbe.data_structures.configuration_handler import ConfigurationHandler
-from textual_dbe.data_structures.selection_interface_factory import SelectionInterfaceFactory
-from textual_dbe.data_structures.selection_interface import SelectionInterface
-from typing import Dict
+from daqconf.textual_dbe.data_structures.configuration_handler import ConfigurationHandler
+from daqconf.textual_dbe.data_structures.selection_interface_factory import SelectionInterfaceFactory
+from daqconf.textual_dbe.data_structures.selection_interface import SelectionInterface
 
 class ConfigurationController(Static):    
     """Controller widget for the full configuration. In principal this is 

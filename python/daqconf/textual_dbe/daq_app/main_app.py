@@ -1,19 +1,20 @@
 '''
 App for testing configuration 
 '''
+from os import environ
 
 # Textual Imports
 from textual.app import App
 from textual.screen import Screen
 from textual.widgets import Footer
-from textual_dbe.widgets.custom_rich_log import RichLogWError
 from textual.binding import Binding
 
 # Textual OKS imports
-from textual_dbe.widgets.config_table import ConfigTable
-from textual_dbe.widgets.configuration_controller import ConfigurationController
-from textual_dbe.widgets.popups.file_io import SaveWithMessageScreen, OpenFileScreen
-from textual_dbe.app_structures.selection_panel import SelectionPanel
+from daqconf.textual_dbe.widgets.custom_rich_log import RichLogWError
+from daqconf.textual_dbe.widgets.config_table import ConfigTable
+from daqconf.textual_dbe.widgets.configuration_controller import ConfigurationController
+from daqconf.textual_dbe.widgets.popups.file_io import SaveWithMessageScreen, OpenFileScreen
+from daqconf.textual_dbe.app_structures.selection_panel import SelectionPanel
 
 class MainScreen(Screen):
     """Main screen for navigating python DBE
@@ -94,7 +95,10 @@ class MainScreen(Screen):
   
 
 class DbeApp(App):
-    CSS_PATH = "../textual_css/dummy_layout.tcss"
+    # HACK: Need to sort this, only way to get the CSS to work
+    css_file_path = f"{environ.get('DBT_AREA_ROOT')}/sourcecode/daqconf/python/daqconf/textual_dbe/textual_css"
+
+    CSS_PATH = f"{css_file_path}/main_app_layout.tcss"
     SCREENS = {"main": MainScreen}
     
     def on_mount(self):        

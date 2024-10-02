@@ -4,7 +4,7 @@ from textual.widgets import Input
 
 from typing import Any
 
-from textual_dbe.widgets.configuration_controller import ConfigurationController
+from daqconf.textual_dbe.widgets.configuration_controller import ConfigurationController
 
 class EditCellScreen(ModalScreen):
     def __init__(

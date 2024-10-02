@@ -3,7 +3,7 @@ from typing import Any
 from textual.widgets import Static, Tree
 from textual.widgets.tree import TreeNode
 
-from textual_dbe.widgets.configuration_controller import ConfigurationController
+from daqconf.textual_dbe.widgets.configuration_controller import ConfigurationController
 
 class SelectionMenu(Static):
     '''

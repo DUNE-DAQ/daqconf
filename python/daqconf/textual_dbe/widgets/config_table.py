@@ -3,9 +3,9 @@ Table for displaying DAL information
 '''
 from textual.widgets import Static, DataTable
 from textual.reactive import reactive
-from textual_dbe.widgets.popups.edit_cell_screen import EditCellScreen
 
-from textual_dbe.widgets.configuration_controller import ConfigurationController
+from daqconf.textual_dbe.widgets.popups.edit_cell_screen import EditCellScreen
+from daqconf.textual_dbe.widgets.configuration_controller import ConfigurationController
 
 class ConfigTable(Static):
     

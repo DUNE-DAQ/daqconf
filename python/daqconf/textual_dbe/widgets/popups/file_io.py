@@ -1,16 +1,16 @@
 
 from typing import Dict
-from os import path
+from os import path, environ
 
 from textual.screen import ModalScreen, Screen
 from textual.app import ComposeResult
 from textual.widgets import Input, Button, Static
 from textual.containers import Horizontal, Container
 
-from textual_dbe.widgets.configuration_controller import ConfigurationController
-from textual_dbe.widgets.config_table import ConfigTable
-from textual_dbe.app_structures.selection_panel import SelectionPanel
-from textual_dbe.widgets.popups.directory_tree import DatabaseDirectoryTree
+from daqconf.textual_dbe.widgets.configuration_controller import ConfigurationController
+from daqconf.textual_dbe.widgets.config_table import ConfigTable
+from daqconf.textual_dbe.app_structures.selection_panel import SelectionPanel
+from daqconf.textual_dbe.widgets.popups.directory_tree import DatabaseDirectoryTree
 
 class __MenuWithButtons(Static):
     def __init__(self, button_labels: Dict[str, str], name: str | None=None, id: str | None = None, classes: str | None = None) -> None:
@@ -74,7 +74,9 @@ class SaveWithMessage(__MenuWithButtons):
                 self.input_action(input.value)
                  
 class SaveWithMessageScreen(ModalScreen[bool]):
-    CSS_PATH = "../../textual_css/save_menu_layout.tcss"
+    css_file_path = f"{environ.get('DBT_AREA_ROOT')}/sourcecode/daqconf/python/daqconf/textual_dbe/textual_css"
+    
+    CSS_PATH = f"{css_file_path}/save_menu_layout.tcss"
     """
     Splash screen for saving to file
     """
@@ -161,7 +163,11 @@ class OpenFile(__MenuWithButtons):
         
 
 class OpenFileScreen(Screen):
-    CSS_PATH = "../../textual_css/save_menu_layout.tcss"
+    
+    # HACKY WAY TO GET THE CSS TO WORK
+    css_file_path = f"{environ.get('DBT_AREA_ROOT')}/sourcecode/daqconf/python/daqconf/textual_dbe/textual_css"
+    
+    CSS_PATH = f"{css_file_path}/save_menu_layout.tcss"
     
     def __init__(self, name: str | None=None, id: str | None = None, classes: str | None = None) -> None:
         """Add in configuration screen

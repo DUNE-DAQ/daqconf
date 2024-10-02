@@ -1,6 +1,8 @@
-from daqconf.textual_oks.daq_app.main_app import TestApp
+#!/bin/env python3
+
+from daqconf.textual_dbe.daq_app.main_app import DbeApp
 
 # Run dbe-screen
 if __name__=="__main__":
-    app = TestApp()
+    app = DbeApp()
     app.run()
