@@ -595,7 +595,7 @@ def validate_detstreams(obj):
     if strm_duplicates:
         print(f"[yellow]WARNING: found duplicates in detector streams {strm_duplicates}[/yellow]")
     else:
-        print(f"[green]:white_check_mark : No duplicates among detector streams[/green]")
+        print(f"[green]:white_check_mark: No duplicates among detector streams[/green]")
 
 
     gid_duplicates = find_duplicates([strm.geo_id for strm in streams])
@@ -603,7 +603,7 @@ def validate_detstreams(obj):
     if gid_duplicates:
         print(f"[yellow]WARNING: found duplicates in geo ids {strm_duplicates}[/yellow]")
     else:
-        print(f"[green]:white_check_mark : No duplicates among geo ids[/green]")
+        print(f"[green]:white_check_mark: No duplicates among geo ids[/green]")
 
 
 
