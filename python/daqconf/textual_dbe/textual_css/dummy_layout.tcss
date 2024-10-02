@@ -1,0 +1,29 @@
+
+/* Prototype style sheet */
+
+
+#buttons {
+    height: 3;
+    width: 97%;
+    Button{
+        width: 50%
+    }
+}
+
+SelectionPanel {
+    dock: left;
+    align-vertical: top;
+    width: 30%;
+    height: 98.5%;
+}
+
+RichLogWError{
+    align-vertical: bottom;
+}
+
+ConfigTable{
+    width: 100%;
+    height: 50%;
+    align-vertical: top;
+}
+
