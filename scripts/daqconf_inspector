@@ -33,6 +33,7 @@ def is_enabled(cfg, session, obj):
     enabled -= (obj in session.disabled)
     return enabled
 
+
 def get_attribute_info(o):
     return o.__schema__['attribute']
 
@@ -404,7 +405,7 @@ def show_objects_of_class(obj, klass, vtable):
 @click.argument('uid', type=click.UNPROCESSED, callback=verify_oks_uid, default=None)
 @click.option('+a/-a','--show-attributes/--hide-attributes', "show_attrs", default=True, help="Show/Hide attributes")
 @click.option('-l','--level', "level", type=int, default=None, help="Recursion level in the object tree")
-@click.option('-f','--focus', "focus_path", default=None, help="Path within the object relationships to visualise")
+@click.option('-f','--focus', "focus_path", default=None, help="Path within the object relationships to focus on")
 @click.pass_obj
 def show_object_tree(obj, uid, show_attrs, focus_path, level):
     """
@@ -416,6 +417,7 @@ def show_object_tree(obj, uid, show_attrs, focus_path, level):
     Starting from the selected object, attributes and objects refererd by relationships are shown recursively as hierarchical tree.
     By default the command recursively crawls through relationship without limits. The recursion level can be limited with the corresponding optional parameter (see below).
     In case focussing on a relationship branch is helpful, the focus path option (see below for details) allows to specify the branch to focus on, starting trom the top object.
+    If a focus path is specified, the recursion level is applied starting from the last element of the focus path.
     The focus path syntax combines relationhsip and object names, using `.` separators, and `[]` to select a single item in multi-value relatiosnips.
     The structure of the focus path specifier is `<relationship>[<optional object name>].<relationship>[<optional object name>]`.
     Note: specifiying the object name is required 
@@ -460,7 +462,13 @@ def show_object_tree(obj, uid, show_attrs, focus_path, level):
 
         attrs = cfg.attributes(dal_obj.className(), True)
         rels = cfg.relations(dal_obj.className(), True)
+        
+        # if level is defined and the end of path is reached, reduce level
+        if level is not None and not path:
+            level -= 1
 
+
+        # handle relationship/object selection
         rel_sel, obj_sel = None, None
         if path:
             rel_sel, obj_sel = path[0]
@@ -471,7 +479,6 @@ def show_object_tree(obj, uid, show_attrs, focus_path, level):
             for a in attrs:
                 tree.add(f"[cyan]{a}[/cyan] = {getattr(dal_obj, a)}")
             
-        # rels = cfg.relations(dal_obj.className(), True)
         rels = get_relation_info(dal_obj)
         if rel_sel:
             rels = { rel_sel: rels[rel_sel] }
@@ -485,17 +492,15 @@ def show_object_tree(obj, uid, show_attrs, focus_path, level):
             if not isinstance(rel_val,list):
                 rel_val = [rel_val]
 
-            if obj_sel:
+            if obj_sel is not None:
                 if obj_sel not in [r.id for r in rel_val]:
                     raise click.BadArgumentUsage(f"Object '{obj_sel}' does not exist in {dal_obj.id}.{rel_sel}")
-            else:
-                rel_val = [o for o in rel_val if o is not None and o.id == obj_sel ]
+                rel_val = [o for o in rel_val if o.id == obj_sel ]
 
             for val in rel_val:
-
                 if val is None:
                     continue
-                r_tree.add(make_obj_tree(val, show_attrs, path[1:], level-1 if level is not None else None))
+                r_tree.add(make_obj_tree(val, show_attrs, path[1:], level))
         return tree
 
 
@@ -671,6 +676,13 @@ def verify_smart_apps(obj):
         t.add_row(*row)
 
     print(t)
+
+
+@cli.command(short_help="Verify sessions")
+@click.pass_obj
+def verify_session(obj):
+    pass
+
 
 if __name__== "__main__":
     cli(obj=DaqInspectorContext())
