@@ -1,0 +1,21 @@
+#!/bin/env python3
+import conffwk
+import confmodel
+
+import click
+import os
+import glob
+from daqconf.set_session_env_var import set_session_env_var
+
+@click.command()
+@click.argument('oks_session_name')
+@click.argument('oksfile')
+@click.argument('env_var_name', required=True, nargs=1)
+@click.argument('env_var_value', required=True, nargs=1)
+def oks_set_session_env_var(oksfile, env_var_name, env_var_value, oks_session_name):
+  """Script to set the value of an environment variable in the specified Session of the
+  specified OKS database file"""
+  set_session_env_var(oksfile, env_var_name, env_var_value, oks_session_name)
+
+if __name__ == '__main__':
+  oks_set_session_env_var()
