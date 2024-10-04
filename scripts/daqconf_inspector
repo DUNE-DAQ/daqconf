@@ -19,21 +19,28 @@ def start_ipython(loc):
     except ImportError:
         print(f"[red]IPython not available[/red]")
 
-def is_enabled(cfg, session, obj):
-    import confmodel
-
-    """Helper function that returns the status of an object in a session"""
-    if not obj.isDalType('Component'):
-        return None
-
-    enabled = not confmodel.component_disabled(cfg._obj, session.id, obj.id)
-    if enabled:
-        return enabled
-    
-    enabled -= (obj in session.disabled)
-    return enabled
 
 
+
+
+def enabled_to_emoji(enabled: Union[int, None]) -> str:
+    """
+    Convert enabled values [enabled, disabled, disabled-by-logic] into standard emojis
+    """
+    match enabled:
+        case 1:
+            return ':white_check_mark:'
+        case 0:
+            return ':heavy_large_circle:' 
+        case -1:
+            return ':x:' 
+        case _:
+            return ':blue_circle:'
+
+
+##
+# Dal helpers
+#
 def get_attribute_info(o):
     return o.__schema__['attribute']
 
@@ -117,58 +124,123 @@ def find_duplicates( collection: Iterable ):
 
     return duplicates
 
-def enabled_to_emoji(enabled: Union[int, None]) -> str:
-    """
-    Convert enabled values [enabled, disabled, disabled-by-logic] into standard emojis
-    """
-    match enabled:
-        case 1:
-            return ':white_check_mark:'
-        case 0:
-            return ':heavy_large_circle:' 
-        case -1:
-            return ':x:' 
-        case _:
-            return ':blue_circle:'
+class DalRichRenderer:
 
-def make_segment_tree(cfg, segment, session: None, show_path: bool = False) -> Tree:
-    '''
-    Create a segment branch of the session tree as a rich.Tree object
-    ''' 
+    def __init__(self, confdb: conffwk.Configuration):
 
-    path = f"[blue]{cfg.get_obj(segment.className(), segment.id).contained_in()}[/blue]" if show_path else ""
-    enabled = is_enabled(cfg, session, segment) if session else None
-    tree = Tree(f"{enabled_to_emoji(enabled)} [yellow]{segment.id}[/yellow] {path}")
+        self._confdb = confdb
 
-    c = segment.controller
-    path = f"[blue]{cfg.get_obj(c.className(), c.id).contained_in()}[/blue]" if show_path else ""
-    ports = ', '.join([f'{svc.port}([orange1]{svc.id}[/orange1])' for svc in c.exposes_service ])
-    host = f"[medium_purple1]{c.runs_on.runs_on.id}[/medium_purple1]"
-    tree.add(f"[cyan]controller[/cyan]: [green]{c.id}[/green][magenta]@{c.className()}[/magenta] on {host} [{ports}] {path}")
+    ##
+    # Enabled/disabled status visualization
+    #
+    def is_enabled(self, session, obj):
+        import confmodel
 
-    if segment.applications:
-        app_tree = tree.add(f"[cyan]applicationss[/cyan]")
-        for a in segment.applications:
-            if a is None:
-                print(f"Detected None application in {segment.id}")
-                continue
+        """Helper function that returns the status of an object in a session"""
+        if not obj.isDalType('Component'):
+            return None
 
-            path = f"[blue]{cfg.get_obj(a.className(), a.id).contained_in()}[/blue]" if show_path else ""
-            ports = ', '.join([f'{svc.port}([orange1]{svc.id}[/orange1])' for svc in a.exposes_service ])
-            host = f"[medium_purple1]{a.runs_on.runs_on.id}[/medium_purple1]"
-            enabled = is_enabled(cfg, session, a) if session else None
+        enabled = not confmodel.component_disabled(self._confdb._obj, session.id, obj.id)
+        if enabled:
+            return enabled
+        
+        enabled -= (obj in session.disabled)
+        return enabled
 
-            app_tree.add(f"{enabled_to_emoji(enabled)} [green]{a.id}[/green][magenta]@{a.className()}[/magenta] on {host} [{ports}] {path}")
+    def make_segment_tree(self, segment, session: None, show_path: bool = False) -> Tree:
+        '''
+        Create a segment branch of the session tree as a rich.Tree object
+        ''' 
 
-    if segment.segments:
-        seg_tree = tree.add(f"[cyan]segments[/cyan]")
-        for s in segment.segments:
-            if s is None:
-                print(f"Detected None segment in {segment.id}")
-                continue
-            seg_tree.add(make_segment_tree(cfg, s, session, show_path))
+        path = f"[blue]{self._confdb.get_obj(segment.className(), segment.id).contained_in()}[/blue]" if show_path else ""
+        enabled = self.is_enabled(session, segment) if session else None
+        tree = Tree(f"{enabled_to_emoji(enabled)} [yellow]{segment.id}[/yellow] {path}")
 
-    return tree
+        c = segment.controller
+        path = f"[blue]{self._confdb.get_obj(c.className(), c.id).contained_in()}[/blue]" if show_path else ""
+        ports = ', '.join([f'{svc.port}([orange1]{svc.id}[/orange1])' for svc in c.exposes_service ])
+        host = f"[medium_purple1]{c.runs_on.runs_on.id}[/medium_purple1]"
+        tree.add(f"[cyan]controller[/cyan]: [green]{c.id}[/green][magenta]@{c.className()}[/magenta] on {host} [{ports}] {path}")
+
+        if segment.applications:
+            app_tree = tree.add(f"[cyan]applicationss[/cyan]")
+            for a in segment.applications:
+                if a is None:
+                    print(f"Detected None application in {segment.id}")
+                    continue
+
+                path = f"[blue]{self._confdb.get_obj(a.className(), a.id).contained_in()}[/blue]" if show_path else ""
+                ports = ', '.join([f'{svc.port}([orange1]{svc.id}[/orange1])' for svc in a.exposes_service ])
+                host = f"[medium_purple1]{a.runs_on.runs_on.id}[/medium_purple1]"
+                enabled = is_enabled(session, a) if session else None
+
+                app_tree.add(f"{enabled_to_emoji(enabled)} [green]{a.id}[/green][magenta]@{a.className()}[/magenta] on {host} [{ports}] {path}")
+
+        if segment.segments:
+            seg_tree = tree.add(f"[cyan]segments[/cyan]")
+            for s in segment.segments:
+                if s is None:
+                    print(f"Detected None segment in {segment.id}")
+                    continue
+                seg_tree.add(self.make_segment_tree(s, session, show_path))
+
+        return tree
+
+    def make_obj_tree(self, dal_obj, show_attrs=True, path=[], level=None, session=None):
+        """Helper function to generate object trees"""
+
+        en_status = enabled_to_emoji(self.is_enabled(session, dal_obj))+' ' if not session is None else ""
+
+        tree = Tree(f"{en_status}[green]{dal_obj.id}[/green][magenta]@{dal_obj.className()}[/magenta]")
+        if level == 0:
+            return tree
+
+
+        attrs = get_attribute_info(dal_obj)
+        rels = get_relation_info(dal_obj)
+
+
+        # if level is defined and the end of path is reached, reduce level
+        if level is not None and not path:
+            level -= 1
+
+
+        # handle relationship/object selection
+        rel_sel, obj_sel = None, None
+        if path:
+            rel_sel, obj_sel = path[0]
+            if rel_sel not in rels:
+                raise click.BadArgumentUsage(f"Object '{rel_sel}' does not exist in {dal_obj.id}")
+
+        if show_attrs:
+            for a in attrs:
+                tree.add(f"[cyan]{a}[/cyan] = {getattr(dal_obj, a)}")
+            
+        rels = get_relation_info(dal_obj)
+        if rel_sel:
+            rels = { rel_sel: rels[rel_sel] }
+
+
+        for rel, rinfo in rels.items():
+
+            rel_val = getattr(dal_obj, rel)
+            r_tree = tree.add(f"[yellow]{rel}[/yellow]@[magenta]{rinfo['type']}[/magenta] {('['+str(len(rel_val))+']' if isinstance(rel_val, list) else '')}")
+
+            if not isinstance(rel_val,list):
+                rel_val = [rel_val]
+
+            if obj_sel is not None:
+                if obj_sel not in [r.id for r in rel_val]:
+                    raise click.BadArgumentUsage(f"Object '{obj_sel}' does not exist in {dal_obj.id}.{rel_sel}")
+                rel_val = [o for o in rel_val if o.id == obj_sel ]
+
+            for val in rel_val:
+                if val is None:
+                    continue
+                r_tree.add(self.make_obj_tree(val, show_attrs, path[1:], level, session))
+        return tree
+    
+
 
 
 def verify_oks_uid(ctx, param, value):
@@ -230,6 +302,7 @@ def show_sessions(obj, show_file_paths):
         ✅ : Resource enabled
         ❌ : Resource directly disabled (listed in the Session disable list)
         ⭕️ : Resource indirectly disabled by algorithm
+        🔵 : Not a resource
 
     - The summary of session objects, including the count of referenced objects, the list of directly
       disabled objects and the list of all disabled objects (directly or indirectly)
@@ -242,6 +315,7 @@ def show_sessions(obj, show_file_paths):
     rh = ReprHighlighter()
     
     cfg = obj.cfg
+    dr = DalRichRenderer(cfg)
 
     print("Sessions")
     sessions = cfg.get_objs("Session")
@@ -285,7 +359,7 @@ def show_sessions(obj, show_file_paths):
 
         t.add_row('Objects', rh(str(len(session_objs))))
         t.add_row('Disabled mask', rh(str([ i.id for i in s.disabled])))
-        t.add_row('Disabled resources', rh(str([ r.id for r in res if is_enabled(cfg, s, r) != 1])))
+        t.add_row('Disabled resources', rh(str([ r.id for r in res if is_enabled(s, r) != 1])))
         # print(t)
         grid.add_row(t)
 
@@ -333,6 +407,7 @@ def list_classes(obj, show_derived):
     for k in sorted(cfg.classes()):
         table.add_row(k, rh(str([o.UID() for o in cfg.get_objs(k) if (o.class_name() == k or show_derived)])))
     print(table)
+
 
 @cli.command(short_help="Show properties of objects belonging to a class")
 @click.argument('klass')
@@ -401,6 +476,10 @@ def show_objects_of_class(obj, klass, vtable):
 
     print(table)
 
+
+
+
+
 @cli.command(short_help="Show relationship tree")
 @click.argument('uid', type=click.UNPROCESSED, callback=verify_oks_uid, default=None)
 @click.option('+a/-a','--show-attributes/--hide-attributes', "show_attrs", default=True, help="Show/Hide attributes")
@@ -433,9 +512,11 @@ def show_object_tree(obj, uid, show_attrs, focus_path, level):
     from rich.highlighter import ReprHighlighter
     rh = ReprHighlighter()
     cfg = obj.cfg
+    drr = DalRichRenderer(cfg)
+
 
     if klass not in cfg.classes():
-        print('f[red]Class {klass} unknow to configuration[/red]')
+        print(f'[red]Class {klass} unknow to configuration[/red]')
         print(f'Known classes: {sorted(cfg.classes())}')
         raise SystemExit(-1)
 
@@ -455,56 +536,7 @@ def show_object_tree(obj, uid, show_attrs, focus_path, level):
     except RuntimeError as e:
         raise click.BadArgumentUsage(f"Object '{id}' does not exist")
 
-    def make_obj_tree(dal_obj, show_attrs, path=[], level=None):
-        tree = Tree(f"[green]{dal_obj.id}[/green][magenta]@{dal_obj.className()}[/magenta]")
-        if level == 0:
-            return tree
-
-        attrs = cfg.attributes(dal_obj.className(), True)
-        rels = cfg.relations(dal_obj.className(), True)
-        
-        # if level is defined and the end of path is reached, reduce level
-        if level is not None and not path:
-            level -= 1
-
-
-        # handle relationship/object selection
-        rel_sel, obj_sel = None, None
-        if path:
-            rel_sel, obj_sel = path[0]
-            if rel_sel not in rels:
-                raise click.BadArgumentUsage(f"Object '{rel_sel}' does not exist in {dal_obj.id}")
-
-        if show_attrs:
-            for a in attrs:
-                tree.add(f"[cyan]{a}[/cyan] = {getattr(dal_obj, a)}")
-            
-        rels = get_relation_info(dal_obj)
-        if rel_sel:
-            rels = { rel_sel: rels[rel_sel] }
-
-
-        for rel, rinfo in rels.items():
-
-            rel_val = getattr(dal_obj, rel)
-            r_tree = tree.add(f"[yellow]{rel}[/yellow]@[magenta]{rinfo['type']}[/magenta] {('['+str(len(rel_val))+']' if isinstance(rel_val, list) else '')}")
-
-            if not isinstance(rel_val,list):
-                rel_val = [rel_val]
-
-            if obj_sel is not None:
-                if obj_sel not in [r.id for r in rel_val]:
-                    raise click.BadArgumentUsage(f"Object '{obj_sel}' does not exist in {dal_obj.id}.{rel_sel}")
-                rel_val = [o for o in rel_val if o.id == obj_sel ]
-
-            for val in rel_val:
-                if val is None:
-                    continue
-                r_tree.add(make_obj_tree(val, show_attrs, path[1:], level))
-        return tree
-
-
-    tree = make_obj_tree(do, show_attrs, path, level)
+    tree = drr.make_obj_tree(do, show_attrs, path, level)
     print(tree)
 
         
@@ -642,12 +674,14 @@ def verify_smart_apps(obj):
         print(f"Validating '{sa.id}'")
         test_reports = {}
 
+        # Example: test for consistency between exposed service and network rules
+        # TODO: Move test code into a separate module/wrapper objecy
         missing_services = []
         for r in sa.network_rules:
             if r.descriptor.associated_service not in sa.exposes_service:
                 missing_services.append(r.descriptor.associated_service)
 
-        test_reports['services'] = TestReport(not bool(missing_services), missing_services)
+        test_reports['exp srv vs. net rules'] = TestReport(not bool(missing_services), f"Not in exposed {[i.id for i in missing_services]}")
         
         reports[sa.id] = test_reports
         
@@ -669,8 +703,9 @@ def verify_smart_apps(obj):
         for c in rep_cols:
             # TODO: specific to the services case
             icon  = ':white_check_mark:' if rep[c].passed else ':x:'
-            details = str([i.id for i in rep[c].details])
-            row.append( f"{icon} {details}")
+            # details = str([i.id for i in rep[c].details])
+            details = rep[c].details
+            row.append( f"{icon} ({details})")
 
 
         t.add_row(*row)
@@ -678,10 +713,66 @@ def verify_smart_apps(obj):
     print(t)
 
 
-@cli.command(short_help="Verify sessions")
+@cli.command(short_help="Test application generation")
+@click.argument('session_id')
+@click.argument('app_id')
+@click.option('+a/-a','--show-attributes/--hide-attributes', "show_attrs", default=True, help="Show/Hide attributes")
+@click.option('-l','--level', "level", type=int, default=None, help="Recursion level in the object tree")
+@click.option('-f','--focus', "focus_path", default=None, help="Path within the object relationships to focus on")
 @click.pass_obj
-def verify_session(obj):
-    pass
+def show_smartapp_mods(obj, session_id, app_id, show_attrs, level, focus_path):
+
+    from appmodel import generate_modules, UnknownGeneratorException
+    from daqconf.session import get_session_apps
+    import re
+
+    from rich.highlighter import ReprHighlighter
+    rh = ReprHighlighter()
+    cfg = obj.cfg
+    drr = DalRichRenderer(cfg)
+
+    focus_path = focus_path.split('.') if focus_path is not None else []
+    re_index = re.compile('([\w-]*)(\[([\w-]*)\])?')
+    path = []
+    for p in focus_path:
+        m = re_index.match(p)
+        if m is None:
+            raise RuntimeError("Incorrect systax of path specifier p")
+        rel,_,name = m.groups()
+        path.append((rel, name))
+
+    s = cfg.get_dal('Session', session_id)
+
+    sm_apps = get_session_apps(cfg, s.id)
+
+    sm_app = next(iter(a for a in sm_apps if a.id == app_id ), None)
+
+    if sm_app is None:
+        raise click.ClickException(f"Smart Application {app_id} not found")
+
+    print(f"Generating modules for app '{sm_app.id}' of class '{sm_app.className()}' in session '{s.id}'")
+    try:
+        # FIXME: AAAAAARGH
+        # Need to use local copies because different applications generate the same objects in the db
+        local_cfg = conffwk.Configuration(f"oksconflibs:{cfg.active_database}")
+        mods = generate_modules(local_cfg, sm_app, s)
+
+        tree = Tree(f"[green]{sm_app.id}[/green][magenta]@{sm_app.className()}[/magenta]")
+
+        if path:
+
+            mods = [m for m in mods if m.id == path[0][0]]
+            path = path[1:]
+
+        for m in mods:
+            tree.add(drr.make_obj_tree(m, show_attrs, path, level, s))
+        print(tree)
+
+    except UnknownGeneratorException as e:
+        print(f"[red]Error: no available module generator for {sm_app.className()}[/red]")
+
+
+    # start_ipython(locals())
 
 
 if __name__== "__main__":
