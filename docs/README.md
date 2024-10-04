@@ -27,6 +27,10 @@ This repository contains scripts for generating and manipulating OKS database fi
 ### validate
   Attempt to determine if a given Session configuration is valid and does not contain common errors
 
+
+### textual_dbe
+ Attempt to replicate OKS' Data Base editor within Python. Full details are [here](TextualDBE.md). Current implementation is very incomplete so use with caution.
+
 ## Generation Tools
 
 ### createOKSdb
@@ -64,3 +68,4 @@ you specify on the commad line.
 
 ### utils.py
   Utilities for parsing OKS databases. Currently contains an include file search routine.
+
