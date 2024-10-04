@@ -22,7 +22,7 @@ class ConfigObjectSelectionPanel(Static):
             raise Exception("Configuration handler not found")
 
         yield Input(placeholder="Enter new object name", id="new_object_name")
-        yield Select.from_values(list(self._controller.handler.get_all_conf_classes().keys()), id="new_object_class")
+        yield Select.from_values(list(self._controller.handler.configuration_handler.get_all_conf_classes().keys()), id="new_object_class")
         yield Button("Select", id="select_object")
 
     @on(Select.Changed)

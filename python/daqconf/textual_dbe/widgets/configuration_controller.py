@@ -3,6 +3,7 @@ from typing import Dict
 from textual.widgets import Static
 from textual.message import Message
 
+from daqconf.textual_dbe.data_structures.structured_configuration import StructuredConfiguration
 from daqconf.textual_dbe.data_structures.configuration_handler import ConfigurationHandler
 from daqconf.textual_dbe.data_structures.selection_interface_factory import SelectionInterfaceFactory
 from daqconf.textual_dbe.data_structures.selection_interface import SelectionInterface
@@ -13,7 +14,7 @@ class ConfigurationController(Static):
     """
     BINDINGS = [("ctrl+s", "save_configuration", "Save Configuration")]
 
-    _handler: ConfigurationHandler | None = None
+    _handler: StructuredConfiguration | None = None
     _selection_interfaces: Dict[str, SelectionInterface] = {}
     _current_selected_object = None
 
@@ -28,7 +29,8 @@ class ConfigurationController(Static):
             new_id -- UID of new DAL
             new_class -- Class of DAL
         """        
-        self._current_selected_object = self.handler.get_obj(new_id, new_class)
+        if self.handler is not None:
+            self._current_selected_object = self.handler.configuration_handler.get_obj(new_id, new_class)
     
     @property
     def current_dal(self):
@@ -54,10 +56,14 @@ class ConfigurationController(Static):
         Arguments:
             attr_name -- Attribute to update
             update_value -- New value for attribute
-        """        
+        """
+        if self.handler is None:
+            self._logger.write_error("No handler has been setup")
+
+        
         try:
             setattr(self._current_selected_object, attr_name, update_value)
-            self._handler.configuration.update_dal(self._current_selected_object)        
+            self._handler.configuration_handler.configuration.update_dal(self._current_selected_object)        
         except Exception as _:
             self._logger.write_error(f"Could not update [yellow]{attr_name}[/yellow] to [yellow]{update_value}[/yellow] for {self.generate_rich_string(self._current_selected_object)}")
 
@@ -68,12 +74,12 @@ class ConfigurationController(Static):
             file_name -- New database to load
         """ 
         # try:
-        self._handler = ConfigurationHandler(file_name)
+        self._handler = StructuredConfiguration(file_name)
         # except:
         #     raise Exception(f"Could not open {file_name}")
 
     @property
-    def handler(self)->ConfigurationHandler | None:
+    def handler(self)->StructuredConfiguration | None:
         """Return the configuration handler
 
         Returns:
@@ -82,7 +88,7 @@ class ConfigurationController(Static):
         return self._handler
     
     @handler.setter
-    def handler(self, new_handler: ConfigurationHandler):
+    def handler(self, new_handler: StructuredConfiguration):
         """Set new handelr
 
         Arguments:
@@ -97,7 +103,9 @@ class ConfigurationController(Static):
         Returns:
             Access the raw configuration
         """        
-        return self._handler.configuration
+        self.__no_handler_error()
+        
+        return self._handler.configuration_handler.configuration
 
     @classmethod
     def generate_rich_string(cls, dal_obj)->str:
@@ -122,7 +130,7 @@ class ConfigurationController(Static):
     def commit_configuration(self, message: str)->None:
         """Save configuration with a message to database
         """        
-        self._handler.commit(message)
+        self._handler.configuration_handler.commit(message)
         self._logger.write(f"[green]Saved configuration with message:[/green] [red]{message}[/red]")
 
     def rename_dal(self, new_name: str)->None:
@@ -133,18 +141,18 @@ class ConfigurationController(Static):
     def add_new_conf_obj(self, class_id: str, uid: str):
         """Add new object to configuration
         """        
-        self._handler.add_new_conf_obj(class_id, uid)
+        self._handler.configuration_handler.add_new_conf_obj(class_id, uid)
         self._logger.write(f"[green]Added new configuration object[/green] [red]{class_id}[/red]@[yellow]{uid}[/yellow]")
         
     def destroy_conf_obj(self, class_id: str, uid: str):
         """Destroy object in configuration
         """
-        self._handler.destroy_conf_obj(class_id, uid)
+        self._handler.configuration_handler.destroy_conf_obj(class_id, uid)
         self._logger.write(f"[green]Destroyed configuration object[/green] [red]{class_id}[/red]@[yellow]{uid}[/yellow]")
 
     def __no_handler_error(self):
         """Raise error if no handler is setup"""
-        if self._handler is None:
+        if self._handler.configuration_handler is None:
             raise Exception("No handler has been setup")
 
     class Changed(Message):

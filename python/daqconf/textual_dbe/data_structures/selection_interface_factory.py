@@ -1,8 +1,8 @@
-from daqconf.textual_dbe.data_structures.configuration_handler import ConfigurationHandler
+from daqconf.textual_dbe.data_structures.structured_configuration import StructuredConfiguration
 
 class SelectionInterfaceFactory:
     @classmethod
-    def get_interface(cls, interface_name: str, configuration: ConfigurationHandler):
+    def get_interface(cls, interface_name: str, configuration: StructuredConfiguration):
         """Very simple factory for generating selection interfaces
 
         Arguments:
@@ -11,7 +11,7 @@ class SelectionInterfaceFactory:
 
         Raises:
             Exception: If interface_name is not recognised
-
+§
         Returns:
             SelectionInterface -- Either ClassSelectionMenu or RelationalSelectionMenu
         """
