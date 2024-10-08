@@ -164,7 +164,8 @@ class ConfigurationController(Static):
             self._logger.write_error(f"Cannot disable {self.generate_rich_string(self._current_selected_object)} must inherit from [red]Component[/red]!")
             return
         
-        self._logger.write(f"[bold red]Warning this will toggle whether[/bold red] {self.generate_rich_string(self._current_selected_object)} [bold red] is enabled/disabled in ALL sessions loaded, use with caution![/bold red]")
+        self._logger.write(f"[bold red]Warning this will toggle whether[/bold red] {self.generate_rich_string(self._current_selected_object)} [bold red] is enabled/disabled in ALL sessions loaded")
+        self._logger.write("[bold red]PLEASE USE WITH CAUTION![/bold red]")
 
         
         # Get all top level sessions
