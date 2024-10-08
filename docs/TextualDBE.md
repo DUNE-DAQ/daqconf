@@ -13,6 +13,8 @@ Once this has been loaded in the screen should update. The editor is split into 
 ![image](textual_dbe/file_loaded_screen.png)
 
 ### The Navigator
+
+#### Browsing Objects
 Configuration objects can be browsed via the navigation menu which has two views. The first breaks down configuration objects by class allowing for easy navigation without showing the underlying structure of the configuration. Note that all derived classes will be included as well for each category. For example `component` will include all `segment` objects.
 ![image](textual_dbe/class_select_view.png)
 
@@ -22,9 +24,14 @@ The second "relationship" view will display the relationships between configurat
 
 If an object in the navigator menu is selected it will be treated as `active` and its attributes will be displayed in the configuration object attribute table.
 
+#### Disabling objects
+Any objects that inherit from `component` can be disabled by selecting them + pressing `ctrl+d`.
+
 ### Configuration Object Attribute Table
 The configuration table displays the values of attributes of the currently active configuration object. The values for these attributes can be modified by clicking on the row of the table which contains them. Type checking is very limited so this should be treated with caution
 ![image](textual_dbe/table_view.png)
+
+After an object has been modified, it can then be saved by pressing `ctrl+s` or saved with an additional message with `shift+S`.
 
 ### Logger
 Logger simply displays warnings/updates. Not everything is fully logged and there are no verbosity levels.
@@ -32,13 +39,12 @@ Logger simply displays warnings/updates. Not everything is fully logged and ther
 
 ## Known Issues
 - Currently relationships for given configuration objects cannot be modified 
-- No way to disable components
 - Type checking is not robust at all for editing attributes
 - All newly created objects are currently just saved to the active database
 - No way to create new databases
 - Relationship view simply displays objects rather than also displaying the name of the relationship
 
 ## To Do List
-- [ ] Add method to disable components
+- [x] Add method to disable components
 - [ ] Add more robust method for adding/modifying/deleting config objects
 - [ ] Display name of relationship in relationship view
