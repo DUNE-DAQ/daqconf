@@ -164,6 +164,7 @@ class ConfigurationController(Static):
             self._logger.write_error(f"Cannot disable {self.generate_rich_string(self._current_selected_object)} must inherit from [red]Component[/red]!")
             return
         
+        self._logger.write("\n[red]=============================")
         self._logger.write(f"[bold red]Warning this will toggle whether[/bold red] {self.generate_rich_string(self._current_selected_object)} [bold red] is enabled/disabled in ALL sessions loaded")
         self._logger.write("[bold red]PLEASE USE WITH CAUTION![/bold red]")
 
@@ -187,6 +188,7 @@ class ConfigurationController(Static):
                 
             session.disabled = session_disabled_elements
             self._handler.configuration_handler.configuration.update_dal(session)        
+        self._logger.write("[red]=============================\n")
 
 
     def __no_handler_error(self):

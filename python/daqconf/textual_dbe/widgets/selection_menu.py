@@ -96,5 +96,5 @@ class SelectionMenu(Static):
     
     
     def __check_item_disabled(self, item, disabled_elements):
-        """Check if an item is disabled"""
+        """Check if an item is disabled [currently unecessary extra method but may be useful in extended version]"""
         return item in disabled_elements
