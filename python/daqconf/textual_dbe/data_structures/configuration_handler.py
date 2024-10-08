@@ -57,13 +57,13 @@ class ConfigurationHandler:
         relations_list = []
         
         # Loop over relations                
-        for rel, rel_info in relations.items():
+        for rel in relations.keys():
             rel_val = getattr(conf_object, rel)
             # Hacky but pybind got fussy about casting list(dal)
             if not isinstance(rel_val, list):
                 rel_val = [rel_val]
             
-            relations_list.append({rel_info['type']: [v for v in rel_val if v is not None]})
+            relations_list.append({rel: [v for v in rel_val if v is not None]})
 
         return relations_list
     
