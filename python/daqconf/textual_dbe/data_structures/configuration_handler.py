@@ -177,3 +177,5 @@ class ConfigurationHandler:
         dal = self.configuration.get_dal(class_id, uid)
         self.configuration.destroy_dal(dal)
         self._loaded_dals.remove(dal)
+        
+        

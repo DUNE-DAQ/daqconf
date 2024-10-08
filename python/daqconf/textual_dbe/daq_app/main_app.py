@@ -26,8 +26,8 @@ class MainScreen(Screen):
                 Binding("S", "save_configuration_with_message", "Save Configuration with Message"),
                 Binding("o", "open_configuration", "Open Configuration"),
                 Binding("a", "add_configuration", "Add Configuration"),
-                Binding("d", "destroy_configuration", "Destroy Configuration"),
-                Binding("m", "toggle_menu", "Toggle Menu")]
+                Binding("del", "destroy_configuration", "Destroy Configuration"),
+                Binding("ctrl+d", "toggle_disable", "Toggle Disable"),]
     
     def compose(self):
         """Compose main app
@@ -93,6 +93,16 @@ class MainScreen(Screen):
         except:
             self.query_one(RichLogWError).write_error("Could not destroy configuration object")
   
+    async def action_toggle_disable(self)->None:
+        """Toggle disable on the selected configuration object
+        """        
+        self.query_one(RichLogWError).write("[yellow]TOGGLE DISABLE METHOD CALLED THIS IS CURRENTLY NOT WELL IMPLEMENTED![/yellow]")
+        try:
+            self._config_controller.toggle_disable_conf_obj()
+            menu = self.query_one(SelectionPanel)
+            menu.refresh(recompose=True)
+        except:
+            self.query_one(RichLogWError).write_error("Could not toggle disable configuration object")
 
 class DbeApp(App):
     # HACK: Need to sort this, only way to get the CSS to work

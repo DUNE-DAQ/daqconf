@@ -1,3 +1,5 @@
+import confmodel
+
 from typing import Dict
 
 from textual.widgets import Static
@@ -108,8 +110,12 @@ class ConfigurationController(Static):
         return self._handler.configuration_handler.configuration
 
     @classmethod
-    def generate_rich_string(cls, dal_obj)->str:
-        return f"[yellow]{dal_obj.className()}[/yellow]@[red]{getattr(dal_obj, 'id')}[/red]"
+    def generate_rich_string(cls, dal_obj, obj_disabled: bool=False)->str:
+        """Generate a rich string for a DAL object, shouldn't live here but :shrug:"""
+        if obj_disabled:
+            return f"[grey]{getattr(dal_obj, 'id')}[/grey]@[grey]{dal_obj.className()}[/grey]"
+        else:
+            return f"[yellow]{getattr(dal_obj, 'id')}[/yellow]@[red]{dal_obj.className()}[/red]"
 
 
     def get_interface(self):
@@ -149,6 +155,38 @@ class ConfigurationController(Static):
         """
         self._handler.configuration_handler.destroy_conf_obj(class_id, uid)
         self._logger.write(f"[green]Destroyed configuration object[/green] [red]{class_id}[/red]@[yellow]{uid}[/yellow]")
+
+
+    def toggle_disable_conf_obj(self):
+        """Disable current object in configuration
+        """
+        if self._current_selected_object not in self._handler.configuration_handler.get_all_conf_classes()['Component']:
+            self._logger.write_error(f"Cannot disable {self.generate_rich_string(self._current_selected_object)} must inherit from [red]Component[/red]!")
+            return
+        
+        self._logger.write(f"[bold red]Warning this will toggle whether[/bold red] {self.generate_rich_string(self._current_selected_object)} [bold red] is enabled/disabled in ALL sessions loaded, use with caution![/bold red]")
+
+        
+        # Get all top level sessions
+        top_sessions = [top_object for top_object in self._handler.relational_graph.top_level_nodes\
+                            if top_object.className() == "Session"]
+        
+        # DAL as configuration object        
+        # Loop over all sessions
+        for session in top_sessions:
+            session_disabled_elements = session.disabled
+            disabled = self._current_selected_object in session_disabled_elements
+
+            if disabled:
+                self._logger.write(f"Enabling {self.generate_rich_string(self._current_selected_object)} in {self.generate_rich_string(session)}")
+                session_disabled_elements.remove(self._current_selected_object)
+            else:
+                self._logger.write(f"Disabling {self.generate_rich_string(self._current_selected_object)} in {self.generate_rich_string(session)}")
+                session_disabled_elements.append(self._current_selected_object)
+                
+            session.disabled = session_disabled_elements
+            self._handler.configuration_handler.configuration.update_dal(session)        
+
 
     def __no_handler_error(self):
         """Raise error if no handler is setup"""

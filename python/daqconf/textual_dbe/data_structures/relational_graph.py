@@ -25,7 +25,9 @@ class RelationalGraph:
 
         # Configuration handler
         self._handler = config_handler
+        self.generate_graph()
         
+    def generate_graph(self):
         # Matrices etc. we require [maybe don't need to be defined at the constructor level, could be
         # class methods]
         self._topological_ordered_matrix = np.array([[]])
@@ -39,6 +41,7 @@ class RelationalGraph:
         self.__generate_adjacency_matrix()
         # Sort topologically and get longest paths
         self.__calculate_longest_paths()
+
             
     def __generate_adjacency_matrix(self):
         """Generates adjacency matrix from configuration handler object i.e. finds connected DALs
@@ -113,3 +116,6 @@ class RelationalGraph:
     @property
     def top_level_nodes(self):
         return [dal for i, dal in enumerate(self._handler.conf_obj_list) if self._max_distance[i]==0]
+    
+    
+    

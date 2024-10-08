@@ -7,7 +7,10 @@ from daqconf.textual_dbe.data_structures.relational_graph import RelationalGraph
 
 class StructuredConfiguration:
     def __init__(self, configuration_file_name: str):
-        """Structured configuration object, essentially a wrapper around a ConfigurationHandler object
+        """Structured configuration object, essentially a wrapper around a 
+        ConfigurationHandler object and a RelationalGraph object. 
+        
+        Provides access to both the configuration and its relational structure
 
         Arguments:
             configuration_file_name -- name of the configuration .database.xml file to open
@@ -22,3 +25,4 @@ class StructuredConfiguration:
     @property
     def relational_graph(self)->RelationalGraph:
         return self._relational_graph
+    
