@@ -58,29 +58,29 @@ class SelectionMenu(Static):
             if isinstance(config_item, dict):
                 # Print the DAL name
                 config_key = list(config_item.keys())[0]
-                
-                # Need to be able to add categories
-                if not isinstance(config_key, str):
+                config_objects = list(config_item.values())[0]
+
+                # Need to be able to add categories so check if it's just a string
+                if isinstance(config_key, str):
+                    item_disabled = is_disabled
+                    dal_str = config_key
+                    stored_data=None #
+
+                else: 
                     if config_key.className() == "Session":
                         disabled_elements = config_key.disabled
+                        # Remove the ResourceBase object since it just doubly defines disabled items
                 
                     # Check if the item is disabled
                     item_disabled = self.__check_item_disabled(config_key, disabled_elements) or is_disabled
                     
-                    dal_str = self._controller.generate_rich_string(list(config_item.keys())[0], item_disabled)
+                    dal_str = self._controller.generate_rich_string(config_key, item_disabled)
                     stored_data = config_key
-
-                # Need to be able to deal with strings as well so we can categorise items!
-                else:
-                    item_disabled = is_disabled
-                    dal_str = config_key
-                    stored_data=None # To s
                 
                 # Bit confusing, set ensure we're not multiply defining things in the tree,
                 # for example disabled items in a session may also be defined elsewhere
-                unique_config_objects = self.__get_unique_config_items(list(config_item.values())[0])
                 tree_node = input_node.add(dal_str, data=stored_data)
-                self.__build_tree_node(tree_node, unique_config_objects, item_disabled, disabled_elements)
+                self.__build_tree_node(tree_node, config_objects, item_disabled, disabled_elements)
                                 
             else:
                 # No sub-levels, just add the leaf
@@ -93,30 +93,6 @@ class SelectionMenu(Static):
         
         if event.node.data is not None: 
             controller.current_dal = event.node.data
-
-
-    def __get_unique_config_items(self, input_list: list):
-        """Get unique config items from a list of dictionaries
-        
-            this is very messy but it's the only way conffwk will play nice
-        """
-
-        # We can idenitify items by keys
-        unique_items = np.empty(len(input_list), dtype=object)
-        
-        """ Okay this is a bit hacky
-             Can't compare dicts directly to each other + schema
-             so we compare the top level conf objects instead!
-        """
-        for i, item in enumerate(input_list):
-            if isinstance(item, dict):
-                if list(item.keys())[0] not in unique_items:
-                    unique_items[i] = list(item.keys())[0]
-            elif item not in unique_items:
-                unique_items[i] = item
-
-        # Get all entries in input_list unique_items = True
-        return np.array(input_list)[unique_items is not None][0]
     
     
     def __check_item_disabled(self, item, disabled_elements):
