@@ -113,9 +113,9 @@ class ConfigurationController(Static):
     def generate_rich_string(cls, dal_obj, obj_disabled: bool=False)->str:
         """Generate a rich string for a DAL object, shouldn't live here but :shrug:"""
         if obj_disabled:
-            return f"[grey]{getattr(dal_obj, 'id')}[/grey]@[grey]{dal_obj.className()}[/grey]"
+            return f"[grey]{getattr(dal_obj, 'id')}[/grey]@[grey]{dal_obj.className()}[/grey] [bold red]DISABLED[/bold red]"
         else:
-            return f"[yellow]{getattr(dal_obj, 'id')}[/yellow]@[red]{dal_obj.className()}[/red]"
+            return f"[yellow]{getattr(dal_obj, 'id')}[/yellow]@[green]{dal_obj.className()}[/green]"
 
 
     def get_interface(self):
