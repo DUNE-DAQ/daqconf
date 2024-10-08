@@ -55,12 +55,21 @@ class RelationalSelectionMenu(SelectionInterface):
         Arguments:
             conf_obj -- Configuration object
         """        
+        
+        # We can deal with the schema
         relationships = self._handler.configuration_handler.get_relationships_for_conf_object(conf_obj)
         
         if not len(relationships):
             return conf_obj
+
+        relations_list = []
+        for rel_category in relationships:
+            for rel_type, rel in rel_category.items():
+                # Bit slower but configuration isn't large enough for this to really matter]
+                relations_list.append({f"[blue]{rel_type}[/blue]": [self.__build_node(r) for r in rel]})
+            
         
-        return {conf_obj: [self.__build_node(rel) for rel in relationships]}
+        return {conf_obj: relations_list}
     
     def __repr__(self):
         return "RelationalSelectionMenu"

@@ -25,9 +25,11 @@ class MainScreen(Screen):
                 Binding("ctrl+s", "save_configuration", "Save Configuration"),
                 Binding("S", "save_configuration_with_message", "Save Configuration with Message"),
                 Binding("o", "open_configuration", "Open Configuration"),
-                Binding("a", "add_configuration", "Add Configuration"),
-                Binding("del", "destroy_configuration", "Destroy Configuration"),
+                # Binding("a", "add_configuration", "Add Configuration"),
+                # Binding("del", "destroy_configuration", "Destroy Configuration"),
                 Binding("ctrl+d", "toggle_disable", "Toggle Disable"),]
+    
+    
     
     def compose(self):
         """Compose main app
@@ -37,7 +39,15 @@ class MainScreen(Screen):
         yield self._config_controller
         yield Footer()
         
-        yield RichLogWError(id="main_log", highlight=True, markup=True)
+        logger = RichLogWError(id="main_log", highlight=True, markup=True)
+        yield logger
+        
+        # Splash screen
+        logger.write("[red]========================================================================")
+        logger.write("    [bold yellow]Welcome to the Textual Database Editor![/bold yellow]")
+        logger.write("    [green]This is a work in progress, please use with[/green] [bold red]caution![/bold red]")
+        logger.write("[red]========================================================================\n\n")
+        
 
             
     def on_configuration_controller_changed(self, event):
@@ -64,35 +74,6 @@ class MainScreen(Screen):
         # Push the OpenFileScreen and wait for it to be closed
         await self.app.push_screen(OpenFileScreen())
 
-    async def action_add_configuration(self)->None:
-        """Dunder method for adding configuration object
-        
-            CURRENTLY THIS IS A DUMMY METHOD USE WITH CAUTION
-        
-        """        
-        self.query_one(RichLogWError).write("[yellow]ADD CONFIGURATION METHOD CALLED THIS IS CURRENTLY NOT WELL IMPLEMENTED![/yellow]")
-        try:
-            self._config_controller.add_new_conf_obj("GeoId", "dummy")
-            menu = self.query_one(SelectionPanel)
-            menu.refresh(recompose=True)
-            
-        except:
-            self.query_one(RichLogWError).write_error(f"Could not add configuration object")
-    
-    async def action_destroy_configuration(self)->None:
-        """Dunder method for destroying configuration object
-        
-        CURRENTLY THIS IS A DUMMY METHOD USE WITH CAUTION
-        """        
-        self.query_one(RichLogWError).write("[yellow]DESTROY CONFIGURATION METHOD CALLED THIS IS CURRENTLY NOT WELL IMPLEMENTED![/yellow]")
-
-        try:
-            self._config_controller.destroy_conf_obj("GeoId", "dummy")
-            menu = self.query_one(SelectionPanel)
-            menu.refresh(recompose=True)
-        except:
-            self.query_one(RichLogWError).write_error("Could not destroy configuration object")
-  
     async def action_toggle_disable(self)->None:
         """Toggle disable on the selected configuration object
         """        
@@ -103,6 +84,39 @@ class MainScreen(Screen):
             menu.refresh(recompose=True)
         except:
             self.query_one(RichLogWError).write_error("Could not toggle disable configuration object")
+
+    """
+    Currently adding/destroying configuration objects is not well implemented and is disabled
+    """
+    # async def action_add_configuration(self)->None:
+    #     """Dunder method for adding configuration object
+        
+    #         CURRENTLY THIS IS A DUMMY METHOD USE WITH CAUTION
+        
+    #     """        
+    #     self.query_one(RichLogWError).write("[yellow]ADD CONFIGURATION METHOD CALLED THIS IS CURRENTLY NOT WELL IMPLEMENTED![/yellow]")
+    #     try:
+    #         self._config_controller.add_new_conf_obj("GeoId", "dummy")
+    #         menu = self.query_one(SelectionPanel)
+    #         menu.refresh(recompose=True)
+            
+    #     except:
+    #         self.query_one(RichLogWError).write_error(f"Could not add configuration object")
+    
+    # async def action_destroy_configuration(self)->None:
+    #     """Dunder method for destroying configuration object
+        
+    #     CURRENTLY THIS IS A DUMMY METHOD USE WITH CAUTION
+    #     """        
+    #     self.query_one(RichLogWError).write("[yellow]DESTROY CONFIGURATION METHOD CALLED THIS IS CURRENTLY NOT WELL IMPLEMENTED![/yellow]")
+
+    #     try:
+    #         self._config_controller.destroy_conf_obj("GeoId", "dummy")
+    #         menu = self.query_one(SelectionPanel)
+    #         menu.refresh(recompose=True)
+    #     except:
+    #         self.query_one(RichLogWError).write_error("Could not destroy configuration object")
+  
 
 class DbeApp(App):
     # HACK: Need to sort this, only way to get the CSS to work

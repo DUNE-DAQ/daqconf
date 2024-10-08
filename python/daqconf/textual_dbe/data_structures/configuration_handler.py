@@ -52,22 +52,18 @@ class ConfigurationHandler:
         Returns:
             _description_
         """        
-        relations = self.get_related_classes(conf_object.className())
+        relations =  self.get_related_classes(conf_object.className())
 
         relations_list = []
         
         # Loop over relations                
-        for rel in relations:
+        for rel, rel_info in relations.items():
             rel_val = getattr(conf_object, rel)
             # Hacky but pybind got fussy about casting list(dal)
             if not isinstance(rel_val, list):
                 rel_val = [rel_val]
-
-            # Loop over sub-relations
-            for v in rel_val:
-                if v is None: continue
             
-                relations_list.append(v)
+            relations_list.append({rel_info['type']: [v for v in rel_val if v is not None]})
 
         return relations_list
     
@@ -100,8 +96,7 @@ class ConfigurationHandler:
         Returns:
             List of all related classses
         """        
-        related_classes = [class_ for class_ in self._configuration.relations(class_id, True).keys()]
-        return related_classes
+        return self._configuration.relations(class_id, True)
         
     def get_inherited_classes(self, class_id: str)->List[str]:
         inherited_classes = [class_ for class_ in self._configuration.classes()\
@@ -158,7 +153,7 @@ class ConfigurationHandler:
     def add_new_conf_obj(self, class_id: str, uid: str):
         """Add new configuration object
 
-        Arguments:
+    Arguments:
             class_id -- Class name
             uid -- Unique object ID
         """        

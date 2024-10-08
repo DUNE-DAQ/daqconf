@@ -47,9 +47,12 @@ class RelationalGraph:
         """Generates adjacency matrix from configuration handler object i.e. finds connected DALs
         """
         for i, dal in enumerate(self._handler.conf_obj_list):
-            for connection in self._handler.get_relationships_for_conf_object(dal):
+            for connection_category in self._handler.get_relationships_for_conf_object(dal):
                 # Allows for multiply connected nodes
-                self._adjacency_matrix[i][self._handler.conf_obj_list.index(connection)] += 1
+                for connection in list(connection_category.values())[0]:
+                    # Loop over just conf objects
+                    self._adjacency_matrix[i][self._handler.conf_obj_list.index(connection)] += 1
+                    
     
     def __compute_degree(self):
         """Get number of incoming nodes for each node"""

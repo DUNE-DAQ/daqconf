@@ -158,7 +158,7 @@ class OpenFile(__MenuWithButtons):
         data_base_name = path.basename(current_database_path)
         
         # Print everything!
-        logger.write(f"[green]Opened new configuration file: [/green][red]{data_base_name}[/red][green].\nConnected databases are:[/green]\n" \
+        logger.write(f"[bold green]Opened new configuration file: [/bold green][bold red]{data_base_name}[/bold red][bold green].\nConnected databases are:[/bold green]\n" \
                      + "".join([f"   - [red]{db}[/red] \n" for db in self._config_controller.configuration.get_includes()]))
         
 
