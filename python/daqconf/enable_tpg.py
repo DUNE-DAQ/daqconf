@@ -16,24 +16,24 @@ def get_segment_apps(segment):
 
     return apps
 
-def enable_tpg(oksfile, disable, session_name):
+def enable_tpg(oksfile, disable, system_name):
     """Script to enable or disable (-d) TP generation in ReadoutApplications of the
     specified OKS configuration"""
     db = conffwk.Configuration("oksconflibs:" + oksfile)
-    if session_name == "":
-        session_dals = db.get_dals(class_name="Session")
-        if len(session_dals) == 0:
-            print(f"Error could not find any Session in file {oksfile}")
+    if system_name == "":
+        system_dals = db.get_dals(class_name="System")
+        if len(system_dals) == 0:
+            print(f"Error could not find any System in file {oksfile}")
             return
-        session = session_dals[0]
+        system = system_dals[0]
     else:
         try:
-            session = db.get_dal("Session", session_name)
+            system = db.get_dal("System", system_name)
         except:
-            print(f"Error could not find Session {session_name} in file {oksfile}")
+            print(f"Error could not find System {system_name} in file {oksfile}")
             return
-    # disabled = session.disabled
-    segment = session.segment
+    # disabled = system.disabled
+    segment = system.segment
     apps = get_segment_apps(segment)
     for aa in apps:
         try:

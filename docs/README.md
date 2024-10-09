@@ -4,7 +4,7 @@ This repository contains scripts for generating and manipulating OKS database fi
 ## Manipulation Tools
 
 ### oks_enable
-  Add Resource objects to or remove from the `disabled` relationship of a Session
+  Add Resource objects to or remove from the `disabled` relationship of a System
 
 ### consolidate
   Merge the contents of several database files, putting all objects into a single output file. Output file will only include schemas.
@@ -22,10 +22,10 @@ This repository contains scripts for generating and manipulating OKS database fi
   Ensure that database files are in the "DBE format", alphabetized and with correct spacing
 
 ### oks_enable_tpg
-  Enable or disable TPG for a Session's ReadoutApplications
+  Enable or disable TPG for a System's ReadoutApplications
 
 ### validate
-  Attempt to determine if a given Session configuration is valid and does not contain common errors
+  Attempt to determine if a given System configuration is valid and does not contain common errors
 
 ## Generation Tools
 
@@ -56,8 +56,8 @@ you specify on the commad line.
 ### generate_hwmap.py
   Create a set of DetectorToDaqConnection objects, GeoIDs, and streams for the given number of links and applications.
 
-### generate_sessionOKS.py
-  Create a Session using a number of input Segment databases.
+### generate_systemOKS.py
+  Create a System using a number of input Segment databases.
 
 ### generate_triggerOKS.py
   Create a basic Trigger Segment (mlt, optionally TC maker), using pre-defined objects.

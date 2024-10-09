@@ -1,15 +1,15 @@
 #!/bin/env python3
 import click
 
-from  daqconf.validate import validate_session
+from  daqconf.validate import validate_system
 
 @click.command()
-@click.option('--session_name', '-s', type=str, default='',
-              help='Name of session to validate if not specified the first '
-              'session found in the database will be used')
+@click.option('--system_name', '-s', type=str, default='',
+              help='Name of system to validate if not specified the first '
+              'system found in the database will be used')
 @click.argument('oksfile')
-def do_validate(oksfile, session_name):
-    validate_session(oksfile, session_name)
+def do_validate(oksfile, system_name):
+    validate_system(oksfile, system_name)
 
 if __name__ == '__main__':
     do_validate()

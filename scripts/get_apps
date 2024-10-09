@@ -1,14 +1,14 @@
 #!/bin/env python3
 import click
-from daqconf.get_session_apps import get_database_apps
+from daqconf.get_system_apps import get_database_apps
 
 @click.command()
 @click.argument('oksfile')
 def get_apps(oksfile):
     appinfo = get_database_apps(oksfile)  
 
-    for session in appinfo:
-        print(f"There are {len(appinfo[session])} apps in session {session}: {appinfo[session]}")
+    for system in appinfo:
+        print(f"There are {len(appinfo[system])} apps in system {system}: {appinfo[system]}")
 
 if __name__ == '__main__':
     get_apps()

@@ -352,13 +352,13 @@ def generate_readout(
   the readoutmap (config/np04readoutmap.data.xml) and write the
   generated apps to readoutApps.data.xml.
 
-     generate_readoutOKS --session --segment \
+     generate_readoutOKS --system --segment \
        -i appmodel/fsm -i hosts \
        -i appmodel/connections.data.xml -i appmodel/moduleconfs  \
-       config/np04readoutmap.data.xml np04readout-session.data.xml
+       config/np04readoutmap.data.xml np04readout-system.data.xml
 
    Will do the same but in addition it will generate a containing
-  Segment for the apps and a containing Session for the Segment.
+  Segment for the apps and a containing System for the Segment.
 
   NB: Currently FSM generation is not implemented so you must include
   an fsm file in order to generate a Segment
@@ -1053,8 +1053,8 @@ def generate_trigger(
     return
 
 
-def generate_session(oksfile, include, session_name, op_env):
-    """Simple script to create an OKS configuration file for a session.
+def generate_system(oksfile, include, system_name, op_env):
+    """Simple script to create an OKS configuration file for a system.
 
     The file will automatically include the relevant schema files and
   any other OKS files you specify. Any necessary objects not supplied
@@ -1121,8 +1121,8 @@ def generate_session(oksfile, include, session_name, op_env):
     conn_svc = db.get_dal(class_name="ConnectionService", uid="local-connection-server")
     opmon_svc = db.get_dal(class_name="OpMonURI", uid="local-opmon-uri")
 
-    sessiondal = dal.Session(
-        session_name,
+    systemdal = dal.System(
+        system_name,
         environment=db.get_dal(
             class_name="VariableSet", uid="local-variables"
         ).contains,
@@ -1131,7 +1131,7 @@ def generate_session(oksfile, include, session_name, op_env):
         infrastructure_applications=[conn_svc],
         opmon_uri=opmon_svc,
     )
-    db.update_dal(sessiondal)
+    db.update_dal(systemdal)
 
     db.commit()
     return

@@ -1,0 +1,21 @@
+#!/bin/env python3
+import conffwk
+import confmodel
+
+import click
+import os
+import glob
+from daqconf.set_system_env_var import set_system_env_var
+
+@click.command()
+@click.argument('oks_system_name')
+@click.argument('oksfile')
+@click.argument('env_var_name', required=True, nargs=1)
+@click.argument('env_var_value', required=True, nargs=1)
+def oks_set_system_env_var(oksfile, env_var_name, env_var_value, oks_system_name):
+  """Script to set the value of an environment variable in the specified System of the
+  specified OKS database file"""
+  set_system_env_var(oksfile, env_var_name, env_var_value, oks_system_name)
+
+if __name__ == '__main__':
+  oks_set_system_env_var()
