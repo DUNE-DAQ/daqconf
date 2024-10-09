@@ -172,7 +172,7 @@ class DalRichRenderer:
                 path = f"[blue]{self._confdb.get_obj(a.className(), a.id).contained_in()}[/blue]" if show_path else ""
                 ports = ', '.join([f'{svc.port}([orange1]{svc.id}[/orange1])' for svc in a.exposes_service ])
                 host = f"[medium_purple1]{a.runs_on.runs_on.id}[/medium_purple1]"
-                enabled = is_enabled(session, a) if session else None
+                enabled = self.is_enabled(session, a) if session else None
 
                 app_tree.add(f"{enabled_to_emoji(enabled)} [green]{a.id}[/green][magenta]@{a.className()}[/magenta] on {host} [{ports}] {path}")
 
@@ -335,7 +335,7 @@ def show_sessions(obj, show_file_paths):
         for a in s.infrastructure_applications:
             infra_tree.add(a.id)
 
-        tree.add(make_segment_tree(cfg, s.segment, s, show_file_paths))
+        tree.add(dr.make_segment_tree(s.segment, s, show_file_paths))
 
         t = Table("body", title=f'{s.id} tree', show_header=False, expand=True)
         t.add_row(tree)
@@ -359,7 +359,7 @@ def show_sessions(obj, show_file_paths):
 
         t.add_row('Objects', rh(str(len(session_objs))))
         t.add_row('Disabled mask', rh(str([ i.id for i in s.disabled])))
-        t.add_row('Disabled resources', rh(str([ r.id for r in res if is_enabled(s, r) != 1])))
+        t.add_row('Disabled resources', rh(str([ r.id for r in res if dr.is_enabled(s, r) != 1])))
         # print(t)
         grid.add_row(t)
 
