@@ -75,11 +75,11 @@ class ConfigurationController(Static):
         Arguments:
             file_name -- New database to load
         """ 
-        # try:
-        self._handler = StructuredConfiguration(file_name)
-        # except:
-        #     raise Exception(f"Could not open {file_name}")
-
+        try:
+            self._handler = StructuredConfiguration(file_name)
+        except:
+            self._logger.write_error(f"Could not load configuration from [bold yellow]{file_name}[/bold yellow]")
+            
     @property
     def handler(self)->StructuredConfiguration | None:
         """Return the configuration handler
@@ -157,39 +157,64 @@ class ConfigurationController(Static):
         self._logger.write(f"[green]Destroyed configuration object[/green] [red]{class_id}[/red]@[yellow]{uid}[/yellow]")
 
 
-    def toggle_disable_conf_obj(self):
-        """Disable current object in configuration
-        """
+    def can_be_disabled(self)->bool:
+        """Check if current object is capable of being disabled
+
+        Returns:
+            bool -- True if object can be disabled
+        """        
+        if self._current_selected_object is None:
+            self._logger.write_error("No object selected")
+            return False
+        
         if self._current_selected_object not in self._handler.configuration_handler.get_all_conf_classes()['Component']:
             self._logger.write_error(f"Cannot disable {self.generate_rich_string(self._current_selected_object)} must inherit from [red]Component[/red]!")
-            return
-        
-        self._logger.write("\n[red]=============================")
-        self._logger.write(f"[bold red]Warning this will toggle whether[/bold red] {self.generate_rich_string(self._current_selected_object)} [bold red] is enabled/disabled in ALL sessions loaded")
-        self._logger.write("[bold red]PLEASE USE WITH CAUTION![/bold red]")
+            return False
 
-        
-        # Get all top level sessions
-        top_sessions = [top_object for top_object in self._handler.relational_graph.top_level_nodes\
-                            if top_object.className() == "Session"]
-        
+        return True
+
+
+    def toggle_disable_conf_obj(self, selection_menu)->None:
+        """Disable current object in configuration
+        """
+                
+        self._logger.write("\n[red]=============================") 
         # DAL as configuration object        
-        # Loop over all sessions
-        for session in top_sessions:
+        # Loop over all sessions [note currently this is badly implemented]
+        for session, toggle_enable in selection_menu:
             session_disabled_elements = session.disabled
-            disabled = self._current_selected_object in session_disabled_elements
 
-            if disabled:
+
+            # Make sure if nothing's happening we don't do anything
+            if self._current_selected_object not in session_disabled_elements and toggle_enable:
+                return
+            
+            elif self._current_selected_object in session_disabled_elements and not toggle_enable:
+                return
+
+            if toggle_enable:
                 self._logger.write(f"Enabling {self.generate_rich_string(self._current_selected_object)} in {self.generate_rich_string(session)}")
-                session_disabled_elements.remove(self._current_selected_object)
+                if self._current_selected_object in session_disabled_elements:            
+                    session_disabled_elements.remove(self._current_selected_object)
             else:
                 self._logger.write(f"Disabling {self.generate_rich_string(self._current_selected_object)} in {self.generate_rich_string(session)}")
-                session_disabled_elements.append(self._current_selected_object)
+                
+                if self._current_selected_object not in session_disabled_elements:
+                    session_disabled_elements.append(self._current_selected_object)
                 
             session.disabled = session_disabled_elements
             self._handler.configuration_handler.configuration.update_dal(session)        
         self._logger.write("[red]=============================\n")
 
+
+    def get_all_sessions(self)->list:
+        return [top_object for top_object in self._handler.relational_graph.top_level_nodes\
+                            if top_object.className() == "Session"]
+        
+    def is_selected_object_enabled(self)->list:
+        """Check if object is disabled in any session
+        """
+        return [self._current_selected_object not in session.disabled for session in self.get_all_sessions()]
 
     def __no_handler_error(self):
         """Raise error if no handler is setup"""

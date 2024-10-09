@@ -14,6 +14,7 @@ from daqconf.textual_dbe.widgets.custom_rich_log import RichLogWError
 from daqconf.textual_dbe.widgets.config_table import ConfigTable
 from daqconf.textual_dbe.widgets.configuration_controller import ConfigurationController
 from daqconf.textual_dbe.widgets.popups.file_io import SaveWithMessageScreen, OpenFileScreen
+from daqconf.textual_dbe.widgets.popups.dropdown_selector import SelectSessionScreen
 from daqconf.textual_dbe.app_structures.selection_panel import SelectionPanel
 
 class MainScreen(Screen):
@@ -77,13 +78,11 @@ class MainScreen(Screen):
     async def action_toggle_disable(self)->None:
         """Toggle disable on the selected configuration object
         """        
-        self.query_one(RichLogWError).write("[yellow]TOGGLE DISABLE METHOD CALLED THIS IS CURRENTLY NOT WELL IMPLEMENTED![/yellow]")
-        try:
-            self._config_controller.toggle_disable_conf_obj()
-            menu = self.query_one(SelectionPanel)
-            menu.refresh(recompose=True)
-        except:
-            self.query_one(RichLogWError).write_error("Could not toggle disable configuration object")
+        if self._config_controller.can_be_disabled():
+            await self.app.push_screen(SelectSessionScreen())
+        
+        # except:
+        self.query_one(RichLogWError).write_error("Could not toggle disable configuration object")
 
     """
     Currently adding/destroying configuration objects is not well implemented and is disabled

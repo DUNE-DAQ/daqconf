@@ -23,7 +23,7 @@ class __MenuWithButtons(Static):
         self._config_controller = self._main_screen.query_one(ConfigurationController)
 
     def compose(self):
-        """Generates interface
+        """Generates interfaxce
         """
         with Container(id="save_box"):
             with Horizontal(classes="buttons"):
@@ -41,8 +41,9 @@ class __MenuWithButtons(Static):
         raise NotImplementedError("input_action should be implemented in the child class")
             
     def on_input_submitted(self, event):
-        self.input_action(event.value)
-        self.app.screen.dismiss(result="yay")
+        if event.value:        
+            self.input_action(event.value)
+            self.app.screen.dismiss(result="yay")
         
     def on_button_pressed(self, event: Button.Pressed):
         if event.button.id != "cancel":
@@ -107,7 +108,11 @@ class OpenFile(__MenuWithButtons):
         Add new handler based on config name
         """
         self._config_controller.new_handler_from_str(new_config)
-        self.update_main_screen()
+        try:
+            self.update_main_screen()
+        except:
+            logger = self._main_screen.query_one("RichLogWError")
+            logger.write_error(f"[red]Could open: {new_config}")
     
     def button_actions(self, button_id: str | None):
         """Open file or browse for file (not implemented)
@@ -118,10 +123,14 @@ class OpenFile(__MenuWithButtons):
         match button_id:
             case "open":
                 input = self.query_one(Input)
-                self.input_action(input.value)
+                
+                # Safety check to avoid empty input
+                if input:                
+                    self.input_action(input.value)
 
             case "browse":
-                raise NotImplementedError("Sorry not done this yet, please enter full file path and hit enter/open!")
+                logger = self._main_screen.query_one("RichLogWError")
+                logger.write_error("Sorry not done this yet, please enter full file path and hit enter/open!")
 
         
 

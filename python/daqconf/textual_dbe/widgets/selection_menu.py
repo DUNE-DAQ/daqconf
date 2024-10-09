@@ -11,7 +11,7 @@ class SelectionMenu(Static):
     '''
     _tree = None
     
-    def compose(self):        
+    def compose(self):            
         self._build_tree()
         yield self._tree
     
@@ -43,7 +43,7 @@ class SelectionMenu(Static):
         for key, branch in sorted(self._controller.get_interface()[self.id].relationships.items()):
             tree_node = tree_root.add(f"[green]{key}[/green]", expand=False)            
             self.__build_tree_node(tree_node, branch, is_disabled=False, disabled_elements=[])
-            
+        
 
     def __build_tree_node(self, input_node: TreeNode, input_list: list, is_disabled: bool=False, disabled_elements: list=[]):
         """Recursively build tree nodes from a list of dictionaries"""
@@ -98,3 +98,56 @@ class SelectionMenu(Static):
     def __check_item_disabled(self, item, disabled_elements):
         """Check if an item is disabled [currently unecessary extra method but may be useful in extended version]"""
         return item in disabled_elements
+    
+    def save_tree_state(self) -> dict:
+        """Idea is that we want to preserve which nodes are collapsed to make restoring the tree
+        after modifying the configuration smoother
+
+        Returns:
+            dict of expanded nodes
+        """        
+        state = {
+            "expanded_nodes": [],
+            "selected_node": None,
+        }
+
+        def walk(node):
+            # Create a unique path for each node
+            node_identifier = f"{node.id}:{node.label}"
+            if node.is_expanded:
+                state["expanded_nodes"].append(node_identifier)
+            if node == self._tree.selected_node:
+                state["selected_node"] = node_identifier
+
+            # Recurse for children
+            for child in node.children:
+                walk(child)
+
+        # Start traversal from the root node
+        walk(self._tree.root)
+        return state
+
+
+    def restore_tree_state(self, state: dict):
+        """Restores tree to previous state as closely as possible
+
+        Arguments:
+            state -- previous saved state
+        """        
+        def walk(node):
+            node_identifier = f"{node.id}:{node.label}"
+            if node_identifier in state["expanded_nodes"]:
+                node.expand()
+            if node_identifier == state["selected_node"]:
+                self._tree.select_node(node)  # Restore selected node
+
+            # Recurse for children
+            for child in node.children:
+                walk(child, current_path)
+
+        # Start traversal from the root node
+        if self._tree is None:
+            self.app.query_one("RichLogWError").write_error("Tree not found!")
+            return
+        
+        walk(self._tree.root)
