@@ -8,7 +8,7 @@ import click
 
 import conffwk
 from daqconf.session import get_segment_apps
-from daqconf.dal_helpers import get_attribute_info, get_relation_info, get_attribute_list, get_relation_list, compare_dal_obj, find_related
+from daqconf.dal_helpers import get_attribute_info, get_relation_info, get_attribute_list, get_relation_list, compare_dal_obj, find_related, find_duplicates
 
 def start_ipython(loc):
     """
