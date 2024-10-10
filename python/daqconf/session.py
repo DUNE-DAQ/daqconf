@@ -8,6 +8,8 @@ def get_segment_apps(segment):
 
     for aa in segment.applications:
         apps.append(aa)
+    
+    apps.append(segment.controller)
 
     return apps
 
@@ -45,7 +47,6 @@ def get_apps_in_any_session(confdb):
         output[session.id] = get_segment_apps(segment)
 
     return output
-
 
 
 def enable_resource_in_session(db, session_name: str, resource: list[str], disable: bool):
