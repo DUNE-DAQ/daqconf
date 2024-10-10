@@ -31,13 +31,76 @@ Commands:
   verify-smart-apps      Verify smart applications in database
   ```
 
-  ## Inspection
-  ### `list-classes`
-  ### `show-object-tree`
-  ### `show-objects-of-class`
-  ### `show-sessions`
-  ### `show-smartapp-mods`
+## Inspection
+### `list-classes`
 
-  ## Verification
-  ### `verify-detstreams`
-  ### `verify-smart-apps`
+Displays the list of classes known to the schema loaded fom the database, together with the
+ids of objects belonging to that class fond in the database.
+
+```
+Usage: daqconf_inspector CONFIG_FILE list-classes [OPTIONS]
+
+Options:
+  -d, --show-derived-objects-as-parents
+                                  Include derived objects in parent class
+                                  listing
+  -h, --help                      Show this message and exit.
+```
+**Example**
+
+`daqconf_inspector ./ehn1-daqconfigs/sessions/np02-session.data.xml list-classes`
+
+![list-classes example](./img/inspector_list-classes.png)
+
+### `show-object-tree`
+### `show-objects-of-class`
+### `show-sessions`
+
+
+
+### `show-smartapp-mods`
+
+Executes the generate modules method for the selected smart application and session, and displays the results as a hierarchical tree.
+Resource objects are displaied with their status.
+
+In case visualising a single relationship branch is desired, the focus path option (see below for details) allows to specify the branch to focus on, starting trom the top object.
+If a focus path is specified, the recursion level is applied starting from the last element of the focus path.
+The focus path syntax combines relationhsip and object names, using `.` separators, and `[]` to select a single item in multi-value relatiosnips.
+The structure of the focus path specifier is `<relationship>[<optional object name>].<relationship>[<optional object name>]`.
+Note: specifiying the object name is required .
+
+
+**Legend**
+  
+| Icon  | Meaning|
+|---|---|
+| ✅ | Resource enabled |
+| ❌ | Resource directly disabled (included in the Session disable list) |
+| ⭕️ | Resource indirectly disabled by algorithm |
+| 🔵 | Not a resource |
+
+**Example**
+
+`daqconf_inspector ehn1-daqconfigs/sessions/np02-session.data.xml show-smartapp-mods np02-session crp4-wiec -f hermes-ctrl-crp4-wiec-np02-wib-1006 -l 2`
+
+![show-smartapp-mods example](./img/inspector_show-smartapp-mods.png)
+
+
+
+## Verification
+### `verify-detstreams`
+
+Performs basic validation of detector datastreams in a database.
+
+It checks the collection of all detastreans in the database for uiniqueness.
+It also checks that all geo_ids references by detecor streams are unique.
+
+### `verify-smart-apps`
+
+Performs basic validation on smart daq applications a database.
+
+Implemented tests:
+
+- *services*: The exposed service consistency between application interface and network rules is checked.
+  the services referenced in network rules are compared with the list in the `exposes_service` attribute.
+  The tedt fails if any of the network rules services is not present in `exposes_service`.
