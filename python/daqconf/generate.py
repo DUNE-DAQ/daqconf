@@ -130,7 +130,7 @@ def generate_dataflow(
         db.update_dal(dfapp_source_id)
 
         dfapp_control = dal.Service(
-            f"df-{dfapp_id:02}_control", protocol="rest", port=5601 + dfapp_id
+            f"df-{dfapp_id:02}_control", protocol="rest", port=dfo_control.port+1 + dfapp_id
         )
         db.update_dal(dfapp_control)
 
