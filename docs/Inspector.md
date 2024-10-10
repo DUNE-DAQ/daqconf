@@ -85,7 +85,27 @@ Options:
 
 
 ### `show-objects-of-class`
-### `show-sessions`
+
+Show attributes and relationships of all objects in the database belonging to KLASS
+
+
+
+```
+Usage: daqconf_inspector CONFIG_FILE show-objects-of-class
+           [OPTIONS] KLASS
+
+Options:
+  -v, --vertical / -h, --horizontal
+                                  Toggle vertical or horizontal orientation
+  --help                          Show this message and exit.
+  ```
+
+|**Example**|
+|---|
+|`daqconf_inspector ./ehn1-daqconfigs/sessions/np02-session.data.xml show-objects-of-class Segment`|
+|![list-classes example](./img/inspector_show-objects-of-class.png)|
+
+### `show-objects-of-class`
 
 
 
