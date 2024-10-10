@@ -183,6 +183,19 @@ Performs basic validation of detector datastreams in a database.
 It checks the collection of all detastreans in the database for uiniqueness.
 It also checks that all geo_ids references by detecor streams are unique.
 
+```
+Usage: daqconf_inspector CONFIG_FILE verify-detstreams [OPTIONS]
+
+Options:
+  -h, --help  Show this message and exit.
+```
+
+|**Example**|
+|---|
+|`daqconf_inspector ehn1-daqconfigs/sessions/np02-session.data.xml verify-detstreams`|
+|![verify-detstreams example](./img/inspector_verify-detstreams-1.png)|
+|![verify-detstreams example](./img/inspector_verify-detstreams-2.png)|
+
 ### `verify-smart-apps`
 
 Performs basic validation on smart daq applications a database.
@@ -192,3 +205,16 @@ Implemented tests:
 - *services*: The exposed service consistency between application interface and network rules is checked.
   the services referenced in network rules are compared with the list in the `exposes_service` attribute.
   The tedt fails if any of the network rules services is not present in `exposes_service`.
+
+
+```
+Usage: daqconf_inspector CONFIG_FILE verify-smart-apps [OPTIONS]
+
+Options:
+  -h, --help  Show this message and exit.
+```
+
+|**Example**|
+|---|
+|`daqconf_inspector ehn1-daqconfigs/sessions/np04-session.data.xml verify-smart-apps`|
+|![verify-smart-apps example](./img/inspector_verify-smart-apps.png)|
