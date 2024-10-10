@@ -105,9 +105,47 @@ Options:
 |`daqconf_inspector ./ehn1-daqconfigs/sessions/np02-session.data.xml show-objects-of-class Segment`|
 |![list-classes example](./img/inspector_show-objects-of-class.png)|
 
-### `show-objects-of-class`
+### `show-session`
 
+Show details of each session available in the configuration database
 
+For each session found in the the database, `show-session` displays:
+
+- The high-level session view, including segments, controllers and applications as
+  hierarchical tree.
+  ID and Class are shown for applications and controllers, along with their host and services (open ports)
+  The icon in front of segments and appliations indicate the enable/disable.
+
+  Optionally, it displays the path of the the database file where the object
+  is define
+
+  **Legend**
+    
+  | Icon  | Meaning|
+  |---|---|
+  | ✅ | Resource enabled |
+  | ❌ | Resource directly disabled (included in the Session disable list) |
+  | ⭕️ | Resource indirectly disabled by algorithm |
+  | 🔵 | Not a resource |
+
+- The summary of objects included in the session, including the count of referenced objects,
+the list of directly  disabled objects and the list of all disabled objects
+(directly or indirectly)
+
+- The session environment.
+
+```
+Usage: daqconf_inspector CONFIG_FILE show-sessions [OPTIONS]
+
+Options:
+  -p, --show-file_paths
+  -h, --help             Show this message and exit.
+```
+
+|**Example**|
+|---|
+|`daqconf_inspector ./ehn1-daqconfigs/sessions/np02-session.data.xml show-sessions`|
+|![show-sessionss example](./img/inspector_show-sessions.png)|
 
 ### `show-smartapp-mods`
 
