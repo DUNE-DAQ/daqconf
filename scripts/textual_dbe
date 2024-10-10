@@ -1,0 +1,7 @@
+#!/bin/env python3
+from daqconf.textual_dbe.daq_app import main_app
+
+# Run dbe-screen
+if __name__=="__main__":
+    app = main_app.DbeApp()
+    app.run()
