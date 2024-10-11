@@ -63,9 +63,9 @@ def make_moo_record(conf_dict,name,path='temptypes'):
     moo.otypes.make_type(schema='record', fields=fields, name=name, path=path)
 
 #===============================================================================
-def get_buffer_conf(source_id, data_request_timeout):
-    return bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 10_000_000),
-                           requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = 10_000_000,
+def get_buffer_conf(source_id, buffer_size, data_request_timeout):
+    return bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = buffer_size),
+                           requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = buffer_size,
                                                                                pop_limit_pct = 0.8,
                                                                                pop_size_pct = 0.1,
                                                                                source_id = source_id,
@@ -252,7 +252,7 @@ def get_trigger_app(
     # We always have a TC buffer even when there are no TPs, because we want to put the timing TC in the output file
     modules += [DAQModule(name = 'tc_buf',
                           plugin = 'TCBuffer',
-                          conf = get_buffer_conf(TC_SOURCE_ID["source_id"], DATA_REQUEST_TIMEOUT))]
+                          conf = get_buffer_conf(TC_SOURCE_ID["source_id"], 50_000, DATA_REQUEST_TIMEOUT))]
     if USE_HSI_INPUT:
         modules += [DAQModule(name = 'tctee_t',
                          plugin = 'TCTee')]
@@ -358,16 +358,7 @@ def get_trigger_app(
                             DAQModule(name = f'ta_buf_{region_id}_{plane}',
                                       plugin = 'TABuffer',
                                       # PAR 2022-04-20 Not sure what to set the element id to so it doesn't collide with the region/element used by TP buffers. Make it some big number that shouldn't already be used by the TP buffer
-                                      conf = bufferconf.Conf(latencybufferconf = readoutconf.LatencyBufferConf(latency_buffer_size = 100_000),
-                                                             requesthandlerconf = readoutconf.RequestHandlerConf(latency_buffer_size = 100_000,
-                                                                                                                 pop_limit_pct = 0.8,
-                                                                                                                 pop_size_pct = 0.1,
-                                                                                                                 source_id = ta_conf["source_id"],
-                                                                                                                 det_id = 1,
-                                                                                                                 # output_file = f"output_{idx + MIN_LINK}.out",
-                                                                                                                 stream_buffer_size = 8388608,
-                                                                                                                 request_timeout_ms = DATA_REQUEST_TIMEOUT,
-                                                                                                                 enable_raw_recording = False)))]
+                                      conf = get_buffer_conf(ta_conf["source_id"], 10_000, DATA_REQUEST_TIMEOUT))]
 
                 if(num_algs > 1):
                     modules += [DAQModule(name = f'tpsettee_ma_{region_id}_{plane}',
@@ -534,7 +525,7 @@ def get_trigger_app(
             for j in range(num_algs):
                 mgraph.connect_modules(f'tam_{region_id}_{plane}_{j}.output', f'tatee_{region_id}_{plane}_{j}.input', data_type="TriggerActivity", size_hint=1000)
                 mgraph.connect_modules(f'tatee_{region_id}_{plane}_{j}.output1', f"tcm_{j}.input", queue_name=f"tas{j}_to_tcm{j}", data_type="TriggerActivity", size_hint=1000)
-                mgraph.connect_modules(f'tatee_{region_id}_{plane}_{j}.output2', f'ta_buf_{region_id}_{plane}.ta_source',data_type="TriggerActivity", size_hint=1000)
+                mgraph.connect_modules(f'tatee_{region_id}_{plane}_{j}.output2', f'ta_buf_{region_id}_{plane}.ta_source', queue_name=f"tas_{region_id}_{plane}_to_tabuff_{region_id}_{plane}", data_type="TriggerActivity", size_hint=1000)
 
     mgraph.add_endpoint("td_to_dfo", "mlt.td_output", "TriggerDecision", Direction.OUT, toposort=True)
     mgraph.add_endpoint("df_busy_signal", "mlt.dfo_inhibit_input", "TriggerInhibit", Direction.IN)
