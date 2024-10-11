@@ -1127,7 +1127,7 @@ def generate_session(oksfile, include, session_name, op_env):
         environment=db.get_dal(
             class_name="VariableSet", uid="local-variables"
         ).contains,
-        connectivity_service=conn_scv_cfg,
+        connectivity_service=conn_svc_cfg,
         segment=seg,
         detector_configuration=detconf,
         infrastructure_applications=[conn_svc],
