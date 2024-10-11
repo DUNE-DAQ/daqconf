@@ -1119,6 +1119,7 @@ def generate_session(oksfile, include, session_name, op_env):
     db.update_dal(detconf)
 
     conn_svc = db.get_dal(class_name="ConnectionService", uid="local-connection-server")
+    conn_svc_cfg = db.get_dal(class_name="ConnectivityService", uid="local-connectivity-service-config")
     opmon_svc = db.get_dal(class_name="OpMonURI", uid="local-opmon-uri")
 
     sessiondal = dal.Session(
@@ -1126,6 +1127,7 @@ def generate_session(oksfile, include, session_name, op_env):
         environment=db.get_dal(
             class_name="VariableSet", uid="local-variables"
         ).contains,
+        connectivity_service=conn_scv_cfg,
         segment=seg,
         detector_configuration=detconf,
         infrastructure_applications=[conn_svc],
