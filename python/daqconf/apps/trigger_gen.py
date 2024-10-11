@@ -508,7 +508,7 @@ def get_trigger_app(
         ## # Use connect_modules to connect up the Tees to the buffers/MLT,
         ## # as manually adding Queues doesn't give the desired behaviour
 
-        for region_id in TA_SOURCE_IDS.keys():
+        for region_id, plane in TA_SOURCE_IDS.keys():
             # Send the output of the new TPSetTee module to each of the activity makers
             if(num_algs > 1):
                 for j in range(num_algs):

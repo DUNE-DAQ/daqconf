@@ -31,6 +31,7 @@ local cs = {
   trigger_algo_config: s.record("trigger_algo_config", [
     s.field("prescale", types.count, default=100),
     s.field("window_length", types.count, default=10000),
+    s.field("tc_type_name",   self.tc_type_name, default="kUnknown"),
     s.field("adjacency_threshold", types.count, default=6),
     s.field("adj_tolerance", types.count, default=4),
     s.field("trigger_on_adc", types.flag, default=false),
