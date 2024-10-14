@@ -1,12 +1,8 @@
-from gc import disable
 from daqconf.assets import resolve_asset_file
 from daqconf.utils import find_oksincludes
 import conffwk
 import glob
 import os
-
-from distutils.command import install_egg_info
-
 
 def generate_dataflow(
     oksfile,
@@ -133,7 +129,9 @@ def generate_dataflow(
         db.update_dal(dfapp_source_id)
 
         dfapp_control = dal.Service(
-            f"df-{dfapp_id:02}_control", protocol="rest", port=dfo_control.port+1 + dfapp_id
+            f"df-{dfapp_id:02}_control",
+            protocol="rest",
+            port=dfo_control.port + 1 + dfapp_id,
         )
         db.update_dal(dfapp_control)
 
@@ -1062,7 +1060,7 @@ def generate_session(
     session_name,
     op_env,
     connectivity_service_is_infrastructure_app=True,
-    disable_connectivity_service=False
+    disable_connectivity_service=False,
 ):
     """Simple script to create an OKS configuration file for a session.
 
@@ -1132,7 +1130,9 @@ def generate_session(
 
     infrastructure_applications = []
     if connectivity_service_is_infrastructure_app:
-        conn_svc = db.get_dal(class_name="ConnectionService", uid="local-connection-server")
+        conn_svc = db.get_dal(
+            class_name="ConnectionService", uid="local-connection-server"
+        )
         infrastructure_applications.append(conn_svc)
 
     sessiondal = dal.Session(
@@ -1147,7 +1147,9 @@ def generate_session(
     )
 
     if not disable_connectivity_service:
-        conn_svc_cfg = db.get_dal(class_name="ConnectivityService", uid="local-connectivity-service-config")
+        conn_svc_cfg = db.get_dal(
+            class_name="ConnectivityService", uid="local-connectivity-service-config"
+        )
         sessiondal.connectivity_service = conn_svc_cfg
 
     db.update_dal(sessiondal)
