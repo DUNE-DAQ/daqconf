@@ -133,7 +133,7 @@ def generate_dataflow(
         db.update_dal(dfapp_source_id)
 
         dfapp_control = dal.Service(
-            f"df-{dfapp_id:02}_control", protocol="rest", port=5601 + dfapp_id
+            f"df-{dfapp_id:02}_control", protocol="rest", port=dfo_control.port+1 + dfapp_id
         )
         db.update_dal(dfapp_control)
 
@@ -1128,6 +1128,7 @@ def generate_session(
     detconf.op_env = op_env
     db.update_dal(detconf)
 
+    conn_svc_cfg = db.get_dal(class_name="ConnectivityService", uid="local-connectivity-service-config")
     opmon_svc = db.get_dal(class_name="OpMonURI", uid="local-opmon-uri")
 
     infrastructure_applications = []
@@ -1140,8 +1141,8 @@ def generate_session(
         environment=db.get_dal(
             class_name="VariableSet", uid="local-variables"
         ).contains,
+        connectivity_service=conn_svc_cfg,
         segment=seg,
-        use_connectivity_server=not disable_connectivity_service,
         detector_configuration=detconf,
         infrastructure_applications=infrastructure_applications,
         opmon_uri=opmon_svc,

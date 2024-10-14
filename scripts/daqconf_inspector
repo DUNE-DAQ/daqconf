@@ -7,6 +7,8 @@ from rich.table import Table
 import click
 
 import conffwk
+from daqconf.session import get_segment_apps
+from daqconf.dal_helpers import get_attribute_info, get_relation_info, get_attribute_list, get_relation_list, compare_dal_obj, find_related, find_duplicates
 
 def start_ipython(loc):
     """
@@ -18,9 +20,6 @@ def start_ipython(loc):
         IPython.embed(colors="neutral")
     except ImportError:
         print(f"[red]IPython not available[/red]")
-
-
-
 
 
 def enabled_to_emoji(enabled: Union[int, None]) -> str:
@@ -37,92 +36,23 @@ def enabled_to_emoji(enabled: Union[int, None]) -> str:
         case _:
             return ':blue_circle:'
 
-
-##
-# Dal helpers
+#----------
+# Applications
 #
-def get_attribute_info(o):
-    return o.__schema__['attribute']
+def get_network_services(app):
 
-def get_relation_info(o):
-    return o.__schema__['relation']
-
-def get_attribute_list(o):
-    return list(get_attribute_info(o))
-
-def get_relation_list(o):
-    return list(get_relation_info(o))
-
-def get_superclass_list(o):
-    return o.__schema__['superclass']
-
-def get_subclass_list(o):
-    return o.__schema__['subclass']
-
-def compare_dal_obj(a, b):
-    """Compare two dal objects by content"""
-
-    # TODO: add a check on a and b being dal objects
-    # There is no base class for dal objects in python, but dal objects have _shcema__objects.
-
-    if a.className() != b.className():
-        return False
-
-    attrs = get_attribute_list(a)
-    rels = get_relation_list(a)
-
-    a_attrs = {x:getattr(a, x) for x in attrs}
-    b_attrs = {x:getattr(b, x) for x in attrs}
-
-    a_rels = {x:getattr(a, x) for x in rels}
-    b_rels = {x:getattr(b, x) for x in rels}
-
-
-    return (a_attrs == b_attrs) and (a_rels == b_rels)
-
-
-#---------------
-def find_related_dals(dal_obj, dal_group: set):
-
-
-    rels = get_relation_list(dal_obj)
-
-    rel_objs = set()
-    for rel in rels:
-        rel_val = getattr(dal_obj, rel)
-
-        if rel_val is None:
-            continue
-
-        rel_objs.update(rel_val if isinstance(rel_val,list) else [rel_val])
-
-    # Isolate relationship objects that are not in the dal_group yet
-    new_rel_objs = rel_objs - dal_group
-
-    # Safely add the new object to the group
-    dal_group.update(rel_objs)
-    for o in new_rel_objs:
-        if o is None:
-            continue
-
-        find_related_dals(o, dal_group)
-        
-from collections.abc import Iterable
-def find_duplicates( collection: Iterable ):
-    """
-    Find duplicated dal objects in a collection by based on objects attributes and relationships
-    """
+    if not 'Application' in app.oksTypes():
+        return []
     
-    n_items = len(collection)
-    duplicates = set()
-    for i in range(n_items):
-        for j in range(i+1, n_items):
-            if compare_dal_obj(collection[i], collection[j]):
-                print(f"{i} {j} AAAAARGH")
-                duplicates.add(collection[i])
-                duplicates.add(collection[j])
+    elif 'SmartDaqApplication' in app.oksTypes():
+        return [r.descriptor.associated_service for r in app.network_rules]
 
-    return duplicates
+    elif 'Application' in app.oksTypes():
+        return app.exposes_service
+    
+    return []
+
+
 
 class DalRichRenderer:
 
@@ -158,21 +88,21 @@ class DalRichRenderer:
 
         c = segment.controller
         path = f"[blue]{self._confdb.get_obj(c.className(), c.id).contained_in()}[/blue]" if show_path else ""
-        ports = ', '.join([f'{svc.port}([orange1]{svc.id}[/orange1])' for svc in c.exposes_service ])
+        ports = ', '.join([f'{svc.port}([orange1]{svc.id}[/orange1])' for svc in get_network_services(c) ])
         host = f"[medium_purple1]{c.runs_on.runs_on.id}[/medium_purple1]"
         tree.add(f"[cyan]controller[/cyan]: [green]{c.id}[/green][magenta]@{c.className()}[/magenta] on {host} [{ports}] {path}")
 
         if segment.applications:
-            app_tree = tree.add(f"[cyan]applicationss[/cyan]")
+            app_tree = tree.add(f"[cyan]applications[/cyan]")
             for a in segment.applications:
                 if a is None:
                     print(f"Detected None application in {segment.id}")
                     continue
 
                 path = f"[blue]{self._confdb.get_obj(a.className(), a.id).contained_in()}[/blue]" if show_path else ""
-                ports = ', '.join([f'{svc.port}([orange1]{svc.id}[/orange1])' for svc in a.exposes_service ])
+                ports = ', '.join([f'{svc.port}([orange1]{svc.id}[/orange1])' for svc in get_network_services(a) ])
                 host = f"[medium_purple1]{a.runs_on.runs_on.id}[/medium_purple1]"
-                enabled = is_enabled(session, a) if session else None
+                enabled = self.is_enabled(session, a) if session else None
 
                 app_tree.add(f"{enabled_to_emoji(enabled)} [green]{a.id}[/green][magenta]@{a.className()}[/magenta] on {host} [{ports}] {path}")
 
@@ -240,7 +170,6 @@ class DalRichRenderer:
                 r_tree.add(self.make_obj_tree(val, show_attrs, path[1:], level, session))
         return tree
     
-
 
 
 def verify_oks_uid(ctx, param, value):
@@ -335,31 +264,34 @@ def show_sessions(obj, show_file_paths):
         for a in s.infrastructure_applications:
             infra_tree.add(a.id)
 
-        tree.add(make_segment_tree(cfg, s.segment, s, show_file_paths))
+        tree.add(dr.make_segment_tree(s.segment, s, show_file_paths))
 
         t = Table("body", title=f'{s.id} tree', show_header=False, expand=True)
         t.add_row(tree)
         grid.add_row(t)
-        
-        # print(t)
-        
+
+
+        #
+        # Object information
+        # 
+
         session_objs = set()
-        find_related_dals(s, session_objs)
+        find_related(s, session_objs)
 
         # Find all objects in the top segment (exclude disabled, variables and infra in the resource count))
         segment_objs = set()
-        find_related_dals(s.segment, segment_objs)        
+        find_related(s.segment, segment_objs)        
         res = [o for o in segment_objs if 'ResourceBase' in o.oksTypes()]
 
 
-
+        # Object table
         t = Table(title=f"{s.id} objects", show_header=False, expand=True)
         t.add_column('name')
         t.add_column('value')
 
         t.add_row('Objects', rh(str(len(session_objs))))
         t.add_row('Disabled mask', rh(str([ i.id for i in s.disabled])))
-        t.add_row('Disabled resources', rh(str([ r.id for r in res if is_enabled(s, r) != 1])))
+        t.add_row('Disabled resources', rh(str([ r.id for r in res if dr.is_enabled(s, r) != 1])))
         # print(t)
         grid.add_row(t)
 
@@ -367,12 +299,29 @@ def show_sessions(obj, show_file_paths):
         if disabled_not_in_session:
             print(f"⚠️ {sorted(disabled_not_in_session)}")
 
+
+        #
+        # DAQ Application information
+        # 
+        session_apps = get_segment_apps(s.segment)
+        # Applications
+        t = Table(title=f"{s.id} daq applications", show_header=False, expand=True)
+        t.add_column('name')
+        t.add_column('value')
+        t.add_row('Applications', rh(str(len(session_apps))))
+        t.add_row('DaqApplications', rh(str(len( [a for a in session_apps if 'DaqApplication' in a.oksTypes()] ))))
+        t.add_row('SmartDaqApplications', rh(str(len( [a for a in session_apps if 'SmartDaqApplication' in a.oksTypes()] ))))
+
+
+        #
+        # Environment
+        #
         if s.environment:
             # print(s.environment)
             env_objs = set()
             for e in s.environment:
                 env_objs.add(e)
-                find_related_dals(e, env_objs)
+                find_related(e, env_objs)
 
             env_var = sorted(env_objs, key=lambda x: x.id)
 
@@ -385,8 +334,41 @@ def show_sessions(obj, show_file_paths):
                 t.add_row(e.id, rh(e.value))
             # print(t)
             grid.add_row(t)
-            print(grid)
-            print()
+
+        ###############
+        # Verification
+        ###############
+
+
+        #
+        # Networking
+        #
+        host_port_apps = {}
+        for a in session_apps:
+            for srvc in get_network_services(a):
+                host_port_apps.setdefault(a.runs_on.runs_on.id, {}).setdefault(srvc .port,[]).append(f"{a.id}:{srvc.id}")    
+
+
+        clashes = []
+        for h,ports in host_port_apps.items():
+            for p,apps in ports.items():
+                if p != 0 and len(apps) > 1:
+                    clashes.append((f'[red]{h}:{p}[/red]',rh(str(apps))))
+
+        if clashes:
+            t = Table(title=f"{s.id} port clashes", show_header=False, expand=True)
+            t.add_column('name')
+            t.add_column('value')
+
+            for n,v in clashes:
+                t.add_row(n,v)
+
+            grid.add_row(t)
+
+
+
+        print(grid)
+        print()
 
 
 @cli.command(short_help="List known classes and objects for each class")
@@ -630,7 +612,7 @@ def verify_detstreams(obj):
     strm_duplicates = find_duplicates(streams)
 
     if strm_duplicates:
-        print(f"[yellow]WARNING: found duplicates in detector streams {strm_duplicates}[/yellow]")
+        print(f"[yellow]:warning: Found {len(strm_duplicates)} duplicates in detector streams {strm_duplicates}[/yellow]")
     else:
         print(f"[green]:white_check_mark: No duplicates among detector streams[/green]")
 
@@ -638,7 +620,7 @@ def verify_detstreams(obj):
     gid_duplicates = find_duplicates([strm.geo_id for strm in streams])
 
     if gid_duplicates:
-        print(f"[yellow]WARNING: found duplicates in geo ids {strm_duplicates}[/yellow]")
+        print(f"[yellow]:warning: Found {len(gid_duplicates)} duplicates in geo ids {gid_duplicates}[/yellow]")
     else:
         print(f"[green]:white_check_mark: No duplicates among geo ids[/green]")
 
@@ -671,7 +653,6 @@ def verify_smart_apps(obj):
 
     reports = {}
     for sa in sapps:
-        print(f"Validating '{sa.id}'")
         test_reports = {}
 
         # Example: test for consistency between exposed service and network rules
@@ -761,7 +742,7 @@ def show_smartapp_mods(obj, session_id, app_id, show_attrs, level, focus_path):
 
     s = cfg.get_dal('Session', session_id)
 
-    sm_apps = get_session_apps(cfg, s.id)
+    sm_apps = get_segment_apps(s.segment)
 
     sm_app = next(iter(a for a in sm_apps if a.id == app_id ), None)
 
