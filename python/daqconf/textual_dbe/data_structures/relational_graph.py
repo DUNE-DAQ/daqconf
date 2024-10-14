@@ -3,7 +3,7 @@ Extended explanation of the RelationalGraph class:
 
 The RelationalGraph class is used to generate a graph of the relationships between the DALs in the configuration file.
 The class is used to generate a topological ordering of the DALs, and to calculate the longest path in the graph.
-The reasoning is that the configuration should naturally group similar objects together based on how far they are from the session object
+The reasoning is that the configuration should naturally group similar objects together based on how far they are from the system object
 
 Current this is only really used to find "top level" objects
 

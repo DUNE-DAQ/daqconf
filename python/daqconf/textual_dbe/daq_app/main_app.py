@@ -14,7 +14,7 @@ from daqconf.textual_dbe.widgets.custom_rich_log import RichLogWError
 from daqconf.textual_dbe.widgets.config_table import ConfigTable
 from daqconf.textual_dbe.widgets.configuration_controller import ConfigurationController
 from daqconf.textual_dbe.widgets.popups.file_io import SaveWithMessageScreen, OpenFileScreen
-from daqconf.textual_dbe.widgets.popups.dropdown_selector import SelectSessionScreen
+from daqconf.textual_dbe.widgets.popups.dropdown_selector import SelectSystemScreen
 from daqconf.textual_dbe.app_structures.selection_panel import SelectionPanel
 
 class MainScreen(Screen):
@@ -79,7 +79,7 @@ class MainScreen(Screen):
         """Toggle disable on the selected configuration object
         """        
         if self._config_controller.can_be_disabled():
-            await self.app.push_screen(SelectSessionScreen())
+            await self.app.push_screen(SelectSystemScreen())
         
         # except:
         self.query_one(RichLogWError).write_error("Could not toggle disable configuration object")

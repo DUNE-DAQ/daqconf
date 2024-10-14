@@ -67,7 +67,7 @@ class SelectionMenu(Static):
                     stored_data=None #
 
                 else: 
-                    if config_key.className() == "Session":
+                    if config_key.className() == "System":
                         disabled_elements = config_key.disabled
                         # Remove the ResourceBase object since it just doubly defines disabled items
                 
@@ -78,7 +78,7 @@ class SelectionMenu(Static):
                     stored_data = config_key
                 
                 # Bit confusing, set ensure we're not multiply defining things in the tree,
-                # for example disabled items in a session may also be defined elsewhere
+                # for example disabled items in a system may also be defined elsewhere
                 tree_node = input_node.add(dal_str, data=stored_data)
                 self.__build_tree_node(tree_node, config_objects, item_disabled, disabled_elements)
                                 

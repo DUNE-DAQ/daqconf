@@ -7,7 +7,7 @@ from rich.table import Table
 import click
 
 import conffwk
-from daqconf.session import get_segment_apps
+from daqconf.system import get_segment_apps
 from daqconf.dal_helpers import get_attribute_info, get_relation_info, get_attribute_list, get_relation_list, compare_dal_obj, find_related, find_duplicates
 
 def start_ipython(loc):
@@ -63,27 +63,27 @@ class DalRichRenderer:
     ##
     # Enabled/disabled status visualization
     #
-    def is_enabled(self, session, obj):
+    def is_enabled(self, system, obj):
         import confmodel
 
-        """Helper function that returns the status of an object in a session"""
+        """Helper function that returns the status of an object in a system"""
         if not obj.isDalType('Component'):
             return None
 
-        enabled = not confmodel.component_disabled(self._confdb._obj, session.id, obj.id)
+        enabled = not confmodel.component_disabled(self._confdb._obj, system.id, obj.id)
         if enabled:
             return enabled
         
-        enabled -= (obj in session.disabled)
+        enabled -= (obj in system.disabled)
         return enabled
 
-    def make_segment_tree(self, segment, session: None, show_path: bool = False) -> Tree:
+    def make_segment_tree(self, segment, system: None, show_path: bool = False) -> Tree:
         '''
-        Create a segment branch of the session tree as a rich.Tree object
+        Create a segment branch of the system tree as a rich.Tree object
         ''' 
 
         path = f"[blue]{self._confdb.get_obj(segment.className(), segment.id).contained_in()}[/blue]" if show_path else ""
-        enabled = self.is_enabled(session, segment) if session else None
+        enabled = self.is_enabled(system, segment) if system else None
         tree = Tree(f"{enabled_to_emoji(enabled)} [yellow]{segment.id}[/yellow] {path}")
 
         c = segment.controller
@@ -102,7 +102,7 @@ class DalRichRenderer:
                 path = f"[blue]{self._confdb.get_obj(a.className(), a.id).contained_in()}[/blue]" if show_path else ""
                 ports = ', '.join([f'{svc.port}([orange1]{svc.id}[/orange1])' for svc in get_network_services(a) ])
                 host = f"[medium_purple1]{a.runs_on.runs_on.id}[/medium_purple1]"
-                enabled = self.is_enabled(session, a) if session else None
+                enabled = self.is_enabled(system, a) if system else None
 
                 app_tree.add(f"{enabled_to_emoji(enabled)} [green]{a.id}[/green][magenta]@{a.className()}[/magenta] on {host} [{ports}] {path}")
 
@@ -112,14 +112,14 @@ class DalRichRenderer:
                 if s is None:
                     print(f"Detected None segment in {segment.id}")
                     continue
-                seg_tree.add(self.make_segment_tree(s, session, show_path))
+                seg_tree.add(self.make_segment_tree(s, system, show_path))
 
         return tree
 
-    def make_obj_tree(self, dal_obj, show_attrs=True, path=[], level=None, session=None):
+    def make_obj_tree(self, dal_obj, show_attrs=True, path=[], level=None, system=None):
         """Helper function to generate object trees"""
 
-        en_status = enabled_to_emoji(self.is_enabled(session, dal_obj))+' ' if not session is None else ""
+        en_status = enabled_to_emoji(self.is_enabled(system, dal_obj))+' ' if not system is None else ""
 
         tree = Tree(f"{en_status}[green]{dal_obj.id}[/green][magenta]@{dal_obj.className()}[/magenta]")
         if level == 0:
@@ -167,7 +167,7 @@ class DalRichRenderer:
             for val in rel_val:
                 if val is None:
                     continue
-                r_tree.add(self.make_obj_tree(val, show_attrs, path[1:], level, session))
+                r_tree.add(self.make_obj_tree(val, show_attrs, path[1:], level, system))
         return tree
     
 
@@ -192,7 +192,7 @@ class DaqInspectorContext:
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 @click.group(context_settings=CONTEXT_SETTINGS)
-@click.option('-i', '--interactive', is_flag=True, show_default=True, default=False, help="Start an interactive IPython session after executing the commands")
+@click.option('-i', '--interactive', is_flag=True, show_default=True, default=False, help="Start an interactive IPython system after executing the commands")
 @click.argument('config_file')
 @click.pass_obj
 def cli(obj, interactive, config_file):
@@ -208,17 +208,17 @@ def cli(obj, interactive, config_file):
         start_ipython(locals())
 
 
-@cli.command(short_help="Show sessions information")
+@cli.command(short_help="Show systems information")
 @click.option('-p', '--show-file_paths', is_flag=True, show_default=True, default=False)
 @click.pass_obj
-def show_sessions(obj, show_file_paths):
+def show_systems(obj, show_file_paths):
     """
-    Show details of each session available in the configuration database
+    Show details of each system available in the configuration database
 
-    For each session found in the the database, `show-session` displays:
+    For each system found in the the database, `show-system` displays:
 
     \b
-    - The high-level session view, including segments, controllers and applications as
+    - The high-level system view, including segments, controllers and applications as
       hierarchical tree.
       ID and Class are shown for applications and controllers, along with their host and services (open ports)
       The icon in front of segments and appliations indicate the enable/disable.
@@ -229,14 +229,14 @@ def show_sessions(obj, show_file_paths):
       Legend
       ------
         ✅ : Resource enabled
-        ❌ : Resource directly disabled (listed in the Session disable list)
+        ❌ : Resource directly disabled (listed in the System disable list)
         ⭕️ : Resource indirectly disabled by algorithm
         🔵 : Not a resource
 
-    - The summary of session objects, including the count of referenced objects, the list of directly
+    - The summary of system objects, including the count of referenced objects, the list of directly
       disabled objects and the list of all disabled objects (directly or indirectly)
     
-    - The session environment table.
+    - The system environment table.
 
 
     """
@@ -246,19 +246,19 @@ def show_sessions(obj, show_file_paths):
     cfg = obj.cfg
     dr = DalRichRenderer(cfg)
 
-    print("Sessions")
-    sessions = cfg.get_objs("Session")
-    for s in sessions:
+    print("Systems")
+    systems = cfg.get_objs("System")
+    for s in systems:
         print(f" - '{s.UID()}' [blue]{s.contained_in()}[/blue]")
 
     print()
 
-    for so in sessions:
+    for so in systems:
 
         grid = Table.grid("")
         
 
-        s = cfg.get_dal('Session', so.UID())
+        s = cfg.get_dal('System', so.UID())
         tree = Tree(f"[yellow]{s.id}[/yellow]")
         infra_tree = tree.add('[yellow]infra-apps[/yellow]')
         for a in s.infrastructure_applications:
@@ -275,8 +275,8 @@ def show_sessions(obj, show_file_paths):
         # Object information
         # 
 
-        session_objs = set()
-        find_related(s, session_objs)
+        system_objs = set()
+        find_related(s, system_objs)
 
         # Find all objects in the top segment (exclude disabled, variables and infra in the resource count))
         segment_objs = set()
@@ -289,28 +289,28 @@ def show_sessions(obj, show_file_paths):
         t.add_column('name')
         t.add_column('value')
 
-        t.add_row('Objects', rh(str(len(session_objs))))
+        t.add_row('Objects', rh(str(len(system_objs))))
         t.add_row('Disabled mask', rh(str([ i.id for i in s.disabled])))
         t.add_row('Disabled resources', rh(str([ r.id for r in res if dr.is_enabled(s, r) != 1])))
         # print(t)
         grid.add_row(t)
 
-        disabled_not_in_session = set(s.disabled)-segment_objs
-        if disabled_not_in_session:
-            print(f"⚠️ {sorted(disabled_not_in_session)}")
+        disabled_not_in_system = set(s.disabled)-segment_objs
+        if disabled_not_in_system:
+            print(f"⚠️ {sorted(disabled_not_in_system)}")
 
 
         #
         # DAQ Application information
         # 
-        session_apps = get_segment_apps(s.segment)
+        system_apps = get_segment_apps(s.segment)
         # Applications
         t = Table(title=f"{s.id} daq applications", show_header=False, expand=True)
         t.add_column('name')
         t.add_column('value')
-        t.add_row('Applications', rh(str(len(session_apps))))
-        t.add_row('DaqApplications', rh(str(len( [a for a in session_apps if 'DaqApplication' in a.oksTypes()] ))))
-        t.add_row('SmartDaqApplications', rh(str(len( [a for a in session_apps if 'SmartDaqApplication' in a.oksTypes()] ))))
+        t.add_row('Applications', rh(str(len(system_apps))))
+        t.add_row('DaqApplications', rh(str(len( [a for a in system_apps if 'DaqApplication' in a.oksTypes()] ))))
+        t.add_row('SmartDaqApplications', rh(str(len( [a for a in system_apps if 'SmartDaqApplication' in a.oksTypes()] ))))
 
 
         #
@@ -344,7 +344,7 @@ def show_sessions(obj, show_file_paths):
         # Networking
         #
         host_port_apps = {}
-        for a in session_apps:
+        for a in system_apps:
             for srvc in get_network_services(a):
                 host_port_apps.setdefault(a.runs_on.runs_on.id, {}).setdefault(srvc .port,[]).append(f"{a.id}:{srvc.id}")    
 
@@ -695,15 +695,15 @@ def verify_smart_apps(obj):
 
 
 @cli.command(short_help="Shows the modules generated by a smart application")
-@click.argument('session_id')
+@click.argument('system_id')
 @click.argument('app_id')
 @click.option('+a/-a','--show-attributes/--hide-attributes', "show_attrs", default=True, help="Show/Hide attributes")
 @click.option('-l','--level', "level", type=int, default=None, help="Recursion level in the object tree")
 @click.option('-f','--focus', "focus_path", default=None, help="Path within the object relationships to focus on")
 @click.pass_obj
-def show_smartapp_mods(obj, session_id, app_id, show_attrs, level, focus_path):
+def show_smartapp_mods(obj, system_id, app_id, show_attrs, level, focus_path):
     """
-    For the selected smart application and session, execute the generate modules method and displays the results in a hierarchical tree.
+    For the selected smart application and system, execute the generate modules method and displays the results in a hierarchical tree.
     Resource objexts are displaied with their status.
 
     In case focussing on a relationship branch is helpful, the focus path option (see below for details) allows to specify the branch to focus on, starting trom the top object.
@@ -716,13 +716,13 @@ def show_smartapp_mods(obj, session_id, app_id, show_attrs, level, focus_path):
       Legend
       ------
         ✅ : Resource enabled
-        ❌ : Resource directly disabled (listed in the Session disable list)
+        ❌ : Resource directly disabled (listed in the System disable list)
         ⭕️ : Resource indirectly disabled by algorithm
         🔵 : Not a resource
     """
 
     from appmodel import generate_modules, UnknownGeneratorException
-    from daqconf.session import get_session_apps
+    from daqconf.system import get_system_apps
     import re
 
     from rich.highlighter import ReprHighlighter
@@ -740,7 +740,7 @@ def show_smartapp_mods(obj, session_id, app_id, show_attrs, level, focus_path):
         rel,_,name = m.groups()
         path.append((rel, name))
 
-    s = cfg.get_dal('Session', session_id)
+    s = cfg.get_dal('System', system_id)
 
     sm_apps = get_segment_apps(s.segment)
 
@@ -749,7 +749,7 @@ def show_smartapp_mods(obj, session_id, app_id, show_attrs, level, focus_path):
     if sm_app is None:
         raise click.ClickException(f"Smart Application {app_id} not found")
 
-    print(f"Generating modules for app '{sm_app.id}' of class '{sm_app.className()}' in session '{s.id}'")
+    print(f"Generating modules for app '{sm_app.id}' of class '{sm_app.className()}' in system '{s.id}'")
     try:
         # FIXME: AAAAAARGH
         # Need to use local copies because different applications generate the same objects in the db

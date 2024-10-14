@@ -66,18 +66,18 @@ def check_unique_relationship(objects, relationship):
   return unique
 
 
-def validate_readout(db, session):
+def validate_readout(db, system):
   errcount = 0
   # Find all enabled readout apps and check that
   # DetectorToDaqConnection's are unique
   ru_apps = []
-  for app in confmodel.session_get_all_applications(db._obj, session.id):
-    if confmodel.component_disabled(db._obj, session.id, app.id):
+  for app in confmodel.system_get_all_applications(db._obj, system.id):
+    if confmodel.component_disabled(db._obj, system.id, app.id):
       continue
     if app.class_name == "ReadoutApplication":
       ru_apps.append(db.get_dal(app.class_name, app.id))
   if len(ru_apps) == 0:
-    print(f"No enabled readout applicatios in session")
+    print(f"No enabled readout applicatios in system")
     errcount += 1
   d2d_seen = {}
   d2d_dals = []
@@ -142,30 +142,30 @@ def validate_readout(db, session):
   if not check_unique_relationship(d2d_dals, "GeoId"):
     errcount += 1
 
-  print (f"Session {session.id} readout validated with {errcount} errors:"+
+  print (f"System {system.id} readout validated with {errcount} errors:"+
          f" contains {len(d2d_seen)} Detector connections"+
          f" in {len(ru_apps)} readout applications")
 
   return errcount
 
-def validate_session(oksfile, session_name):
+def validate_system(oksfile, system_name):
   db = conffwk.Configuration("oksconflibs:" + oksfile)
-  if session_name == "":
-    session_dals = db.get_dals(class_name="Session")
-    if len(session_dals) == 0:
-      print(f"Error could not find any Session in file {oksfile}")
+  if system_name == "":
+    system_dals = db.get_dals(class_name="System")
+    if len(system_dals) == 0:
+      print(f"Error could not find any System in file {oksfile}")
       return
-    if len(session_dals) > 1:
-      print(f"Warning: more than one Session found in database."
+    if len(system_dals) > 1:
+      print(f"Warning: more than one System found in database."
             " Using the first one found")
-    session = session_dals[0]
+    system = system_dals[0]
   else:
     try:
-      session = db.get_dal("Session", session_name)
+      system = db.get_dal("System", system_name)
     except:
-      print(f"Error could not find Session {session_name} in file {oksfile}")
+      print(f"Error could not find System {system_name} in file {oksfile}")
       return
 
-  print(f"Validating session {session.id}:")
-  errcount = validate_readout(db, session)
-  print (f"\nSession {session.id} validated with {errcount} errors")
+  print(f"Validating system {system.id}:")
+  errcount = validate_readout(db, system)
+  print (f"\nSystem {system.id} validated with {errcount} errors")

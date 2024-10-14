@@ -18,7 +18,7 @@ Once this has been loaded in the screen should update. The editor is split into 
 Configuration objects can be browsed via the navigation menu which has two views. The first breaks down configuration objects by class allowing for easy navigation without showing the underlying structure of the configuration. Note that all derived classes will be included as well for each category. For example `component` will include all `segment` objects.
 ![image](textual_dbe/class_select_view.png)
 
-The second "relationship" view will display the relationships between configuration objects. In addition "top level" objects are separated into `Sessions` and `Non-Sessions`. These non-session objects are effectively `dangling` and aren't used by anything within the configuration. If objects are related to multiple other objects within the configuration they will be displayed multiple times.
+The second "relationship" view will display the relationships between configuration objects. In addition "top level" objects are separated into `Systems` and `Non-Systems`. These non-system objects are effectively `dangling` and aren't used by anything within the configuration. If objects are related to multiple other objects within the configuration they will be displayed multiple times.
 ![image](textual_dbe/relationship.png)
 
 

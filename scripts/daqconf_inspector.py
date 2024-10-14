@@ -14,7 +14,7 @@ import IPython
 class DaqInspectorContext:
     pass
 
-def make_segment_tree(cfg, segment, session: None, show_path: bool = False) -> Tree:
+def make_segment_tree(cfg, segment, system: None, show_path: bool = False) -> Tree:
     '''
     Create segment branch of the configuration tree
     '''
@@ -30,12 +30,12 @@ def make_segment_tree(cfg, segment, session: None, show_path: bool = False) -> T
             case _:
                 return ''
             
-    def get_enabled(cfg, session, obj):
-        enabled = not confmodel.component_disabled(cfg._obj, session.id, obj.id)
+    def get_enabled(cfg, system, obj):
+        enabled = not confmodel.component_disabled(cfg._obj, system.id, obj.id)
         if enabled:
             return enabled
         
-        enabled -= (obj in session.disabled)
+        enabled -= (obj in system.disabled)
         return enabled
         
 
@@ -43,7 +43,7 @@ def make_segment_tree(cfg, segment, session: None, show_path: bool = False) -> T
 
 
     path = f"[blue]{cfg.get_obj(segment.className(), segment.id).contained_in()}[/blue]" if show_path else ""
-    enabled = get_enabled(cfg, session, segment) if session else None
+    enabled = get_enabled(cfg, system, segment) if system else None
     tree = Tree(f"{enabled_to_emoji(enabled)} [yellow]{segment.id}[/yellow] {path}")
 
     c = segment.controller
@@ -62,7 +62,7 @@ def make_segment_tree(cfg, segment, session: None, show_path: bool = False) -> T
             path = f"[blue]{cfg.get_obj(a.className(), a.id).contained_in()}[/blue]" if show_path else ""
             ports = ', '.join([f'{svc.port}({svc.protocol})' for svc in c.exposes_service ])
             host = f"[medium_purple1]{a.runs_on.runs_on.id}[/medium_purple1]"
-            enabled = get_enabled(cfg, session, a) if session else None
+            enabled = get_enabled(cfg, system, a) if system else None
 
             app_tree.add(f"{enabled_to_emoji(enabled)} [green]{a.id}[/green][magenta]@{a.className()}[/magenta] on {host} [{ports}] {path}")
 
@@ -72,7 +72,7 @@ def make_segment_tree(cfg, segment, session: None, show_path: bool = False) -> T
             if s is None:
                 print(f"Detected None segment in {segment.id}")
                 continue
-            seg_tree.add(make_segment_tree(cfg, s, session, show_path))
+            seg_tree.add(make_segment_tree(cfg, s, system, show_path))
 
     return tree
     
@@ -93,22 +93,22 @@ def cli(obj, interactive, config_file):
 @cli.command()
 @click.option('-p', '--show-paths', is_flag=True, show_default=True, default=False)
 @click.pass_obj
-def show_sessions(obj, show_paths):
+def show_systems(obj, show_paths):
     """
     """
     
     cfg = obj.cfg
 
-    print("Sessions")
-    sessions = cfg.get_objs("Session")
-    for s in sessions:
+    print("Systems")
+    systems = cfg.get_objs("System")
+    for s in systems:
         print(f" - '{s.UID()}' [blue]{s.contained_in()}[/blue]")
 
     print()
 
-    for so in sessions:
-        s = cfg.get_dal('Session', so.UID())
-        tree = Tree(f"Session [yellow]{s.id}[/yellow]")
+    for so in systems:
+        s = cfg.get_dal('System', so.UID())
+        tree = Tree(f"System [yellow]{s.id}[/yellow]")
 
         tree.add(make_segment_tree(cfg, s.segment, s, show_paths))
         print(tree)

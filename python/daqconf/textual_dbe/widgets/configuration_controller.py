@@ -180,41 +180,41 @@ class ConfigurationController(Static):
                 
         self._logger.write("\n[red]=============================") 
         # DAL as configuration object        
-        # Loop over all sessions [note currently this is badly implemented]
-        for session, toggle_enable in selection_menu:
-            session_disabled_elements = session.disabled
+        # Loop over all systems [note currently this is badly implemented]
+        for system, toggle_enable in selection_menu:
+            system_disabled_elements = system.disabled
 
 
             # Make sure if nothing's happening we don't do anything
-            if self._current_selected_object not in session_disabled_elements and toggle_enable:
+            if self._current_selected_object not in system_disabled_elements and toggle_enable:
                 return
             
-            elif self._current_selected_object in session_disabled_elements and not toggle_enable:
+            elif self._current_selected_object in system_disabled_elements and not toggle_enable:
                 return
 
             if toggle_enable:
-                self._logger.write(f"Enabling {self.generate_rich_string(self._current_selected_object)} in {self.generate_rich_string(session)}")
-                if self._current_selected_object in session_disabled_elements:            
-                    session_disabled_elements.remove(self._current_selected_object)
+                self._logger.write(f"Enabling {self.generate_rich_string(self._current_selected_object)} in {self.generate_rich_string(system)}")
+                if self._current_selected_object in system_disabled_elements:            
+                    system_disabled_elements.remove(self._current_selected_object)
             else:
-                self._logger.write(f"Disabling {self.generate_rich_string(self._current_selected_object)} in {self.generate_rich_string(session)}")
+                self._logger.write(f"Disabling {self.generate_rich_string(self._current_selected_object)} in {self.generate_rich_string(system)}")
                 
-                if self._current_selected_object not in session_disabled_elements:
-                    session_disabled_elements.append(self._current_selected_object)
+                if self._current_selected_object not in system_disabled_elements:
+                    system_disabled_elements.append(self._current_selected_object)
                 
-            session.disabled = session_disabled_elements
-            self._handler.configuration_handler.configuration.update_dal(session)        
+            system.disabled = system_disabled_elements
+            self._handler.configuration_handler.configuration.update_dal(system)        
         self._logger.write("[red]=============================\n")
 
 
-    def get_all_sessions(self)->list:
+    def get_all_systems(self)->list:
         return [top_object for top_object in self._handler.relational_graph.top_level_nodes\
-                            if top_object.className() == "Session"]
+                            if top_object.className() == "System"]
         
     def is_selected_object_enabled(self)->list:
-        """Check if object is disabled in any session
+        """Check if object is disabled in any system
         """
-        return [self._current_selected_object not in session.disabled for session in self.get_all_sessions()]
+        return [self._current_selected_object not in system.disabled for system in self.get_all_systems()]
 
     def __no_handler_error(self):
         """Raise error if no handler is setup"""

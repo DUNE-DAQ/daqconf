@@ -11,7 +11,7 @@ Commandline utility to visually inspect and verify configurations databases and 
 ## Manipulation Tools
 
 ### `oks_enable`
-  Add Resource objects to or remove from the `disabled` relationship of a Session
+  Add Resource objects to or remove from the `disabled` relationship of a System
 
 ### `consolidate`
   Merge the contents of several database files, putting all objects into a single output file. Output file will only include schemas.
@@ -29,10 +29,10 @@ Commandline utility to visually inspect and verify configurations databases and 
   Ensure that database files are in the "DBE format", alphabetized and with correct spacing
 
 ### `oks_enable_tpg`
-  Enable or disable TPG for a Session's ReadoutApplications
+  Enable or disable TPG for a System's ReadoutApplications
 
 ### `validate`
-  Attempt to determine if a given Session configuration is valid and does not contain common errors
+  Attempt to determine if a given System configuration is valid and does not contain common errors
 
 
 ### textual_dbe
@@ -59,7 +59,7 @@ you specify on the commad line.
   Read the DUNE-DAQ asset file database and return a path to a referenced asset file
 
 ### `generate.py`
-  A collection of methods to generate segments and sessions.
+  A collection of methods to generate segments and systems.
 
 ###` generate_hwmap.py`
   Create a set of DetectorToDaqConnection objects, GeoIDs, and streams for the given number of links and applications.

@@ -44,8 +44,8 @@ class RelationalSelectionMenu(SelectionInterface):
     ''' Selection menu based on class relationships
     '''    
     def _build_relational_dict(self):                
-        configuration_dict = {f"[green]Sessions" : [self.__build_node(top_node) for top_node in self._handler.relational_graph.top_level_nodes if top_node.className() == "Session"],
-                        f"[green]Objects outside of Session" : [self.__build_node(top_node) for top_node in self._handler.relational_graph.top_level_nodes if top_node.className() != "Session"]}
+        configuration_dict = {f"[green]Systems" : [self.__build_node(top_node) for top_node in self._handler.relational_graph.top_level_nodes if top_node.className() == "System"],
+                        f"[green]Objects outside of System" : [self.__build_node(top_node) for top_node in self._handler.relational_graph.top_level_nodes if top_node.className() != "System"]}
         
         return configuration_dict
     
