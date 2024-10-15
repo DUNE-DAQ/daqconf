@@ -4,7 +4,6 @@ import conffwk
 import glob
 import os
 
-
 def generate_dataflow(
     oksfile,
     include,
@@ -15,11 +14,11 @@ def generate_dataflow(
 ):
     """Simple script to create an OKS configuration file for a dataflow segment.
 
-    The file will automatically include the relevant schema files and
-  any other OKS files you specify. Any necessary objects not supplied
-  by included files will be generated and saved in the output file.
+      The file will automatically include the relevant schema files and
+    any other OKS files you specify. Any necessary objects not supplied
+    by included files will be generated and saved in the output file.
 
-  """
+    """
 
     includefiles = [
         "schema/confmodel/dunedaq.schema.xml",
@@ -130,7 +129,9 @@ def generate_dataflow(
         db.update_dal(dfapp_source_id)
 
         dfapp_control = dal.Service(
-            f"df-{dfapp_id:02}_control", protocol="rest", port=dfo_control.port+1 + dfapp_id
+            f"df-{dfapp_id:02}_control",
+            protocol="rest",
+            port=dfo_control.port + 1 + dfapp_id,
         )
         db.update_dal(dfapp_control)
 
@@ -201,12 +202,12 @@ def generate_hsi(
 ):
     """Simple script to create an OKS configuration file for a FakeHSI segment.
 
-    The file will automatically include the relevant schema files and
-  any other OKS files you specify. Any necessary objects not supplied
-  by included files will be generated and saved in the output file.
+      The file will automatically include the relevant schema files and
+    any other OKS files you specify. Any necessary objects not supplied
+    by included files will be generated and saved in the output file.
 
 
-  """
+    """
 
     includefiles = [
         "schema/confmodel/dunedaq.schema.xml",
@@ -904,11 +905,11 @@ def generate_trigger(
 ):
     """Simple script to create an OKS configuration file for a trigger segment.
 
-    The file will automatically include the relevant schema files and
-  any other OKS files you specify. Any necessary objects not supplied
-  by included files will be generated and saved in the output file.
+      The file will automatically include the relevant schema files and
+    any other OKS files you specify. Any necessary objects not supplied
+    by included files will be generated and saved in the output file.
 
-  """
+    """
 
     includefiles = [
         "schema/confmodel/dunedaq.schema.xml",
@@ -1053,14 +1054,21 @@ def generate_trigger(
     return
 
 
-def generate_session(oksfile, include, session_name, op_env):
+def generate_session(
+    oksfile,
+    include,
+    session_name,
+    op_env,
+    connectivity_service_is_infrastructure_app=True,
+    disable_connectivity_service=False,
+):
     """Simple script to create an OKS configuration file for a session.
 
-    The file will automatically include the relevant schema files and
-  any other OKS files you specify. Any necessary objects not supplied
-  by included files will be generated and saved in the output file.
+      The file will automatically include the relevant schema files and
+    any other OKS files you specify. Any necessary objects not supplied
+    by included files will be generated and saved in the output file.
 
-  """
+    """
 
     includefiles = [
         "schema/confmodel/dunedaq.schema.xml",
@@ -1118,21 +1126,32 @@ def generate_session(oksfile, include, session_name, op_env):
     detconf.op_env = op_env
     db.update_dal(detconf)
 
-    conn_svc = db.get_dal(class_name="ConnectionService", uid="local-connection-server")
-    conn_svc_cfg = db.get_dal(class_name="ConnectivityService", uid="local-connectivity-service-config")
     opmon_svc = db.get_dal(class_name="OpMonURI", uid="local-opmon-uri")
+
+    infrastructure_applications = []
+    if connectivity_service_is_infrastructure_app:
+        conn_svc = db.get_dal(
+            class_name="ConnectionService", uid="local-connection-server"
+        )
+        infrastructure_applications.append(conn_svc)
 
     sessiondal = dal.Session(
         session_name,
         environment=db.get_dal(
             class_name="VariableSet", uid="local-variables"
         ).contains,
-        connectivity_service=conn_svc_cfg,
         segment=seg,
         detector_configuration=detconf,
-        infrastructure_applications=[conn_svc],
+        infrastructure_applications=infrastructure_applications,
         opmon_uri=opmon_svc,
     )
+
+    if not disable_connectivity_service:
+        conn_svc_cfg = db.get_dal(
+            class_name="ConnectivityService", uid="local-connectivity-service-config"
+        )
+        sessiondal.connectivity_service = conn_svc_cfg
+
     db.update_dal(sessiondal)
 
     db.commit()
