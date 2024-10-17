@@ -119,7 +119,7 @@ class MainScreen(Screen):
 
 class DbeApp(App):
     # HACK: Need to sort this, only way to get the CSS to work
-    css_file_path = f"{environ.get('DBT_AREA_ROOT')}/sourcecode/daqconf/python/daqconf/textual_dbe/textual_css"
+    css_file_path = f"{environ.get('DAQCONF_SHARE')}/config/textual_dbe/textual_css"
 
     CSS_PATH = f"{css_file_path}/main_app_layout.tcss"
     SCREENS = {"main": MainScreen}
