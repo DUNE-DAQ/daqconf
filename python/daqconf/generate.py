@@ -1128,6 +1128,12 @@ def generate_session(
 
     opmon_svc = db.get_dal(class_name="OpMonURI", uid="local-opmon-uri")
 
+    trace_file_var = None
+    TRACE_FILE = os.getenv("TRACE_FILE")
+    if TRACE_FILE is not None:
+        trace_file_var = dal.Variable("session-env-trace-file", name="TRACE_FILE", value=TRACE_FILE)
+        db.update_dal(trace_file_var)
+
     infrastructure_applications = []
     if connectivity_service_is_infrastructure_app:
         conn_svc = db.get_dal(
@@ -1135,11 +1141,13 @@ def generate_session(
         )
         infrastructure_applications.append(conn_svc)
 
+    env_vars_for_local_running = db.get_dal(class_name="VariableSet", uid="local-variables").contains
+    if trace_file_var is not None:
+        env_vars_for_local_running.append(trace_file_var)
+
     sessiondal = dal.Session(
         session_name,
-        environment=db.get_dal(
-            class_name="VariableSet", uid="local-variables"
-        ).contains,
+        environment=env_vars_for_local_running,
         segment=seg,
         detector_configuration=detconf,
         infrastructure_applications=infrastructure_applications,
