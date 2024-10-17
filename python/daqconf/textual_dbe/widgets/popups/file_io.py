@@ -75,7 +75,7 @@ class SaveWithMessage(__MenuWithButtons):
                 self.input_action(input.value)
                  
 class SaveWithMessageScreen(ModalScreen[bool]):
-    css_file_path = f"{environ.get('DBT_AREA_ROOT')}/sourcecode/daqconf/python/daqconf/textual_dbe/textual_css"
+    css_file_path = f"{environ.get('DAQCONF_SHARE')}/config/textual_dbe/textual_css"
     
     CSS_PATH = f"{css_file_path}/save_menu_layout.tcss"
     """
@@ -174,7 +174,7 @@ class OpenFile(__MenuWithButtons):
 class OpenFileScreen(Screen):
     
     # HACKY WAY TO GET THE CSS TO WORK
-    css_file_path = f"{environ.get('DBT_AREA_ROOT')}/sourcecode/daqconf/python/daqconf/textual_dbe/textual_css"
+    css_file_path = f"{environ.get('DAQCONF_SHARE')}/config/textual_dbe/textual_css"
     
     CSS_PATH = f"{css_file_path}/save_menu_layout.tcss"
     
