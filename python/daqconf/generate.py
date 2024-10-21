@@ -790,6 +790,8 @@ def generate_fakedata(
     fragment_type=""
     if det_id == 3:
         frame_size=7200
+        time_tick_diff=32*64
+        response_delay=0
         fragment_type="WIBEth"
     else:
         raise Exception(f"FakeDataProd parameters not configured for detector ID {det_id}")
@@ -812,7 +814,9 @@ def generate_fakedata(
                 f"fakedata_{appidx}_stream_{streamidx}",
                 system_type="Detector_Readout",
                 source_id=source_id,
+                time_tick_diff=time_tick_diff,
                 frame_size=frame_size,
+                response_delay=response_delay,
                 fragment_type=fragment_type,
             )
             db.update_dal(stream)
