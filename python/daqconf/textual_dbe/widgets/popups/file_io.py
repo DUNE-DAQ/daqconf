@@ -107,9 +107,8 @@ class OpenFile(__MenuWithButtons):
         """
         Add new handler based on config name
         """
-        self._config_controller.new_handler_from_str(new_config)
         try:
-            self.update_main_screen()
+            self._main_screen.update_with_new_input(new_config)        
         except:
             logger = self._main_screen.query_one("RichLogWError")
             logger.write_error(f"[red]Could open: {new_config}")
@@ -132,44 +131,6 @@ class OpenFile(__MenuWithButtons):
                 logger = self._main_screen.query_one("RichLogWError")
                 logger.write_error("Sorry not done this yet, please enter full file path and hit enter/open!")
 
-        
-
-    def update_main_screen(self):
-        """Updates the main screen with the new configuration. Fully refreshes the screen + objects [is slowish]
-        """        
-        
-        # Add interfaces
-        self._config_controller.add_interface("class-selection")
-        self._config_controller.add_interface("relation-selection")
-
-        # Mount the selection panel
-        try:
-            self._main_screen.mount(SelectionPanel())
-        except:
-            raise Exception("Selection panel not found, something's gone wrong")
-
-        # Mount config table
-        try:
-            config_table = self._main_screen.query_one(ConfigTable)
-            config_table.update_table(self._config_controller.current_dal)
-        except:
-            config_table = ConfigTable(id="main_table")
-            self._main_screen.mount(config_table)
-
-        # Refresh the screen for safety
-        self._main_screen.refresh()
-        
-        # Get logger (defined at the start)
-        logger = self._main_screen.query_one("RichLogWError")
-        
-        # Get the current database name
-        current_database_path = self._config_controller.configuration.databases[0]
-        data_base_name = path.basename(current_database_path)
-        
-        # Print everything!
-        logger.write(f"[bold green]Opened new configuration file: [/bold green][bold red]{data_base_name}[/bold red][bold green].\nConnected databases are:[/bold green]\n" \
-                     + "".join([f"   - [red]{db}[/red] \n" for db in self._config_controller.configuration.get_includes()]))
-        
 
 class OpenFileScreen(Screen):
     
