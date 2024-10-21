@@ -3,7 +3,7 @@
 Textual DBE is an attempt to replicate [DBE](https://github.com/DUNE-DAQ/dbe/tree/develop) within a fully Pythonic interface. The tool allows for browsing and modification of configurations with a text-based (but mouse-navigable) interface written in Python. **This is not intended to be a full production ready solution and is purely a proof of concept!**
 
 ## Usage
-Open database editor with `textual_dbe`. This will open a splash screen displaying a blank logger + footer bar which contains a list of shortcuts.
+Open database editor with `textual_dbe [-f/--input-file input/file/path] `. This will open a splash screen displaying a blank logger + footer bar which contains a list of shortcuts. If input file is provided it will instead sip straight to the file file loaded screen.
 ![image](textual_dbe/splash_screen.png)
 
 In order to start editing configuration databases we first need to open a file! To do this press `o` which will open the following popup. Currently the `browse` option is not implemented so the full (or relative) file path to a database file is required instead.
@@ -11,6 +11,8 @@ In order to start editing configuration databases we first need to open a file! 
 
 Once this has been loaded in the screen should update. The editor is split into 3 segments:
 ![image](textual_dbe/file_loaded_screen.png)
+
+The navigator can then either be closed gracefully with `ctrl+q`
 
 ### The Navigator
 
@@ -47,4 +49,4 @@ Logger simply displays warnings/updates. Not everything is fully logged and ther
 ## To Do List
 - [x] Add method to disable components
 - [ ] Add more robust method for adding/modifying/deleting config objects
-- [ ] Display name of relationship in relationship view
+- [x] Display name of relationship in relationship view
