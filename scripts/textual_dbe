@@ -1,5 +1,16 @@
 #!/bin/env python3
+import click
 from daqconf.textual_dbe.daq_app import main_app
+
+@click.command()
+@click.option('-f', '--input-file', 'input_file', default=None, required=False)
+def textual_dbe(input_file):
+    app = main_app.DbeApp()
+    
+    if input_file is not None:
+        app.set_input_file(input_file)
+    
+    app.run()
 
 # Run dbe-screen
 if __name__=="__main__":
