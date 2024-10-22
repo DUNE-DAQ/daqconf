@@ -717,7 +717,7 @@ def generate_readout(
 def generate_fakedata(
     oksfile, include, generate_segment, n_streams, n_apps, det_id
 ):
-    """Simple script to create an OKS configuration file for a trigger segment.
+    """Simple script to create an OKS configuration file for a FakeDataProd-based readout segment.
 
       The file will automatically include the relevant schema files and
     any other OKS files you specify.
