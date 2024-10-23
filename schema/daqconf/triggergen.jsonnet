@@ -45,6 +45,15 @@ local cs = {
     s.field("max_tp_count", types.count, default=1000),
     s.field("min_pts", types.count, default=7),
     s.field("eps", types.count, default=20),
+    s.field("number_tps_per_request", types.count, default=100),
+    s.field("batch_size", types.count, default=1),
+    s.field("number_time_ticks", types.count, default=128),
+    s.field("number_wires", types.count, default=128),
+    s.field("inference_url", types.string, default="localhost:8001"),
+    s.field("model_name", types.string, default="simple"),
+    s.field("model_version", types.string, default="1"),
+    s.field("client_timeout_microseconds", types.count, default=0),
+    s.field("server_timeout_microseconds", types.count, default=0),
   ]),
 
   tc_readout: s.record( "tc_readout", [
