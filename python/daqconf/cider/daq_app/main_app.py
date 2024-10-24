@@ -2,7 +2,7 @@
 App for testing configuration 
 '''
 from os import environ, path
-from  daqconf.textual_dbe.app_structures.main_screen import MainScreen
+from  daqconf.cider.app_structures.main_screen import MainScreen
 
 # Textual Imports
 from textual.app import App

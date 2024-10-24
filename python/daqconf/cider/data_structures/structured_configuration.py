@@ -2,8 +2,8 @@
 Structed configuration object. Effectively just a ConfigurationHandler with combined with a graph
 """
 
-from daqconf.textual_dbe.data_structures.configuration_handler import ConfigurationHandler
-from daqconf.textual_dbe.data_structures.relational_graph import RelationalGraph
+from daqconf.cider.data_structures.configuration_handler import ConfigurationHandler
+from daqconf.cider.data_structures.relational_graph import RelationalGraph
 
 class StructuredConfiguration:
     def __init__(self, configuration_file_name: str):

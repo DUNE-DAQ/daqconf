@@ -5,7 +5,7 @@ from textual.widgets.selection_list import Selection
 from textual.screen import ModalScreen
 
 
-from daqconf.textual_dbe.widgets.configuration_controller import ConfigurationController
+from daqconf.cider.widgets.configuration_controller import ConfigurationController
 
 class SelectSession(Static):
     def compose(self):

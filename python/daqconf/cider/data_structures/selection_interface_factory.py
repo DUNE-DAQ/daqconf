@@ -1,4 +1,4 @@
-from daqconf.textual_dbe.data_structures.structured_configuration import StructuredConfiguration
+from daqconf.cider.data_structures.structured_configuration import StructuredConfiguration
 
 class SelectionInterfaceFactory:
     @classmethod
@@ -17,11 +17,11 @@ class SelectionInterfaceFactory:
         """
         match(interface_name):
             case "class-selection":
-                from daqconf.textual_dbe.data_structures.selection_interface import ClassSelectionMenu
+                from daqconf.cider.data_structures.selection_interface import ClassSelectionMenu
                 return ClassSelectionMenu(configuration)
 
             case "relation-selection":
-                from daqconf.textual_dbe.data_structures.selection_interface import RelationalSelectionMenu
+                from daqconf.cider.data_structures.selection_interface import RelationalSelectionMenu
                 return RelationalSelectionMenu(configuration)
             
             case _:

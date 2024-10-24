@@ -7,10 +7,10 @@ from textual.app import ComposeResult
 from textual.widgets import Input, Button, Static
 from textual.containers import Horizontal, Container
 
-from daqconf.textual_dbe.widgets.configuration_controller import ConfigurationController
-from daqconf.textual_dbe.widgets.config_table import ConfigTable
-from daqconf.textual_dbe.app_structures.selection_panel import SelectionPanel
-from daqconf.textual_dbe.widgets.popups.directory_tree import DatabaseDirectoryTree
+from daqconf.cider.widgets.configuration_controller import ConfigurationController
+from daqconf.cider.widgets.config_table import ConfigTable
+from daqconf.cider.app_structures.selection_panel import SelectionPanel
+from daqconf.cider.widgets.popups.directory_tree import DatabaseDirectoryTree
 
 class __MenuWithButtons(Static):
     def __init__(self, button_labels: Dict[str, str], name: str | None=None, id: str | None = None, classes: str | None = None) -> None:

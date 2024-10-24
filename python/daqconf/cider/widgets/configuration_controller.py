@@ -5,10 +5,10 @@ from typing import Dict
 from textual.widgets import Static
 from textual.message import Message
 
-from daqconf.textual_dbe.data_structures.structured_configuration import StructuredConfiguration
-from daqconf.textual_dbe.data_structures.configuration_handler import ConfigurationHandler
-from daqconf.textual_dbe.data_structures.selection_interface_factory import SelectionInterfaceFactory
-from daqconf.textual_dbe.data_structures.selection_interface import SelectionInterface
+from daqconf.cider.data_structures.structured_configuration import StructuredConfiguration
+from daqconf.cider.data_structures.configuration_handler import ConfigurationHandler
+from daqconf.cider.data_structures.selection_interface_factory import SelectionInterfaceFactory
+from daqconf.cider.data_structures.selection_interface import SelectionInterface
 
 class ConfigurationController(Static):    
     """Controller widget for the full configuration. In principal this is 

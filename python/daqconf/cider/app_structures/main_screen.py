@@ -3,13 +3,13 @@ from textual.widgets import Footer
 from textual.binding import Binding
 
 # Textual OKS imports
-from daqconf.textual_dbe.widgets.custom_rich_log import RichLogWError
-from daqconf.textual_dbe.widgets.config_table import ConfigTable
-from daqconf.textual_dbe.widgets.configuration_controller import ConfigurationController
-from daqconf.textual_dbe.widgets.popups.file_io import SaveWithMessageScreen, OpenFileScreen
-from daqconf.textual_dbe.widgets.popups.dropdown_selector import SelectSessionScreen
-from daqconf.textual_dbe.app_structures.selection_panel import SelectionPanel
-from daqconf.textual_dbe.widgets.popups.quit_screen import QuitScreen
+from daqconf.cider.widgets.custom_rich_log import RichLogWError
+from daqconf.cider.widgets.config_table import ConfigTable
+from daqconf.cider.widgets.configuration_controller import ConfigurationController
+from daqconf.cider.widgets.popups.file_io import SaveWithMessageScreen, OpenFileScreen
+from daqconf.cider.widgets.popups.dropdown_selector import SelectSessionScreen
+from daqconf.cider.app_structures.selection_panel import SelectionPanel
+from daqconf.cider.widgets.popups.quit_screen import QuitScreen
 from os import environ, path
 
 
@@ -42,7 +42,7 @@ class MainScreen(Screen):
         
         # Splash screen
         logger.write("[red]========================================================================")
-        logger.write("    [bold yellow]Welcome to the Textual Database Editor![/bold yellow]")
+        logger.write("    [bold yellow]Welcome to CIDER![/bold yellow]")
         logger.write("    [green]This is a work in progress, please use with[/green] [bold red]caution![/bold red]")
         logger.write("[red]========================================================================\n\n")
         

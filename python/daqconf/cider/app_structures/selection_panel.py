@@ -1,9 +1,8 @@
 from textual.app import ComposeResult
-from textual.geometry import Region
 from textual.widgets import Static, Button, ContentSwitcher
 from textual.containers import Horizontal
 
-from daqconf.textual_dbe.widgets.selection_menu import SelectionMenu
+from daqconf.cider.widgets.selection_menu import SelectionMenu
 
 
 class SelectionPanel(Static):

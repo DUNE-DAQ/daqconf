@@ -3,7 +3,7 @@ import numpy as np
 
 from textual.widgets import Static, Tree
 from textual.widgets.tree import TreeNode
-from daqconf.textual_dbe.widgets.configuration_controller import ConfigurationController
+from daqconf.cider.widgets.configuration_controller import ConfigurationController
 
 class SelectionMenu(Static):
     '''
