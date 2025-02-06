@@ -13,6 +13,7 @@ def generate_dataflow(
     tpwriting_enabled,
     generate_segment,
     n_data_writers=1,
+    n_dfoapps=1,
 ):
     """Simple script to create an OKS configuration file for a dataflow segment.
 
@@ -106,22 +107,26 @@ def generate_dataflow(
     opmon_conf = db.get_dal(class_name="OpMonConf", uid="slow-all-monitoring")
 
     dfo_conf = db.get_dal(class_name="DFOConf", uid="dfoconf-01")
-    dfo = dal.DFOApplication(
-        "dfo-01",
-        runs_on=host,
-        application_name="daq_application",
-        exposes_service=[daqapp_control],
-        network_rules=dfo_netrules,
-        opmon_conf=opmon_conf,
-        dfo=dfo_conf,
-    )
-    db.update_dal(dfo)
+    dfoapps = []
+    for dfoapp_idx in range(n_dfoapps):
+        dfoapp_id = dfoapp_idx + 1
+        dfo = dal.DFOApplication(
+            f"dfo-{dfoapp_id:02}",
+            runs_on=host,
+            application_name="daq_application",
+            exposes_service=[daqapp_control],
+            network_rules=dfo_netrules,
+            opmon_conf=opmon_conf,
+            dfo=dfo_conf,
+        )
+        db.update_dal(dfo)
+        dfoapps.append(dfo)
 
     trb_conf = db.get_dal(class_name="TRBConf", uid="trb-01")
     dw_conf = db.get_dal(class_name="DataWriterConf", uid="dw-01")
     dfhw = db.get_dal(class_name="DFHWConf", uid="dfhw-01")
 
-    dfobroker = dal.DFOBrokerConf("dfobroker-01", initial_active_dfo=dfo)
+    dfobroker = dal.DFOBrokerConf("dfobroker-01", initial_active_dfo=dfoapps[0])
     db.update_dal(dfobroker)
 
     dfapps = []
@@ -183,7 +188,7 @@ def generate_dataflow(
         db.update_dal(controller)
 
         seg = dal.Segment(
-            f"df-segment", controller=controller, applications=[dfo] + dfapps + tpwapps
+            f"df-segment", controller=controller, applications=dfoapps + dfapps + tpwapps
         )
         db.update_dal(seg)
 
