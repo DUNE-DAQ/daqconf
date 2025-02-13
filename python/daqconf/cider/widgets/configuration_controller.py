@@ -66,8 +66,9 @@ class ConfigurationController(Static):
         try:
             setattr(self._current_selected_object, attr_name, update_value)
             self._handler.configuration_handler.configuration.update_dal(self._current_selected_object)        
-        except Exception as _:
-            self._logger.write_error(f"Could not update [yellow]{attr_name}[/yellow] to [yellow]{update_value}[/yellow] for {self.generate_rich_string(self._current_selected_object)}")
+        except Exception as e:
+            self._logger.write_error(e)
+            self._logger.write_error(f"\nCould not update [yellow]{attr_name}[/yellow] to [yellow]{update_value}[/yellow] for {self.generate_rich_string(self._current_selected_object)}")
 
     def new_handler_from_str(self, file_name: str):
         """Set new handler object by file name
@@ -77,8 +78,9 @@ class ConfigurationController(Static):
         """ 
         try:
             self._handler = StructuredConfiguration(file_name)
-        except:
-            self._logger.write_error(f"Could not load configuration from [bold yellow]{file_name}[/bold yellow]")
+        except Exception as e:
+            raise e
+            
             
     @property
     def handler(self)->StructuredConfiguration | None:
@@ -105,7 +107,7 @@ class ConfigurationController(Static):
         Returns:
             Access the raw configuration
         """        
-        self.__no_handler_error()
+        self.__no_handler_check()
         
         return self._handler.configuration_handler.configuration
 
@@ -128,7 +130,7 @@ class ConfigurationController(Static):
         return self._selection_interfaces
 
     def add_interface(self, interface_label: str)->None:
-        self.__no_handler_error()
+        self.__no_handler_check()
         self._selection_interfaces[interface_label]= \
             SelectionInterfaceFactory.get_interface(interface_label, self._handler)
 
@@ -221,10 +223,10 @@ class ConfigurationController(Static):
         """
         return [self._current_selected_object not in session.disabled for session in self.get_all_sessions()]
 
-    def __no_handler_error(self):
+    def __no_handler_check(self):
         """Raise error if no handler is setup"""
-        if self._handler.configuration_handler is None:
-            raise Exception("No handler has been setup")
+        if self._handler is None:
+            self._logger.write_error("Handler not initialised, this could be")
 
     class Changed(Message):
         def __init__(self, dal: object):
@@ -234,14 +236,14 @@ class ConfigurationController(Static):
             
     def modify_current_dal_relationship(self, relationship_name: str, updated_value, append: bool=False):
         # Wrapper method for changing value of relationship to anythings
-        self.__no_handler_error()
+        self.__no_handler_check()
         self.handler.configuration_handler.modify_relationship(self._current_selected_object.className(),
                                           getattr(self._current_selected_object, 'id'),
                                           relationship_name, updated_value, append)
         
     def remove_current_dal_relationship(self, relationship_name):
         # Wrapper method for setting relationship value to None
-        self.__no_handler_error()
+        self.__no_handler_check()
         self.handler.configuration_handler.modify_relationship(self._current_selected_object.className(),
                                           getattr(self._current_selected_object, 'id'),
                                           relationship_name, 
@@ -249,7 +251,7 @@ class ConfigurationController(Static):
 
     def pop_dal_relationship(self, relationship_name, dal_to_remove):
         # Wrapper method for removing dal from multi-value relationship
-        self.__no_handler_error()
+        self.__no_handler_check()
         
         if dal_to_remove is None:
             raise Exception("Relationship is already emptied")
@@ -265,13 +267,10 @@ class ConfigurationController(Static):
         # Grab index of dal to be removed
         try:
             dal_idx = relationships.index(dal_to_remove)
-        except:
-            raise Exception(relationships)
-        
-        relationships.pop(dal_idx)
-        
-        
-        setattr(self._current_selected_object, relationship_name, relationships)
+            relationships.pop(dal_idx)            
+            setattr(self._current_selected_object, relationship_name, relationships)
+        except Exception as e:
+            self._logger.write_error(e)
         
     # Some wrapper methods to avoid needing to call the base handler object
     def get_dals_of_class(self, dal_class: str):

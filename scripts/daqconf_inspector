@@ -225,8 +225,9 @@ def cli(obj, interactive, config_file):
 
 @cli.command(short_help="Show sessions information")
 @click.option('-p', '--show-file_paths', is_flag=True, show_default=True, default=False)
+@click.argument('session_name', required=False)
 @click.pass_obj
-def show_sessions(obj, show_file_paths):
+def show_sessions(obj, show_file_paths, session_name):
     """
     Show details of each session available in the configuration database
 
@@ -267,6 +268,9 @@ def show_sessions(obj, show_file_paths):
         print(f" - '{s.UID()}' [blue]{s.contained_in()}[/blue]")
 
     print()
+
+    if not session_name is None:
+        sessions = [ s for s in sessions if s.UID() == session_name ]
 
     for so in sessions:
 
@@ -538,16 +542,41 @@ def show_object_tree(obj, uid, show_attrs, focus_path, level):
 
         
 @cli.command(short_help="Show detector-daq connections")
+@click.argument('connection_name', required=False)
 @click.pass_obj
-def show_d2d_connections(obj):
+def show_d2d_connections(obj, connection_name):
+    """
+    Shows the DetectorToDAQ connections in the database
+
+    The receiver id and summary sender informations for each connection are shown in a compact table.
+    """
 
 
     from rich.highlighter import ReprHighlighter
     rh = ReprHighlighter()
     cfg = obj.cfg
 
+    def get_attributes_recursive(obj, context: str ="") -> dict:
+        if context:
+            context += '.'
+
+        attr_map = {}
+        for a in get_attribute_list(obj):
+            attr_map[f"{context}{a}"] = getattr(obj, a)
+        
+        for r in get_relation_list(obj):
+            rel_obj = getattr(obj, r)
+            if isinstance(rel_obj, list):
+                for i, ir in enumerate(rel_obj):
+                    attr_map.update(get_attributes_recursive(ir, f"{r}[{i}]"))    
+            else:
+                attr_map.update(get_attributes_recursive(rel_obj, r))
+        
+        return attr_map
 
     d2d = cfg.get_dals('DetectorToDaqConnection')
+    if not connection_name is None:
+        d2d = [c for c in d2d if c.id == connection_name]
 
     t = Table("connection", "receiver", "type",  "# senders", "send types", "source ids", "det ids", "crate ids", "slot ids", "stream ids")
     for conn in d2d:
@@ -566,12 +595,32 @@ def show_d2d_connections(obj):
         
 
         rcvr = recs[0]
+        
+        # Show connection details
+        # Display the receiver
+        rcvr_tab = Table("attribute", "value", title=f"{rcvr.id}@{rcvr.className()}", show_header=False)
+        for a,v in get_attributes_recursive(rcvr).items():
+            rcvr_tab.add_row(a, rh(str(v)))
+
         sndr_grp = send_grps[0]
         sndrs = [ r for r in sndr_grp.contains if 'DetDataSender' in r.oksTypes()]
         if len(sndr_grp.contains) != len(sndrs):
             print(sndr_grp.contains)
             raise RuntimeError(f"Not all sender in {conn.id} are DetDataSenders")
         
+        sndrs_attrs = [ get_attributes_recursive(s) for s in sndrs ]
+            
+            
+        sndrs_tab = Table(*([""]+[s.id for s in sndrs]), title="Senders")
+        for k in sndrs_attrs[0].keys():
+            sndrs_tab.add_row(k, *[ rh(str(d[k])) for d in sndrs_attrs ])
+
+
+        conn_tab = Table("", title=conn.id, show_header=False)
+        conn_tab.add_row(rcvr_tab)
+        conn_tab.add_row(sndrs_tab)
+        print(conn_tab)
+
         strm_id_list = []
         det_ids = set()
         crate_ids = set()
@@ -588,8 +637,8 @@ def show_d2d_connections(obj):
                 stream_ids.add(strm.geo_id.stream_id)
 
         t.add_row(
-            rh(conn.id), 
-            rh(rcvr.id), 
+            conn.id, 
+            rcvr.id, 
             rh(f"'{rcvr.className()}'"),
             rh(str(len(sndrs))), 
             rh(str(', '.join([f"'{s}'" for s in sndr_types]))), 

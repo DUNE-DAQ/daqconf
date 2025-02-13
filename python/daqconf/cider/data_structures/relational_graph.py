@@ -17,6 +17,39 @@ from daqconf.cider.data_structures.configuration_handler import ConfigurationHan
 
 class RelationalGraph:
     def __init__(self, config_handler: ConfigurationHandler):
+        self._handler = config_handler
+
+        self.__generate_adjacency_matrix()    
+    
+    def __generate_adjacency_matrix(self):
+        """Generates adjacency matrix from configuration handler object i.e. finds connected DALs
+        """
+        self._adjacency_matrix = np.zeros((self._handler.n_dals, self._handler.n_dals))
+        
+        for i, dal in enumerate(self._handler.conf_obj_list):
+            for connection_category in self._handler.get_relationships_for_conf_object(dal):
+                # Allows for multiply connected nodes
+                for connection in list(connection_category.values())[0]:
+                    # Loop over just conf objects
+                    self._adjacency_matrix[i][self._handler.conf_obj_list.index(connection)] += 1
+  
+    @property
+    def adjacency_matrix(self)->NDArray:
+        return self._adjacency_matrix
+
+    @property
+    def top_level_nodes(self):
+        # Means we automatically rebuild the graph, this is inefficient but vaguely fine
+        self.__generate_adjacency_matrix()        
+        return [dal for i, dal in enumerate(self._handler.conf_obj_list) if np.all(self.adjacency_matrix[i])==0]
+
+
+'''
+HW: Leaving here for now for posterity, this is a great way to organise a FIXED configuration
+but is horribly slow for constant updates
+
+class RelationalGraph:
+    def __init__(self, config_handler: ConfigurationHandler):
         """Construct relational graph
 
         Arguments:
@@ -105,16 +138,22 @@ class RelationalGraph:
         return dist
     
     def __calculate_longest_paths(self)->None:
-        '''
+        """
         Idea is to find shortest paths on -G for each top level node where G is the connection graph.
         Layer each item lives on is then simply max(longest_path) for each top level item
-        '''
+        """
         
         self._topological_ordered_matrix = self.__get_topological_order()
         for node_id in range(self._handler.n_dals):
             self._max_distance = np.maximum(self._max_distance, self.__longest_path(node_id))
 
         self._max_distance = self._max_distance.astype(int)
+    
+    def add_node(self, node_dal):
+        pass
+    
+    def remove_node(self, node_dal):
+        pass
     
     @property
     def top_level_nodes(self):
@@ -123,6 +162,4 @@ class RelationalGraph:
             self.generate_graph()
         
         return [dal for i, dal in enumerate(self._handler.conf_obj_list) if self._max_distance[i]==0]
-    
-    
-    
+'''
