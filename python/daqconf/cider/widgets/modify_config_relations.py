@@ -53,10 +53,10 @@ class SingleRelationshipModifier(Static):
         # HACK I really hate this, currently select can't deal with complex types
         # Rather than change the low down stuff we convert to dal here
         self._current_related_dal = event.value
-        # try:
-        self._config_controller.modify_current_dal_relationship(self._relationship_name, self._current_related_dal)
-        # except Exception as e:
-        #     self._logger.write_error(e)
+        try:
+            self._config_controller.modify_current_dal_relationship(self._relationship_name, self._current_related_dal)
+        except Exception as e:
+            self._logger.write_error(e)
             
     
     @on(Button.Pressed)

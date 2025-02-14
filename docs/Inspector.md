@@ -174,6 +174,16 @@ Note: specifiying the object name is required .
 |![show-smartapp-mods example](./img/inspector_show-smartapp-mods.png)|
 
 
+### `show-d2d-connections`
+
+Shows the DetectorToDAQ connections in the database
+
+The receiver id and summary sender informations for each connection are shown in a compact table.
+
+|**Example**|
+|---|
+|`daqconf_inspector ehn1-daqconfigs/sessions/np02-session.data.xml show-d2d-connections`|
+| TODO |
 
 ## Verification
 ### `verify-detstreams`

@@ -26,6 +26,7 @@ def compare_dal_obj(a, b):
 
     # TODO: add a check on a and b being dal objects
     # There is no base class for dal objects in python, but dal objects have _shcema__objects.
+    
 
     if a.className() != b.className():
         return False
@@ -72,7 +73,7 @@ def find_related(dal_obj, dal_group: set):
 from collections.abc import Iterable
 def find_duplicates( collection: Iterable ):
     """
-    Find duplicated dal objects in a collection by based on objects attributes and relationships
+    Find duplicated dal objects in a collection by comparing objects attributes and relationships
     """
     
     n_items = len(collection)

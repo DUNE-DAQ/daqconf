@@ -24,12 +24,12 @@ class ConfigurationHandler:
     def __open_configuration(self, configuration_file_name: str)->conffwk.Configuration:
         '''Opens configuration object safely '''
         if not os.path.isfile(configuration_file_name):
-            raise Exception(f"Cannot open {configuration_file_name}")
+            raise Exception(f"Cannot find file:  {configuration_file_name}")
         
         try:
             configuration = conffwk.Configuration(f"oksconflibs:{configuration_file_name}")
         except Exception as e:
-            raise e 
+            raise e
 
         return configuration
     
