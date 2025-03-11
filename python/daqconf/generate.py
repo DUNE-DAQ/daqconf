@@ -941,6 +941,9 @@ def generate_trigger(
         ta_subscriber = db.get_dal(class_name="DataReaderConf", uid="ta-subscriber-1")
         ta_handler = db.get_dal(class_name="DataHandlerConf", uid="def-ta-handler")
 
+        # Action Plans
+        tc_maker_start = db.get_dal(class_name="ActionPlan", uid="tc-maker-start")
+
         tcmaker = dal.TriggerApplication(
             "tc-maker-1",
             runs_on=host,
@@ -952,6 +955,7 @@ def generate_trigger(
             opmon_conf=opmon_conf,
             data_subscriber=ta_subscriber,
             trigger_inputs_handler=ta_handler,
+            action_plans=[tc_maker_start],
         )
         db.update_dal(tcmaker)
 
