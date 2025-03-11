@@ -126,7 +126,7 @@ def generate_dataflow(
     dw_conf = db.get_dal(class_name="DataWriterConf", uid="dw-01")
     dfhw = db.get_dal(class_name="DFHWConf", uid="dfhw-01")
 
-    dfobroker = dal.DFOBrokerConf("dfobroker-01", initial_active_dfo=dfoapps[0])
+    dfobroker = dal.DFOBrokerConf("dfobroker-01")
     db.update_dal(dfobroker)
 
     dfapps = []
