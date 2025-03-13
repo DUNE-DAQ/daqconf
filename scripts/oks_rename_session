@@ -4,7 +4,7 @@ import click
 import conffwk
 import copy
 
-import daqconf.rename_session
+from daqconf.rename_session import rename_session
 
 @click.command()
 @click.argument('oksfile', required=True, nargs=1)
@@ -12,7 +12,7 @@ import daqconf.rename_session
 @click.argument('session_name', required=False, nargs=1)
 def oks_rename_session(oksfile,output_name,session_name=None):
     """Script to rename the session (first session if multiple and not specified)"""
-    daqconf.rename_session(oksfile,output_name,session_name)
+    rename_session(oksfile,output_name,session_name)
 
 if __name__ == '__main__':
     oks_rename_session()
