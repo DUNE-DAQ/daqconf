@@ -191,23 +191,14 @@ class ConfigurationController(Static):
         for session, toggle_enable in selection_menu:
             session_disabled_elements = session.disabled
 
-
-            # Make sure if nothing's happening we don't do anything
-            if self._current_selected_object not in session_disabled_elements and toggle_enable:
-                return
-            
-            elif self._current_selected_object in session_disabled_elements and not toggle_enable:
-                return
-
-            if toggle_enable:
-                self._logger.write(f"Enabling {self.generate_rich_string(self._current_selected_object)} in {self.generate_rich_string(session)}")
-                if self._current_selected_object in session_disabled_elements:            
+            if toggle_enable and self._current_selected_object in session_disabled_elements:
+                # if self._current_selected_object in session_disabled_elements:            
+                    self._logger.write(f"Enabling {self.generate_rich_string(self._current_selected_object)} in {self.generate_rich_string(session)}")
                     session_disabled_elements.remove(self._current_selected_object)
-            else:
-                self._logger.write(f"Disabling {self.generate_rich_string(self._current_selected_object)} in {self.generate_rich_string(session)}")
-                
-                if self._current_selected_object not in session_disabled_elements:
-                    session_disabled_elements.append(self._current_selected_object)
+
+            elif not toggle_enable and self._current_selected_object not in session_disabled_elements:
+                self._logger.write(f"Disabling {self.generate_rich_string(self._current_selected_object)} in {self.generate_rich_string(session)}")                
+                session_disabled_elements.append(self._current_selected_object)
                 
             session.disabled = session_disabled_elements
             self._handler.configuration_handler.configuration.update_dal(session)        
