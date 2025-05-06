@@ -855,7 +855,7 @@ def show_smartapp_mods(obj, session_id, app_id, show_attrs, level, focus_path):
         # FIXME: AAAAAARGH
         # Need to use local copies because different applications generate the same objects in the db
         local_cfg = conffwk.Configuration(f"oksconflibs:{cfg.active_database}")
-        mods = generate_modules(local_cfg, sm_app, s)
+        mods = generate_modules(s)
 
         tree = Tree(f"[green]{sm_app.id}[/green][magenta]@{sm_app.className()}[/magenta]")
 
