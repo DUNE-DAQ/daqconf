@@ -552,15 +552,9 @@ GraphBuilder::find_child_objects(const ConfigObject& parent_obj)
 
   std::vector<ConfigObject> connected_objects{};
 
-  const std::vector parent_child_relations = {"segment", "segments", "applications"};
-
   dunedaq::conffwk::class_t classdef = m_confdb->get_class_info(parent_obj.class_name(), false);
 
   for (const dunedaq::conffwk::relationship_t& relationship : classdef.p_relationships) {
-
-    if (std::ranges::find(parent_child_relations, relationship.p_name) == parent_child_relations.end()) {
-      continue;
-    }
 
     // The ConfigObject::get(...) function doesn't have a
     // const-qualifier on it for no apparent good reason; we need
