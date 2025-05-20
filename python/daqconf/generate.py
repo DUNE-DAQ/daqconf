@@ -648,7 +648,9 @@ def generate_readout(
             ru.tp_handler = tphandler
             tp_sources = []
             tpbaseid = (appnum * 3) + 100
-            for plane in range(3):
+            # 30-Apr-2025, KAB: added support for 1 "plane" of non-TPC TPs (e.g. PDS).
+            # That is compared with the usual 3 planes of TPs for TPC detectors.
+            for plane in range(1 if det_id not in [3, 10, 11] else 3):
                 s_id = tpbaseid + plane
                 tps_dal = dal.SourceIDConf(
                     f"tp-srcid-{s_id}", sid=s_id, subsystem="Trigger"
