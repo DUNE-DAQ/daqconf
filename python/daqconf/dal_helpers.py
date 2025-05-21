@@ -86,3 +86,12 @@ def find_duplicates( collection: Iterable ):
 
     return duplicates
 
+def get_all_schema_includes(db, file):
+    includes = db.get_includes(file)
+    
+    for include in includes:
+        if not include.endswith('data.xml'):
+            continue
+        includes += get_all_schema_includes(db, include)
+
+    return list(set(includes))

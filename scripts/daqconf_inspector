@@ -9,7 +9,7 @@ import itertools
 
 import conffwk
 from daqconf.session import get_segment_apps
-from daqconf.dal_helpers import get_attribute_info, get_relation_info, get_attribute_list, get_relation_list, compare_dal_obj, find_related, find_duplicates
+from daqconf.dal_helpers import get_attribute_info, get_relation_info, get_attribute_list, get_all_schema_includes, get_relation_list, get_all_schema_includes, compare_dal_obj, find_related, find_duplicates
 
 def start_ipython(loc):
     """
@@ -802,7 +802,7 @@ def verify_smart_apps(obj):
 @click.option('-l','--level', "level", type=int, default=None, help="Recursion level in the object tree")
 @click.option('-f','--focus', "focus_path", default=None, help="Path within the object relationships to focus on")
 @click.pass_obj
-def show_smartapp_mods(obj, session_id, app_id, show_attrs, level, focus_path):
+def show_smartapp_modules(obj, session_id, app_id, show_attrs, level, focus_path):
     """
     For the selected smart application and session, execute the generate modules method and displays the results in a hierarchical tree.
     Resource objexts are displaied with their status.
@@ -860,7 +860,6 @@ def show_smartapp_mods(obj, session_id, app_id, show_attrs, level, focus_path):
         tree = Tree(f"[green]{sm_app.id}[/green][magenta]@{sm_app.className()}[/magenta]")
 
         if path:
-
             mods = [m for m in mods if m.id == path[0][0]]
             path = path[1:]
 
@@ -874,6 +873,93 @@ def show_smartapp_mods(obj, session_id, app_id, show_attrs, level, focus_path):
 
     # start_ipython(locals())
 
+
+
+
+
+@cli.command(short_help="Verify connectivity between applications in a session")
+@click.argument('session_id')
+@click.pass_obj
+def verify_connectivity(obj, session_id):
+
+    '''
+    Notes:
+
+    data_files = []
+    schema_files = []
+    co = cfg.get_obj(dal_obj, dal_obj.id)
+    data_file = co.contained_in()
+    if data_file in data_files:
+        continue
+    schema_files += get_all_schema_files(data_file)
+    '''
+    import confmodel
+
+    from appmodel import generate_modules, UnknownGeneratorException
+    from dataclasses import dataclass, fields, asdict
+    from rich.highlighter import ReprHighlighter
+    rh = ReprHighlighter()
+    @dataclass
+    class Endpoint:
+        app_id: str
+        ep_id: str
+        ep_type: str
+        data_type: str
+
+    cfg = obj.cfg
+    s = cfg.get_dal('Session', session_id)
+    apps = get_segment_apps(s.segment)
+
+
+    rx_queries = []
+    tx_pool = []
+
+
+    for app in apps:
+        if 'SmartDaqApplication' in app.oksTypes():
+
+            enabled = not confmodel.component_disabled(cfg._obj, s.id, app.id)
+            if ( not enabled ):
+                print(f"Skipping disabled application '{app.id}'")
+
+            print(f"Generating modules for app '{app.id}' of class '{app.className()}' in session '{s.id}'")
+            try:
+                # Need to use local copies because different applications generate the same objects in the db
+                local_cfg = conffwk.Configuration(f"oksconflibs:{cfg.active_database}")
+                modules = generate_modules(local_cfg, app, s)
+                print(len(modules))
+                for m in modules:
+                    for i in m.inputs:
+                        if i.className() != 'NetworkConnection':
+                            continue
+                        rx_queries += [Endpoint(app.id, i.id, i.connection_type, i.data_type)]
+                    for o in m.outputs:
+                        if o.className() != 'NetworkConnection':
+                            continue
+                        tx_pool += [Endpoint(app.id, o.id, o.connection_type, o.data_type)]
+            except UnknownGeneratorException as e:
+                print(f"[red]Error: no available module generator for {app.className()}[/red]")
+    
+    print(rx_queries)
+    print(tx_pool)
+
+    field_names = [f.name for f in fields(Endpoint)]
+    t = Table(*field_names)
+    for tx in tx_pool:
+        values = asdict(tx)
+        t.add_row(*[rh(values[f]) for f in field_names])
+    print(t)
+
+
+    import re
+    for rxq in rx_queries:
+        print(f"From '{rxq.app_id}', looking for '{rxq.ep_id}' transmitting '{rxq.data_type}' of type '{rxq.ep_type}'")
+        for tx in tx_pool:
+            if tx.data_type == rxq.data_type and re.match(rxq.ep_id, tx.ep_id):
+                print(f" - '{tx.ep_id}' on '{tx.app_id}'")
+
+
+    # start_ipython(locals())
 
 if __name__== "__main__":
     cli(obj=DaqInspectorContext())
