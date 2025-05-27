@@ -874,6 +874,38 @@ def show_smartapp_mods(obj, session_id, app_id, show_attrs, level, focus_path):
 
     # start_ipython(locals())
 
+@cli.command(short_help="Show the status of a resource and its contained ones")
+@click.argument('session_id')
+@click.argument('resource_id')
+@click.option('+a/-a','--show-attributes/--hide-attributes', "show_attrs", default=True, help="Show/Hide attributes")
+@click.option('-l','--level', "level", type=int, default=None, help="Recursion level in the object tree")
+@click.option('-f','--focus', "focus_path", default=None, help="Path within the object relationships to focus on")
+@click.pass_obj
+def show_resources(obj, session_id, resource_id, show_attrs, level, focus_path):
+    import re
+
+    from rich.highlighter import ReprHighlighter
+    rh = ReprHighlighter()
+    cfg = obj.cfg
+    drr = DalRichRenderer(cfg)
+
+    focus_path = focus_path.split('.') if focus_path is not None else []
+    re_index = re.compile('([\w-]*)(\[([\w-]*)\])?')
+    path = []
+    for p in focus_path:
+        m = re_index.match(p)
+        if m is None:
+            raise RuntimeError("Incorrect systax of path specifier p")
+        rel,_,name = m.groups()
+        path.append((rel, name))
+
+    s = cfg.get_dal('Session', session_id)
+
+    r = cfg.get_dal('ResourceBase', resource_id)
+
+    t = drr.make_obj_tree(r, show_attrs, path, level, s)
+    print(t)
+
 
 if __name__== "__main__":
     cli(obj=DaqInspectorContext())
