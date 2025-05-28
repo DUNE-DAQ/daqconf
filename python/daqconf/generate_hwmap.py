@@ -29,13 +29,28 @@ def generate_hwmap(oksfile, n_streams, n_apps = 1, det_id = 3, app_host = "local
         for stream_no in range(n_streams):
             print (f"Generating {stream_no=}")
 
-            geo_dal = dal.GeoId(
-                f"geioId-{source_id}",
-                detector_id=det_id,
-                crate_id=app+1,
-                slot_id=0,
-                stream_id=stream_no,
-            )
+            # 28-May-2025, KAB: hack(?) to get DAPHNE TPs to have unique channel numbers
+            # within a single ReadoutApp. This involves setting DAPHNE slot numbers to
+            # unique values. There is probably more work to be done to get the DAPHNE
+            # and WIBEth crate/slot/stream numbers that we use in fake-data-playback and
+            # integration tests to better match real electronics, but hopefully this is
+            # sufficient for now.
+            if det_id in [2, 8, 9]:
+                geo_dal = dal.GeoId(
+                    f"geioId-{source_id}",
+                    detector_id=det_id,
+                    crate_id=app+1,
+                    slot_id=stream_no,
+                    stream_id=1,
+                )
+            else:
+                geo_dal = dal.GeoId(
+                    f"geioId-{source_id}",
+                    detector_id=det_id,
+                    crate_id=app+1,
+                    slot_id=0,
+                    stream_id=stream_no,
+                )
             db.update_dal(geo_dal)
             stream = dal.DetectorStream(
                 f"stream-{source_id}",
