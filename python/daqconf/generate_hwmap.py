@@ -26,6 +26,10 @@ def generate_hwmap(oksfile, n_streams, n_apps = 1, det_id = 3, app_host = "local
 
     for app in range(n_apps):
         print (f"Generating {app=}")
+        print(f"New nic adding nic with id nic-{app}")
+        nic_dal = dal.NetworkInterface(f"nic-{app}")
+        db.update_dal(nic_dal)
+
         for stream_no in range(n_streams):
             print (f"Generating {stream_no=}")
 
@@ -48,7 +52,8 @@ def generate_hwmap(oksfile, n_streams, n_apps = 1, det_id = 3, app_host = "local
 
             sender_dal = dal.FakeDataSender(
                 f"sender-{source_id}",
-                contains=[stream]
+                streams=[stream],
+                uses=nic_dal
             )
             db.update_dal(sender_dal)
             senders.append(sender_dal)
@@ -56,17 +61,16 @@ def generate_hwmap(oksfile, n_streams, n_apps = 1, det_id = 3, app_host = "local
 
             source_id = source_id + 1
 
-        sender_set = dal.ResourceSetAND(f"senders-{app}", contains=senders)
-        db.update_dal(sender_set)
-
-        print(f"New nic adding nic with id nic-{app}")
-        nic_dal = dal.FakeDataReceiver(
-            f"ROInterface-{app}"
+        rec_dal = dal.FakeDataReceiver(
+            f"dataRec-{app}",
+            uses=nic_dal
         )
-        db.update_dal(nic_dal)
-        detconn_dal = dal.DetectorToDaqConnection(
+        db.update_dal(rec_dal)
+        detconn_dal = dal.NetworkDetectorToDaqConnection(
             f"det-conn-{app}",
-            contains=[nic_dal, sender_set])
+            net_receiver=rec_dal,
+            net_senders=senders
+        )
         db.update_dal(detconn_dal)
         groups.append(detconn_dal)
         senders = []
