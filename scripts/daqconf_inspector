@@ -82,7 +82,7 @@ class DalRichRenderer:
         import confmodel
 
         """Helper function that returns the status of an object in a session"""
-        if not obj.isDalType('Component'):
+        if not obj.isDalType('ResourceBase'):
             return None
 
         enabled = not confmodel.component_disabled(self._confdb._obj, session.id, obj.id)
