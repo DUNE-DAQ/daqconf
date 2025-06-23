@@ -54,6 +54,7 @@ local cs = {
     s.field("model_version", types.string, default="1"),
     s.field("client_timeout_microseconds", types.count, default=0),
     s.field("server_timeout_microseconds", types.count, default=0),
+    s.field("verbose", types.flag, default=false),
   ]),
 
   tc_readout: s.record( "tc_readout", [
