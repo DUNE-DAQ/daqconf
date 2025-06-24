@@ -73,7 +73,7 @@ class SelectionMenu(Static):
                 else: 
                     if config_key.className() == "Session":
                         disabled_elements = config_key.disabled
-                        # Remove the ResourceBase object since it just doubly defines disabled items
+                        # Remove the Resource object since it just doubly defines disabled items
                 
                     # Check if the item is disabled
                     item_disabled = self.__check_item_disabled(config_key, disabled_elements) or is_disabled
