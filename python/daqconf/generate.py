@@ -590,7 +590,7 @@ def generate_readout(
                 f"wiec-{connection.id}",
                 application_name="daq_application",
                 runs_on=host,
-                contains=[connection],
+                detector_connections=[connection],
                 wib_module_conf=wm_conf,
                 hermes_module_conf=hermes_conf,
                 exposes_service=[daqapp_control],

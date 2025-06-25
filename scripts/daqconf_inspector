@@ -579,37 +579,20 @@ def show_d2d_connections(obj, connection_name):
         d2d = [c for c in d2d if c.id == connection_name]
 
     t = Table("connection", "receiver", "type",  "# senders", "send types", "source ids", "det ids", "crate ids", "slot ids", "stream ids")
+
+    from confmodel import d2d_receiver, d2d_senders
     for conn in d2d:
 
-        if len(conn.contains) != 2:
-            raise RuntimeError(f"Too many objects found in {conn.id} : {len(conn.contains)}(expected 1 senger group and 1 receiver)")
+        rcvr = cfg.get_dal("DetDataReceiver", d2d_receiver(cfg._obj, conn.id))
 
-        recs = [ r for r in conn.contains if 'DetDataReceiver' in r.oksTypes()]
-        send_grps = [ r for r in conn.contains if 'ResourceSetAND' in r.oksTypes()]
-
-        if len(recs) != 1:
-            raise RuntimeError(f"Multiple receivers found in connection {conn.id}")
-
-        if len(send_grps) != 1:
-            raise RuntimeError(f"Multiple sender groups found in connection {conn.id}")
-        
-
-        rcvr = recs[0]
-        
         # Show connection details
         # Display the receiver
         rcvr_tab = Table("attribute", "value", title=f"{rcvr.id}@{rcvr.className()}", show_header=False)
         for a,v in get_attributes_recursive(rcvr).items():
             rcvr_tab.add_row(a, rh(str(v)))
 
-        sndr_grp = send_grps[0]
-        sndrs = [ r for r in sndr_grp.contains if 'DetDataSender' in r.oksTypes()]
-        if len(sndr_grp.contains) != len(sndrs):
-            print(sndr_grp.contains)
-            raise RuntimeError(f"Not all sender in {conn.id} are DetDataSenders")
-        
+        sndrs = [ cfg.get_dal("DetDataSender", sndr) for sndr in d2d_senders(cfg._obj, conn.id)]
         sndrs_attrs = [ get_attributes_recursive(s) for s in sndrs ]
-            
             
         sndrs_tab = Table(*([""]+[s.id for s in sndrs]), title="Senders")
         for k in sndrs_attrs[0].keys():
@@ -629,7 +612,7 @@ def show_d2d_connections(obj, connection_name):
         sndr_types = set()
         for sndr in sndrs:
             sndr_types.add(sndr.className())
-            for strm in sndr.contains:
+            for strm in sndr.streams:
                 strm_id_list.append(strm.source_id)
                 det_ids.add(strm.geo_id.detector_id)
                 crate_ids.add(strm.geo_id.crate_id)
