@@ -792,7 +792,7 @@ def generate_fakedata(
                 fragment_type=fragment_type,
             )
             db.update_dal(stream)
-            fakeapp.streams.append(stream)
+            fakeapp.producers.append(stream)
             source_id = source_id + 1
 
         db.update_dal(fakeapp)
