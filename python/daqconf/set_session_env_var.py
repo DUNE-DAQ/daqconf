@@ -1,7 +1,7 @@
 import conffwk
 import confmodel
 
-def set_session_env_var(oksfile, session_name, requested_env_var_name, requested_env_var_value):
+def set_session_env_var(oksfile, session_name, requested_env_var_name, requested_env_var_value, overwrite=True):
     """Script to set the value of an environment variable in the specified Session of the
     specified OKS database file"""
     db = conffwk.Configuration("oksconflibs:" + oksfile)
@@ -37,13 +37,21 @@ def set_session_env_var(oksfile, session_name, requested_env_var_name, requested
         if existing_env_var is not None:
             break
 
+    # if we found an existing env var, and we have been told not to over-write it, exit now
+    if existing_env_var is not None and not overwrite:
+        return
+
     # if we found an existing env var, update the DB with the new value
     if existing_env_var is not None:
         db.update_dal(existing_env_var)
 
     # otherwise, create a new env var and assign it to the OKS Session
     else:
-        new_env_var_dal_name = "temporary-env-var-" + requested_env_var_name
+        # 03-Jul-2025, KAB: switched from using a "temporary" string in the dal_name
+        # to using the session name. This means that each Session will get its own
+        # instance of the DAL Variable, which seems safer than having the possibility
+        # of multiple Sessions sharing the same Variable.
+        new_env_var_dal_name = session_name + "-env-var-" + requested_env_var_name
         new_env_var_dal_name = new_env_var_dal_name.lower()
         new_env_var_dal_name = new_env_var_dal_name.replace("_", "-")
 
