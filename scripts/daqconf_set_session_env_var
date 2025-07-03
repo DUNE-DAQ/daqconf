@@ -7,10 +7,12 @@ from daqconf.set_session_env_var import set_session_env_var
 @click.argument('oksfile')
 @click.argument('env_var_name', required=True, nargs=1)
 @click.argument('env_var_value', required=True, nargs=1)
-def daqconf_set_session_env_var(oksfile, oks_session_name, env_var_name, env_var_value):
+@click.option('--no_overwrite', default=False, is_flag=True,
+              help='Disables the to over-writing of an existing value for the specified env var')
+def daqconf_set_session_env_var(oksfile, oks_session_name, env_var_name, env_var_value, no_overwrite):
   """Script to set the value of an environment variable in the specified Session of the
   specified OKS database file"""
-  set_session_env_var(oksfile, oks_session_name, env_var_name, env_var_value)
+  set_session_env_var(oksfile, oks_session_name, env_var_name, env_var_value, (not no_overwrite))
 
 if __name__ == '__main__':
   daqconf_set_session_env_var()
