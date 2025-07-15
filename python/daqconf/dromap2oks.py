@@ -83,7 +83,7 @@ def dro_json_to_oks(jsonfile, oksfile, source_id_offset, nomap, lcores):
                 rxnic_dal = dal.NetworkDevice(
                     nic_name,
                     mac_address = pars["rx_mac"],
-                    ip_address = pars["rx_ip"]
+                    ip_address = [pars["rx_ip"]]
                 )
                 db.update_dal(rxnic_dal)
 
@@ -100,7 +100,7 @@ def dro_json_to_oks(jsonfile, oksfile, source_id_offset, nomap, lcores):
                 link_dal = dal.HermesDataSender(
                     hermes_link_id,
                     link_id = link_number,
-                    contains = hermes_streams,
+                    streams = hermes_streams,
                     uses = txnic_dal
                 )
                 db.update_dal(link_dal)
@@ -118,21 +118,18 @@ def dro_json_to_oks(jsonfile, oksfile, source_id_offset, nomap, lcores):
                 txnic_dal = dal.NetworkInterface(
                     nic_name,
                     mac_address = pars["tx_mac"],
-                    ip_address = pars["tx_ip"]
+                    ip_address = [pars["tx_ip"]]
                 )
                 db.update_dal(txnic_dal)
 
             if last_eth_pars != None:
                 #print(f"streams in nic {pars['rx_mac']} = {len(streams)}")
                 if pars["rx_mac"] != last_eth_pars["rx_mac"]:
-                    rset_dal = dal.ResourceSetAND(
-                        f"{last_eth_pars['rx_host']}-senders",
-                        contains = eth_senders
-                    )
                     db.update_dal(rset_dal)
                     daqcon_dal = dal.DetectorToDaqConnection(
                         f"{last_eth_pars['rx_host']}-connections",
-                        contains = [rset_dal, dpdkrec_dal]
+                        net_senders = eth_senders,
+                        net_receiver = dpdkrec_dal
                     )
                     db.update_dal(daqcon_dal)
 
@@ -178,23 +175,21 @@ def dro_json_to_oks(jsonfile, oksfile, source_id_offset, nomap, lcores):
                         slr=last_felix_pars["slr"]
                     )
                     db.update_dal(felix_dal)
-                    rset_dal = dal.ResourceSetAND(
-                        f"felix-{last_source_id}-streams",
-                        contains = flx_streams
-                    )
-                    db.update_dal(rset_dal)
+
                     daqcon_dal = dal.DetectorToDaqConnection(
                         f"felix-{last_source_id}-connections",
-                        contains = [rset_dal, felix_dal]
+                        felix_senders = [flx_senders],
+                        felix_receiver = felix_dal
                     )
                     db.update_dal(daqcon_dal)
                     flx_streams = []
+                    flx_senders = []
             # Not sure how FelixDataSender fits in. What uses it?
             flx_sender_dal = dal.FelixDataSender(
                 f"flxsender-{source_id}",
                 protocol=pars["protocol"],
                 link=pars["link"],
-                contains = [stream_dal]
+                streams = [flx_streams]
             )
             db.update_dal(flx_sender_dal)
             flx_senders.append(flx_sender_dal)
@@ -218,25 +213,16 @@ def dro_json_to_oks(jsonfile, oksfile, source_id_offset, nomap, lcores):
                 link_dal = dal.HermesDataSender(
                     hermes_link_id,
                     link_id = link_number,
-                    contains = hermes_streams,
+                    streams = hermes_streams,
                     uses = txnic_dal
                 )
                 db.update_dal(link_dal)
                 links.append(link_dal)
 
-        rset_dal = dal.ResourceSetAND(
-            f"{last_eth_pars['rx_host']}-senders",
-            contains = eth_senders
-        )
-        db.update_dal(rset_dal)
-        rset_dal = dal.ResourceSetAND(
-            f"{last_eth_pars['rx_host']}-streams",
-            contains = eth_streams
-        )
-        db.update_dal(rset_dal)
-        daqcon_dal = dal.DetectorToDaqConnection(
+        daqcon_dal = dal.NetworkDetectorToDaqConnection(
             f"{last_eth_pars['rx_host']}-connections",
-            contains = [rset_dal, dpdkrec_dal]
+            net_senders = eth_senders,
+            net_receiver =  dpdkrec_dal
         )
         db.update_dal(daqcon_dal)
 
@@ -249,14 +235,10 @@ def dro_json_to_oks(jsonfile, oksfile, source_id_offset, nomap, lcores):
             slr=last_felix_pars["slr"]
         )
         db.update_dal(felix_dal)
-        rset_dal = dal.ResourceSetAND(
-            f"felix-{flx_source_id}-streams",
-            contains = flx_streams
-        )
-        db.update_dal(rset_dal)
-        daqcon_dal = dal.DetectorToDaqConnection(
+        daqcon_dal = dal.FelixDetectorToDaqConnection(
             f"felix-{flx_source_id}-connections",
-            contains = [rset_dal, felix_dal]
+            felix_senders = flx_senders,
+            felix_receiver = felix_dal
         )
         db.update_dal(daqcon_dal)
 

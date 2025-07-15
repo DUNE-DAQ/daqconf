@@ -483,14 +483,8 @@ def generate_readout(
     ruapps = []
     for connection in detector_connections:
 
-        det_id = 0
-        for resource in connection.contains:
-            if "ResourceSetAND" in resource.oksTypes():
-                for stream in resource.contains:
-                    det_id = stream.contains[0].geo_id.detector_id
-                    break
-                break
-
+        geo_id = connection.get("GeoId")
+        det_id = geo_id[0].detector_id
         if det_id == 0:
             raise Exception(f"Unable to determine detector ID from Hardware Map!")
 
@@ -532,10 +526,11 @@ def generate_readout(
         host = db.get_dal(class_name="VirtualHost", uid=hosts[hostnum])
 
         # Find which type of DataReceiver we need for this connection
-        for resource in connection.contains:
-            if "DetDataReceiver" in resource.oksTypes():
-                receiver = resource
-                break
+        if connection.className() == "NetworkDetectorToDaqConnection":
+            receiver = connection.net_receiver
+        elif connection.className() == "FelixDetectorToDaqConnection":
+            receiver = connection.felix_receiver
+
         # Emulated stream
         if type(receiver).__name__ == "FakeDataReceiver":
             if nicrec == None:
@@ -595,7 +590,7 @@ def generate_readout(
                 f"wiec-{connection.id}",
                 application_name="daq_application",
                 runs_on=host,
-                contains=[connection],
+                detector_connections=[connection],
                 wib_module_conf=wm_conf,
                 hermes_module_conf=hermes_conf,
                 exposes_service=[daqapp_control],
@@ -632,7 +627,7 @@ def generate_readout(
             f"ru-{connection.id}",
             application_name="daq_application",
             runs_on=host,
-            contains=[connection],
+            detector_connections=[connection],
             network_rules=netrules,
             queue_rules=qrules + [det_q],
             link_handler=linkhandler,
@@ -797,7 +792,7 @@ def generate_fakedata(
                 fragment_type=fragment_type,
             )
             db.update_dal(stream)
-            fakeapp.contains.append(stream)
+            fakeapp.producers.append(stream)
             source_id = source_id + 1
 
         db.update_dal(fakeapp)

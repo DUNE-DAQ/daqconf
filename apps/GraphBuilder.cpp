@@ -145,9 +145,9 @@ GraphBuilder::GraphBuilder(const std::string& oksfilename, const std::string& se
 
         if (daqapp) {
 
-          auto res = daqapp->cast<dunedaq::confmodel::ResourceBase>();
+          auto res = daqapp->cast<dunedaq::confmodel::Resource>();
 
-          if (res && res->disabled(*m_session)) {
+          if (res && res->is_disabled(*m_session)) {
             m_ignored_application_uids.push_back(appobj.UID());
             TLOG() << "Skipping disabled application " << appobj.UID() << "@" << daqapp->class_name();
             continue;
