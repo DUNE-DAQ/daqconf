@@ -76,7 +76,7 @@ def enable_resource_in_session(db, session_name: str, resource: list[str], disab
     disabled = session.disabled
     for res in resource:
         try:
-            res_dal = db.get_dal("ResourceBase", res)
+            res_dal = db.get_dal("Resource", res)
         except:
             print(f"Error could not find Resource {res} in file {db.databases}")
             continue
