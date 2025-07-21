@@ -1,4 +1,4 @@
-import confmodel
+import confmodel.dal
 
 from typing import Dict
 

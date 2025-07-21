@@ -1,5 +1,5 @@
 import conffwk
-import confmodel
+import confmodel.dal
 
 import re
 import socket

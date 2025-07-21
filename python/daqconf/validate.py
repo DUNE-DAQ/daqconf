@@ -1,5 +1,5 @@
 import conffwk
-import confmodel
+import confmodel.dal
 
 
 def compare_objects(obj1, obj2):
