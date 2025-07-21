@@ -74,8 +74,11 @@ def validate_readout(db, session):
   for app in confmodel.session_get_all_applications(db._obj, session.id):
     if confmodel.component_disabled(db._obj, session.id, app.id):
       continue
-    if app.class_name == "ReadoutApplication":
-      ru_apps.append(db.get_dal(app.class_name, app.id))
+
+    app_dal = db.get_dal(app.class_name, app.id)
+    if "ReadoutApplication" in app_dal.oksTypes():
+      ru_apps.append(app_dal)
+
   if len(ru_apps) == 0:
     print(f"No enabled readout applicatios in session")
     errcount += 1
