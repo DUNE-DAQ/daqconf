@@ -82,7 +82,7 @@ class DalRichRenderer:
         import confmodel
 
         """Helper function that returns the status of an object in a session"""
-        if not obj.isDalType('Component'):
+        if not obj.isDalType('Resource'):
             return None
 
         enabled = not confmodel.component_disabled(self._confdb._obj, session.id, obj.id)
@@ -92,7 +92,7 @@ class DalRichRenderer:
         enabled -= (obj in session.disabled)
         return enabled
 
-    def make_segment_tree(self, segment, session: None, show_path: bool = False) -> Tree:
+    def make_segment_tree(self, segment, session: None, show_ports: bool = False, show_path: bool = False) -> Tree:
         '''
         Create a segment branch of the session tree as a rich.Tree object
         ''' 
@@ -103,9 +103,9 @@ class DalRichRenderer:
 
         c = segment.controller
         path = f"[blue]{self._confdb.get_obj(c.className(), c.id).contained_in()}[/blue]" if show_path else ""
-        ports = ', '.join([f'{svc.port}([orange1]{svc.id}[/orange1])' for svc in get_network_services(c) ])
+        ports = ('[' + ', '.join([f'{svc.port}([orange1]{svc.id}[/orange1])' for svc in get_network_services(c) ]) + ']') if show_ports else ""
         host = f"[medium_purple1]{c.runs_on.runs_on.id}[/medium_purple1]"
-        tree.add(f"[cyan]controller[/cyan]: [green]{c.id}[/green][magenta]@{c.className()}[/magenta] on {host} [{ports}] {path}")
+        tree.add(f"[cyan]controller[/cyan]: [green]{c.id}[/green][magenta]@{c.className()}[/magenta] on {host} {ports} {path}")
 
         if segment.applications:
             app_tree = tree.add(f"[cyan]applications[/cyan]")
@@ -115,11 +115,12 @@ class DalRichRenderer:
                     continue
 
                 path = f"[blue]{self._confdb.get_obj(a.className(), a.id).contained_in()}[/blue]" if show_path else ""
-                ports = ', '.join([f'{svc.port}([orange1]{svc.id}[/orange1])' for svc in get_network_services(a) ])
+                # ports = ', '.join([f'{svc.port}([orange1]{svc.id}[/orange1])' for svc in get_network_services(a) ])
+                ports = ('[' + ', '.join([f'{svc.port}([orange1]{svc.id}[/orange1])' for svc in get_network_services(a) ]) + ']') if show_ports else ""
                 host = f"[medium_purple1]{a.runs_on.runs_on.id}[/medium_purple1]"
                 enabled = self.is_enabled(session, a) if session else None
 
-                app_tree.add(f"{enabled_to_emoji(enabled)} [green]{a.id}[/green][magenta]@{a.className()}[/magenta] on {host} [{ports}] {path}")
+                app_tree.add(f"{enabled_to_emoji(enabled)} [green]{a.id}[/green][magenta]@{a.className()}[/magenta] on {host} {ports} {path}")
 
         if segment.segments:
             seg_tree = tree.add(f"[cyan]segments[/cyan]")
@@ -127,7 +128,7 @@ class DalRichRenderer:
                 if s is None:
                     print(f"Detected None segment in {segment.id}")
                     continue
-                seg_tree.add(self.make_segment_tree(s, session, show_path))
+                seg_tree.add(self.make_segment_tree(s, session, show_ports, show_path))
 
         return tree
 
@@ -225,9 +226,10 @@ def cli(obj, interactive, config_file):
 
 @cli.command(short_help="Show sessions information")
 @click.option('-p', '--show-file_paths', is_flag=True, show_default=True, default=False)
+@click.option('-l', '--list', 'list_sessions', is_flag=True, show_default=True, default=False)
 @click.argument('session_name', required=False)
 @click.pass_obj
-def show_sessions(obj, show_file_paths, session_name):
+def show_sessions(obj, show_file_paths, list_sessions, session_name):
     """
     Show details of each session available in the configuration database
 
@@ -268,9 +270,13 @@ def show_sessions(obj, show_file_paths, session_name):
         print(f" - '{s.UID()}' [blue]{s.contained_in()}[/blue]")
 
     print()
+    if list_sessions:
+        raise SystemExit(0)
 
     if not session_name is None:
         sessions = [ s for s in sessions if s.UID() == session_name ]
+
+    
 
     for so in sessions:
 
@@ -283,7 +289,7 @@ def show_sessions(obj, show_file_paths, session_name):
         for a in s.infrastructure_applications:
             infra_tree.add(a.id)
 
-        tree.add(dr.make_segment_tree(s.segment, s, show_file_paths))
+        tree.add(dr.make_segment_tree(s.segment, s, False, show_file_paths))
 
         t = Table("body", title=f'{s.id} tree', show_header=False, expand=True)
         t.add_row(tree)
@@ -300,7 +306,7 @@ def show_sessions(obj, show_file_paths, session_name):
         # Find all objects in the top segment (exclude disabled, variables and infra in the resource count))
         segment_objs = set()
         find_related(s.segment, segment_objs)        
-        res = [o for o in segment_objs if 'ResourceBase' in o.oksTypes()]
+        res = [o for o in segment_objs if 'Resource' in o.oksTypes()]
 
 
         # Object table
@@ -542,9 +548,11 @@ def show_object_tree(obj, uid, show_attrs, focus_path, level):
 
         
 @cli.command(short_help="Show detector-daq connections")
+@click.option('-l', '--list', 'list_connections', is_flag=True, show_default=True, default=False)
+@click.option('-s', '--only-summary', 'only_summary', is_flag=True, show_default=True, default=False)
 @click.argument('connection_name', required=False)
 @click.pass_obj
-def show_d2d_connections(obj, connection_name):
+def show_d2d_connections(obj, list_connections, only_summary, connection_name):
     """
     Shows the DetectorToDAQ connections in the database
 
@@ -574,42 +582,33 @@ def show_d2d_connections(obj, connection_name):
         
         return attr_map
 
-    d2d = cfg.get_dals('DetectorToDaqConnection')
+    d2d = cfg.get_objs('DetectorToDaqConnection')
+    
+    for c in d2d:
+        print(f" - '{c.UID()}' [blue]{c.contained_in()}[/blue]")
+    print()
+
+    if list_connections:
+        raise SystemExit(0)
+
     if not connection_name is None:
-        d2d = [c for c in d2d if c.id == connection_name]
+        d2d = [c for c in d2d if c.UID() == connection_name]
 
     t = Table("connection", "receiver", "type",  "# senders", "send types", "source ids", "det ids", "crate ids", "slot ids", "stream ids")
+
+    from confmodel import d2d_receiver, d2d_senders
     for conn in d2d:
 
-        if len(conn.contains) != 2:
-            raise RuntimeError(f"Too many objects found in {conn.id} : {len(conn.contains)}(expected 1 senger group and 1 receiver)")
+        rcvr = cfg.get_dal("DetDataReceiver", d2d_receiver(cfg._obj, conn.id))
 
-        recs = [ r for r in conn.contains if 'DetDataReceiver' in r.oksTypes()]
-        send_grps = [ r for r in conn.contains if 'ResourceSetAND' in r.oksTypes()]
-
-        if len(recs) != 1:
-            raise RuntimeError(f"Multiple receivers found in connection {conn.id}")
-
-        if len(send_grps) != 1:
-            raise RuntimeError(f"Multiple sender groups found in connection {conn.id}")
-        
-
-        rcvr = recs[0]
-        
         # Show connection details
         # Display the receiver
         rcvr_tab = Table("attribute", "value", title=f"{rcvr.id}@{rcvr.className()}", show_header=False)
         for a,v in get_attributes_recursive(rcvr).items():
             rcvr_tab.add_row(a, rh(str(v)))
 
-        sndr_grp = send_grps[0]
-        sndrs = [ r for r in sndr_grp.contains if 'DetDataSender' in r.oksTypes()]
-        if len(sndr_grp.contains) != len(sndrs):
-            print(sndr_grp.contains)
-            raise RuntimeError(f"Not all sender in {conn.id} are DetDataSenders")
-        
+        sndrs = [ cfg.get_dal("DetDataSender", sndr) for sndr in d2d_senders(cfg._obj, conn.id)]
         sndrs_attrs = [ get_attributes_recursive(s) for s in sndrs ]
-            
             
         sndrs_tab = Table(*([""]+[s.id for s in sndrs]), title="Senders")
         for k in sndrs_attrs[0].keys():
@@ -619,7 +618,8 @@ def show_d2d_connections(obj, connection_name):
         conn_tab = Table("", title=conn.id, show_header=False)
         conn_tab.add_row(rcvr_tab)
         conn_tab.add_row(sndrs_tab)
-        print(conn_tab)
+        if not only_summary:
+            print(conn_tab)
 
         strm_id_list = []
         det_ids = set()
@@ -629,7 +629,7 @@ def show_d2d_connections(obj, connection_name):
         sndr_types = set()
         for sndr in sndrs:
             sndr_types.add(sndr.className())
-            for strm in sndr.contains:
+            for strm in sndr.streams:
                 strm_id_list.append(strm.source_id)
                 det_ids.add(strm.geo_id.detector_id)
                 crate_ids.add(strm.geo_id.crate_id)
@@ -901,7 +901,7 @@ def show_resources(obj, session_id, resource_id, show_attrs, level, focus_path):
 
     s = cfg.get_dal('Session', session_id)
 
-    r = cfg.get_dal('ResourceBase', resource_id)
+    r = cfg.get_dal('Resource', resource_id)
 
     t = drr.make_obj_tree(r, show_attrs, path, level, s)
     print(t)

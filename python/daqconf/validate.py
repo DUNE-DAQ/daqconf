@@ -74,8 +74,11 @@ def validate_readout(db, session):
   for app in confmodel.session_get_all_applications(db._obj, session.id):
     if confmodel.component_disabled(db._obj, session.id, app.id):
       continue
-    if app.class_name == "ReadoutApplication":
-      ru_apps.append(db.get_dal(app.class_name, app.id))
+
+    app_dal = db.get_dal(app.class_name, app.id)
+    if "ReadoutApplication" in app_dal.oksTypes():
+      ru_apps.append(app_dal)
+
   if len(ru_apps) == 0:
     print(f"No enabled readout applicatios in session")
     errcount += 1
@@ -85,11 +88,7 @@ def validate_readout(db, session):
   senders_seen = {}
   for ru in ru_apps:
     connections = 0
-    for d2d in ru.contains:
-      if d2d.className() != "DetectorToDaqConnection":
-        print(f"Error {ru.id} contains a {d2d.className()} where it should have a DetectorToDaqConnection")
-        errcount += 1
-        continue
+    for d2d in ru.detector_connections:
       if d2d.id in d2d_seen:
         print(f"Error {ru.id} contains {d2d.id}"+
               f" which is already read out by {d2d_seen[d2d.id]}")
@@ -97,33 +96,19 @@ def validate_readout(db, session):
         continue
 
       senders = 0
-      receiver = 0
-      for d2d_res in d2d.contains:
-        if "DetDataReceiver" in d2d_res.oksTypes():
-          receiver += 1
-        elif "DetDataSender" in d2d_res.oksTypes():
-          if d2d_res.id in senders_seen:
-            print(f"Error sender {d2d_res.id} already seen in {senders_seen[d2d_res.id]}")
-            errcount += 1
-            continue
-          senders_seen[d2d_res.id] = d2d.id
-          snd_dals.append(d2d_res)
-          senders += 1
-        elif "ResourceSet" in d2d_res.oksTypes():
-          for snd_res in d2d_res.contains:
-            if "DetDataSender" in snd_res.oksTypes():
-              if snd_res.id in senders_seen:
-                print(f"Error sender {snd_res.id} already seen in {senders_seen[d2d_res.id]}")
-                errcount += 1
-                continue
-              senders_seen[snd_res.id] = d2d.id
-              snd_dals.append(snd_res)
-              senders += 1
+      for sndr in confmodel.d2d_senders(db._obj, d2d.id):
+        if sndr in senders_seen:
+          print(f"Error sender {sndr.id} already seen in {senders_seen[sndr.id]}")
+          errcount += 1
+          continue
+        senders_seen[sndr] = d2d.id
+        snd_dals.append(db.get_dal("DetDataSender", sndr))
+        senders += 1
       if senders == 0:
         print(f"Error {d2d.id} does not have any senders")
         errcount += 1
         continue
-      if receiver == 0:
+      if confmodel.d2d_receiver(db._obj, d2d.id) == "":
         print(f"Error {d2d.id} does not have a receiver")
         errcount += 1
         continue

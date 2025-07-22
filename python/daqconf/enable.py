@@ -24,7 +24,7 @@ def enable(oksfile, disable, resource, session_name):
     disabled = session.disabled
     for res in resource:
         try:
-            res_dal = db.get_dal("ResourceBase", res)
+            res_dal = db.get_dal("Resource", res)
         except:
             print(f"Error could not find Resource {res} in file {oksfile}")
             continue
