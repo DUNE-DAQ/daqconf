@@ -1,5 +1,5 @@
 import conffwk
-import confmodel.dal
+import confmodel_dal
 
 def set_session_env_var(oksfile, session_name, requested_env_var_name, requested_env_var_value, overwrite=True):
     """Script to set the value of an environment variable in the specified Session of the

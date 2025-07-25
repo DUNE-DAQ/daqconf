@@ -1,6 +1,6 @@
 import conffwk
-import confmodel.dal
-import appmodel.dal
+import confmodel_dal
+import appmodel_dal
 
 import os
 import glob
