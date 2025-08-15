@@ -520,6 +520,20 @@ def generate_readout(
             det_q = db.get_dal(
                 class_name="QueueConnectionRule", uid="tde-raw-data-rule"
             )
+        elif det_id == 12:
+            linkhandler = db.get_dal(
+                class_name="DataHandlerConf", uid="def-crt-bern-link-handler"
+            )
+            det_q = db.get_dal(
+                class_name="QueueConnectionRule", uid="crt-bern-raw-data-rule"
+            )
+        elif det_id == 13:
+            linkhandler = db.get_dal(
+                class_name="DataHandlerConf", uid="def-crt-grenoble-link-handler"
+            )
+            det_q = db.get_dal(
+                class_name="QueueConnectionRule", uid="crt-grenoble-raw-data-rule"
+            )
 
         hostnum = appnum % len(hosts)
         # print(f"Looking up host[{hostnum}] ({hosts[hostnum]})")
