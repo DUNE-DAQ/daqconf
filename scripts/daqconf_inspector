@@ -597,7 +597,9 @@ def show_d2d_connections(obj, list_connections, only_summary, connection_name):
     t = Table("connection", "receiver", "type",  "# senders", "send types", "source ids", "det ids", "crate ids", "slot ids", "stream ids")
 
     from confmodel import d2d_receiver, d2d_senders
-    for conn in d2d:
+    for conn_obj in d2d:
+
+        conn = cfg.get_dal('DetectorToDaqConnection', conn_obj.UID())
 
         rcvr = cfg.get_dal("DetDataReceiver", d2d_receiver(cfg._obj, conn.id))
 
