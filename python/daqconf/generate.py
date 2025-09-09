@@ -4,6 +4,7 @@ from daqconf.utils import find_oksincludes
 import conffwk
 import glob
 import os
+import traceback
 
 
 def generate_dataflow(
@@ -13,6 +14,7 @@ def generate_dataflow(
     tpwriting_enabled,
     generate_segment,
     n_data_writers=1,
+    trmon_app=False,
 ):
     """Simple script to create an OKS configuration file for a dataflow segment.
 
@@ -98,6 +100,21 @@ def generate_dataflow(
         data_req_readout_net_rule,
         data_req_trig_net_rule,
     ]
+
+    trmon_netrules = []
+    trmon_qrules = []
+    if trmon_app:
+        trmon_req_net_rule =  db.get_dal(
+            class_name="NetworkConnectionRule", uid="trmon-req-net-rule"
+        )
+        trigger_record_net_rule = db.get_dal(class_name="NetworkConnectionRule", uid="trigger-record-net-rule")
+        dfapp_netrules.append(trmon_req_net_rule)
+        dfapp_netrules.append(trigger_record_net_rule)
+
+        trmon_netrules.append(trigger_record_net_rule)
+        trigger_decision_token_q_rule = db.get_dal(class_name="QueueConnectionRule", uid="trigger-decision-token-q-rule")
+        trmon_qrules.append(trigger_decision_token_q_rule)
+
     dfo_netrules = [td_dfo_net_rule, ti_net_rule, df_token_net_rule]
     tpw_netrules = [tpset_net_rule]
 
@@ -163,6 +180,26 @@ def generate_dataflow(
         db.update_dal(tpwapp)
         tpwapps.append(tpwapp)
 
+    trmonapps = []
+    if trmon_app:
+        trmonconf = db.get_dal(class_name="TRMonRequestorConf", uid="trmr-01")
+        trmondwconf = db.get_dal(class_name="DataWriterConf", uid="tr_mon_dw-01")
+
+        trmonapp = dal.TRMonReqApplication(
+            "trmon-01",
+            runs_on=host,
+            application_name="daq_application",
+            exposes_service=[daqapp_control],
+            network_rules=trmon_netrules,
+            queue_rules=trmon_qrules,
+            opmon_conf=opmon_conf,
+            trmonreq = trmonconf,
+            data_writer = trmondwconf,
+            uses=dfhw,
+        )
+        db.update_dal(trmonapp)
+        trmonapps.append(trmonapp)
+
     if generate_segment:
         fsm = db.get_dal(class_name="FSMconfiguration", uid="FSMconfiguration_noAction")
         controller = dal.RCApplication(
@@ -176,11 +213,16 @@ def generate_dataflow(
         db.update_dal(controller)
 
         seg = dal.Segment(
-            f"df-segment", controller=controller, applications=[dfo] + dfapps + tpwapps
+            f"df-segment", controller=controller, applications=[dfo] + dfapps + tpwapps + trmonapps
         )
         db.update_dal(seg)
 
-    db.commit()
+    try:
+        db.commit()
+    except RuntimeError as err:
+        print("Failed to commit Dataflow DB!")
+        print(traceback.format_exc())
+        raise err
     return
 
 
@@ -519,6 +561,20 @@ def generate_readout(
             )
             det_q = db.get_dal(
                 class_name="QueueConnectionRule", uid="tde-raw-data-rule"
+            )
+        elif det_id == 12:
+            linkhandler = db.get_dal(
+                class_name="DataHandlerConf", uid="def-crt-bern-link-handler"
+            )
+            det_q = db.get_dal(
+                class_name="QueueConnectionRule", uid="crt-bern-raw-data-rule"
+            )
+        elif det_id == 13:
+            linkhandler = db.get_dal(
+                class_name="DataHandlerConf", uid="def-crt-grenoble-link-handler"
+            )
+            det_q = db.get_dal(
+                class_name="QueueConnectionRule", uid="crt-grenoble-raw-data-rule"
             )
 
         hostnum = appnum % len(hosts)

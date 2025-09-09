@@ -1,6 +1,7 @@
 import glob
 import logging
 import os
+import socket
 from rich.logging import RichHandler
 
 
@@ -85,3 +86,11 @@ def find_oksincludes(includes:list[str], extra_dirs:list[str] = []):
             return [False, []]
 
     return [True, includefiles]
+
+def find_free_port():
+    with socket.socket() as s:
+        s.bind(("", 0))
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        port = s.getsockname()[1]
+        s.close()
+        return port
