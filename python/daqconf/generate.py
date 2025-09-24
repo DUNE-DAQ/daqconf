@@ -104,15 +104,19 @@ def generate_dataflow(
     trmon_netrules = []
     trmon_qrules = []
     if trmon_app:
-        trmon_req_net_rule =  db.get_dal(
+        trmon_req_net_rule = db.get_dal(
             class_name="NetworkConnectionRule", uid="trmon-req-net-rule"
         )
-        trigger_record_net_rule = db.get_dal(class_name="NetworkConnectionRule", uid="trigger-record-net-rule")
+        trigger_record_net_rule = db.get_dal(
+            class_name="NetworkConnectionRule", uid="trigger-record-net-rule"
+        )
         dfapp_netrules.append(trmon_req_net_rule)
         dfapp_netrules.append(trigger_record_net_rule)
 
         trmon_netrules.append(trigger_record_net_rule)
-        trigger_decision_token_q_rule = db.get_dal(class_name="QueueConnectionRule", uid="trigger-decision-token-q-rule")
+        trigger_decision_token_q_rule = db.get_dal(
+            class_name="QueueConnectionRule", uid="trigger-decision-token-q-rule"
+        )
         trmon_qrules.append(trigger_decision_token_q_rule)
 
     dfo_netrules = [td_dfo_net_rule, ti_net_rule, df_token_net_rule]
@@ -193,8 +197,8 @@ def generate_dataflow(
             network_rules=trmon_netrules,
             queue_rules=trmon_qrules,
             opmon_conf=opmon_conf,
-            trmonreq = trmonconf,
-            data_writer = trmondwconf,
+            trmonreq=trmonconf,
+            data_writer=trmondwconf,
             uses=dfhw,
         )
         db.update_dal(trmonapp)
@@ -213,7 +217,9 @@ def generate_dataflow(
         db.update_dal(controller)
 
         seg = dal.Segment(
-            f"df-segment", controller=controller, applications=[dfo] + dfapps + tpwapps + trmonapps
+            f"df-segment",
+            controller=controller,
+            applications=[dfo] + dfapps + tpwapps + trmonapps,
         )
         db.update_dal(seg)
 
@@ -396,14 +402,18 @@ def generate_readout(
 
     print(f"Readout map file {readoutmap}")
 
-    includefiles = [
-        "schema/confmodel/dunedaq.schema.xml",
-        "schema/appmodel/application.schema.xml",
-        "schema/appmodel/trigger.schema.xml",
-        "schema/appmodel/fdmodules.schema.xml",
-        "schema/appmodel/wiec.schema.xml",
-        readoutmap,
-    ]
+    includefiles = (
+        [
+            "schema/confmodel/dunedaq.schema.xml",
+            "schema/appmodel/application.schema.xml",
+            "schema/appmodel/trigger.schema.xml",
+            "schema/appmodel/fdmodules.schema.xml",
+            "schema/appmodel/wiec.schema.xml",
+        ]
+        + [readoutmap]
+        if os.path.exists(readoutmap)
+        else []
+    )
 
     searchdirs = [path for path in os.environ["DUNEDAQ_DB_PATH"].split(":")]
     searchdirs.append(os.path.dirname(oksfile))
@@ -548,7 +558,7 @@ def generate_readout(
                     class_name="QueueConnectionRule", uid="pds-raw-data-rule"
                 )
 
-        elif det_id == 3:
+        elif det_id == 3 or det_id == 6:
             linkhandler = db.get_dal(
                 class_name="DataHandlerConf", uid="def-link-handler"
             )
@@ -661,6 +671,32 @@ def generate_readout(
                 )
                 db.update_dal(flxcard)
             datareader = flxcard
+        elif type(receiver).__name__ == "FileReaderReceiver":
+            if nicrec == None:
+                try:
+                    snb_files = db.get_dal(
+                        class_name="SNBFileSourceParameters", uid="snb-files-0"
+                    )
+                    snb_files.data_files = [resolve_asset_file(emulated_file_name)]
+                    db.update_dal(snb_files)
+                except:
+                    snb_files = dal.SNBFileSourceParameters(
+                        "snb-files-0",
+                        data_files=[resolve_asset_file(emulated_file_name)],
+                        input_buffer_size=5777280,
+                        file_compression_algorithm="None",
+                    )
+                    db.update_dal(snb_files)
+
+                print("Generating fake DataReaderConf")
+                nicrec = dal.SNBFileReaderConf(
+                    f"nicrcvr-file-reader",
+                    template_for="SNBFileReaderModule",
+                    emulation_mode=1,
+                    snb_conf=snb_files,
+                )
+                db.update_dal(nicrec)
+            datareader = nicrec
         else:
             print(
                 f"ReadoutGroup contains unknown interface type {type(receiver).__name__}"
@@ -743,9 +779,7 @@ def generate_readout(
     return
 
 
-def generate_fakedata(
-    oksfile, include, generate_segment, n_streams, n_apps, det_id
-):
+def generate_fakedata(oksfile, include, generate_segment, n_streams, n_apps, det_id):
     """Simple script to create an OKS configuration file for a FakeDataProd-based readout segment.
 
       The file will automatically include the relevant schema files and
@@ -796,8 +830,8 @@ def generate_fakedata(
     opmon_conf = db.get_dal(class_name="OpMonConf", uid="slow-all-monitoring")
 
     rule = db.get_dal(
-            class_name="NetworkConnectionRule", uid="data-req-readout-net-rule"
-        )
+        class_name="NetworkConnectionRule", uid="data-req-readout-net-rule"
+    )
     netrules = [rule]
     for rule in ["ts-fdp-net-rule"]:
         netrules.append(db.get_dal(class_name="NetworkConnectionRule", uid=rule))
@@ -817,25 +851,29 @@ def generate_fakedata(
         ]:
             qrules.append(db.get_dal(class_name="QueueConnectionRule", uid=rule))
 
-    frame_size=0
-    fragment_type=""
+    frame_size = 0
+    fragment_type = ""
     if det_id == 3:
-        frame_size=7200
-        time_tick_diff=32*64
-        response_delay=0
-        fragment_type="WIBEth"
+        frame_size = 7200
+        time_tick_diff = 32 * 64
+        response_delay = 0
+        fragment_type = "WIBEth"
     else:
-        raise Exception(f"FakeDataProd parameters not configured for detector ID {det_id}")
+        raise Exception(
+            f"FakeDataProd parameters not configured for detector ID {det_id}"
+        )
 
     for appidx in range(n_apps):
 
-        fakeapp = dal.FakeDataApplication(f"fakedata_{appidx}",
-        runs_on=host,
-        application_name="daq_application",
-        exposes_service=[daqapp_control, dataRequests, timeSyncs],
-        queue_rules=qrules,
-        network_rules=netrules,
-        opmon_conf=opmon_conf,)
+        fakeapp = dal.FakeDataApplication(
+            f"fakedata_{appidx}",
+            runs_on=host,
+            application_name="daq_application",
+            exposes_service=[daqapp_control, dataRequests, timeSyncs],
+            queue_rules=qrules,
+            network_rules=netrules,
+            opmon_conf=opmon_conf,
+        )
 
         for streamidx in range(n_streams):
             stream = dal.FakeDataProdConf(
@@ -853,7 +891,6 @@ def generate_fakedata(
 
         db.update_dal(fakeapp)
         fakeapps.append(fakeapp)
-
 
     if generate_segment:
         fsm = db.get_dal(class_name="FSMconfiguration", uid="FSMconfiguration_noAction")
@@ -972,13 +1009,30 @@ def generate_trigger(
     random_tc_generator = db.get_dal(
         class_name="RandomTCMakerConf", uid="random-tc-generator"
     )
-    tc_confs = [] if hsi_enabled else [random_tc_generator]
+    tc_confs = []
+
+    try:
+        preconfigured_tc_generator = db.get_dal(
+            class_name="PreconfiguredTriggerModuleConf",
+            uid="pc-trig-conf",
+        )
+        print(f"PreconfiguredTriggerModule has been configured, disabling random triggers and HSI")
+        tc_confs = [preconfigured_tc_generator]
+    except:
+        pass  # No PreconfiguredTrigger
+    if not hsi_enabled and len(tc_confs) == 0:
+        tc_confs = [random_tc_generator]
 
     mlt = dal.MLTApplication(
         "mlt",
         runs_on=host,
         application_name="daq_application",
-        exposes_service=[daqapp_control, triggerCandidates, triggerInhibits, dataRequests],
+        exposes_service=[
+            daqapp_control,
+            triggerCandidates,
+            triggerInhibits,
+            dataRequests,
+        ],
         source_id=mlt_source_id,
         queue_rules=mlt_qrules,
         network_rules=mlt_netrules,
