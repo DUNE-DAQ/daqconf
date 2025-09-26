@@ -558,7 +558,7 @@ def generate_readout(
                     class_name="QueueConnectionRule", uid="pds-raw-data-rule"
                 )
 
-        elif det_id == 3 or det_id == 6:
+        elif det_id == 3 or det_id == 10:
             linkhandler = db.get_dal(
                 class_name="DataHandlerConf", uid="def-link-handler"
             )
@@ -596,6 +596,10 @@ def generate_readout(
             receiver = connection.net_receiver
         elif connection.className() == "FelixDetectorToDaqConnection":
             receiver = connection.felix_receiver
+
+        # Action Plans
+        readout_start = db.get_dal(class_name="ActionPlan", uid="readout-start")
+        readout_stop = db.get_dal(class_name="ActionPlan", uid="readout-stop")
 
         # Emulated stream
         if type(receiver).__name__ == "FakeDataReceiver":
@@ -697,6 +701,8 @@ def generate_readout(
                 )
                 db.update_dal(nicrec)
             datareader = nicrec
+            readout_start = db.get_dal(class_name="ActionPlan", uid="snb-readout-start")
+            readout_stop = db.get_dal(class_name="ActionPlan", uid="snb-readout-stop")
         else:
             print(
                 f"ReadoutGroup contains unknown interface type {type(receiver).__name__}"
@@ -710,10 +716,6 @@ def generate_readout(
         timeSyncs = db.get_dal(class_name="Service", uid="timeSyncs")
         triggerActivities = db.get_dal(class_name="Service", uid="triggerActivities")
         triggerPrimitives = db.get_dal(class_name="Service", uid="triggerPrimitives")
-
-        # Action Plans
-        readout_start = db.get_dal(class_name="ActionPlan", uid="readout-start")
-        readout_stop = db.get_dal(class_name="ActionPlan", uid="readout-stop")
 
         ru = dal.ReadoutApplication(
             f"ru-{connection.id}",
