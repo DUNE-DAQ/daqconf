@@ -1,5 +1,5 @@
 import conffwk
-import confmodel
+import confmodel_dal
 
 import os
 import glob
