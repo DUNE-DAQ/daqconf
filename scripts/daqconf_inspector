@@ -79,13 +79,13 @@ class DalRichRenderer:
     # Enabled/disabled status visualization
     #
     def is_enabled(self, session, obj):
-        import confmodel
+        import confmodel_dal
 
         """Helper function that returns the status of an object in a session"""
         if not obj.isDalType('Resource'):
             return None
 
-        enabled = not confmodel.component_disabled(self._confdb._obj, session.id, obj.id)
+        enabled = not confmodel_dal.component_disabled(self._confdb._obj, session.id, obj.id)
         if enabled:
             return enabled
         
@@ -596,7 +596,7 @@ def show_d2d_connections(obj, list_connections, only_summary, connection_name):
 
     t = Table("connection", "receiver", "type",  "# senders", "send types", "source ids", "det ids", "crate ids", "slot ids", "stream ids")
 
-    from confmodel import d2d_receiver, d2d_senders
+    from confmodel_dal import d2d_receiver, d2d_senders
     for conn_obj in d2d:
 
         conn = cfg.get_dal('DetectorToDaqConnection', conn_obj.UID())

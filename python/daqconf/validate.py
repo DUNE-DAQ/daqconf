@@ -71,8 +71,8 @@ def validate_readout(db, session):
   # Find all enabled readout apps and check that
   # DetectorToDaqConnection's are unique
   ru_apps = []
-  for app in confmodel.session_get_all_applications(db._obj, session.id):
-    if confmodel.component_disabled(db._obj, session.id, app.id):
+  for app in confmodel_dal.session_get_all_applications(db._obj, session.id):
+    if confmodel_dal.component_disabled(db._obj, session.id, app.id):
       continue
 
     app_dal = db.get_dal(app.class_name, app.id)
@@ -96,7 +96,7 @@ def validate_readout(db, session):
         continue
 
       senders = 0
-      for sndr in confmodel.d2d_senders(db._obj, d2d.id):
+      for sndr in confmodel_dal.d2d_senders(db._obj, d2d.id):
         if sndr in senders_seen:
           print(f"Error sender {sndr.id} already seen in {senders_seen[sndr.id]}")
           errcount += 1
@@ -108,7 +108,7 @@ def validate_readout(db, session):
         print(f"Error {d2d.id} does not have any senders")
         errcount += 1
         continue
-      if confmodel.d2d_receiver(db._obj, d2d.id) == "":
+      if confmodel_dal.d2d_receiver(db._obj, d2d.id) == "":
         print(f"Error {d2d.id} does not have a receiver")
         errcount += 1
         continue
