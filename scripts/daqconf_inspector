@@ -79,13 +79,13 @@ class DalRichRenderer:
     # Enabled/disabled status visualization
     #
     def is_enabled(self, session, obj):
-        import confmodel
+        import confmodel_dal
 
         """Helper function that returns the status of an object in a session"""
         if not obj.isDalType('Resource'):
             return None
 
-        enabled = not confmodel.component_disabled(self._confdb._obj, session.id, obj.id)
+        enabled = not confmodel_dal.component_disabled(self._confdb._obj, session.id, obj.id)
         if enabled:
             return enabled
         
@@ -824,7 +824,7 @@ def show_smartapp_mods(obj, session_id, app_id, show_attrs, level, focus_path):
         🔵 : Not a resource
     """
 
-    from appmodel import generate_modules, UnknownGeneratorException
+    from appmodel_dal import generate_modules, UnknownGeneratorException
     from daqconf.session import get_session_apps
     import re
 

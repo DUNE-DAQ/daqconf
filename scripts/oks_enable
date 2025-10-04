@@ -1,6 +1,5 @@
 #!/bin/env python3
 import conffwk
-import confmodel
 
 import click
 import os
