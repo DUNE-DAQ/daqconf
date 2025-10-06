@@ -824,7 +824,7 @@ def show_smartapp_mods(obj, session_id, app_id, show_attrs, level, focus_path):
         🔵 : Not a resource
     """
 
-    from appmodel import generate_modules, UnknownGeneratorException
+    from appmodel_dal import generate_modules, UnknownGeneratorException
     from daqconf.session import get_session_apps
     import re
 
