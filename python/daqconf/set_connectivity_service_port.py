@@ -1,5 +1,5 @@
 import conffwk
-import confmodel
+import confmodel_dal
 from daqconf.utils import find_free_port
 
 import re
