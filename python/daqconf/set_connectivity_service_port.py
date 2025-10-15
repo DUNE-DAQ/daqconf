@@ -40,11 +40,16 @@ def set_connectivity_service_port(oksfile, session_name, connsvc_port=0):
         if not (k8s_min_port <= new_port <= k8s_max_port):
             print(f"Warning: Port {new_port} is outside the standard k8s NodePort range ({k8s_min_port}-{k8s_max_port}).")
 
-    # This block has been removed as it was redundant and caused the confusing printout.
-    # if session.connectivity_service is not None:
-    #     session.connectivity_service.service.port = new_port
-    #     db.update_dal(session.connectivity_service.service)
+    # Update the Service
+    if session.connectivity_service is not None:
+        session.connectivity_service.service.port = new_port
+        db.update_dal(session.connectivity_service.service)
+        print(f"Updated Connectivity Service '{session.connectivity_service.service.id}' to use port {new_port}")
+    else:
+        print(f"Warning: Session '{session_name}' has no connectivity_service defined. Skipping Service object update.")
 
+
+    # Update the env var
     if hasattr(session, 'environment') and session.environment is not None:
         found_var = False
         for item in session.environment:
@@ -53,25 +58,25 @@ def set_connectivity_service_port(oksfile, session_name, connsvc_port=0):
                     if var.name == "CONNECTION_PORT":
                         var.value = str(new_port)
                         db.update_dal(var)
-                        # This is now the only, and clearest, confirmation message.
-                        print(f"Updated connection port variable '{var.id}' to {new_port}")
+                        print(f"Updated runtime environment variable '{var.id}' to '{new_port}'")
                         found_var = True
                         break
             elif item.className() == 'Variable':
                 if item.name == "CONNECTION_PORT":
                     item.value = str(new_port)
                     db.update_dal(item)
-                    print(f"Updated connection port variable '{item.id}' to {new_port}")
+                    print(f"Updated runtime environment variable '{item.id}' to '{new_port}'")
                     found_var = True
             
             if found_var:
                 break
                 
         if not found_var:
-            print("Warning: Could not find a Variable named 'CONNECTION_PORT' in the session's environment.")
+            print("Warning: Could not find a 'CONNECTION_PORT' variable in the session's environment.")
     else:
         print("Warning: Session has no 'environment' configured. Cannot update CONNECTION_PORT variable.")
 
     db.commit()
-    print(f"Successfully set connectivity service port for session '{session_name}'.")
+    print(f"Successfully configured connectivity service port for session '{session_name}'.")
     return new_port
+
