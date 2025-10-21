@@ -38,6 +38,8 @@ Commandline utility to generate a graphical flow diagram of a full configuration
 ### `validate`
   Attempt to determine if a given Session configuration is valid and does not contain common errors
 
+### `organise_config`
+  Organise a folder of configuration files. For now this simply splits each class into its own `.data.xml ` but should be configurable for more advanced rules.
 
 ### textual_dbe
  Attempt to replicate OKS' Data Base editor within Python. Full details are [here](TextualDBE.md). Current implementation is very incomplete so use with caution.

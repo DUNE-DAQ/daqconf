@@ -1,0 +1,35 @@
+import click
+from pathlib import Path
+from typing import List
+
+from daqconf.utils import log_levels, setup_logging
+from daqconf.organise_config import ClassConfigOrganiser, ConfigFileGenerator
+
+
+'''
+Usage:
+    1. Need to source setup_db_path.sh
+    2. If you want to make a separate directory THAT ALSO needs to source setup_db_path.sh
+    3. python organise_config.py -o outputfolder [-c /path/to/config1.data.xml -c /path/to/config2.data.xml OR -c /path/to/configs_dir/] 
+    4. Optionally you can "split" certain DAL classes into their own files using -s DALClassName. NOTE This really only works for root nodes like Session.
+'''
+
+
+@click.command()
+@click.option("--output_folder", "-o", type=click.Path(file_okay=False, dir_okay=True, path_type=Path))
+@click.option("--config_files", "-c", type=click.Path(exists=True, file_okay=True, dir_okay=True, path_type=Path), multiple=True)
+@click.option("--classes_to_split", "-s", type=str, multiple=True, default=["Session"], help="DAL classes to split into separate files")
+@click.option('--log-level', '-l', help='Log level', default='INFO', type=click.Choice(log_levels, case_sensitive=False))
+def main(config_files: List[Path], output_folder: Path, classes_to_split: List[str]=["Session"], log_level: str='INFO') -> None:
+
+    setup_logging(log_level)
+    output_folder.mkdir(parents=True, exist_ok=True)
+    
+    organiser = ClassConfigOrganiser(config_files)
+
+    generator = ConfigFileGenerator(organiser, output_folder, split_classes=classes_to_split)
+    generator.generate_files()
+
+
+if __name__ == "__main__":
+    main()  # type: ignore[misc]  # Click injects CLI args at runtime
