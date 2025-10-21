@@ -359,7 +359,7 @@ def generate_readout(
     oksfile,
     include,
     generate_segment,
-    emulated_file_name="asset://?checksum=e96fd6efd3f98a9a3bfaba32975b476e",
+    emulated_file_name,
     tpg_enabled=True,
     hosts_to_use=[],
 ):
