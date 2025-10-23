@@ -679,7 +679,7 @@ def generate_readout(
             if nicrec == None:
                 try:
                     snb_files = db.get_dal(
-                        class_name="SNBFileSourceParameters", uid="snb-files-0"
+                        class_name="SNBFileSourceParameters", uid=f"snb-files-{connection.id}"
                     )
                     snb_files.data_files = [resolve_asset_file(emulated_file_name)]
                     db.update_dal(snb_files)
