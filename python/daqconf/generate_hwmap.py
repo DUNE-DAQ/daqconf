@@ -6,7 +6,7 @@ import json
 import sys
 
 def generate_hwmap(oksfile, n_streams, n_apps = 1, det_id = 3, app_host = "localhost",
-                             eth_protocol = "udp", flx_mode = "fix_rate"):
+                   eth_protocol = "udp", flx_mode = "fix_rate", crate_id_offset = 1, slot_id = 0):
 
     schemafiles = [
         "schema/confmodel/dunedaq.schema.xml",
@@ -43,7 +43,7 @@ def generate_hwmap(oksfile, n_streams, n_apps = 1, det_id = 3, app_host = "local
                 geo_dal = dal.GeoId(
                     f"geioId-{source_id}",
                     detector_id=det_id,
-                    crate_id=app+1,
+                    crate_id=app+crate_id_offset,
                     slot_id=stream_no,
                     stream_id=1,
                 )
@@ -51,8 +51,8 @@ def generate_hwmap(oksfile, n_streams, n_apps = 1, det_id = 3, app_host = "local
                 geo_dal = dal.GeoId(
                     f"geioId-{source_id}",
                     detector_id=det_id,
-                    crate_id=app+1,
-                    slot_id=0,
+                    crate_id=app+crate_id_offset,
+                    slot_id=slot_id,
                     stream_id=stream_no,
                 )
             db.update_dal(geo_dal)
