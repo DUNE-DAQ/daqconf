@@ -35,6 +35,7 @@
 #include "boost/graph/labeled_graph.hpp"
 
 #include <string>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
@@ -85,6 +86,7 @@ public:
   };
 
   explicit GraphBuilder(const std::string& oksfilename, const std::string& sessionname);
+  ~GraphBuilder() = default;
 
   void construct_graph(std::string root_obj_uid);
   void write_graph(const std::string& outputfilename) const;
@@ -135,7 +137,7 @@ private:
   void calculate_network_connections();
 
   const std::string m_oksfilename;
-  dunedaq::conffwk::Configuration* m_confdb;
+  std::unique_ptr<dunedaq::conffwk::Configuration> m_confdb;
 
   const std::unordered_map<ObjectKind, std::vector<std::string>> m_included_classes;
 
@@ -156,7 +158,7 @@ private:
   std::vector<ConfigObject> m_candidate_objects;
 };
 
-[[nodiscard]] constexpr GraphBuilder::ObjectKind
+[[nodiscard]] GraphBuilder::ObjectKind
 get_object_kind(const std::string& class_name);
 
 } // namespace daqconf

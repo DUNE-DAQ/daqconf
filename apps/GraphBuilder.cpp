@@ -42,6 +42,7 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace daqconf {
@@ -61,7 +62,7 @@ GraphBuilder::GraphBuilder(const std::string& oksfilename, const std::string& se
   // Open the database represented by the OKS XML file
 
   try {
-    m_confdb = new dunedaq::conffwk::Configuration("oksconflibs:" + m_oksfilename);
+    m_confdb = std::make_unique<dunedaq::conffwk::Configuration>("oksconflibs:" + m_oksfilename);
   } catch (dunedaq::conffwk::Generic& exc) {
     TLOG() << "Failed to load OKS database: " << exc << "\n";
     throw exc;
@@ -236,8 +237,8 @@ GraphBuilder::calculate_network_connections()
   // track of incoming and outgoing connections which don't get
   // matched, i.e. would terminate external to the graph
 
-  std::vector<std::string> incoming_matched;
-  std::vector<std::string> outgoing_matched;
+  std::unordered_set<std::string> incoming_matched;
+  std::unordered_set<std::string> outgoing_matched;
 
   for (auto& incoming : m_incoming_connections) {
 
@@ -287,15 +288,11 @@ GraphBuilder::calculate_network_connections()
             }
 
             if (!low_level_plot || incoming.first.find(".*") == std::string::npos) {
-              if (std::ranges::find(incoming_matched, incoming.first) == incoming_matched.end()) {
-                incoming_matched.push_back(incoming.first);
-              }
+              incoming_matched.insert(incoming.first);
             }
 
             if (!low_level_plot || outgoing.first.find(".*") == std::string::npos) {
-              if (std::ranges::find(outgoing_matched, outgoing.first) == outgoing_matched.end()) {
-                outgoing_matched.push_back(outgoing.first);
-              }
+              outgoing_matched.insert(outgoing.first);
             }
 
             const EnhancedObject::ReceivingInfo receiving_info{ incoming.first, receiver };
@@ -312,7 +309,7 @@ GraphBuilder::calculate_network_connections()
 
   auto incoming_unmatched =
     m_incoming_connections | std::views::keys | std::views::filter([&incoming_matched](auto& connection) {
-      return std::ranges::find(incoming_matched, connection) == incoming_matched.end();
+      return incoming_matched.find(connection) == incoming_matched.end();
     });
 
   auto included_classes = m_included_classes.at(m_root_object_kind);
@@ -345,7 +342,7 @@ GraphBuilder::calculate_network_connections()
 
   auto outgoing_unmatched =
     m_outgoing_connections | std::views::keys | std::views::filter([&outgoing_matched](auto& connection) {
-      return std::ranges::find(outgoing_matched, connection) == outgoing_matched.end();
+      return outgoing_matched.find(connection) == outgoing_matched.end();
     });
 
   for (auto& outgoing_conn : outgoing_unmatched) {
@@ -404,10 +401,10 @@ GraphBuilder::find_objects_and_connections(const ConfigObject& object)
     // member maps to calculate edges corresponding to the connections
     // for the plotted graph later
 
-    dunedaq::conffwk::Configuration* local_database{ nullptr };
+    std::unique_ptr<dunedaq::conffwk::Configuration> local_database;
 
     try {
-      local_database = new dunedaq::conffwk::Configuration("oksconflibs:" + m_oksfilename);
+      local_database = std::make_unique<dunedaq::conffwk::Configuration>("oksconflibs:" + m_oksfilename);
     } catch (dunedaq::conffwk::Generic& exc) {
       TLOG() << "Failed to load OKS database: " << exc << "\n";
       throw exc;
@@ -755,7 +752,7 @@ GraphBuilder::write_graph(const std::string& outputfilename) const
   }
 }
 
-constexpr GraphBuilder::ObjectKind
+GraphBuilder::ObjectKind
 get_object_kind(const std::string& class_name)
 {
 
@@ -779,4 +776,4 @@ get_object_kind(const std::string& class_name)
   return kind;
 }
 
-} // namespace appmodel
+} // namespace daqconf
