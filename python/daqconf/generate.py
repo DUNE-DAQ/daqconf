@@ -701,6 +701,11 @@ def generate_readout(
                 )
                 db.update_dal(nicrec)
             datareader = nicrec
+
+            print(f"Using SNB DataHandler")
+            linkhandler.template_for = "SNBDataHandlerModule"
+            db.update_dal(linkhandler)
+
             readout_start = db.get_dal(class_name="ActionPlan", uid="snb-readout-start")
             readout_stop = db.get_dal(class_name="ActionPlan", uid="snb-readout-stop")
         else:
