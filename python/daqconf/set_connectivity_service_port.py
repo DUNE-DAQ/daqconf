@@ -1,21 +1,6 @@
 import conffwk
 import confmodel_dal
-import socket
-import random
-
-def find_free_k8s_nodeport():
-    """
-    Finds and returns an available TCP port within the k8s NodePort range (30000-32767).
-    """
-    while True:
-        port = random.randint(30000, 32767)
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            try:
-                s.bind(("0.0.0.0", port))
-                return port
-            except OSError:
-                continue
-
+from daqconf.utils import find_free_port
 
 def set_connectivity_service_port(oksfile, session_name, connsvc_port=0):
     """Script to set the value of the Connectivity Service port in the specified Session of the specified
@@ -33,7 +18,7 @@ def set_connectivity_service_port(oksfile, session_name, connsvc_port=0):
 
     k8s_min_port, k8s_max_port = 30000, 32767
     if connsvc_port == 0:
-        new_port = find_free_k8s_nodeport()
+        new_port = find_free_port(k8s_min_port, k8s_max_port)
         print(f"Found free Kubernetes NodePort: {new_port}")
     else:
         new_port = connsvc_port
@@ -46,8 +31,8 @@ def set_connectivity_service_port(oksfile, session_name, connsvc_port=0):
         db.update_dal(session.connectivity_service.service)
         print(f"Updated Connectivity Service '{session.connectivity_service.service.id}' to use port {new_port}")
     else:
-        print(f"Warning: Session '{session_name}' has no connectivity_service defined. Skipping Service object update.")
-
+        print(f"Error: Session '{session_name}' has no connectivity_service defined. Skipping Service object update.")
+        return 0
 
     # Update the env var
     if hasattr(session, 'environment') and session.environment is not None:
@@ -67,16 +52,17 @@ def set_connectivity_service_port(oksfile, session_name, connsvc_port=0):
                     db.update_dal(item)
                     print(f"Updated runtime environment variable '{item.id}' to '{new_port}'")
                     found_var = True
-            
+
             if found_var:
                 break
-                
+
         if not found_var:
-            print("Warning: Could not find a 'CONNECTION_PORT' variable in the session's environment.")
+            print("Error: Could not find a 'CONNECTION_PORT' variable in the session's environment.")
+            return 0
     else:
-        print("Warning: Session has no 'environment' configured. Cannot update CONNECTION_PORT variable.")
+        print("Error: Session has no 'environment' configured. Cannot update CONNECTION_PORT variable.")
+        return 0
 
     db.commit()
     print(f"Successfully configured connectivity service port for session '{session_name}'.")
     return new_port
-
