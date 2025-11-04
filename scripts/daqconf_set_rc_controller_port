@@ -1,0 +1,30 @@
+#!/bin/env python3
+import click
+import sys
+
+# Assuming the new script is saved as daqconf/set_rc_controller_port.py
+from daqconf.set_rc_controller_port import set_rc_controller_port
+
+@click.command()
+@click.argument('oks_session_name', type=str)
+@click.argument('oksfile', type=str)
+@click.argument('rc_port', type=int, required=False, default=0)
+def daqconf_set_rc_controller_port(oks_session_name, oksfile, rc_port):
+    """Script to set the value of the RC Controller Service port used by the specified Session
+    in the specified OKS database file. If the new port is not specified, it is set to a 
+    random available k8s NodePort."""
+    
+    # The set_rc_controller_port function (oksfile, session_name, rc_port)
+    # prints its own status messages and returns the new port, or 0 on failure.
+    new_port = set_rc_controller_port(oksfile, oks_session_name, rc_port)
+
+    if new_port == 0:
+        click.echo(f"Error: Failed to set RC controller port for session '{oks_session_name}'.", err=True)
+        sys.exit(1)
+    else:
+        # Print the final port to stdout for scripting (e.g., port=$(...))
+        print(new_port)
+        sys.exit(0)
+
+if __name__ == '__main__':
+    daqconf_set_rc_controller_port()
