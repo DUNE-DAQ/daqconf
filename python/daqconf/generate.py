@@ -526,6 +526,7 @@ def generate_readout(
     db.update_dal(rohw)
 
     opmon_conf = db.get_dal(class_name="OpMonConf", uid="slow-all-monitoring")
+    fragagg = db.get_dal(class_name="FragmentAggregatorConf", uid="frag-agg-01")
 
     appnum = 0
     nicrec = None
@@ -731,6 +732,7 @@ def generate_readout(
             queue_rules=qrules + [det_q],
             link_handler=linkhandler,
             data_reader=datareader,
+            fragment_aggregator=fragagg,
             opmon_conf=opmon_conf,
             tp_generation_enabled=tpg_enabled,
             ta_generation_enabled=tpg_enabled,
@@ -835,6 +837,7 @@ def generate_fakedata(oksfile, include, generate_segment, n_streams, n_apps, det
     dataRequests = db.get_dal(class_name="Service", uid="dataRequests")
     timeSyncs = db.get_dal(class_name="Service", uid="timeSyncs")
     opmon_conf = db.get_dal(class_name="OpMonConf", uid="slow-all-monitoring")
+    fragagg = db.get_dal(class_name="FragmentAggregatorConf", uid="frag-agg-01")
 
     rule = db.get_dal(
         class_name="NetworkConnectionRule", uid="data-req-readout-net-rule"
@@ -872,15 +875,14 @@ def generate_fakedata(oksfile, include, generate_segment, n_streams, n_apps, det
 
     for appidx in range(n_apps):
 
-        fakeapp = dal.FakeDataApplication(
-            f"fakedata_{appidx}",
-            runs_on=host,
-            application_name="daq_application",
-            exposes_service=[daqapp_control, dataRequests, timeSyncs],
-            queue_rules=qrules,
-            network_rules=netrules,
-            opmon_conf=opmon_conf,
-        )
+        fakeapp = dal.FakeDataApplication(f"fakedata_{appidx}",
+        runs_on=host,
+        application_name="daq_application",
+        exposes_service=[daqapp_control, dataRequests, timeSyncs],
+        queue_rules=qrules,
+        network_rules=netrules,
+        fragment_aggregator=fragagg,
+        opmon_conf=opmon_conf,)
 
         for streamidx in range(n_streams):
             stream = dal.FakeDataProdConf(
