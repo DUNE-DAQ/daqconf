@@ -1,6 +1,7 @@
 import glob
 import logging
 import os
+import random
 import socket
 from rich.logging import RichHandler
 
@@ -87,10 +88,27 @@ def find_oksincludes(includes:list[str], extra_dirs:list[str] = []):
 
     return [True, includefiles]
 
-def find_free_port():
-    with socket.socket() as s:
-        s.bind(("", 0))
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        port = s.getsockname()[1]
-        s.close()
-        return port
+# This function returns a random available network port.  Users can optionally
+# specify a range that should be used.
+def find_free_port(min_port_num:int=0, max_port_num:int=65535):
+    # If the user didn't specify a minimum port number (or deliberately specified
+    # zero), we can simply ask the system for an available port.
+    if min_port_num == 0:
+        with socket.socket() as s:
+            s.bind(("", 0))
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            port = s.getsockname()[1]
+            s.close()
+            return port
+    # If the user specified a minimum port number, use the specified range.
+    else:
+        if min_port_num < 1024:
+            min_port_num = 1024
+        while True:
+            port = random.randint(min_port_num, max_port_num)
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.bind(("0.0.0.0", port))
+                    return port
+                except OSError:
+                    continue
