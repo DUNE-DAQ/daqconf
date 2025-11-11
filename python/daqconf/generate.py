@@ -1021,14 +1021,14 @@ def generate_trigger(
     tc_confs = []
 
     try:
-        preconfigured_tc_generator = db.get_dal(
-            class_name="PreconfiguredTriggerModuleConf",
-            uid="pc-trig-conf",
+        fixedtime_tc_generator = db.get_dal(
+            class_name="FixedTimeTCMakerModuleConf",
+            uid="ft-trig-conf",
         )
-        print(f"PreconfiguredTriggerModule has been configured, disabling random triggers and HSI")
-        tc_confs = [preconfigured_tc_generator]
+        print(f"FixedTimeTCMakerModule has been configured, disabling random triggers and HSI")
+        tc_confs = [fixedtime_tc_generator]
     except:
-        pass  # No PreconfiguredTrigger
+        pass  # No FixedTimeTCMaker
     if not hsi_enabled and len(tc_confs) == 0:
         tc_confs = [random_tc_generator]
 
