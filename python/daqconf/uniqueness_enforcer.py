@@ -7,23 +7,49 @@ from typing import Any, List, Dict, Set, Tuple, Optional
 from conffwk import Configuration
 from pathlib import Path
 from dataclasses import dataclass, field
-import rich
+from rich.table import Table
+from rich.console import Console
     
-        
+# ------ Helper Classes ------ #
+
+# Helper functions to convert DAL to unique key and back
+class DALKeyConverter:
+    '''
+    Helper class to convert DAL objects to unique string keys and back, this means we can use sets (because DAL hashes don't work)
+    '''
+    DELIMITER = "@"
+    
+    @staticmethod
+    def dal_to_key(dal) -> str:
+        '''Converts dal to dal_class:dal_id string'''
+        return f"{dal.className()}{DALKeyConverter.DELIMITER}{dal.id}"
+
+    @staticmethod
+    def key_to_dal(key: str) -> Tuple[str, str]:
+        '''
+        Converts to dal_class:dal_id to tuple
+        '''
+        dal_class, dal_id = key.split(DALKeyConverter.DELIMITER)
+        return dal_class, dal_id
+    
+# ------ Uniqueness Enforcement Classes ------ #
 
 @dataclass
-class UniquenessEnforcer:
+class UniquenessInformant:
+    '''
+    Dataclass containing information from the uniqueness enforcer
+    '''
     dal_id: str
     dal_class: str
     relationships_match: bool = True
     attributes_match: bool = True
     conflicted_sessions: list[str] = field(default_factory=lambda: [])
     
-    def as_table(self)->rich.table.Table:
+    def as_table(self)->Table:
         if not self.conflicted_sessions:
-            return f"No uniqueness violations for {self.dal_class}:{self.dal_id}"
+            return Table(title=f"No uniqueness violations for {self.dal_class}, {self.dal_id}")
         
-        table = rich.table.Table(title=f"Uniqueness Violation for [bold red]{self.dal_class}, {self.dal_id}")
+        table = Table(title=f"Uniqueness Violation for [bold red]{self.dal_class}, {self.dal_id}")
 
 
         table.add_column("Property", style="cyan", no_wrap=True)
@@ -46,26 +72,47 @@ class UniquenessEnforcer:
         '''
         sessions = ";".join(self.conflicted_sessions)
         return f"{self.dal_class},{self.dal_id},{self.relationships_match},{self.attributes_match},\"{sessions}\"\n"
-    
-# Helper functions to convert DAL to unique key and back
-def dal_to_key(dal) -> str:
-    '''Converts dal to dal_class:dal_id string'''
-    return f"{dal.className()}:{dal.id}"
 
-def key_to_dal(key: str) -> Tuple[str, str]:
+class UniquenessReportPrinter:
     '''
-    Converts to dal_class:dal_id to tuple
+    Class to print and export uniqueness reports
     '''
-    dal_class, dal_id = key.split(":")
-    return dal_class, dal_id
-
-
-# Pretty printing for UniquenessEnforcer
+    def __init__(self, enforcers: List[UniquenessInformant]):
+        self.enforcers = enforcers
+    
+    def print_report(self):
+        console = Console()
+        if not self.enforcers:
+            console.print("No uniqueness violations found!", style="bold green")
+            return
+        
+        for enforcer in self.enforcers:
+            console.print(enforcer.as_table())
+    
+    def to_csv(self) -> str:
+        '''
+        Convert the report to CSV format
+        '''
+        header = "DAL Class,DAL ID,Relationships Match,Attributes Match,Conflicted Sessions\n"
+        rows = [enforcer.to_csv_row() for enforcer in self.enforcers]
+        return header + "".join(rows)
+    
+    def __call__(self, output_csv: Optional[Path] = None):
+        self.print_report()
+        if output_csv:
+            csv_content = self.to_csv()
+            with open(output_csv, 'w') as f:
+                f.write(csv_content)
+    
     
 
-# Firstly we're going to load ALL configurations in a folder as SEPARATE configurations
+# ------ Config and DAL operations ------ #
+
 class ConfigLoader:
+    '''Loads all configurations in a given folder'''
     def __init__(self, config_folder: Path):
+        ''' Load all configurations in the given folder
+        '''
         if not config_folder.is_dir():
             raise ValueError(f"Provided path {config_folder} is not a directory.")
         self.configs = self.load_configs(config_folder)
@@ -86,20 +133,20 @@ class ConfigLoader:
         for config in self.configs:
             dals = config.get_all_dals()
             for dal in dals.values(): 
-                unique_key = dal_to_key(dal)
+                unique_key = DALKeyConverter.dal_to_key(dal)
                     
                 if unique_key not in dal_map:
                     dal_map[unique_key] = []
                 dal_map[unique_key].append(config)
         return dal_map
     
-    def dal_uniquely_defined(self, dal_class_id_key: str, configs: List[Configuration])-> UniquenessEnforcer:
+    def dal_uniquely_defined(self, dal_class_id_key: str, configs: List[Configuration])-> UniquenessInformant:
         '''
         Enforce that each DAL id/class combination is uniquely defined
         '''        
-        dal_class, dal_id = key_to_dal(dal_class_id_key)
+        dal_class, dal_id = DALKeyConverter.key_to_dal(dal_class_id_key)
 
-        enforcer = UniquenessEnforcer(dal_id=dal_id, dal_class=dal_class)
+        enforcer = UniquenessInformant(dal_id=dal_id, dal_class=dal_class)
 
         if len(configs) <= 1:
             return enforcer # No conflict
@@ -128,11 +175,11 @@ class ConfigLoader:
 
         return enforcer
     
-    def check_dal_uniqueness(self) -> List[UniquenessEnforcer]:
+    def check_dal_uniqueness(self) -> List[UniquenessInformant]:
         '''
         Enforce uniqueness across all DALs
         '''
-        results: List[UniquenessEnforcer] = []
+        results: List[UniquenessInformant] = []
         
         for dal_key, configs in self.dals.items():
             enforcer = self.dal_uniquely_defined(dal_key, configs)
@@ -141,14 +188,18 @@ class ConfigLoader:
         
         return results
             
-    def __call__(self) -> List[UniquenessEnforcer]:
+    def __call__(self) -> List[UniquenessInformant]:
         return self.check_dal_uniqueness()
 
 class DalComparison:
     def __init__(self, dal_1, dal_2, reference_config: Configuration):
+        '''
+        Compares relationships and attributes of two DALs
+        '''
         self.dal_1 = dal_1
         self.dal_2 = dal_2
         self.reference_config = reference_config
+
     
     def compare_attributes(self) -> bool:
         '''
@@ -160,7 +211,7 @@ class DalComparison:
             val1 = getattr(self.dal_1, attr)
             val2 = getattr(self.dal_2, attr)
             if val1 != val2:
-                return {}
+                return False
         return True
     
     def compare_relationships(self) -> bool:
@@ -189,39 +240,19 @@ class DalComparison:
         
         if not isinstance(related_dals, list):
             related_dals = [related_dals]
-        return set([dal_to_key(r) for r in related_dals])
+        return set([DALKeyConverter.dal_to_key(r) for r in related_dals])
 
     def __call__(self) -> Any:
         rels_equal = self.compare_relationships()
         attrs_equal = self.compare_attributes()
         return rels_equal, attrs_equal
 
-class UniquenessReportPrinter:
-    def __init__(self, enforcers: List[UniquenessEnforcer]):
-        self.enforcers = enforcers
-    
-    def print_report(self):
-        console = rich.console.Console()
-        if not self.enforcers:
-            console.print("No uniqueness violations found!", style="bold green")
-            return
-        
-        for enforcer in self.enforcers:
-            console.print(enforcer.as_table())
-    
-    def to_csv(self) -> str:
-        '''
-        Convert the report to CSV format
-        '''
-        header = "DAL Class,DAL ID,Relationships Match,Attributes Match,Conflicted Sessions\n"
-        rows = [enforcer.to_csv_row() for enforcer in self.enforcers]
-        return header + "".join(rows)
-    
-    def __call__(self, output_csv: Optional[Path] = None):
-        self.print_report()
-        if output_csv:
-            csv_content = self.to_csv()
-            with open(output_csv, 'w') as f:
-                f.write(csv_content)
-        # Save 
 
+class DalNameGenerator:
+    '''
+    Generate a unique name for a DAL based on its class and id
+    '''
+    def __init__(self, dal, config: Configuration):
+        self.dal = dal
+        self.config = config
+    
