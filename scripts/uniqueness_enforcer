@@ -1,0 +1,17 @@
+#!/bin/env python3
+
+from daqconf.uniquness_enforcer import ConfigLoader, UniquenessReportPrinter
+import click
+from pathlib import Path
+
+@click.command()
+@click.argument('config_folder', type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path))
+@click.option('--output-csv', type=click.Path(dir_okay=False, writable=True), default=None, help="Path to save the uniqueness report as CSV.")
+def main(config_folder: Path, output_csv: Path):
+    loader = ConfigLoader(config_folder)
+    enforcers = loader()
+    reporter = UniquenessReportPrinter(enforcers)
+    reporter(output_csv)
+
+if __name__ == "__main__":
+    main()
