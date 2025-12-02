@@ -337,26 +337,3 @@ class DalNameGenerator:
         new_name = self.name
         self.dal.rename(new_name)
         self.config.update_dal(self.dal)
-
-import click
-from pathlib import Path
-
-@click.command()
-@click.argument('config_folder', type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path))
-@click.option('--output-csv', type=click.Path(dir_okay=False, writable=True), default=None, help="Path to save the uniqueness report as CSV.")
-@click.option('--rename', is_flag=True, default=False, help="Rename DALs to ensure uniqueness.")
-def main(config_folder: Path, output_csv: Path, rename: bool):
-    
-    if rename and not output_csv:
-        rich.print("[bold yellow] Warning: --rename option used without --output-csv. In order to track the changes we will generate a csv to uniqueness_report.csv .[/bold yellow]")
-        output_csv = Path("uniqueness_report.csv")
-    
-    loader = ConfigLoader(config_folder)
-    enforcers = loader(rename=rename)
-    reporter = UniquenessReportPrinter(enforcers)
-    reporter(output_csv)    
-    if rename and Prompt.ask("[bold green]Do you want to commit the changes to the configuration files?[/] (y/n)", default="n", show_default=True)=="y":
-        loader.commit_changes()
-
-if __name__ == "__main__":
-    main()
