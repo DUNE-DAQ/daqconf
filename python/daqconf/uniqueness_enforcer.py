@@ -235,8 +235,6 @@ class UniquenessReportPrinter:
 
 
 # ---- Name generation ----
-
-
 class DalNameGeneratorBase(ABC):
     def __init__(self, dal, config: Configuration):
         self.dal = dal
@@ -559,6 +557,10 @@ class RenameEngine:
         # After renaming, combine entries again so names and file lists are
         # updated consistently for reporting.
         enforcers.combine_identical_objects()
+        
+    def commit_changes(self):
+        for config in self._CONFIG_CACHE.values():
+            config.commit()
 
 
 # ------ Config and DAL operations ------ #
@@ -586,6 +588,7 @@ class ConfigLoader:
         self._session_names = {c: c.get_dals("Session")[0].id for c in self.configs}
 
         self.dals = self.collect_dals()
+        self._renamer = RenameEngine()
 
     def load_configs(self, config_folder: Path) -> List[Configuration]:
         """Load all oks `*.data.xml` files in the folder as `Configuration` objects.
@@ -705,8 +708,8 @@ class ConfigLoader:
         ):
             return enforcer
 
-        renamer = RenameEngine()
-        choices = renamer.recognised_schemes() + ["help"]
+        
+        choices = self._renamer.recognised_schemes() + ["help"]
 
         while True:
             rename = Prompt.ask(
@@ -723,10 +726,10 @@ class ConfigLoader:
             if rename != "help":
                 Console().print(f"{rename} not recognised")
 
-            self._display_help(renamer)
+            self._display_help(self._renamer)
 
         if rename:
-            renamer.apply_scheme(rename, enforcer)
+            self._renamer.apply_scheme(rename, enforcer)
         return enforcer
 
     def _display_help(self, rename_engine: RenameEngine):
@@ -746,13 +749,12 @@ class ConfigLoader:
         Commit any changes made to the configurations
         """
         for config in self.configs:
-            try:
-                config.commit("update")
-            except Exception as e:
-                console = Console()
-                console.print(
-                    f"[bold red]Failed to commit changes for configuration {config}:[/bold red] {e}"
-                )
+            # print(f"Updating {config}")
+            config.commit("update")
+        
+        # Also rename here 
+        self._renamer.commit_changes()        
+    
 
 
 class DalComparison:
@@ -837,43 +839,42 @@ class UniquenessEnforcerContextManager:
                 "Do you want to commit the changes to the configuration files? (y/n)",
                 choices=["y", "n"],
                 default="n",
-            )
-            == "y"
+            ) == "y"
         ):
             if not self.output_csv:
                 Console().print(
                     "[bold yellow] Warning: No output CSV specified. In order to track the changes we will generate a csv to uniqueness_report.csv .[/bold yellow]"
                 )
                 self.output_csv = Path("uniqueness_report.csv")
+
             self._loader.commit_changes()
 
     def __call__(self):
         enforcers = self._loader()
         self._reporter = UniquenessReportPrinter(enforcers)
-
-        self.commit()
         self._reporter(self.output_csv)
+        self.commit()
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         Console().print("Exiting Uniqueness Enforcer.")
-        if exc_type is not KeyboardInterrupt:
-            return False
-        try:
-            self.commit()
-        except Exception as e:
-            Console().print(f"[bold red]Failed to commit changes:[/bold red] {e}")
-            return False
+        if exc_type is KeyboardInterrupt:
+            try:
+                self.commit()
+            except Exception as e:
+                Console().print(f"[bold red]Failed to commit changes:[/bold red] {e}")
+                return False
 
         return True
 
-
-from pathlib import Path
-import sys
-
 if __name__ == "__main__":
+    '''
+    main stuff here for debugging!
+    '''
+    from pathlib import Path
+    import sys
     if len(sys.argv) < 2:
         print("Usage: python uniqueness_enforcer.py <config_folder> [output_csv]")
         sys.exit(1)
