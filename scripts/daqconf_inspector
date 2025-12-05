@@ -185,6 +185,27 @@ class DalRichRenderer:
                     continue
                 r_tree.add(self.make_obj_tree(val, show_attrs, path[1:], level, session))
         return tree
+
+
+
+    def make_resource_tree(self, dal_obj, path=[], level=None, session=None):
+        """Helper function to generate object trees"""
+        import confmodel_dal
+
+        en_status = enabled_to_emoji(self.is_enabled(session, dal_obj))+' ' if not session is None else ""
+
+        tree = Tree(f"{en_status}[green]{dal_obj.id}[/green][magenta]@{dal_obj.className()}[/magenta]")
+        if level == 0:
+            return tree
+
+        if level is not None:
+            level -= 1
+        resources = confmodel_dal.resourceset_contains(self._confdb._obj, dal_obj.id)
+        for res in resources:
+            rdal = self._confdb.get_dal(class_name="Resource", uid=res)
+            r_tree = tree.add(f"[yellow]{res}[/yellow]@[magenta]{rdal.className()}[/magenta] {''}")
+            r_tree.add(self.make_resource_tree(rdal, path[1:], level, session))
+        return tree
     
 
 
@@ -905,7 +926,7 @@ def show_resources(obj, session_id, resource_id, show_attrs, level, focus_path):
 
     r = cfg.get_dal('Resource', resource_id)
 
-    t = drr.make_obj_tree(r, show_attrs, path, level, s)
+    t = drr.make_resource_tree(r, path, level, s)
     print(t)
 
 
