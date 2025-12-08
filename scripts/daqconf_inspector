@@ -912,17 +912,28 @@ def show_smartapp_mods(obj, session_id, app_id, show_attrs, level, focus_path):
 @click.option('-l','--level', "level", type=int, default=None, help="Recursion level in the object tree")
 @click.pass_obj
 def show_resources(obj, session_id, resource_id, level):
-    from rich.highlighter import ReprHighlighter
-    rh = ReprHighlighter()
+    """
+    Show Resource tree starting from the specified Resource
+
+    \b
+      Legend
+      ------
+        ✅ : Resource enabled
+        ❎ : Resource set enabled but contains some disabled Resources
+        ❌ : Resource directly disabled (listed in the Session disable list)
+        ⭕️ : Resource indirectly disabled by algorithm
+
+    """
+
     cfg = obj.cfg
     drr = DalRichRenderer(cfg)
 
-    s = cfg.get_dal('Session', session_id)
+    session = cfg.get_dal('Session', session_id)
 
-    r = cfg.get_dal('Resource', resource_id)
+    resource = cfg.get_dal('Resource', resource_id)
 
-    t = drr.make_resource_tree(r, level, s)
-    print(t)
+    tree = drr.make_resource_tree(resource, level, session)
+    print(tree)
 
 
 if __name__== "__main__":
