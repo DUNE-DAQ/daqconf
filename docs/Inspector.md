@@ -76,6 +76,9 @@ Options:
   -l, --level INTEGER             Recursion level in the object tree
   -f, --focus TEXT                Path within the object relationships to
                                   focus on
+  -s, --session TEXT              Session containing object to display
+  +e, --show-enabled / -e, --hide-enabled
+                                  Show enabled state of resources
   -h, --help                      Show this message and exit.
 ```
 
@@ -152,7 +155,7 @@ For each session found in the the database, `show-session` displays:
   The icon in front of segments and appliations indicate the enable/disable.
 
   Optionally, it displays the path of the the database file where the object
-  is define
+  is defined
 
   **Legend**
     
@@ -175,6 +178,7 @@ Usage: daqconf_inspector CONFIG_FILE show-sessions [OPTIONS]
 
 Options:
   -p, --show-file_paths
+  -l, --list
   -h, --help             Show this message and exit.
 ```
 
@@ -200,9 +204,23 @@ Note: specifiying the object name is required .
 | Icon  | Meaning|
 |---|---|
 | ✅ | Resource enabled |
+| ❎ | Resource set enabled but contains some disabled Resources |
 | ❌ | Resource directly disabled (included in the Session disable list) |
 | ⭕️ | Resource indirectly disabled by algorithm |
 | 🔵 | Not a resource |
+
+```
+Usage: daqconf_inspector CONFIG_FILE show-smartapp-mods [OPTIONS] SESSION_ID
+                                                        APP_ID
+
+Options:
+  +a, --show-attributes / -a, --hide-attributes
+                                  Show/Hide attributes
+  -l, --level INTEGER             Recursion level in the object tree
+  -f, --focus TEXT                Path within the object relationships to
+                                  focus on
+  -h, --help                      Show this message and exit.
+```
 
 |**Example**|
 |---|
@@ -215,6 +233,16 @@ Note: specifiying the object name is required .
 Shows the DetectorToDAQ connections in the database
 
 The receiver id and summary sender informations for each connection are shown in a compact table.
+
+```
+Usage: daqconf_inspector CONFIG_FILE show-d2d-connections [OPTIONS]
+                                                          [CONNECTION_NAME]
+
+Options:
+  -l, --list
+  -s, --only-summary
+  -h, --help          Show this message and exit.
+```
 
 |**Example**|
 |---|
