@@ -23,6 +23,11 @@
 #include "appmodel/TriggerApplication.hpp"
 #include "appmodel/appmodelIssues.hpp"
 
+#include "appmodel/DataHandlerModule.hpp"
+#include "appmodel/DataReaderModule.hpp"
+#include "appmodel/RawDataCallbackConf.hpp"
+#include "appmodel/SocketDataWriterModule.hpp"
+
 #include "conffwk/Configuration.hpp"
 #include "conffwk/Schema.hpp"
 #include "confmodel/Connection.hpp"
@@ -425,7 +430,7 @@ GraphBuilder::find_objects_and_connections(const ConfigObject& object)
       if (m_root_object_kind == ObjectKind::kSession || m_root_object_kind == ObjectKind::kSegment) {
         allowed_conns = { "NetworkConnection" };
       } else if (m_root_object_kind == ObjectKind::kApplication || m_root_object_kind == ObjectKind::kModule) {
-        allowed_conns = { "NetworkConnection", "Queue", "QueueWithSourceId" };
+        allowed_conns = { "NetworkConnection", "Queue", "QueueWithSourceId", "RawDataCallbackConf" };
       }
 
       for (const auto& module : modules) {
@@ -451,6 +456,45 @@ GraphBuilder::find_objects_and_connections(const ConfigObject& object)
           if (std::ranges::find(allowed_conns, out->config_object().class_name()) != allowed_conns.end()) {
             m_outgoing_connections[key].push_back(object.UID());
             m_outgoing_connections[key].push_back(module->UID());
+          }
+        }
+
+        // Look for RawDataCallbackConfs
+        auto datareader = module->cast<dunedaq::appmodel::DataReaderModule>();
+        auto datahandler = module->cast<dunedaq::appmodel::DataHandlerModule>();
+        auto socketwriter = module->cast<dunedaq::appmodel::SocketDataWriterModule>();
+
+        if (datareader != nullptr) {
+          for (auto& out : datareader->get_raw_data_callbacks()) {
+            const std::string key = out->config_object().UID() + "@" + out->config_object().class_name();
+            if (std::ranges::find(allowed_conns, out->config_object().class_name()) != allowed_conns.end()) {
+              m_outgoing_connections[key].push_back(object.UID());
+              m_outgoing_connections[key].push_back(module->UID());
+            }
+          }
+        }
+        if (datahandler != nullptr) {
+          auto in = datahandler->get_raw_data_callback();
+          if (in == nullptr) {
+            continue;
+          }
+          const std::string key = in->config_object().UID() + "@" + in->config_object().class_name();
+
+          if (std::ranges::find(allowed_conns, in->config_object().class_name()) != allowed_conns.end()) {
+            m_incoming_connections[key].push_back(object.UID());
+            m_incoming_connections[key].push_back(module->UID());
+          }
+        }
+        if (socketwriter != nullptr) {
+          auto in = socketwriter->get_raw_data_callback();
+          if (in == nullptr) {
+            continue;
+          }
+          const std::string key = in->config_object().UID() + "@" + in->config_object().class_name();
+
+          if (std::ranges::find(allowed_conns, in->config_object().class_name()) != allowed_conns.end()) {
+            m_incoming_connections[key].push_back(object.UID());
+            m_incoming_connections[key].push_back(module->UID());
           }
         }
 
@@ -518,9 +562,6 @@ GraphBuilder::construct_graph(std::string root_obj_uid)
   for (auto& possible_sender_object : m_objects_for_graph | std::views::values) {
     for (auto& receiver_info : possible_sender_object.receiving_object_infos) {
 
-      auto at_pos = receiver_info.connection_name.find("@");
-      const std::string connection_label = receiver_info.connection_name.substr(0, at_pos);
-
       // If we're plotting at the level of a session or segment,
       // show the connections as between applications; if we're
       // doing this for a single application, show them entering and
@@ -540,7 +581,7 @@ GraphBuilder::construct_graph(std::string root_obj_uid)
 
       boost::add_edge(possible_sender_object.vertex_in_graph,
                       m_objects_for_graph.at(receiver_info.receiver_label).vertex_in_graph,
-                      { connection_label },
+                      { receiver_info.connection_name },
                       m_graph)
         .first;
     }
@@ -608,7 +649,12 @@ GraphBuilder::write_graph(const std::string& outputfilename) const
                                                                    { ObjectKind::kModule, { "rectangle", "red" } } };
 
   std::string dotfile_slurped = outputstream.str();
-  std::vector<std::string> legend_entries{};
+  std::vector<std::string> legend_entries{
+    "legendGA [label=<<font color=\"black\"><b><i>Network Connection</i></b></font>>, shape=plaintext];",
+    "legendGB [label=<<font color=\"green\"><b><i>Data Move Callback</i></b></font>>, shape=plaintext];",
+    "legendGC [label=<<font color=\"red\"><b><i>Queue</i></b></font>>, shape=plaintext];",
+    "legendGD [label=<<font color=\"orange\"><b><i>Queue w/ Source ID</i></b></font>>, shape=plaintext];"
+  };
   std::vector<std::string> legend_ordering_code{};
 
   for (auto& eo : m_objects_for_graph | std::views::values) {
@@ -739,6 +785,22 @@ GraphBuilder::write_graph(const std::string& outputfilename) const
   while ((pos = dotfile_slurped.find(unlabeled_edge, pos)) != std::string::npos) {
     dotfile_slurped.replace(pos, unlabeled_edge.length(), unlabeled_edge + edge_modifier);
     pos += (unlabeled_edge + edge_modifier).length();
+  }
+
+  // Replace the connection types with color information
+  std::vector<std::pair<std::string, std::string>> connection_colors = { { "@NetworkConnection\"", "\", color=black" },
+                                                                         { "@QueueWithSourceId\"", "\", color=orange" },
+                                                                         { "@Queue\"", "\", color=red" },
+                                                                         { "@RawDataCallbackConf\"",
+                                                                           "\", color=green" } };
+  for (auto& color_pair : connection_colors) {
+    auto conn_type = color_pair.first;
+    auto color_info = color_pair.second;
+    pos = 0;
+    while ((pos = dotfile_slurped.find(conn_type, pos)) != std::string::npos) {
+      dotfile_slurped.replace(pos, conn_type.length(), color_info);
+      pos += color_info.length();
+    }
   }
 
   // And now with all the edits made to the contents of the DOT code, write it to file
