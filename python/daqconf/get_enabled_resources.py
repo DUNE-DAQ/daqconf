@@ -11,8 +11,11 @@ def get_enabled_resources(oksfile: str, session_name: str, resource_class="Resou
 
     enabled_resources = []
     enabled_resource_dals = []
+    
+    disabled_objects = session.disabled
+    
     for resource in session.get_dals(resource_class):
-        if resource.is_enabled():
+        if not resource in disabled_objects:
             enabled_resources.append([getattr(resource, "id"), getattr(resource, "className")()])
             enabled_resource_dals.append(resource)
     
