@@ -475,26 +475,24 @@ GraphBuilder::find_objects_and_connections(const ConfigObject& object)
         }
         if (datahandler != nullptr) {
           auto in = datahandler->get_raw_data_callback();
-          if (in == nullptr) {
-            continue;
-          }
-          const std::string key = in->config_object().UID() + "@" + in->config_object().class_name();
+          if (in != nullptr) {
+            const std::string key = in->config_object().UID() + "@" + in->config_object().class_name();
 
-          if (std::ranges::find(allowed_conns, in->config_object().class_name()) != allowed_conns.end()) {
-            m_incoming_connections[key].push_back(object.UID());
-            m_incoming_connections[key].push_back(module->UID());
+            if (std::ranges::find(allowed_conns, in->config_object().class_name()) != allowed_conns.end()) {
+              m_incoming_connections[key].push_back(object.UID());
+              m_incoming_connections[key].push_back(module->UID());
+            }
           }
         }
         if (socketwriter != nullptr) {
           auto in = socketwriter->get_raw_data_callback();
-          if (in == nullptr) {
-            continue;
-          }
-          const std::string key = in->config_object().UID() + "@" + in->config_object().class_name();
+          if (in != nullptr) {
+            const std::string key = in->config_object().UID() + "@" + in->config_object().class_name();
 
-          if (std::ranges::find(allowed_conns, in->config_object().class_name()) != allowed_conns.end()) {
-            m_incoming_connections[key].push_back(object.UID());
-            m_incoming_connections[key].push_back(module->UID());
+            if (std::ranges::find(allowed_conns, in->config_object().class_name()) != allowed_conns.end()) {
+              m_incoming_connections[key].push_back(object.UID());
+              m_incoming_connections[key].push_back(module->UID());
+            }
           }
         }
 
