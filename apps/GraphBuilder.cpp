@@ -659,13 +659,13 @@ GraphBuilder::write_graph(const std::string& outputfilename) const
 
   std::string dotfile_slurped = outputstream.str();
   std::vector<std::string> legend_entries{
-    "legendGA [label=<<font color=\"black\"><b><i>Network Connection</i></b></font>>, shape=plaintext];",
-    "legendGB [label=<<font color=\"blue\"><b><i>Pub/Sub Network</i></b></font>>, shape=plaintext];"
+    "legendGA [label=<<font color=\"black\"><b><i>&#10230; Network Connection</i></b></font>>, shape=plaintext];",
+    "legendGB [label=<<font color=\"blue\"><b><i>&#10230; Pub/Sub Network</i></b></font>>, shape=plaintext];"
   };
   std::vector<std::string> internal_legend_entries{
-    "legendGC [label=<<font color=\"green\"><b><i>Data Move Callback</i></b></font>>, shape=plaintext];",
-    "legendGD [label=<<font color=\"red\"><b><i>Queue</i></b></font>>, shape=plaintext];",
-    "legendGE [label=<<font color=\"orange\"><b><i>Queue w/ Source ID</i></b></font>>, shape=plaintext];"
+    "legendGC [label=<<font color=\"green\"><b><i>&#10230; Data Move Callback</i></b></font>>, shape=plaintext];",
+    "legendGD [label=<<font color=\"red\"><b><i>&#10230; Queue</i></b></font>>, shape=plaintext];",
+    "legendGE [label=<<font color=\"orange\"><b><i>&#10230; Queue w/ Source ID</i></b></font>>, shape=plaintext];"
   };
   bool internal_legend_added = false;
   std::vector<std::string> legend_ordering_code{};
