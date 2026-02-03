@@ -480,7 +480,9 @@ class RenameEngine:
         "prompt": PromptNameGenerator,
     }
 
-    _CONFIG_CACHE = {}
+
+    def __init__(self, configs: Dict[Path, Configuration]):
+        self._config_dict = configs
 
     def recognised_schemes(self):
         """Return the list of recognised renaming scheme names.
@@ -517,17 +519,18 @@ class RenameEngine:
         if scheme not in self.recognised_schemes():
             raise SchemeNotFoundError(scheme, self.recognised_schemes())
 
-        for enforcer in enforcers.get_enforcers():
+        for enforcer in reversed(enforcers.get_enforcers()):
             user_end = False
             
             for config_name in enforcer.session_files:
                 # Reuse a cached configuration object when possible
-                config = self._CONFIG_CACHE.get(config_name, None)
+                config = self._config_dict.get(config_name, None)
 
                 if config is None:
-                    self._CONFIG_CACHE[config_name] = config = Configuration(
-                        f"oksconflibs:{config_name}"
+                    raise FileNotFoundError(
+                        f"Configuration file {config_name} not found in loaded configs."
                     )
+                    
 
                 dal = config.get_dal(enforcer.dal_class, enforcer.dal_id)
                 try:
@@ -556,16 +559,10 @@ class RenameEngine:
 
         # After renaming, combine entries again so names and file lists are
         # updated consistently for reporting.
-        enforcers.combine_identical_objects()
-        
-    def commit_changes(self):
-        for config in self._CONFIG_CACHE.values():
-            config.commit()
+        enforcers.combine_identical_objects()            
 
 
 # ------ Config and DAL operations ------ #
-
-
 class ConfigLoader:
     """Load and inspect oks configuration files from a folder.
 
@@ -585,19 +582,19 @@ class ConfigLoader:
             raise ValueError(f"Provided path {config_folder} is not a directory.")
         self.configs = self.load_configs(config_folder)
 
-        self._session_names = {c: c.get_dals("Session")[0].id for c in self.configs}
+        self._session_names = {c: c.get_dals("Session")[0].id for c in self.configs.values()}
 
         self.dals = self.collect_dals()
-        self._renamer = RenameEngine()
+        self._renamer = RenameEngine(self.configs)
 
-    def load_configs(self, config_folder: Path) -> List[Configuration]:
+    def load_configs(self, config_folder: Path) -> Dict[Path, Configuration]:
         """Load all oks `*.data.xml` files in the folder as `Configuration` objects.
 
         Returns a list of `Configuration` instances.
         """
-        configs = [
-            Configuration(f"oksconflibs:{f}") for f in config_folder.glob("*.data.xml")
-        ]
+        configs = {
+            f: Configuration(f"oksconflibs:{f}") for f in config_folder.glob("*.data.xml")
+        }
         return configs
 
     def collect_dals(self) -> Dict[str, List[Configuration]]:
@@ -607,7 +604,7 @@ class ConfigLoader:
         configurations to allow grouping by (class, id).
         """
         dal_map: Dict[str, List[Configuration]] = {}
-        for config in self.configs:
+        for config in self.configs.values():
             dals = config.get_all_dals()
             for dal in dals.values():
                 unique_key = DALKeyConverter.dal_to_key(dal)
@@ -748,14 +745,15 @@ class ConfigLoader:
         """
         Commit any changes made to the configurations
         """
-        for config in self.configs:
-            # print(f"Updating {config}")
-            config.commit("update")
+        console = Console()
+        for config_name, config in self.configs.items():
+            try:
+                console.print(f"[bold yellow]Updating {config_name}[/]")
+                console.print(f"[bold blue]Committing changes to {config_name}[/]")
+                config.commit()
+            except Exception as e:
+                console.print(f"[bold red]Error committing changes to {config_name}: {e}[/]")  
         
-        # Also rename here 
-        self._renamer.commit_changes()        
-    
-
 
 class DalComparison:
     def __init__(self, dal_1, dal_2, reference_config: Configuration):
@@ -868,19 +866,3 @@ class UniquenessEnforcerContextManager:
                 return False
 
         return True
-
-if __name__ == "__main__":
-    '''
-    main stuff here for debugging!
-    '''
-    from pathlib import Path
-    import sys
-    if len(sys.argv) < 2:
-        print("Usage: python uniqueness_enforcer.py <config_folder> [output_csv]")
-        sys.exit(1)
-
-    config_folder = Path(sys.argv[1])
-    output_csv = Path(sys.argv[2]) if len(sys.argv) > 2 else None
-
-    with UniquenessEnforcerContextManager(config_folder, output_csv) as enforcer:
-        enforcer()
