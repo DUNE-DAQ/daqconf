@@ -550,7 +550,7 @@ class RenameEngine:
                 except Exception as e:
                     console = Console()
                     console.print(
-                        f"[bold red]Failed to rename DAL {dal.className()}, {dal.id} in config {config_name}:[/bold red] {e}"
+                        f"[bold red]Failed to rename DAL {dal.className()}, {dal.id} in config {config_name}:[/bold red] {e}; OKS doesn't like comitting open files, make sure to close any open files in OKS before running this tool."
                     )
             
             # if ended early!
