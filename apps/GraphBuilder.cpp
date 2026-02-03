@@ -31,6 +31,7 @@
 #include "conffwk/Configuration.hpp"
 #include "conffwk/Schema.hpp"
 #include "confmodel/Connection.hpp"
+#include "confmodel/NetworkConnection.hpp"
 #include "confmodel/DaqModule.hpp"
 #include "confmodel/Session.hpp"
 #include "ers/ers.hpp"
@@ -441,7 +442,12 @@ GraphBuilder::find_objects_and_connections(const ConfigObject& object)
           // connection is a network or a queue, so include the
           // class name in the std::string key
 
-          const std::string key = in->config_object().UID() + "@" + in->config_object().class_name();
+          std::string key = in->config_object().UID() + "@" + in->config_object().class_name();
+
+          if (in->config_object().class_name() == "NetworkConnection") {
+            auto innc = in->cast<dunedaq::confmodel::NetworkConnection>();
+            key += "@" +  innc->get_connection_type();
+          }
 
           if (std::ranges::find(allowed_conns, in->config_object().class_name()) != allowed_conns.end()) {
             m_incoming_connections[key].push_back(object.UID());
@@ -451,7 +457,12 @@ GraphBuilder::find_objects_and_connections(const ConfigObject& object)
 
         for (auto out : module->get_outputs()) {
 
-          const std::string key = out->config_object().UID() + "@" + out->config_object().class_name();
+          std::string key = out->config_object().UID() + "@" + out->config_object().class_name();
+
+          if (out->config_object().class_name() == "NetworkConnection") {
+            auto outnc = out->cast<dunedaq::confmodel::NetworkConnection>();
+            key += "@" + outnc->get_connection_type();
+          }
 
           if (std::ranges::find(allowed_conns, out->config_object().class_name()) != allowed_conns.end()) {
             m_outgoing_connections[key].push_back(object.UID());
@@ -649,10 +660,14 @@ GraphBuilder::write_graph(const std::string& outputfilename) const
   std::string dotfile_slurped = outputstream.str();
   std::vector<std::string> legend_entries{
     "legendGA [label=<<font color=\"black\"><b><i>Network Connection</i></b></font>>, shape=plaintext];",
-    "legendGB [label=<<font color=\"green\"><b><i>Data Move Callback</i></b></font>>, shape=plaintext];",
-    "legendGC [label=<<font color=\"red\"><b><i>Queue</i></b></font>>, shape=plaintext];",
-    "legendGD [label=<<font color=\"orange\"><b><i>Queue w/ Source ID</i></b></font>>, shape=plaintext];"
+    "legendGB [label=<<font color=\"blue\"><b><i>Pub/Sub Network</i></b></font>>, shape=plaintext];"
   };
+  std::vector<std::string> internal_legend_entries{
+    "legendGC [label=<<font color=\"green\"><b><i>Data Move Callback</i></b></font>>, shape=plaintext];",
+    "legendGD [label=<<font color=\"red\"><b><i>Queue</i></b></font>>, shape=plaintext];",
+    "legendGE [label=<<font color=\"orange\"><b><i>Queue w/ Source ID</i></b></font>>, shape=plaintext];"
+  };
+  bool internal_legend_added = false;
   std::vector<std::string> legend_ordering_code{};
 
   for (auto& eo : m_objects_for_graph | std::views::values) {
@@ -709,6 +724,12 @@ GraphBuilder::write_graph(const std::string& outputfilename) const
       case ObjectKind::kModule:
         add_vertex_info();
         add_legend_entry('D', "DAQModule");
+        if (!internal_legend_added) {
+          legend_entries.insert(legend_entries.end(),
+                                internal_legend_entries.begin(),
+                                internal_legend_entries.end());
+          internal_legend_added = true;
+        }
         break;
       case ObjectKind::kIncomingExternal:
         legendstr
@@ -786,7 +807,8 @@ GraphBuilder::write_graph(const std::string& outputfilename) const
   }
 
   // Replace the connection types with color information
-  std::vector<std::pair<std::string, std::string>> connection_colors = { { "@NetworkConnection\"", "\", color=black" },
+  std::vector<std::pair<std::string, std::string>> connection_colors = { { "@NetworkConnection@kSendRecv\"", "\", color=black" },
+                                                                         { "@NetworkConnection@kPubSub\"", "\", color=blue" },
                                                                          { "@QueueWithSourceId\"", "\", color=orange" },
                                                                          { "@Queue\"", "\", color=red" },
                                                                          { "@RawDataCallbackConf\"",
