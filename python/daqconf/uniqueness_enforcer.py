@@ -341,85 +341,6 @@ class InheritedNameGenerator(EnforceredNameGenerator):
         return "For any objects with duplicates changes the name to {containing object}_{dal_id}."
 
 
-class GroupNameGenerator(EnforceredNameGenerator):
-    """
-    Generate a unique name for Groups DALs
-    """
-
-    def __camel_to_initials(self, name: str) -> str:
-        initials = "".join([char for char in name if char.isupper()])
-        return initials.lower()
-
-    def generate_name(self) -> str:
-        related_dal = self.find_related_dal()
-        if not related_dal:
-            return f"{self.dal.id}"
-
-        # Find the relationship that links to this Group
-        relations = self.config.relations(related_dal.className(), all=True)
-
-        related = []
-        for rel in relations:
-            related = getattr(related_dal, rel, [])
-            if not isinstance(related, list):
-                related = [related]
-            if self.dal in related:
-                break
-        else:
-            warnings.warn(
-                f"Could not find relationship linking {related_dal.className()}, {related_dal.id} to {self.dal.className()}, {self.dal.id}."
-            )
-            return f"{self.dal.id}"
-
-        # We now process ALL related DALs in this relationship to build the name
-        name_base_str = f"{related_dal.id}"
-
-        for n, dal in enumerate(related):
-            name = self._add_to_name_map(n, name_base_str, dal)
-            if dal.id == self.dal.id:
-                self._name = name
-
-        return self._name
-
-    def _add_to_name_map(self, idx: int, name_base_str: str, dal):
-        # Convert
-        dal_class = self.__camel_to_initials(dal.className())
-        name = f"{name_base_str}_{dal_class}_{idx}"
-
-        dal_enforcer_instance = self.dal_in_enforcer(dal)
-
-        if dal_enforcer_instance is None:
-            # We generated a name for a DAL that is not in the enforcer list, so we add a new entry
-            new_info = UniquenessInformant(
-                dal_id=dal.id, dal_class=dal.className(), names=[name]
-            )
-
-            dal_file = self.config.get_obj(dal.className(), dal.id).contained_in()
-            new_info.contained_in_files.append(Path(dal_file))
-
-            self.enforcer.add_enforcer(new_info)
-        else:
-            contained_in = self.config.get_obj(dal.className(), dal.id).contained_in()
-
-            # We now find the index of this file in the enforcer's contained_in_files to assign the name correctly
-            try:
-                file_index = dal_enforcer_instance.contained_in_files.index(
-                    Path(contained_in)
-                )
-                dal_enforcer_instance.names[file_index] = name
-            except Exception as _:
-                # File not found, we append
-                dal_enforcer_instance.contained_in_files.append(Path(contained_in))
-                dal_enforcer_instance.session_files.append(
-                    self._enforced.session_files[self.name_index]
-                )
-                dal_enforcer_instance.names.append(name)
-        return name
-
-    @classmethod
-    def help_message(cls) -> str:
-        return "Groups items together if they are part of the same relationship. Naming convention is {top level object}_{class initials}_{i}\n\
-            For example foo_1000, foo_1200, foo_1020 of class FooObject stored in foo_storage would become foo_storage_fo_0, foo_storage_fo_1, foo_storage_fo_2."
 
 
 class PromptNameGenerator(EnforceredNameGenerator):
@@ -476,7 +397,6 @@ class RenameEngine:
 
     _SCHEMES: Dict[str, Type[EnforceredNameGenerator]] = {
         "inherit": InheritedNameGenerator,
-        "group": GroupNameGenerator,
         "prompt": PromptNameGenerator,
     }
 
