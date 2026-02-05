@@ -549,14 +549,14 @@ def generate_readout(
                     class_name="DataHandlerConf", uid="def-pds-stream-link-handler"
                 )
                 cb_desc = db.get_dal(
-                    class_name="RawDataCallbackDescriptor", uid="pds-stream-raw-input"
+                    class_name="DataMoveCallbackDescriptor", uid="pds-stream-raw-input"
                 )
             else:
                 linkhandler = db.get_dal(
                     class_name="DataHandlerConf", uid="def-pds-link-handler"
                 )
                 cb_desc = db.get_dal(
-                    class_name="RawDataCallbackDescriptor", uid="pds-raw-input"
+                    class_name="DataMoveCallbackDescriptor", uid="pds-raw-input"
                 )
 
         elif det_id == 3 or det_id == 10:
@@ -564,28 +564,28 @@ def generate_readout(
                 class_name="DataHandlerConf", uid="def-link-handler"
             )
             cb_desc = db.get_dal(
-                class_name="RawDataCallbackDescriptor", uid="wib-eth-raw-input"
+                class_name="DataMoveCallbackDescriptor", uid="wib-eth-raw-input"
             )
         elif det_id == 11:
             linkhandler = db.get_dal(
                 class_name="DataHandlerConf", uid="def-tde-link-handler"
             )
             cb_desc = db.get_dal(
-                class_name="RawDataCallbackDescriptor", uid="tde-raw-input"
+                class_name="DataMoveCallbackDescriptor", uid="tde-raw-input"
             )
         elif det_id == 12:
             linkhandler = db.get_dal(
                 class_name="DataHandlerConf", uid="def-crt-bern-link-handler"
             )
             cb_desc = db.get_dal(
-                class_name="RawDataCallbackDescriptor", uid="crt-bern-raw-input"
+                class_name="DataMoveCallbackDescriptor", uid="crt-bern-raw-input"
             )
         elif det_id == 13:
             linkhandler = db.get_dal(
                 class_name="DataHandlerConf", uid="def-crt-grenoble-link-handler"
             )
             cb_desc = db.get_dal(
-                class_name="RawDataCallbackDescriptor", uid="crt-grenoble-raw-input"
+                class_name="DataMoveCallbackDescriptor", uid="crt-grenoble-raw-input"
             )
 
         hostnum = appnum % len(hosts)

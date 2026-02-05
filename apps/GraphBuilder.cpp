@@ -25,7 +25,7 @@
 
 #include "appmodel/DataHandlerModule.hpp"
 #include "appmodel/DataReaderModule.hpp"
-#include "appmodel/RawDataCallbackConf.hpp"
+#include "appmodel/DataMoveCallbackConf.hpp"
 #include "appmodel/SocketDataWriterModule.hpp"
 
 #include "conffwk/Configuration.hpp"
@@ -431,7 +431,7 @@ GraphBuilder::find_objects_and_connections(const ConfigObject& object)
       if (m_root_object_kind == ObjectKind::kSession || m_root_object_kind == ObjectKind::kSegment) {
         allowed_conns = { "NetworkConnection" };
       } else if (m_root_object_kind == ObjectKind::kApplication || m_root_object_kind == ObjectKind::kModule) {
-        allowed_conns = { "NetworkConnection", "Queue", "QueueWithSourceId", "RawDataCallbackConf" };
+        allowed_conns = { "NetworkConnection", "Queue", "QueueWithSourceId", "DataMoveCallbackConf" };
       }
 
       for (const auto& module : modules) {
@@ -470,7 +470,7 @@ GraphBuilder::find_objects_and_connections(const ConfigObject& object)
           }
         }
 
-        // Look for RawDataCallbackConfs
+        // Look for DataMoveCallbackConfs
         auto datareader = module->cast<dunedaq::appmodel::DataReaderModule>();
         auto datahandler = module->cast<dunedaq::appmodel::DataHandlerModule>();
         auto socketwriter = module->cast<dunedaq::appmodel::SocketDataWriterModule>();
@@ -811,7 +811,7 @@ GraphBuilder::write_graph(const std::string& outputfilename) const
                                                                          { "@NetworkConnection@kPubSub\"", "\", color=blue" },
                                                                          { "@QueueWithSourceId\"", "\", color=orange" },
                                                                          { "@Queue\"", "\", color=red" },
-                                                                         { "@RawDataCallbackConf\"",
+                                                                         { "@DataMoveCallbackConf\"",
                                                                            "\", color=green" } };
   for (auto& color_pair : connection_colors) {
     auto conn_type = color_pair.first;
