@@ -20,7 +20,7 @@ def check_managed_components(oksfile, session_name):
     
     nested_components = manager.nested_managed_components
     
-    if not len(nested_components):
+    if not manager.any_component_nested():
         print(f"[green]No nested [/][bold blue]ManagedComponents[/][green] found in [/][bold blue]{oksfile}[/]")
         return    
         
