@@ -7,6 +7,7 @@ class ConfigTree:
     '''
     simple class to turn configuration into a tree
     '''
+            
     def __init__(self, db: Configuration | str, session_name: str):
         if isinstance(db, str):
             db = Configuration("oksconflibs:" + db)  
@@ -14,6 +15,8 @@ class ConfigTree:
         self.session_name = session_name
         self.session = self.db.get_dal("Session", session_name)
         self._relations_cache = {}
+        self._is_disabled_cache = {}
+        self._is_nested_cache = {}
         
         self.graph = self.build_tree(self.session)
     
@@ -30,7 +33,8 @@ class ConfigTree:
         queue = [top_object]
         
         while queue:
-            current = queue.pop(0)
+        
+            current = queue.pop(0)                
             obj_id = id(current)
             
             if obj_id in visited:
@@ -61,14 +65,47 @@ class ConfigTree:
         
         return graph
     
+    def is_disabled(self, obj: DalBase):
+        '''
+        For resources checks if the resource AND all top level resources are disabled
+        other wise just checks if all top level resources are disabled
+        '''
+        
+        obj_id = id(obj)
+        if obj_id in self._is_disabled_cache:
+            return self._is_disabled_cache[obj_id]
+            
+        # Otherwise we loop through containing resources
+        disabled_dals = [self.is_disabled(d) for d in self.db.get_dals("Resource") if self.is_nested(d, obj) and d!=obj]
+        
+        disabled = all(disabled_dals) and len(disabled_dals)
+
+        if 'Resource' in self.db.superclasses(obj.className(), True) and not disabled:
+                disabled = (obj in self.session.disabled) or disabled
+        
+        self._is_disabled_cache[obj_id] = disabled
+        return disabled
+
+    
     def is_nested(self, obj_a: DalBase, obj_b: DalBase) -> bool:
         ''' Check if obj_b is nested within obj_a using BFS for efficiency '''
+        # Create a cache key from object ids
+        cache_key = (id(obj_a), id(obj_b))
+
+        if obj_a == obj_b:
+            # No need to cache
+            return False
+        
+        if cache_key in self._is_nested_cache:
+            return self._is_nested_cache[cache_key]
+        
         visited = set()
         queue = [obj_a]
         
         while queue:
             current = queue.pop(0)
             if current == obj_b:
+                self._is_nested_cache[cache_key] = True
                 return True
             if current in visited:
                 continue
@@ -79,6 +116,7 @@ class ConfigTree:
                 if related not in visited:
                     queue.append(related)
         
+        self._is_nested_cache[cache_key] = False
         return False
     
 
@@ -107,8 +145,7 @@ class ManagedComponentManager:
         if self._managed_components is None:
         
             resources = self.db.get_dals(self.__MANAGED_COMPONENT_CLASS)
-
-            resource_rule = lambda resource: not resource in self.session.disabled and getattr(resource, 'tag', '')!=''
+            resource_rule = lambda resource: not self.config_tree.is_disabled(resource) and getattr(resource, 'tag', '')!=''
             self._managed_components = [{'dal': r, 'tag': r.tag} for r in resources if resource_rule(r)]
 
         return self._managed_components
