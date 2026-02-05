@@ -1,0 +1,34 @@
+#!/bin/env python3
+
+import click
+from rich import print
+from daqconf.managed_component_manager import ManagedComponentManager
+
+
+@click.command()
+@click.option('oksfile', '-f', required=True, help="Path to top level OKS file containing a Session")
+@click.option('session_name', '-s', required=True, help="Session name in the OKS file")
+def check_managed_components(oksfile, session_name):
+    '''
+    Script to check managed components satisfy the following:
+        - They are not nested
+    '''
+    manager = ManagedComponentManager(oksfile, session_name)
+    print("[green]Found the following [/][bold blue]ManagedComponents:")
+    for m in  manager.managed_components:
+        print(f"   - [blue]dal: [/]{repr(m['dal'])}[blue] | tag: [/][green]{m['tag']}")
+    
+    nested_components = manager.nested_managed_components
+    
+    if not len(nested_components):
+        print(f"[green]No nested [/][bold blue]ManagedComponents[/][green] found in [/][bold blue]{oksfile}[/]")
+        return    
+        
+    print(f"[red]Nested [/][bold yellow]ManagedComponents[/][red] found in [/][bold yellow]{oksfile}[/]")
+    for top_level, lower_level in nested_components.items():
+        print(f" [bold red]{repr(top_level)}[/][yellow] has the following nested :")
+        for l in lower_level:
+            print(f"     - {repr(l)}")
+            
+if __name__=="__main__":
+    check_managed_components()
