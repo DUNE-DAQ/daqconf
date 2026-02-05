@@ -65,10 +65,19 @@ class ConfigTree:
         
         return graph
     
+    def _get_parents(self, obj: DalBase):
+        """Get all parent objects of the given object in the tree"""
+        parents = []
+        for parent, children in self.graph.items():
+            if obj in children:
+                parents.append(parent)
+        return parents
+    
     def is_disabled(self, obj: DalBase):
         '''
         For resources checks if the resource AND all top level resources are disabled
-        other wise just checks if all top level resources are disabled
+        other wise just checks if all top level resources are disabled.
+        Also checks if all parent objects are disabled.
         '''
         
         obj_id = id(obj)
@@ -79,9 +88,15 @@ class ConfigTree:
         disabled_dals = [self.is_disabled(d) for d in self.db.get_dals("Resource") if self.is_nested(d, obj) and d!=obj]
         
         disabled = all(disabled_dals) and len(disabled_dals)
-
+        
         if 'Resource' in self.db.superclasses(obj.className(), True) and not disabled:
                 disabled = (obj in self.session.disabled) or disabled
+        
+        # Check if all parent objects are disabled
+        if not disabled:
+            parents = self._get_parents(obj)
+            if parents and all(self.is_disabled(parent) for parent in parents):
+                disabled = True
         
         self._is_disabled_cache[obj_id] = disabled
         return disabled
