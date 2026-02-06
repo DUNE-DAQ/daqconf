@@ -38,6 +38,8 @@ Commandline utility to generate a graphical flow diagram of a full configuration
 ### `validate`
   Attempt to determine if a given Session configuration is valid and does not contain common errors
 
+### `check_managed_components`
+  Lists all managed components and checks if any are nested
 
 ### textual_dbe
  Attempt to replicate OKS' Data Base editor within Python. Full details are [here](TextualDBE.md). Current implementation is very incomplete so use with caution.
