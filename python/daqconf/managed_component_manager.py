@@ -1,5 +1,7 @@
 
 from typing import List, Dict
+from rich import print
+
 from conffwk import Configuration
 from conffwk.dal import DalBase
 
@@ -150,20 +152,26 @@ class ManagedComponentManager:
         if not self.session:
             raise ValueError(f"Session '{session_name}' not found in database '{db}'")
 
-        self._managed_components = None
+        self._all_managed_components = None
+        self._enabled_managed_components = None
         self._config_tree = None
         self._nested_components = None
 
     @property
-    def managed_components(self)->List[DalBase]:
+    def all_managed_components(self)->List[DalBase]:
         """Function to list enabled managed components in the specified OKS database file"""
-        if self._managed_components is None:
-        
+        if self._all_managed_components is None:
             resources = self.db.get_dals(self.__MANAGED_COMPONENT_CLASS)
-            resource_rule = lambda resource: not self.config_tree.is_disabled(resource) and getattr(resource, 'tag', '')!=''
-            self._managed_components = [{'dal': r, 'tag': r.tag} for r in resources if resource_rule(r)]
+            self._all_managed_components = [{'dal': r, 'tag': r.tag} for r in resources if getattr(r, 'tag', '')!='']
 
-        return self._managed_components
+        return self._all_managed_components
+
+    @property
+    def enabled_managed_components(self)->List[DalBase]:
+        if self._enabled_managed_components is None:
+            self._enabled_managed_components = [m for m in self.all_managed_components if not self.config_tree.is_disabled(m['dal'])]
+
+        return self._enabled_managed_components
     
     @property
     def config_tree(self)->ConfigTree:
@@ -178,15 +186,15 @@ class ManagedComponentManager:
             return self._nested_components
         
         tree = self.config_tree
-        nested_comps = {c['dal']: [] for c in self.managed_components}
+        nested_comps = {c['dal']: [] for c in self.all_managed_components}
         
         # Cache to avoid duplicate checks
         checked_pairs = set()
         
         # Check if any of the managed components are nested within each other
-        for i, comp_a in enumerate(self.managed_components):
+        for i, comp_a in enumerate(self.all_managed_components):
             dal_a = comp_a['dal']
-            for comp_b in self.managed_components[i+1:]:
+            for comp_b in self.all_managed_components[i+1:]:
                 dal_b = comp_b['dal']
                 
                 # Use object id for hashable set membership
@@ -212,3 +220,41 @@ class ManagedComponentManager:
 
     def any_component_nested(self):
         return len(self.nested_managed_components) > 0
+
+
+class ManagedComponentPrinter:
+    
+    def __init__(self, manager: ManagedComponentManager):
+        self._manager = manager
+
+    def print_managed_components(self, print_disabled: bool=False):
+        if not print_disabled:
+            managed_list = self._manager.enabled_managed_components
+        else:
+            managed_list = self._manager.all_managed_components
+
+        print("[green]Found the following [/][bold blue]ManagedComponents:")
+        for m in managed_list:
+            # Check disabled 
+            if print_disabled and self._manager.config_tree.is_disabled(m['dal']):
+                text_col = 'grey46'
+                obj_col = 'bold purple'
+                enabled_status = "  [bold red]DISABLED[/]"
+            else:
+                text_col= 'blue'
+                obj_col = 'bold green'
+                enabled_status = "  [bold blue]ENABLED[/]"
+            
+            print(f"   - [{text_col}]dal: [/][{obj_col}]{repr(m['dal'])}[/][{text_col}] | tag: [/][{obj_col}]{m['tag']}[/]{enabled_status}")        
+        
+    
+    def print_nested_components(self)->None:
+        if not self._manager.any_component_nested():
+            print(f"[green]No nested [/][bold blue]ManagedComponents[/][green] found in [/][bold blue]{self._manager.db}[/]")
+            return    
+            
+        print(f"[red]Nested [/][bold yellow]ManagedComponents[/][red] found in [/][bold yellow]{self._manager.db}[/]")
+        for top_level, lower_level in self._manager.nested_managed_components.items():
+            print(f" [bold red]{repr(top_level)}[/][yellow] has the following nested :")
+            for l in lower_level:
+                print(f"     - {repr(l)}")

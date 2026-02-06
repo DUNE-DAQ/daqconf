@@ -2,33 +2,25 @@
 
 import click
 from rich import print
-from daqconf.managed_component_manager import ManagedComponentManager
+from daqconf.managed_component_manager import ManagedComponentManager, ManagedComponentPrinter
 
 
 @click.command()
-@click.option('oksfile', '-f', required=True, help="Path to top level OKS file containing a Session")
-@click.option('session_name', '-s', required=True, help="Session name in the OKS file")
-def check_managed_components(oksfile, session_name):
+@click.option('--oksfile', '-f', required=True, help="Path to top level OKS file containing a Session")
+@click.option('--session_name', '-s', required=True, help="Session name in the OKS file")
+@click.option('--show_disabled', '-d', default=False, is_flag=True, help="Show all managed components in the configuration, even disabled ones")
+def check_managed_components(oksfile, session_name, show_disabled):
     '''
     Script to check managed components satisfy the following:
         - They are not nested
     '''
+    print(f"[bold]Checking {oksfile} for managed components")
+    
     manager = ManagedComponentManager(oksfile, session_name)
-    print("[green]Found the following [/][bold blue]ManagedComponents:")
-    for m in  manager.managed_components:
-        print(f"   - [blue]dal: [/]{repr(m['dal'])}[blue] | tag: [/][green]{m['tag']}")
+    printer = ManagedComponentPrinter(manager)
     
-    nested_components = manager.nested_managed_components
+    printer.print_managed_components(show_disabled)
+    printer.print_nested_components()
     
-    if not manager.any_component_nested():
-        print(f"[green]No nested [/][bold blue]ManagedComponents[/][green] found in [/][bold blue]{oksfile}[/]")
-        return    
-        
-    print(f"[red]Nested [/][bold yellow]ManagedComponents[/][red] found in [/][bold yellow]{oksfile}[/]")
-    for top_level, lower_level in nested_components.items():
-        print(f" [bold red]{repr(top_level)}[/][yellow] has the following nested :")
-        for l in lower_level:
-            print(f"     - {repr(l)}")
-            
 if __name__=="__main__":
     check_managed_components()
