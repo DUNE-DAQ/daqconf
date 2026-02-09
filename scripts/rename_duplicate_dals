@@ -1,0 +1,6 @@
+#!/bin/env python3
+
+from daqconf.rename_duplicate_dals import rename_duplicate_dals
+
+if __name__=="__main__":
+    rename_duplicate_dals()
