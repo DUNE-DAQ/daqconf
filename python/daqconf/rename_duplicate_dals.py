@@ -2,17 +2,16 @@
 HW: Finds non-unique DAL objects and provides a simple CLI to rename them iteratively
 """
 # Python defaults
-from typing import List, Dict, Any, Set
+from typing import List, Dict, Any, Set, Callable, Optional
 from collections import defaultdict
 from pathlib import Path
+from dataclasses import dataclass
 
 # rich
 from rich.console import Console
 from rich.table import Table
 from rich.prompt import Prompt
 from typing import List
-
-from tqdm import tqdm
 
 import click
 
@@ -101,7 +100,6 @@ class ConfigTree:
             
             if related_objects_list:
                 graph[current] = related_objects_list
-        
         return graph
     
     def get_parents(self, obj: DalBase):
@@ -115,7 +113,6 @@ class ConfigTree:
                 parents.append(parent)
         
         self._parents_cache[obj] = parents
-                
         return parents
 
 
@@ -154,12 +151,14 @@ class ExtendedDal:
                 related_dals = []
             elif not isinstance(related_dals, list):
                 related_dals = [related_dals]
-            
             rel_dict[relation] = set([repr(rel) for rel in related_dals])
         return rel_dict
 
     def get_parents(self):
         return self.tree.get_parents(self.dal)
+
+    def get_parents_extended(self):
+        return [ExtendedDal(d, self.configuration, self.tree) for d in self.get_parents()]
 
     @property
     def relations(self)->Dict[str, Set[str]]:
@@ -176,6 +175,7 @@ class ExtendedDal:
     def get_name(self)->str:
         return self.dal.id
     
+    
     def __eq__(self, other: 'ExtendedDal'):
         '''Check 2 dals are different (can't use dal==dal because different configs potentially!)'''
         if not isinstance(other, ExtendedDal):
@@ -184,8 +184,12 @@ class ExtendedDal:
         return (
             other.dal.className() == self.dal.className() and
             other.dal.id          == self.dal.id and
-            other.attributes      == self.attributes and
-            other.relations       == self.relations 
+            (
+                (other.attributes      == self.attributes and
+                other.relations       == self.relations)
+            or
+                (other.get_parents_extended() == self.get_parents_extended())
+            )
         )
         
 class ConsolidatedDals:
@@ -321,7 +325,7 @@ class DalCollector:
         
         # Need the tree, using the Session as an entry point
         console.print("[blue]Generating configuration trees")
-        for config in tqdm(self._configs):
+        for config in self._configs:
             sessions = list(config.get_dals("Session"))
             if not sessions:
                 raise NoSessionError(config)
@@ -370,49 +374,94 @@ class DalCollector:
         return len(self._consolidated_dals)
         
     def commit(self):
+        '''
+        The only way to save is to quit...
+        '''
         for config in self._configs:
-            try:
-                config.commit()
-            except Exception as e:
-                raise ConfigCommitError(config) from e
+            config.commit()
 
 #  ----- CLI -------------------
-class RenameDalCli:
-    """
-    CLI for iteratively renaming ExtendedDal objects in a ConsolidatedDals group.
-    """
+@dataclass
+class Action:
+    key: str
+    description: str
+    handler: Callable[[], Optional[str]]  # returns next command to remember, or None
+    remember: bool = True
+    terminates: bool = False
 
+
+class RenameDalCli:
     def __init__(self, dal_collector: DalCollector):
         self.collector = dal_collector
-        self.history = []  # Keep track of changes for "undo/back"
-    
-    def run(self):
-        """Main loop over all consolidated_dals"""
-        for consolidated in self.collector.consolidated_dals:
-            while True:
-                self._render_consolidated(consolidated)
-                action = Prompt.ask(
-                    "Select number to rename, \\[c] commit, \\[n] next, \\[q] quit",
-                    default="n"
-                ).lower()
+        self.history = []
+        self._current_idx = 0
+        self._all_dals = None
+        self._actions = self._build_actions()
 
-                if action == "q":
-                    console.print("[bold red]Exiting without committing[/]")
+    def _build_actions(self) -> Dict[str, Action]:
+        actions = [
+            Action("n", "next",           self._handle_next),
+            Action("p", "prev",           self._handle_prev),
+            Action("c", "commit",         self._handle_save,  remember=False, terminates=False),
+            Action("s", "save and quit",  self._handle_save,  remember=False, terminates=True),
+            Action("q", "quit",           self._handle_quit,  remember=False, terminates=True),
+        ]
+        return {a.key: a for a in actions}
+
+    # --- handlers ---
+    def _handle_next(self):
+        self._current_idx += 1
+
+    def _handle_prev(self):
+        if self._current_idx > 0:
+            self._current_idx -= 1
+        else:
+            console.print("[yellow]Already at the first item[/]")
+
+    def _handle_save(self):
+        self._commit()
+        console.print("[bold green]Committing and exiting[/]")
+
+    def _handle_quit(self):
+        console.print("[bold red]Exiting without committing[/]")
+
+    def _handle_digit(self, action: str, consolidated: ConsolidatedDals):
+        idx = int(action) - 1
+        if 0 <= idx < len(consolidated):
+            self._rename_item(consolidated[idx])
+        else:
+            console.print("[red]Invalid number[/]")
+
+    # --- main loop ---
+    def run(self):
+        self._all_dals = self.collector.consolidated_dals
+        self._current_idx = 0
+        last_command = "n"
+
+        prompt_str = ", ".join(
+            f"\\[{a.key}] {a.description}" for a in self._actions.values()
+        ) + ", or a number to rename"
+
+        while self._current_idx < len(self._all_dals):
+            consolidated = self._all_dals[self._current_idx]
+            self._render_consolidated(consolidated)
+            console.print(f"[dim]({self._current_idx + 1}/{len(self._all_dals)})[/]")
+
+            action = Prompt.ask(prompt_str, default=last_command).lower()
+
+            if action in self._actions:
+                entry = self._actions[action]
+                entry.handler()
+                if entry.remember:
+                    last_command = action
+                if entry.terminates:
                     return
-                elif action == "c":
-                    self._commit()
-                    continue
-                elif action == "n":
-                    break
-                elif action.isdigit():
-                    idx = int(action) - 1
-                    if 0 <= idx < len(consolidated):
-                        self._rename_item(consolidated[idx])
-                    else:
-                        console.print("[red]Invalid number[/]")
-                else:
-                    console.print("[red]Unknown command[/]")
-                    
+            elif action.isdigit():
+                self._handle_digit(action, consolidated)
+                last_command = action
+            else:
+                console.print("[red]Unknown command[/]")                             
+                
     def _render_consolidated(self, consolidated: ConsolidatedDals):
         console.clear()
         table = Table(title="Duplicated DAL Objects")
@@ -447,13 +496,8 @@ class RenameDalCli:
             console.print(f"[red]Cannot rename {old_name} to {new_name} — name already exists[/]")
 
     def _commit(self):
-        console.print("[bold green]Committing all changes…[/]")
-        try:
-            self.collector.commit()
-            console.print("[green]Commit successful[/]")
-        except ConfigCommitError as e:
-            console.print(f"[red]Commit failed: {e}[/]")
-
+        self.collector.commit()
+        
 
 @click.command()
 @click.option("--input-folder", "-i", required=True, type=click.Path())
