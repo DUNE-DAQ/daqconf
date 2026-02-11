@@ -29,10 +29,6 @@ class NamesMatchError(RenameDalError):
        have the same name
     '''
     
-class NoSessionError(Exception):
-    def __init__(self, config)->None:
-        super().__init__(f"{str(config)} does not contain a session!")
-
 class ConfigCommitError(Exception):
     def __init__(self, config) -> None:
         super().__init__(f"Cannot commit changes to {config}, make sure you are not currently modifying it in some other process!")
@@ -41,22 +37,19 @@ class DalConfigLenMismatch(ValueError):
     def __init__(self, dals: List[DalBase], configs: List[Configuration]) -> None:
         super().__init__(f"DalCollection expects same number of dals and configs but has {len(dals)} dals and {len(configs)} configs")
 
-#  ----- Need a tree to get parent(s) of objects efficiently -----
-class ConfigTree:
+#  ----- Cache relations to avoid many lookup to get parent(s) of objects efficiently -----
+class RelationshipCache:
     '''
-    simple class to turn configuration into a tree
+    simple class to cache relationships between objects and get their parents
     '''
-            
-    def __init__(self, db: Configuration | str, session_name: str):
+    def __init__(self, db: Configuration | str):
         if isinstance(db, str):
             db = Configuration("oksconflibs:" + db)  
         self.db = db
-        self.session_name = session_name
-        self.session = self.db.get_dal("Session", session_name)
         self._relations_cache = {}
         self._parents_cache = {}
         
-        self.graph = self.build_tree(self.session)
+        self.graph = self.cache_relations()
     
     def _get_relations(self, class_name: str):
         """Cache relations queries to avoid repeated DB calls"""
@@ -64,26 +57,17 @@ class ConfigTree:
             self._relations_cache[class_name] = self.db.relations(class_name, all=True)
         return self._relations_cache[class_name]
     
-    def build_tree(self, top_object: DalBase):
+    def cache_relations(self):
         """Iterative tree building using BFS to avoid recursion overhead"""
-        graph = {}
-        visited = set()
-        queue = [top_object]
+        graph = {}        
+        objects = self.db.get_all_dals()        
+        for obj in objects.values():
         
-        while queue:
-        
-            current = queue.pop(0)                
-            obj_id = id(current)
-            
-            if obj_id in visited:
-                continue
-            visited.add(obj_id)
-            
-            rels = self._get_relations(current.className())
+            rels = self._get_relations(obj.className())
             related_objects_list = []
             
             for rel in rels:
-                related_objects = getattr(current, rel, [])
+                related_objects = getattr(obj, rel, [])
                 
                 if related_objects is None:
                     continue
@@ -93,13 +77,8 @@ class ConfigTree:
                 
                 related_objects_list.extend(related_objects)
                 
-                # Add unvisited objects to queue
-                for related in related_objects:
-                    if id(related) not in visited:
-                        queue.append(related)
-            
             if related_objects_list:
-                graph[current] = related_objects_list
+                graph[obj] = related_objects_list
         return graph
     
     def get_parents(self, obj: DalBase):
@@ -118,7 +97,7 @@ class ConfigTree:
 
 #  ----- Uniqueness Operations -----
 class ExtendedDal:
-    def __init__(self, dal: DalBase, config: Configuration, tree: ConfigTree):
+    def __init__(self, dal: DalBase, config: Configuration, tree: RelationshipCache):
         self.dal = dal
         self.configuration = config
         self.tree = tree
@@ -191,12 +170,12 @@ class ExtendedDal:
                 (other.get_parents_extended() == self.get_parents_extended())
             )
         )
-        
+
 class ConsolidatedDals:
     '''
     It's very hard to work out if a 
     '''
-    def __init__(self, dal_list: List[DalBase], config_list: List[Configuration], trees: Dict[Configuration, ConfigTree]):
+    def __init__(self, dal_list: List[DalBase], config_list: List[Configuration], trees: Dict[Configuration, RelationshipCache]):
         full_collection = [ExtendedDal(d, c, trees[c]) for d, c in zip(dal_list, config_list)]
         self._consolidated = self._consolidate(full_collection)
         self._trees = trees
@@ -221,13 +200,11 @@ class ConsolidatedDals:
     
     def __len__(self)->int:
         return len(self._consolidated)
-
-
                 
 class TreeSorter:
     """Sorts ConsolidatedDals by their position in tree structures"""
     
-    def __init__(self, trees: Dict[Configuration, ConfigTree], consolidated_dals: List[ConsolidatedDals]):
+    def __init__(self, trees: Dict[Configuration, RelationshipCache], consolidated_dals: List[ConsolidatedDals]):
         self.trees = list(trees.values())
         self.consolidated_dals = consolidated_dals
         self.all_dal_ids = set(c.dals[0].id for c in consolidated_dals)
@@ -253,7 +230,10 @@ class TreeSorter:
         """Get the root object for the current iteration"""
         if iteration == 1:
             # First iteration: use the Session root from the first tree
-            return self.trees[0].session
+            session = self.trees[0].db.get_dals("Session")
+            if not session:
+                raise ValueError("Your files must contain a session!")
+            return session[0]
         else:
             # Subsequent iterations: pick an uncovered DAL as root
             remaining = self.all_dal_ids - self.covered
@@ -326,10 +306,7 @@ class DalCollector:
         # Need the tree, using the Session as an entry point
         console.print("[blue]Generating configuration trees")
         for config in self._configs:
-            sessions = list(config.get_dals("Session"))
-            if not sessions:
-                raise NoSessionError(config)
-            self._trees[config] = ConfigTree(config, sessions[0].id)
+            self._trees[config] = RelationshipCache(config)
                 
         dal_config_pairs = [
             (dal, config)
@@ -353,7 +330,6 @@ class DalCollector:
         ]
         
         self._consolidated_dals = [c for c in dal_collection if len(c)>1]
-        
         # Sort by tree depth
         if self._consolidated_dals and self._trees:
             self._sort_by_tree_depth()
