@@ -6,12 +6,16 @@ from typing import List, Dict, Any, Set, Callable, Optional
 from collections import defaultdict
 from pathlib import Path
 from dataclasses import dataclass
+from itertools import combinations
+import re
 
 # rich
 from rich.console import Console
 from rich.table import Table
 from rich.prompt import Prompt
 from typing import List
+from rich.panel import Panel
+
 
 import click
 
@@ -95,123 +99,17 @@ class RelationshipCache:
         return parents
 
 
-#  ----- Uniqueness Operations -----
-class ExtendedDal:
-    def __init__(self, dal: DalBase, config: Configuration, tree: RelationshipCache):
-        self.dal = dal
-        self.configuration = config
-        self.tree = tree
-        
-        self._attributes = None
-        self._relations = None
-        
-    @property
-    def attributes(self)->Dict[str, Any]:
-        '''Gets attributes as [attr: list[attribute]]'''
-        if self._attributes is None:
-            self._attributes = {a: getattr(self.dal, a, None) for a 
-                                in self.configuration.attributes(self.dal.className())}
-
-        return self._attributes
-        
-    def _get_relations(self)->Dict[str, Set[str]]:
-        '''
-        Gets all the relations, assumes DAL string representation is unique for each DAL
-        '''
-        relations =  self.configuration.relations(self.dal.className(), all=True)
-
-        # We now convet
-        rel_dict = {}
-        for relation in relations.keys():
-            related_dals = getattr(self.dal, relation, None)
-
-            # Makes comparison a bit "nicer" since it's a
-            if related_dals is None:
-                related_dals = []
-            elif not isinstance(related_dals, list):
-                related_dals = [related_dals]
-            rel_dict[relation] = set([repr(rel) for rel in related_dals])
-        return rel_dict
-
-    def get_parents(self):
-        return self.tree.get_parents(self.dal)
-
-    def get_parents_extended(self):
-        return [ExtendedDal(d, self.configuration, self.tree) for d in self.get_parents()]
-
-    @property
-    def relations(self)->Dict[str, Set[str]]:
-        '''Gets relations as {rel name : [list of strings of dal]}'''
-        if self._relations is None:
-            self._relations = self._get_relations()
-        
-        return self._relations
-    
-    def rename(self, name: str)->None:
-        self.dal.rename(name)
-        self.configuration.update_dal(self.dal)
-
-    def get_name(self)->str:
-        return self.dal.id
-    
-    
-    def __eq__(self, other: 'ExtendedDal'):
-        '''Check 2 dals are different (can't use dal==dal because different configs potentially!)'''
-        if not isinstance(other, ExtendedDal):
-            return False
-
-        return (
-            other.dal.className() == self.dal.className() and
-            other.dal.id          == self.dal.id and
-            (
-                (other.attributes      == self.attributes and
-                other.relations       == self.relations)
-            or
-                (other.get_parents_extended() == self.get_parents_extended())
-            )
-        )
-
-class ConsolidatedDals:
-    '''
-    It's very hard to work out if a 
-    '''
-    def __init__(self, dal_list: List[DalBase], config_list: List[Configuration], trees: Dict[Configuration, RelationshipCache]):
-        full_collection = [ExtendedDal(d, c, trees[c]) for d, c in zip(dal_list, config_list)]
-        self._consolidated = self._consolidate(full_collection)
-        self._trees = trees
-    
-    def _consolidate(self, full_collection: List[ExtendedDal])->List[ExtendedDal]:
-        consolidated = []
-        for item in full_collection:
-            if not any(item == existing for existing in consolidated):
-                consolidated.append(item)
-        return consolidated
-
-    @property
-    def dals(self)->List[DalBase]:
-        return [c.dal for c in self._consolidated]
-    
-    @property
-    def configs(self)->List[Configuration]:
-        return [c.configuration for c in self._consolidated]
-
-    def __getitem__(self, idx: int):
-        return self._consolidated[idx]
-    
-    def __len__(self)->int:
-        return len(self._consolidated)
-                
 class TreeSorter:
     """Sorts ConsolidatedDals by their position in tree structures"""
     
-    def __init__(self, trees: Dict[Configuration, RelationshipCache], consolidated_dals: List[ConsolidatedDals]):
+    def __init__(self, trees: Dict[Configuration, RelationshipCache], consolidated_dals: List['ConsolidatedDals']):
         self.trees = list(trees.values())
         self.consolidated_dals = consolidated_dals
         self.all_dal_ids = set(c.dals[0].id for c in consolidated_dals)
         self.covered = set()
         self.sorted_list = []
     
-    def sort(self) -> List[ConsolidatedDals]:
+    def sort(self) -> List['ConsolidatedDals']:
         """Sort consolidated_dals by iteratively building trees until all objects are covered"""
         iteration = 0
         
@@ -284,15 +182,135 @@ class TreeSorter:
                     seen_child_ids.add(child_obj_id)
         
         return depth_map
-    
+        
+    @staticmethod
+    def _natural_sort_key(dal_id: str) -> list:
+        """Split ID into alternating text/int chunks for natural alphanumeric ordering."""
+        return [int(c) if c.isdigit() else c.lower() for c in re.split(r'(\d+)', dal_id)]
+
+
     def _add_sorted_batch(self, depth_map: Dict[str, int]):
-        """Add a batch of consolidated_dals sorted by depth"""
+        """Add a batch of consolidated_dals sorted by depth, then naturally by DAL ID."""
         batch = [
             c for c in self.consolidated_dals 
             if c.dals[0].id in depth_map
         ]
-        batch.sort(key=lambda c: depth_map[c.dals[0].id])
+        batch.sort(key=lambda c: (depth_map[c.dals[0].id], self._natural_sort_key(c.dals[0].id)))
         self.sorted_list.extend(batch)
+#  ----- Uniqueness Operations -----
+
+class ExtendedDal:
+    def __init__(self, dal: DalBase, config: Configuration, tree: RelationshipCache):
+        self.dal = dal
+        self.configuration = config
+        self.tree = tree
+        
+        self._attributes = None
+        self._relations = None
+        
+    @property
+    def attributes(self)->Dict[str, Any]:
+        '''Gets attributes as [attr: list[attribute]]'''
+        if self._attributes is None:
+            self._attributes = {a: getattr(self.dal, a, None) for a 
+                                in self.configuration.attributes(self.dal.className())}
+
+        return self._attributes
+        
+    def _get_relations(self)->Dict[str, Set[str]]:
+        '''
+        Gets all the relations, assumes DAL string representation is unique for each DAL
+        '''
+        relations =  self.configuration.relations(self.dal.className(), all=True)
+
+        # We now convet
+        rel_dict = {}
+        for relation in relations.keys():
+            related_dals = getattr(self.dal, relation, None)
+
+            # Makes comparison a bit "nicer" since it's a
+            if related_dals is None:
+                related_dals = []
+            elif not isinstance(related_dals, list):
+                related_dals = [related_dals]
+            rel_dict[relation] = set([repr(rel) for rel in related_dals])
+        return rel_dict
+
+    def get_parents(self):
+        return self.tree.get_parents(self.dal)
+
+    def get_parents_extended(self):
+        return [ExtendedDal(d, self.configuration, self.tree) for d in self.get_parents()]
+
+    @property
+    def relations(self)->Dict[str, Set[str]]:
+        '''Gets relations as {rel name : [list of strings of dal]}'''
+        if self._relations is None:
+            self._relations = self._get_relations()
+        
+        return self._relations
+    
+    def rename(self, name: str)->None:
+        self.dal.rename(name)
+        self.configuration.update_dal(self.dal)
+
+    def get_name(self)->str:
+        return self.dal.id
+    
+    
+    def __eq__(self, other: 'ExtendedDal')->bool:
+        '''Check 2 dals are different (can't use dal==dal because different configs potentially!)'''
+        if not isinstance(other, ExtendedDal):
+            return False
+
+        return (
+            other.dal.className() == self.dal.className() and
+            other.dal.id          == self.dal.id and
+            other.attributes      == self.attributes and
+            other.relations       == self.relations
+        )
+
+    def has_same_parents(self, other: 'ExtendedDal'):
+        return other.get_parents_extended() == self.get_parents_extended()
+
+
+class ConsolidatedDals:
+    '''
+    It's very hard to work out if a 
+    '''
+    def __init__(self, dal_list: List[DalBase], config_list: List[Configuration], trees: Dict[Configuration, RelationshipCache]):
+        full_collection = [ExtendedDal(d, c, trees[c]) for d, c in zip(dal_list, config_list)]
+        self._consolidated = self._consolidate(full_collection)
+        self._trees = trees
+    
+    def _consolidate(self, full_collection: List[ExtendedDal])->List[ExtendedDal]:
+        consolidated = []
+        for item in full_collection:
+            if not any(item == existing for existing in consolidated):
+                consolidated.append(item)
+        return consolidated
+
+    @property
+    def dals(self)->List[DalBase]:
+        return [c.dal for c in self._consolidated]
+    
+    @property
+    def has_same_parents(self) -> bool:
+        return any(
+            a.has_same_parents(b)
+            for a, b in combinations(self._consolidated, 2)
+        )
+    
+    @property
+    def configs(self)->List[Configuration]:
+        return [c.configuration for c in self._consolidated]
+
+    def __getitem__(self, idx: int):
+        return self._consolidated[idx]
+    
+    def __len__(self)->int:
+        return len(self._consolidated)
+                
 
 
 class DalCollector:
@@ -402,11 +420,20 @@ class RenameDalCli:
         console.print("[bold red]Exiting without committing[/]")
 
     def _handle_digit(self, action: str, consolidated: ConsolidatedDals):
+        if consolidated.has_same_parents:
+            console.print(
+                "\n[bold red]Cannot rename these DALs because they share the same parents."
+                "\nRenaming is disabled for this group.[/]"
+            )
+            Prompt.ask("[dim]Press Enter to continue[/]", default="")
+            return
+
         idx = int(action) - 1
         if 0 <= idx < len(consolidated):
             self._rename_item(consolidated[idx])
         else:
             console.print("[red]Invalid number[/]")
+            Prompt.ask("[dim]Press Enter to continue[/]", default="")
 
     # --- main loop ---
     def run(self):
@@ -440,7 +467,22 @@ class RenameDalCli:
                 
     def _render_consolidated(self, consolidated: ConsolidatedDals):
         console.clear()
+
+        if consolidated.has_same_parents:
+            console.print(
+                Panel(
+                    "[bold red]Renaming Disabled[/]\n\n"
+                    "These duplicated DAL objects share the same parents.\n"
+                    "Renaming them would cause commit inconsistencies.",
+                    title="⚠ WARNING",
+                    border_style="red",
+                    expand=False,
+                )
+            )
+            console.print()  # spacing
+
         table = Table(title="Duplicated DAL Objects")
+
         table.add_column("#", justify="right")
         table.add_column("DAL ID", style="cyan")
         table.add_column("Class", style="magenta")
@@ -452,9 +494,19 @@ class RenameDalCli:
         for i, ext_dal in enumerate(consolidated, 1):
             attr_str = ", ".join(f"{k}={v}" for k, v in ext_dal.attributes.items())
             rel_str = ", ".join(f"{k}=[{', '.join(v)}]" for k, v in ext_dal.relations.items())
-            table.add_row(str(i), ext_dal.get_name(), ext_dal.dal.className(), str(ext_dal.configuration), str(ext_dal.get_parents()), attr_str, rel_str)
+
+            table.add_row(
+                str(i),
+                ext_dal.get_name(),
+                ext_dal.dal.className(),
+                str(ext_dal.configuration),
+                str(ext_dal.get_parents()),
+                attr_str,
+                rel_str,
+            )
 
         console.print(table)
+
 
     def _rename_item(self, ext_dal: ExtendedDal):
         console.print(f"Renaming [cyan]{ext_dal.get_name()}[/] ({ext_dal.dal.className()})")
