@@ -560,7 +560,7 @@ def show_object_tree(obj, uid, show_attrs, focus_path, level, session_name, show
 
     
     focus_path = focus_path.split('.') if focus_path is not None else []
-    re_index = re.compile('([\w-]*)(\[([\w-]*)\])?')
+    re_index = re.compile(r'([\w-]*)(\[([\w-]*)\])?')
     path = []
     for p in focus_path:
         m = re_index.match(p)
@@ -885,7 +885,7 @@ def show_smartapp_mods(obj, session_id, app_id, show_attrs, level, focus_path):
     drr = DalRichRenderer(cfg)
 
     focus_path = focus_path.split('.') if focus_path is not None else []
-    re_index = re.compile('([\w-]*)(\[([\w-]*)\])?')
+    re_index = re.compile(r'([\w-]*)(\[([\w-]*)\])?')
     path = []
     for p in focus_path:
         m = re_index.match(p)
