@@ -548,44 +548,44 @@ def generate_readout(
                 linkhandler = db.get_dal(
                     class_name="DataHandlerConf", uid="def-pds-stream-link-handler"
                 )
-                det_q = db.get_dal(
-                    class_name="QueueConnectionRule", uid="pds-stream-raw-data-rule"
+                cb_desc = db.get_dal(
+                    class_name="DataMoveCallbackDescriptor", uid="pds-stream-raw-input"
                 )
             else:
                 linkhandler = db.get_dal(
                     class_name="DataHandlerConf", uid="def-pds-link-handler"
                 )
-                det_q = db.get_dal(
-                    class_name="QueueConnectionRule", uid="pds-raw-data-rule"
+                cb_desc = db.get_dal(
+                    class_name="DataMoveCallbackDescriptor", uid="pds-raw-input"
                 )
 
         elif det_id == 3 or det_id == 10:
             linkhandler = db.get_dal(
                 class_name="DataHandlerConf", uid="def-link-handler"
             )
-            det_q = db.get_dal(
-                class_name="QueueConnectionRule", uid="wib-eth-raw-data-rule"
+            cb_desc = db.get_dal(
+                class_name="DataMoveCallbackDescriptor", uid="wib-eth-raw-input"
             )
         elif det_id == 11:
             linkhandler = db.get_dal(
                 class_name="DataHandlerConf", uid="def-tde-link-handler"
             )
-            det_q = db.get_dal(
-                class_name="QueueConnectionRule", uid="tde-raw-data-rule"
+            cb_desc = db.get_dal(
+                class_name="DataMoveCallbackDescriptor", uid="tde-raw-input"
             )
         elif det_id == 12:
             linkhandler = db.get_dal(
                 class_name="DataHandlerConf", uid="def-crt-bern-link-handler"
             )
-            det_q = db.get_dal(
-                class_name="QueueConnectionRule", uid="crt-bern-raw-data-rule"
+            cb_desc = db.get_dal(
+                class_name="DataMoveCallbackDescriptor", uid="crt-bern-raw-input"
             )
         elif det_id == 13:
             linkhandler = db.get_dal(
                 class_name="DataHandlerConf", uid="def-crt-grenoble-link-handler"
             )
-            det_q = db.get_dal(
-                class_name="QueueConnectionRule", uid="crt-grenoble-raw-data-rule"
+            cb_desc = db.get_dal(
+                class_name="DataMoveCallbackDescriptor", uid="crt-grenoble-raw-input"
             )
 
         hostnum = appnum % len(hosts)
@@ -729,7 +729,7 @@ def generate_readout(
             runs_on=host,
             detector_connections=[connection],
             network_rules=netrules,
-            queue_rules=qrules + [det_q],
+            queue_rules=qrules,
             link_handler=linkhandler,
             data_reader=datareader,
             fragment_aggregator=fragagg,
@@ -739,6 +739,7 @@ def generate_readout(
             uses=rohw,
             exposes_service=[daqapp_control, dataRequests, timeSyncs],
             action_plans=[readout_start, readout_stop],
+            callback_desc=cb_desc,
         )
         if tpg_enabled:
             ru.tp_handler = tphandler
