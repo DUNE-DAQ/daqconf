@@ -789,7 +789,7 @@ def generate_readout(
     return
 
 
-def generate_fakedata(oksfile, include, generate_segment, n_streams, n_apps, det_id):
+def generate_fakedata(oksfile, include, generate_segment, n_streams, n_apps, det_id, fragment_type=None):
     """Simple script to create an OKS configuration file for a FakeDataProd-based readout segment.
 
       The file will automatically include the relevant schema files and
@@ -863,12 +863,25 @@ def generate_fakedata(oksfile, include, generate_segment, n_streams, n_apps, det
             qrules.append(db.get_dal(class_name="QueueConnectionRule", uid=rule))
 
     frame_size = 0
-    fragment_type = ""
     if det_id == 3:
         frame_size = 7200
         time_tick_diff = 32 * 64
         response_delay = 0
         fragment_type = "WIBEth"
+    elif det_id == 2:
+        if fragment_type == "DAPHNEEthStream":
+            frame_size = 2008
+            time_tick_diff = 280
+            response_delay = 0
+        elif fragment_type == "DAPHNEEth":
+            frame_size = 1864
+            time_tick_diff = 1024
+            response_delay = 0
+        else:
+            raise Exception(
+                f"FakeDataProd fragment_type '{fragment_type}' not recognized for detector ID {det_id}; "
+                f"expected 'DAPHNEEthStream' or 'DAPHNEEth'"
+            )
     else:
         raise Exception(
             f"FakeDataProd parameters not configured for detector ID {det_id}"
