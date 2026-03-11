@@ -423,7 +423,9 @@ GraphBuilder::find_objects_and_connections(const ConfigObject& object)
     if (daqapp) {
       auto local_session = const_cast<dunedaq::confmodel::Session*>( // NOLINT
         local_database->get<dunedaq::confmodel::Session>(m_session_name));
-      daqapp->generate_modules(local_session);
+
+      auto helper = std::make_shared<dunedaq::appmodel::ConfigurationHelper>(local_session);
+      daqapp->generate_modules(helper);
       auto modules = daqapp->get_modules();
 
       std::vector<std::string> allowed_conns{};
