@@ -25,9 +25,8 @@
 
 #include "appmodel/DataHandlerModule.hpp"
 #include "appmodel/DataReaderModule.hpp"
-#include "appmodel/CRTBernReaderModule.hpp"
-#include "appmodel/CRTGrenobleReaderModule.hpp"
 #include "appmodel/DataMoveCallbackConf.hpp"
+#include "appmodel/SocketDataWriterModule.hpp"
 
 #include "conffwk/Configuration.hpp"
 #include "conffwk/Schema.hpp"
@@ -474,17 +473,14 @@ GraphBuilder::find_objects_and_connections(const ConfigObject& object)
         // Look for DataMoveCallbackConfs
         auto datareader = module->cast<dunedaq::appmodel::DataReaderModule>();
         auto datahandler = module->cast<dunedaq::appmodel::DataHandlerModule>();
-        
+        auto socketwriter = module->cast<dunedaq::appmodel::SocketDataWriterModule>();
+
         if (datareader != nullptr) {
-          auto crtdatareader = module->cast<dunedaq::appmodel::CRTBernReaderModule>() != nullptr ||
-                               module->cast<dunedaq::appmodel::CRTGrenobleReaderModule>() != nullptr;
-          if (!crtdatareader) { // Don't check raw data callbacks for CRT readers
-            for (auto& out : datareader->get_raw_data_callbacks()) {
-              const std::string key = out->config_object().UID() + "@" + out->config_object().class_name();
-              if (std::ranges::find(allowed_conns, out->config_object().class_name()) != allowed_conns.end()) {
-                m_outgoing_connections[key].push_back(object.UID());
-                m_outgoing_connections[key].push_back(module->UID());
-              }
+          for (auto& out : datareader->get_raw_data_callbacks()) {
+            const std::string key = out->config_object().UID() + "@" + out->config_object().class_name();
+            if (std::ranges::find(allowed_conns, out->config_object().class_name()) != allowed_conns.end()) {
+              m_outgoing_connections[key].push_back(object.UID());
+              m_outgoing_connections[key].push_back(module->UID());
             }
           }
         }
@@ -493,6 +489,15 @@ GraphBuilder::find_objects_and_connections(const ConfigObject& object)
           if (in != nullptr) {
             const std::string key = in->config_object().UID() + "@" + in->config_object().class_name();
 
+            if (std::ranges::find(allowed_conns, in->config_object().class_name()) != allowed_conns.end()) {
+              m_incoming_connections[key].push_back(object.UID());
+              m_incoming_connections[key].push_back(module->UID());
+            }
+          }
+        }
+        if (socketwriter != nullptr) {
+          for (auto& in : socketwriter->get_raw_data_callbacks()) {
+            const std::string key = in->config_object().UID() + "@" + in->config_object().class_name();
             if (std::ranges::find(allowed_conns, in->config_object().class_name()) != allowed_conns.end()) {
               m_incoming_connections[key].push_back(object.UID());
               m_incoming_connections[key].push_back(module->UID());
