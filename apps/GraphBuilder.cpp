@@ -26,7 +26,6 @@
 #include "appmodel/DataHandlerModule.hpp"
 #include "appmodel/DataReaderModule.hpp"
 #include "appmodel/DataMoveCallbackConf.hpp"
-#include "appmodel/SocketDataWriterModule.hpp"
 
 #include "conffwk/Configuration.hpp"
 #include "conffwk/Schema.hpp"
@@ -423,7 +422,9 @@ GraphBuilder::find_objects_and_connections(const ConfigObject& object)
     if (daqapp) {
       auto local_session = const_cast<dunedaq::confmodel::Session*>( // NOLINT
         local_database->get<dunedaq::confmodel::Session>(m_session_name));
-      daqapp->generate_modules(local_session);
+
+      auto helper = std::make_shared<dunedaq::appmodel::ConfigurationHelper>(local_session);
+      daqapp->generate_modules(helper);        
       auto modules = daqapp->get_modules();
 
       std::vector<std::string> allowed_conns{};
@@ -473,7 +474,6 @@ GraphBuilder::find_objects_and_connections(const ConfigObject& object)
         // Look for DataMoveCallbackConfs
         auto datareader = module->cast<dunedaq::appmodel::DataReaderModule>();
         auto datahandler = module->cast<dunedaq::appmodel::DataHandlerModule>();
-        auto socketwriter = module->cast<dunedaq::appmodel::SocketDataWriterModule>();
 
         if (datareader != nullptr) {
           for (auto& out : datareader->get_raw_data_callbacks()) {
@@ -489,15 +489,6 @@ GraphBuilder::find_objects_and_connections(const ConfigObject& object)
           if (in != nullptr) {
             const std::string key = in->config_object().UID() + "@" + in->config_object().class_name();
 
-            if (std::ranges::find(allowed_conns, in->config_object().class_name()) != allowed_conns.end()) {
-              m_incoming_connections[key].push_back(object.UID());
-              m_incoming_connections[key].push_back(module->UID());
-            }
-          }
-        }
-        if (socketwriter != nullptr) {
-          for (auto& in : socketwriter->get_raw_data_callbacks()) {
-            const std::string key = in->config_object().UID() + "@" + in->config_object().class_name();
             if (std::ranges::find(allowed_conns, in->config_object().class_name()) != allowed_conns.end()) {
               m_incoming_connections[key].push_back(object.UID());
               m_incoming_connections[key].push_back(module->UID());

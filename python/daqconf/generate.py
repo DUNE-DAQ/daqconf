@@ -577,15 +577,9 @@ def generate_readout(
             linkhandler = db.get_dal(
                 class_name="DataHandlerConf", uid="def-crt-bern-link-handler"
             )
-            cb_desc = db.get_dal(
-                class_name="DataMoveCallbackDescriptor", uid="crt-bern-raw-input"
-            )
         elif det_id == 13:
             linkhandler = db.get_dal(
                 class_name="DataHandlerConf", uid="def-crt-grenoble-link-handler"
-            )
-            cb_desc = db.get_dal(
-                class_name="DataMoveCallbackDescriptor", uid="crt-grenoble-raw-input"
             )
 
         hostnum = appnum % len(hosts)
