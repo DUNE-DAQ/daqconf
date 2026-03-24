@@ -577,9 +577,17 @@ def generate_readout(
             linkhandler = db.get_dal(
                 class_name="DataHandlerConf", uid="def-crt-bern-link-handler"
             )
+            # Not used, but needed for ReadoutApplication
+            cb_desc = db.get_dal(
+                class_name="DataMoveCallbackDescriptor", uid="crt-bern-raw-input"
+            )
         elif det_id == 13:
             linkhandler = db.get_dal(
                 class_name="DataHandlerConf", uid="def-crt-grenoble-link-handler"
+            )
+            # Not used, but needed for ReadoutApplication
+            cb_desc = db.get_dal(
+                class_name="DataMoveCallbackDescriptor", uid="crt-grenoble-raw-input"
             )
 
         hostnum = appnum % len(hosts)
@@ -674,7 +682,8 @@ def generate_readout(
             if nicrec == None:
                 try:
                     snb_files = db.get_dal(
-                        class_name="SNBFileSourceParameters", uid=f"snb-files-{connection.id}"
+                        class_name="SNBFileSourceParameters",
+                        uid=f"snb-files-{connection.id}",
                     )
                     snb_files.data_files = [resolve_asset_file(emulated_file_name)]
                     db.update_dal(snb_files)
@@ -783,7 +792,9 @@ def generate_readout(
     return
 
 
-def generate_fakedata(oksfile, include, generate_segment, n_streams, n_apps, det_id, fragment_type=None):
+def generate_fakedata(
+    oksfile, include, generate_segment, n_streams, n_apps, det_id, fragment_type=None
+):
     """Simple script to create an OKS configuration file for a FakeDataProd-based readout segment.
 
       The file will automatically include the relevant schema files and
@@ -883,14 +894,16 @@ def generate_fakedata(oksfile, include, generate_segment, n_streams, n_apps, det
 
     for appidx in range(n_apps):
 
-        fakeapp = dal.FakeDataApplication(f"fakedata_{appidx}",
-        runs_on=host,
-        application_name="daq_application",
-        exposes_service=[daqapp_control, dataRequests, timeSyncs],
-        queue_rules=qrules,
-        network_rules=netrules,
-        fragment_aggregator=fragagg,
-        opmon_conf=opmon_conf,)
+        fakeapp = dal.FakeDataApplication(
+            f"fakedata_{appidx}",
+            runs_on=host,
+            application_name="daq_application",
+            exposes_service=[daqapp_control, dataRequests, timeSyncs],
+            queue_rules=qrules,
+            network_rules=netrules,
+            fragment_aggregator=fragagg,
+            opmon_conf=opmon_conf,
+        )
 
         for streamidx in range(n_streams):
             stream = dal.FakeDataProdConf(
@@ -1033,7 +1046,9 @@ def generate_trigger(
             class_name="FixedTimeTCMakerModuleConf",
             uid="ft-trig-conf",
         )
-        print(f"FixedTimeTCMakerModule has been configured, disabling random triggers and HSI")
+        print(
+            f"FixedTimeTCMakerModule has been configured, disabling random triggers and HSI"
+        )
         tc_confs = [fixedtime_tc_generator]
     except:
         pass  # No FixedTimeTCMaker
