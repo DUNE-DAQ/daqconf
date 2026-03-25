@@ -570,6 +570,14 @@ GraphBuilder::construct_graph(std::string root_obj_uid)
     }
   }
 
+  // Aggregate connections: group edges by (sender_vertex, receiver_vertex, connection_type)
+  // so that multiple parallel connections of the same type are shown as a single labelled edge
+  // Connection name format: "name@ClassName" or "name@ClassName@subtype"
+  // The type suffix is everything from the first '@' character and is used for edge coloring
+
+  using EdgeKey = std::pair<Vertex_t, Vertex_t>;
+  std::map<EdgeKey, std::map<std::string, std::vector<std::string>>> edge_accumulator;
+
   for (auto& possible_sender_object : m_objects_for_graph | std::views::values) {
     for (auto& receiver_info : possible_sender_object.receiving_object_infos) {
 
@@ -590,11 +598,28 @@ GraphBuilder::construct_graph(std::string root_obj_uid)
         }
       }
 
-      boost::add_edge(possible_sender_object.vertex_in_graph,
-                      m_objects_for_graph.at(receiver_info.receiver_label).vertex_in_graph,
-                      { receiver_info.connection_name },
-                      m_graph)
-        .first;
+      Vertex_t sender_v = possible_sender_object.vertex_in_graph;
+      Vertex_t receiver_v = m_objects_for_graph.at(receiver_info.receiver_label).vertex_in_graph;
+
+      size_t at_pos = receiver_info.connection_name.find('@');
+      bool has_type_separator = (at_pos != std::string::npos);
+      std::string type_suffix = has_type_separator ? receiver_info.connection_name.substr(at_pos) : "";
+      std::string name_part = has_type_separator ? receiver_info.connection_name.substr(0, at_pos)
+                                                 : receiver_info.connection_name;
+
+      edge_accumulator[{ sender_v, receiver_v }][type_suffix].push_back(name_part);
+    }
+  }
+
+  for (auto& [edge_key, type_map] : edge_accumulator) {
+    for (auto& [type_suffix, names] : type_map) {
+      std::string label;
+      if (names.size() == 1) {
+        label = names[0] + type_suffix;
+      } else {
+        label = std::to_string(names.size()) + "x" + type_suffix;
+      }
+      boost::add_edge(edge_key.first, edge_key.second, { label }, m_graph);
     }
   }
 }
@@ -660,6 +685,37 @@ GraphBuilder::write_graph(const std::string& outputfilename) const
                                                                    { ObjectKind::kModule, { "rectangle", "red" } } };
 
   std::string dotfile_slurped = outputstream.str();
+
+  // Add rank=same constraints to place objects of the same class at the same graph rank,
+  // so that similar applications (ReadoutApplication, DFApplication, etc.) are aligned
+  {
+    std::map<std::string, std::vector<Vertex_t>> class_to_vertices;
+    for (auto& eo : m_objects_for_graph | std::views::values) {
+      if (eo.kind != ObjectKind::kIncomingExternal && eo.kind != ObjectKind::kOutgoingExternal) {
+        class_to_vertices[eo.config_object.class_name()].push_back(eo.vertex_in_graph);
+      }
+    }
+
+    std::string rank_code;
+    for (auto& [classname, vertices] : class_to_vertices) {
+      if (vertices.size() > 1) {
+        rank_code += "  subgraph { rank=same;";
+        for (auto v : vertices) {
+          rank_code += " " + std::to_string(v) + ";";
+        }
+        rank_code += " }\n";
+      }
+    }
+
+    if (!rank_code.empty()) {
+      size_t opening_brace = dotfile_slurped.find('{');
+      if (opening_brace == std::string::npos) {
+        throw daqconf::GeneralGraphToolError(ERS_HERE, "Generated DOT output is malformed: missing opening brace");
+      }
+      dotfile_slurped.insert(opening_brace + 1, "\n" + rank_code);
+    }
+  }
+
   std::vector<std::string> legend_entries{
     "legendGA [label=<<font color=\"black\"><b><i>&#10230; Network Connection</i></b></font>>, shape=plaintext];",
     "legendGB [label=<<font color=\"blue\"><b><i>&#10230; Pub/Sub Network</i></b></font>>, shape=plaintext];"
