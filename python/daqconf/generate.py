@@ -1159,13 +1159,16 @@ def generate_session(
         db.update_dal(host)
         hosts.append("vlocalhost")
 
+    opmon_conf = db.get_dal(class_name="OpMonConf", uid="slow-all-monitoring")
+
     fsm = db.get_dal(class_name="FSMconfiguration", uid="fsmConf-test")
-    rccontroller_control = db.get_dal(class_name="Service", uid="rccontroller_control")
+    rccontroller_control = db.get_dal(class_name="Service", uid="root-rccontroller_control")
     controller = dal.RCApplication(
         "root-controller",
         application_name="drunc-controller",
         runs_on=host,
         fsm=fsm,
+        opmon_conf=opmon_conf,
         exposes_service=[rccontroller_control],
     )
     db.update_dal(controller)
