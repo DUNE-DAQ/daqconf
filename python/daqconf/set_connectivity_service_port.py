@@ -56,12 +56,6 @@ def set_connectivity_service_port(oksfile, session_name, connsvc_port=0):
             if found_var:
                 break
 
-        if not found_var:
-            print("Error: Could not find a 'CONNECTION_PORT' variable in the session's environment.")
-            return 0
-    else:
-        print("Error: Session has no 'environment' configured. Cannot update CONNECTION_PORT variable.")
-        return 0
 
     db.commit()
     print(f"Successfully configured connectivity service port for session '{session_name}'.")
