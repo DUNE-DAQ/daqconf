@@ -1,18 +1,19 @@
 import conffwk
 import confmodel_dal
+import sys
 
 def set_session_env_var(oksfile, session_name, requested_env_var_name, requested_env_var_value, overwrite=True):
     """Script to set the value of an environment variable in the specified Session of the
     specified OKS database file"""
     db = conffwk.Configuration("oksconflibs:" + oksfile)
     if session_name == "":
-        print(f"Error: the session name needs to be specified")
+        print(f"Error: the session name needs to be specified", file=sys.stderr)
         return
     else:
         try:
             session = db.get_dal("Session", session_name)
         except:
-            print(f"Error could not find Session {session_name} in file {oksfile}")
+            print(f"Error: could not find Session \"{session_name}\" in file \"{oksfile}\"", file=sys.stderr)
             return
 
     schemafiles = [
@@ -27,12 +28,10 @@ def set_session_env_var(oksfile, session_name, requested_env_var_name, requested
             for subentry in entry.contains:
                 if subentry.name == requested_env_var_name:
                     existing_env_var = subentry
-                    existing_env_var.value = requested_env_var_value
                     break
         else:
             if entry.name == requested_env_var_name:
                 existing_env_var = entry
-                existing_env_var.value = requested_env_var_value
 
         if existing_env_var is not None:
             break
@@ -43,6 +42,7 @@ def set_session_env_var(oksfile, session_name, requested_env_var_name, requested
 
     # if we found an existing env var, update the DB with the new value
     if existing_env_var is not None:
+        existing_env_var.value = requested_env_var_value
         db.update_dal(existing_env_var)
 
     # otherwise, create a new env var and assign it to the OKS Session
