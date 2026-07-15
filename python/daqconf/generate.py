@@ -70,10 +70,10 @@ def generate_dataflow(
         class_name="QueueConnectionRule", uid="token-q-rule"
     )
     trigger_decision_q_rule = db.get_dal(
-        class_name="QueueConnectionRule", uid="trigger-decision-q-rule"
+        class_name="QueueConnectionRule", uid="trb-td-q-rule"
     )
     trb_complete_q_rule = db.get_dal(
-        class_name="QueueConnectionRule", uid="trb-complete-q-rule"
+        class_name="QueueConnectionRule", uid="trb-completion-queue-rule"
     )
     dfapp_qrules = [trigger_record_q_rule, token_q_rule, trigger_decision_q_rule, trb_complete_q_rule]
 
