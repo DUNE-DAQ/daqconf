@@ -102,7 +102,6 @@ def generate_dataflow(
         df_status_req_net_rule,
         td_df_net_rule,
         frag_net_rule,
-        df_status_net_rule,
         data_req_hsi_net_rule,
         data_req_readout_net_rule,
         data_req_trig_net_rule,
@@ -126,7 +125,7 @@ def generate_dataflow(
         )
         trmon_qrules.append(trigger_decision_token_q_rule)
 
-    dfo_netrules = [td_dfo_net_rule, ti_net_rule, df_status_req_net_rule, df_status_net_rule, td_df_net_rule]
+    dfo_netrules = [td_dfo_net_rule, ti_net_rule, df_status_net_rule]
     tpw_netrules = [tpset_net_rule]
 
     opmon_conf = db.get_dal(class_name="OpMonConf", uid="slow-all-monitoring")
