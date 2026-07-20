@@ -1,7 +1,7 @@
 """
 HW: Finds non-unique DAL objects and provides a simple CLI to rename them iteratively
 """
-from typing import List, Dict, Any, Set
+from typing import Dict, List, Set
 from collections import defaultdict
 from pathlib import Path
 from itertools import combinations
@@ -35,11 +35,11 @@ class RelationshipCache:
         if isinstance(db, str):
             db = Configuration("oksconflibs:" + db)
         self.db = db
-        self._relations_cache: Dict[str, Any] = {}
-        self._parents_cache: Dict[Any, list] = {}
+        self._relations_cache: Dict[str, List[str]] = {}
+        self._parents_cache: Dict[DalBase, List[DalBase]] = {}
         self.graph = self._build_graph()
 
-    def _relations(self, class_name: str):
+    def _relations(self, class_name: str) -> List[str]:
         if class_name not in self._relations_cache:
             self._relations_cache[class_name] = self.db.relations(class_name, all=True)
         return self._relations_cache[class_name]
@@ -74,7 +74,7 @@ class ExtendedDal:
         self.dal = dal
         self.config = config
         self.tree = tree
-        self._attributes: Dict[str, Any] | None = None
+        self._attributes: Dict[str, object] | None = None
         self._relations: Dict[str, Set[str]] | None = None
 
     @property
@@ -82,7 +82,7 @@ class ExtendedDal:
         return self.dal.id
 
     @property
-    def attributes(self) -> Dict[str, Any]:
+    def attributes(self) -> Dict[str, object]:
         if self._attributes is None:
             self._attributes = {
                 a: getattr(self.dal, a, None)

@@ -5,7 +5,7 @@ import appmodel_dal
 import os
 import glob
 
-def get_segment_apps(segment):
+def get_segment_apps(segment: object) -> list[str]:
     apps = []
 
     for ss in segment.segments:
@@ -16,7 +16,7 @@ def get_segment_apps(segment):
 
     return apps
 
-def enable_tpg(oksfile, disable, session_name):
+def enable_tpg(oksfile: str, disable: bool, session_name: str) -> None:
     """Script to enable or disable (-d) TP generation in ReadoutApplications of the
     specified OKS configuration"""
     db = conffwk.Configuration("oksconflibs:" + oksfile)

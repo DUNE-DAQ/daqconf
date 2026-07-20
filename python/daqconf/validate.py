@@ -2,7 +2,7 @@ import conffwk
 import confmodel_dal
 
 
-def compare_objects(obj1, obj2):
+def compare_objects(obj1: object, obj2: object) -> bool:
   """ Compare 2 dal objects for equality attribute by attribute """
   same = True
   if type(obj1) != type(obj2):
@@ -31,7 +31,7 @@ def compare_objects(obj1, obj2):
 
 
 
-def check_unique_relationship(objects, relationship):
+def check_unique_relationship(objects: list[object], relationship: str) -> bool:
   """
   Check to see if the given relationship (by class name) is unique
   among a list of objects. First by comparing the UIDs, then by
@@ -66,7 +66,7 @@ def check_unique_relationship(objects, relationship):
   return unique
 
 
-def validate_readout(db, session):
+def validate_readout(db: conffwk.Configuration, session: object) -> int:
   errcount = 0
   # Find all enabled readout apps and check that
   # DetectorToDaqConnection's are unique
@@ -133,7 +133,7 @@ def validate_readout(db, session):
 
   return errcount
 
-def validate_session(oksfile, session_name):
+def validate_session(oksfile: str, session_name: str) -> None:
   db = conffwk.Configuration("oksconflibs:" + oksfile)
   if session_name == "":
     session_dals = db.get_dals(class_name="Session")

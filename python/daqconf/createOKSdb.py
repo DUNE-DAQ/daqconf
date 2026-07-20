@@ -3,7 +3,7 @@ import os
 import glob
 
 
-def generate_file(oksfile, include):
+def generate_file(oksfile: str, include: list[str]) -> None:
     """Simple script to create an 'empty' OKS file.
     The file will automatically include the confmodel schema
     and any other OKS files you specify"""

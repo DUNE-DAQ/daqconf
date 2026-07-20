@@ -9,7 +9,7 @@ from rich.logging import RichHandler
 log_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
 
-def setup_logging(level:str="INFO"):
+def setup_logging(level: str = "INFO") -> None:
     level = level.upper()
 
     loglevel = logging.INFO
@@ -35,7 +35,7 @@ def setup_logging(level:str="INFO"):
     logging.getLogger().setLevel(loglevel)
 
 
-def find_oksincludes(includes:list[str], extra_dirs:list[str] = []):
+def find_oksincludes(includes: list[str], extra_dirs: list[str] = []) -> list[object]:
     includefiles = []
 
     searchdirs = [path for path in os.environ["DUNEDAQ_DB_PATH"].split(":")]
@@ -90,7 +90,7 @@ def find_oksincludes(includes:list[str], extra_dirs:list[str] = []):
 
 # This function returns a random available network port.  Users can optionally
 # specify a range that should be used.
-def find_free_port(min_port_num:int=0, max_port_num:int=65535):
+def find_free_port(min_port_num: int = 0, max_port_num: int = 65535) -> int:
     # If the user didn't specify a minimum port number (or deliberately specified
     # zero), we can simply ask the system for an available port.
     if min_port_num == 0:

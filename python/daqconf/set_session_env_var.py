@@ -2,7 +2,13 @@ import conffwk
 import confmodel_dal
 import sys
 
-def set_session_env_var(oksfile, session_name, requested_env_var_name, requested_env_var_value, overwrite=True):
+def set_session_env_var(
+    oksfile: str,
+    session_name: str,
+    requested_env_var_name: str,
+    requested_env_var_value: str,
+    overwrite: bool = True,
+) -> None:
     """Script to set the value of an environment variable in the specified Session of the
     specified OKS database file"""
     db = conffwk.Configuration("oksconflibs:" + oksfile)
