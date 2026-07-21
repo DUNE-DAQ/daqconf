@@ -13,7 +13,7 @@ class QuitScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield Grid(
-            Label("Are you sure you want to quit? [Unsaved changes will be lost!]", id="question"),
+            Label("Are you sure you want to quit? [Any unsaved changes will be lost!]", id="question"),
             Button("Save and Quit", variant="success", id="save_quit"),
             Button("Quit", variant="error", id="quit"),
             Button("Cancel", variant="primary", id="cancel"),

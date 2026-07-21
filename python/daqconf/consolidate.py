@@ -119,7 +119,7 @@ def consolidate_session(db: conffwk.Configuration, new_db: conffwk.Configuration
     dal_list = get_relationships(db, dal_session, [])
     copy_dals_to_cfg(new_db, dal_list)
 
-def get_relationships(db: conffwk.Configuration, current_dal: conffwk.Configuration, dal_list: list(conffwk.Configuration))->list(conffwk.Configuration):
+def get_relationships(db: conffwk.Configuration, current_dal: conffwk.Configuration, dal_list: list(conffwk.Configuration)) -> list(conffwk.Configuration):
     '''
     Recurssively get all objects related to current_dal
     '''
@@ -139,7 +139,7 @@ def get_relationships(db: conffwk.Configuration, current_dal: conffwk.Configurat
     return dal_list
 
 
-def copy_dals_to_cfg(new_db: conffwk.Configuration, dal_list: list(conffwk.Configuration))->None:
+def copy_dals_to_cfg(new_db: conffwk.Configuration, dal_list: list(conffwk.Configuration)) -> None:
     '''
     Copy a list of dals into a configuration
     '''
@@ -151,7 +151,7 @@ def copy_dals_to_cfg(new_db: conffwk.Configuration, dal_list: list(conffwk.Confi
     new_db.commit()
     
     
-def copy_configuration(dest_dir : Path, input_files: list(conffwk.Cofniguration)) -> list(conffwk.Cofniguration):
+def copy_configuration(dest_dir : Path, input_files: list(conffwk.Configuration)) -> list(conffwk.Configuration):
     if len(input_files) == 0:
         return []
 
