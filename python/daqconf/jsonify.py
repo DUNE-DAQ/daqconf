@@ -6,12 +6,12 @@ from rich import print
 log = getLogger('daqconf.jsonify')
 
 
-def hash_function(obj):
+def hash_function(obj: object) -> int:
     # I guess we could get ObjectId from MongoDB
     return hash(f'{obj.id}@{obj.className()}')
 
 
-def convert_to_dict(db, obj):
+def convert_to_dict(db: conffwk.Configuration, obj: object) -> dict[str, str | int]:
     dal_dict = {
         "__type": obj.className(),
         "_id": {
@@ -46,7 +46,7 @@ def convert_to_dict(db, obj):
     return dict(sorted(dal_dict.items()))
 
 
-def jsonify_xml_data(oksfile, output):
+def jsonify_xml_data(oksfile: str, output: str) -> None:
 
     sys.setrecursionlimit(10000)
 

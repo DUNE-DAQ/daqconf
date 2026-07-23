@@ -1,7 +1,9 @@
 import conffwk
 import copy
 
-def rename_session(oksfile,output_name,session_name=None):
+def rename_session(
+    oksfile: str, output_name: str, session_name: str | None = None
+) -> None:
     """Script to rename the session (first session if multiple and not specified)"""
     
     db = conffwk.Configuration('oksconflibs:'+oksfile)

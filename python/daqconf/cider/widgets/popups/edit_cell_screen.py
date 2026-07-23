@@ -5,9 +5,13 @@ from textual.app import ComposeResult
 from textual.widgets import Input, Label
 from textual.containers import Container
 
-from typing import Any
+from typing import Protocol
 
 from daqconf.cider.widgets.configuration_controller import ConfigurationController
+
+class TableCellEvent(Protocol):
+    row_key: object
+
 
 class EditCellScreen(ModalScreen):
     css_file_path = f"{environ.get('DAQCONF_SHARE')}/config/textual_dbe/textual_css"
@@ -15,7 +19,7 @@ class EditCellScreen(ModalScreen):
     CSS_PATH = f"{css_file_path}/edit_cell_layout.tcss"
   
     def __init__(
-        self, event: Any, name: str | None = None, id: str | None = None, classes: str | None = None) -> None:
+        self, event: TableCellEvent, name: str | None = None, id: str | None = None, classes: str | None = None) -> None:
         super().__init__(name=name, id=id, classes=classes)
         """Screen which pops up when a cell is clicked in the ConfigTable
         """

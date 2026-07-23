@@ -2,7 +2,9 @@ import conffwk
 import confmodel_dal
 from daqconf.utils import find_free_port
 
-def set_connectivity_service_port(oksfile, session_name, connsvc_port=0):
+def set_connectivity_service_port(
+    oksfile: str, session_name: str, connsvc_port: int = 0
+) -> int:
     """Script to set the value of the Connectivity Service port in the specified Session of the specified
     OKS database file. If the new port is not specified, it is set to a random available k8s NodePort."""
     db = conffwk.Configuration("oksconflibs:" + oksfile)

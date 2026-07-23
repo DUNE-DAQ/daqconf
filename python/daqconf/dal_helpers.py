@@ -3,25 +3,25 @@
 ##
 # Dal helpers
 #
-def get_attribute_info(o):
+def get_attribute_info(o: object) -> dict[str, object]:
     return o.__schema__['attribute']
 
-def get_relation_info(o):
+def get_relation_info(o: object) -> dict[str, object]:
     return o.__schema__['relation']
 
-def get_attribute_list(o):
+def get_attribute_list(o: object) -> list[str]:
     return list(get_attribute_info(o))
 
-def get_relation_list(o):
+def get_relation_list(o: object) -> list[str]:
     return list(get_relation_info(o))
 
-def get_superclass_list(o):
+def get_superclass_list(o: object) -> list[str]:
     return o.__schema__['superclass']
 
-def get_subclass_list(o):
+def get_subclass_list(o: object) -> list[str]:
     return o.__schema__['subclass']
 
-def compare_dal_obj(a, b):
+def compare_dal_obj(a: object, b: object) -> bool:
     """Compare two dal objects by content"""
 
     # TODO: add a check on a and b being dal objects
@@ -45,7 +45,7 @@ def compare_dal_obj(a, b):
 
 
 #---------------
-def find_related(dal_obj, dal_group: set):
+def find_related(dal_obj: object, dal_group: set[object]) -> None:
 
 
     rels = get_relation_list(dal_obj)
@@ -71,7 +71,7 @@ def find_related(dal_obj, dal_group: set):
         find_related(o, dal_group)
         
 from collections.abc import Iterable
-def find_duplicates( collection: Iterable ):
+def find_duplicates(collection: Iterable[object]) -> set[object]:
     """
     Find duplicated dal objects in a collection by comparing objects attributes and relationships
     """

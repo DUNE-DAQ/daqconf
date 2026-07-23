@@ -8,15 +8,19 @@ from textual.widgets import Button
 from textual.containers import VerticalScroll
 from rich.console import RichCast, ConsoleRenderable
 
-from typing import Any
+from typing import Protocol
 
 from daqconf.cider.widgets.configuration_controller import ConfigurationController
 from daqconf.cider.widgets.custom_rich_log import RichLogWError
 
 
 
+class RelatedDal(Protocol):
+    def __repr__(self) -> str: ...
+
+
 class SingleRelationshipModifier(Static):
-    def __init__(self, relationship_type: str, current_related_dal: Any, relationship_name: str,
+    def __init__(self, relationship_type: str, current_related_dal: RelatedDal | object, relationship_name: str,
                  renderable: ConsoleRenderable | RichCast | str = "", *, expand: bool = False,
                  shrink: bool = False, markup: bool = True, name: str | None = None, id: str | None = None,
                  classes: str | None = None, disabled: bool = False) -> None:
