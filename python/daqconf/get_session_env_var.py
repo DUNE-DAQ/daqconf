@@ -3,7 +3,7 @@ import confmodel_dal
 import sys
 
 def get_session_env_var(
-        oksfile: str, session_name: str, requested_env_var_name: str, quiet: bool = False
+    oksfile: str, session_name: str, requested_env_var_name: str, quiet: bool = False
 ) -> str | None:
     """Script to get the value of an environment variable in the specified Session of the
     specified OKS database file"""
