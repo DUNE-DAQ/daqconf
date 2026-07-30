@@ -5,7 +5,7 @@ import os
 import glob
 
 
-def get_segment_apps(segment):
+def get_segment_apps(segment: object) -> list[str]:
     apps = []
 
     for ss in segment.segments:
@@ -17,7 +17,7 @@ def get_segment_apps(segment):
     return apps
 
 
-def get_session_apps(oksfile, session_name=""):
+def get_session_apps(oksfile: str, session_name: str = "") -> list[str] | None:
     """Get the apps defined in the given session"""
     session_db = conffwk.Configuration("oksconflibs:" + oksfile)
     if session_name == "":
@@ -38,7 +38,7 @@ def get_session_apps(oksfile, session_name=""):
     return get_segment_apps(segment)
 
 
-def get_database_apps(oksfile):
+def get_database_apps(oksfile: str) -> dict[str, list[str]]:
 
     output = {}
     session_db = conffwk.Configuration("oksconflibs:" + oksfile)

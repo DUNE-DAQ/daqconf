@@ -1,6 +1,6 @@
 import conffwk
 
-def get_segment_apps(segment):
+def get_segment_apps(segment: object) -> list[object]:
     """
     Gather the list of applications in the segment and its sub-segments
     """
@@ -17,7 +17,7 @@ def get_segment_apps(segment):
     return apps
 
 
-def get_session_apps(confdb, session_name=""):
+def get_session_apps(confdb: conffwk.Configuration, session_name: str = "") -> list[object] | None:
     """
     Gather the apps defined used in a session.
     """
@@ -39,7 +39,7 @@ def get_session_apps(confdb, session_name=""):
     return get_segment_apps(segment)
 
 
-def get_apps_in_any_session(confdb):
+def get_apps_in_any_session(confdb: conffwk.Configuration) -> dict[str, list[object]]:
     """
     Gather the applications used in any session present in the database
     """
@@ -57,7 +57,12 @@ def get_apps_in_any_session(confdb):
     return output
 
 
-def enable_resource_in_session(db, session_name: str, resource: list[str], disable: bool):
+def enable_resource_in_session(
+    db: conffwk.Configuration,
+    session_name: str,
+    resource: list[str],
+    disable: bool,
+) -> None:
     """Script to enable or disable (-d) Resources from the first Session of the
     specified OKS database file"""
     if session_name == "":
