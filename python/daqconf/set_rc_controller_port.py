@@ -3,7 +3,7 @@ import confmodel_dal
 from daqconf.utils import find_free_port
 import sys
 
-def set_rc_controller_port(oksfile, session_name, rc_port=0):
+def set_rc_controller_port(oksfile: str, session_name: str, rc_port: int = 0) -> int:
     """
     Script to set the value of the RC Controller Service port used by the specified Session
     in the specified OKS database file. If the new port is not specified,

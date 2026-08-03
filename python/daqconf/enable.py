@@ -5,7 +5,7 @@ import os
 import glob
 
 
-def enable(oksfile, disable, resource, session_name):
+def enable(oksfile: str, disable: bool, resource: list[str], session_name: str) -> None:
     """Script to enable or disable (-d) Resources from the first Session of the
     specified OKS database file"""
     db = conffwk.Configuration("oksconflibs:" + oksfile)

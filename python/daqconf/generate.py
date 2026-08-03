@@ -8,14 +8,14 @@ import traceback
 
 
 def generate_dataflow(
-    oksfile,
-    include,
-    n_dfapps,
-    tpwriting_enabled,
-    generate_segment,
-    n_data_writers=1,
-    trmon_app=False,
-):
+    oksfile: str,
+    include: list[str],
+    n_dfapps: int,
+    tpwriting_enabled: bool,
+    generate_segment: bool,
+    n_data_writers: int = 1,
+    trmon_app: bool = False,
+) -> None:
     """Simple script to create an OKS configuration file for a dataflow segment.
 
       The file will automatically include the relevant schema files and
@@ -241,10 +241,10 @@ def generate_dataflow(
 
 
 def generate_hsi(
-    oksfile,
-    include,
-    generate_segment,
-):
+    oksfile: str,
+    include: list[str],
+    generate_segment: bool,
+) -> None:
     """Simple script to create an OKS configuration file for a FakeHSI segment.
 
       The file will automatically include the relevant schema files and
@@ -369,14 +369,14 @@ def generate_hsi(
 
 
 def generate_readout(
-    readoutmap,
-    oksfile,
-    include,
-    generate_segment,
-    emulated_file_name,
-    tpg_enabled=True,
-    hosts_to_use=[],
-):
+    readoutmap: str,
+    oksfile: str,
+    include: list[str],
+    generate_segment: bool,
+    emulated_file_name: str,
+    tpg_enabled: bool = True,
+    hosts_to_use: list[str] = [],
+) -> None:
     """Simple script to create an OKS configuration file for all
   ReadoutApplications defined in a readout map.
 
@@ -801,8 +801,14 @@ def generate_readout(
 
 
 def generate_fakedata(
-    oksfile, include, generate_segment, n_streams, n_apps, det_id, fragment_type=None
-):
+    oksfile: str,
+    include: list[str],
+    generate_segment: bool,
+    n_streams: int,
+    n_apps: int,
+    det_id: int,
+    fragment_type: str | None = None,
+) -> None:
     """Simple script to create an OKS configuration file for a FakeDataProd-based readout segment.
 
       The file will automatically include the relevant schema files and
@@ -954,12 +960,12 @@ def generate_fakedata(
 
 
 def generate_trigger(
-    oksfile,
-    include,
-    generate_segment,
-    tpg_enabled=True,
-    hsi_enabled=False,
-):
+    oksfile: str,
+    include: list[str],
+    generate_segment: bool,
+    tpg_enabled: bool = True,
+    hsi_enabled: bool = False,
+) -> None:
     """Simple script to create an OKS configuration file for a trigger segment.
 
       The file will automatically include the relevant schema files and
@@ -1130,13 +1136,13 @@ def generate_trigger(
 
 
 def generate_session(
-    oksfile,
-    include,
-    session_name,
-    op_env,
-    connectivity_service_is_infrastructure_app=True,
-    disable_connectivity_service=False,
-):
+    oksfile: str,
+    include: list[str],
+    session_name: str,
+    op_env: str,
+    connectivity_service_is_infrastructure_app: bool = True,
+    disable_connectivity_service: bool = False,
+) -> None:
     """Simple script to create an OKS configuration file for a session.
 
       The file will automatically include the relevant schema files and

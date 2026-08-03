@@ -1,7 +1,7 @@
 import conffwk
 import oks
 
-def oks_format(input_file) -> None:
+def oks_format(input_file: str) -> None:
     if ".data.xml" in input_file:
         print(f"Formatting database file {input_file}")
         dal = conffwk.dal.module("generated", "schema/confmodel/dunedaq.schema.xml")

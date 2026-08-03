@@ -5,8 +5,17 @@ import os
 import json
 import sys
 
-def generate_hwmap(oksfile, n_streams, n_apps = 1, det_id = 3, app_host = "localhost",
-                   eth_protocol = "udp", flx_mode = "fix_rate", crate_id_offset = 1, slot_id = 0):
+def generate_hwmap(
+    oksfile: str,
+    n_streams: int,
+    n_apps: int = 1,
+    det_id: int = 3,
+    app_host: str = "localhost",
+    eth_protocol: str = "udp",
+    flx_mode: str = "fix_rate",
+    crate_id_offset: int = 1,
+    slot_id: int = 0,
+) -> None:
 
     schemafiles = [
         "schema/confmodel/dunedaq.schema.xml",

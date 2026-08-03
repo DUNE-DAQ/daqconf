@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, List
+from typing import Dict, List
 
 import conffwk 
 
@@ -43,11 +43,11 @@ class ConfigurationHandler:
                 self._loaded_dals.append(conf_obj)
 
     #==============================  Getters + Setters ==============================#
-    def get_relationships_for_conf_object(self, conf_object)->List[Any]:
+    def get_relationships_for_conf_object(self, conf_object: object) -> List[Dict[str, object]]:
         """For a given configuration object, return all related objects
 
         Arguments:
-            conf_object -- Any DAL object
+            conf_object -- configuration DAL object
 
         Returns:
             List of related objects
@@ -67,7 +67,7 @@ class ConfigurationHandler:
 
         return relations_list
     
-    def get_conf_objects_class(self, conf_class: str):
+    def get_conf_objects_class(self, conf_class: str) -> List[object]:
         """Get all configuration objects of a given class
 
         Arguments:
@@ -78,7 +78,7 @@ class ConfigurationHandler:
         """        
         return self._configuration.get_dals(conf_class)
         
-    def get_all_conf_classes(self)->Dict[str, Any]:
+    def get_all_conf_classes(self) -> Dict[str, List[object]]:
         """Gets all classes + objects of that class in the configuration
 
         Returns:
@@ -122,7 +122,7 @@ class ConfigurationHandler:
         """        
         return self._loaded_dals
     
-    def get_obj(self, class_id: str, uid: str):
+    def get_obj(self, class_id: str, uid: str) -> object:
         """Get a particular configuration object 
 
         Arguments:
@@ -134,7 +134,7 @@ class ConfigurationHandler:
         """        
         return self.configuration.get_obj(class_id, uid)
     
-    def commit(self, update_message: str):
+    def commit(self, update_message: str) -> None:
         """Commit changes to the database
 
         Arguments:
@@ -149,7 +149,7 @@ class ConfigurationHandler:
         """        
         return len(self._loaded_dals)
     
-    def add_new_conf_obj(self, class_id: str, uid: str):
+    def add_new_conf_obj(self, class_id: str, uid: str) -> None:
         """Add new configuration object
 
     Arguments:
@@ -161,7 +161,7 @@ class ConfigurationHandler:
         self.configuration.update_dal(config_as_dal)
         self._loaded_dals.append(config_as_dal)
 
-    def destroy_conf_obj(self, class_id: str, uid: str):
+    def destroy_conf_obj(self, class_id: str, uid: str) -> None:
         """Destroy a configuration object
 
         Arguments:
@@ -172,8 +172,14 @@ class ConfigurationHandler:
         self.configuration.destroy_dal(dal)
         self._loaded_dals.remove(dal)
         
-    def modify_relationship(self, class_id, uid, relationship_name: str, updated_value,
-                            append: bool=False):
+    def modify_relationship(
+        self,
+        class_id: str,
+        uid: str,
+        relationship_name: str,
+        updated_value: object,
+        append: bool = False,
+    ) -> None:
         """Modify TODO: EDIT THIS
 
         :param class_id: _description_

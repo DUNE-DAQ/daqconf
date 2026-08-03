@@ -16,3 +16,5 @@ daq_add_application(create_config_plot create_config_plot.cxx GraphBuilder.cpp L
 daq_add_unit_test(Graph_test)
 
 daq_install()
+
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python/ DESTINATION ${CMAKE_INSTALL_PYTHONDIR} OPTIONAL FILES_MATCHING PATTERN "py.typed" PATTERN "*.pyi")

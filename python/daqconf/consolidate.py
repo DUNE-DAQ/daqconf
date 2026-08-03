@@ -7,7 +7,20 @@ from typing import Optional, Tuple
 log = getLogger('daqconf.consolidate')
 
 
-def get_all_includes(db, file):
+def get_all_includes(db: conffwk.Configuration, file: str) -> list[str]:
+    """
+    Recursively get all includes from an OKS database
+
+    Args:
+        db (conffwk.Configuration): The OKS database to get includes from
+        file (str): The file to get includes from
+
+    Returns:
+        list(str): A list of all includes in the database
+
+    Raises:
+        None
+    """
     includes = db.get_includes(file)
     for include in includes:
         if "data.xml" not in include:
@@ -16,12 +29,26 @@ def get_all_includes(db, file):
 
     return list(set(includes))
 
-def consolidate_db(oksfile: str, output_file: str, session_id: Optional[str] = None)->None:
-    """Consolidates a single session
+def consolidate_db(
+    oksfile: str, output_file: str, session_id: Optional[str] = None
+) -> None:
+    """
+    Consolidates a session database files into a single file.
+    
+    The consolidated file contains all the schema and data required to define the entire
+    session. If session_id is None, all sessions will be consolidated into the single
+    output file.
 
-    :param oksfile: OKS file(s) to consolidate
-    :param output_file: File to output consolidated database to 
-    :param session_id: Name of session, defaults to None
+    Args:
+        oksfile: OKS file(s) to consolidate
+        output_file: File to output consolidated database to 
+        session_id: Name of session, defaults to None
+
+    Returns:
+        None
+
+    Raises:
+        None
     """    
     log.info(f"Consolidating database into output database '{output_file}'. Input database: '{oksfile}'.")
 
@@ -38,13 +65,16 @@ def consolidate_db(oksfile: str, output_file: str, session_id: Optional[str] = N
 
 
 def create_copy_template(oksfile: str, output_file: str)->Tuple[conffwk.Configuration, conffwk.Configuration]:
-    '''
-    Creates a blank oks .data.xml file stored in output_file with all the schema includes of oksfile
-    :param oksfile: OKS file to copy includes from
-    :param output_file: OKS file to copy includes into
+    """
+    Create a blank oks .data.xml template file with all the schema includes of oksfile.
 
-    :returns: Tuple of old_db, copied_db
-    '''
+    Args:
+        oksfile: OKS file to copy includes from
+        output_file: OKS file to copy includes into
+
+    Returns:
+        Tuple of old_db, copied_db
+    """
     log.debug("Reading database")
     db = conffwk.Configuration("oksconflibs:" + oksfile)
 
@@ -89,7 +119,7 @@ def consolidate_session(db: conffwk.Configuration, new_db: conffwk.Configuration
     dal_list = get_relationships(db, dal_session, [])
     copy_dals_to_cfg(new_db, dal_list)
 
-def get_relationships(db: conffwk.Configuration, current_dal, dal_list):
+def get_relationships(db: conffwk.Configuration, current_dal: conffwk.Configuration, dal_list: list[conffwk.Configuration]) -> list[conffwk.Configuration]:
     '''
     Recurssively get all objects related to current_dal
     '''
@@ -109,7 +139,7 @@ def get_relationships(db: conffwk.Configuration, current_dal, dal_list):
     return dal_list
 
 
-def copy_dals_to_cfg(new_db: conffwk.Configuration, dal_list)->None:
+def copy_dals_to_cfg(new_db: conffwk.Configuration, dal_list: list[conffwk.Configuration]) -> None:
     '''
     Copy a list of dals into a configuration
     '''
@@ -121,7 +151,7 @@ def copy_dals_to_cfg(new_db: conffwk.Configuration, dal_list)->None:
     new_db.commit()
     
     
-def copy_configuration(dest_dir : Path, input_files: list):
+def copy_configuration(dest_dir : Path, input_files: list[conffwk.Configuration]) -> list[conffwk.Configuration]:
     if len(input_files) == 0:
         return []
 
@@ -157,7 +187,7 @@ def copy_configuration(dest_dir : Path, input_files: list):
     return output_dbs
 
 
-def consolidate_files(oksfile, *input_files):
+def consolidate_files(oksfile: str, *input_files) -> None:
     includes = []
     dbs = []
     str_in_files = '\n'.join(input_files)
