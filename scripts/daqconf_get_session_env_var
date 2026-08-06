@@ -6,10 +6,11 @@ from daqconf.get_session_env_var import get_session_env_var
 @click.argument('oks_session_name')
 @click.argument('oksfile')
 @click.argument('env_var_name', required=True, nargs=1)
-def daqconf_get_session_env_var(oksfile, oks_session_name, env_var_name):
+@click.argument('quiet', required=False, nargs=1, default=False)
+def daqconf_get_session_env_var(oksfile, oks_session_name, env_var_name, quiet):
   """Script to get the value of an environment variable in the specified Session of the
   specified OKS database file. If the env var does not exist, '<None>' is returned."""
-  value = get_session_env_var(oksfile, oks_session_name, env_var_name)
+  value = get_session_env_var(oksfile, oks_session_name, env_var_name, quiet)
   if value:
     print(value)
 
