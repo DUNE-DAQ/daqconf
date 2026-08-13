@@ -1133,7 +1133,6 @@ def generate_session(
     session_name: str,
     op_env: str,
     connectivity_service_is_infrastructure_app: bool = True,
-    disable_connectivity_service: bool = False,
 ) -> None:
     """Simple script to create an OKS configuration file for a session.
 
@@ -1230,11 +1229,10 @@ def generate_session(
         opmon_uri=opmon_svc,
     )
 
-    if not disable_connectivity_service:
-        conn_svc_cfg = db.get_dal(
-            class_name="ConnectivityService", uid="local-connectivity-service-config"
-        )
-        sessiondal.connectivity_service = conn_svc_cfg
+    conn_svc_cfg = db.get_dal(
+        class_name="ConnectivityService", uid="local-connectivity-service-config"
+    )
+    sessiondal.connectivity_service = conn_svc_cfg
 
     db.update_dal(sessiondal)
 
