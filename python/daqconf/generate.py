@@ -1229,6 +1229,7 @@ def generate_session(
         opmon_uri=opmon_svc,
     )
 
+    # 13-Aug-
     conn_svc_cfg = db.get_dal(
         class_name="ConnectivityService", uid="local-connectivity-service-config"
     )
