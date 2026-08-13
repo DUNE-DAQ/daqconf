@@ -1229,7 +1229,10 @@ def generate_session(
         opmon_uri=opmon_svc,
     )
 
-    # 13-Aug-
+    # 13-Aug-2026, KAB & ELF: removed the conditional execution of the following
+    # few lines based on the 'disable_connectivity_service' function argument.
+    # We believe that the ConnSvc config should always be added to the OKS Session
+    # when we generate a DAQ configuration with this function.
     conn_svc_cfg = db.get_dal(
         class_name="ConnectivityService", uid="local-connectivity-service-config"
     )
