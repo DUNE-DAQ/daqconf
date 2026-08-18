@@ -72,7 +72,7 @@ def validate_readout(db: conffwk.Configuration, session: object) -> int:
   # DetectorToDaqConnection's are unique
   ru_apps = []
   for app in confmodel_dal.session_get_all_applications(db._obj, session.id):
-    if confmodel_dal.component_disabled(db._obj, session.id, app.id):
+    if confmodel_dal.entity_excluded(db._obj, session.id, app.id):
       continue
 
     app_dal = db.get_dal(app.class_name, app.id)

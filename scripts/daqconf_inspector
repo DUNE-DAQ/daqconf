@@ -87,9 +87,9 @@ class DalRichRenderer:
         if not obj.isDalType('Resource'):
             return None
 
-        enabled = not confmodel_dal.component_disabled(self._confdb._obj, session.id, obj.id)
+        enabled = not confmodel_dal.entity_excluded(self._confdb._obj, session.id, obj.id)
         if enabled:
-            resources = confmodel_dal.resourceset_contains(self._confdb._obj, obj.id)
+            resources = confmodel_dal.exclude_entity_set_contains(self._confdb._obj, obj.id)
             for res in resources:
                 rdal = self._confdb.get_dal(class_name="Resource", uid=res)
                 if self.is_enabled(session, rdal) != 1:
@@ -208,7 +208,7 @@ class DalRichRenderer:
 
         if level is not None:
             level -= 1
-        resources = confmodel_dal.resourceset_contains(self._confdb._obj, dal_obj.id)
+        resources = confmodel_dal.exclude_entity_set_contains(self._confdb._obj, dal_obj.id)
         for res in resources:
             rdal = self._confdb.get_dal(class_name="Resource", uid=res)
             tree.add(self.make_resource_tree(rdal, level, session))
@@ -584,7 +584,7 @@ def show_object_tree(obj, uid, show_attrs, focus_path, level, session_name, show
             import confmodel_dal
             session_list = cfg.get_dals("Session")
             for sess in session_list:
-                parents = confmodel_dal.component_get_parents(cfg._obj, sess.id, id)
+                parents = confmodel_dal.entity_get_parents(cfg._obj, sess.id, id)
                 if parents:
                     if session is None:
                         session = sess
