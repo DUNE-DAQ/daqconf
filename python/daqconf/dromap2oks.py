@@ -71,7 +71,7 @@ def dro_json_to_oks(
             eth_source_id = source_id
             if not eth_streams_found:
                 eth_streams_found = True
-                lcore_dal = dal.ProcessingResource(
+                lcore_dal = dal.HostCores(
                     f"lcores-{group_name}",
                     cpu_cores = lcores.split(',')
                 )
