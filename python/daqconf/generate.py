@@ -1141,7 +1141,6 @@ def generate_session(
     session_name: str,
     op_env: str,
     connectivity_service_is_infrastructure_app: bool = True,
-    disable_connectivity_service: bool = False,
 ) -> None:
     """Simple script to create an OKS configuration file for a session.
 
@@ -1238,11 +1237,14 @@ def generate_session(
         opmon_uri=opmon_svc,
     )
 
-    if not disable_connectivity_service:
-        conn_svc_cfg = db.get_dal(
-            class_name="ConnectivityService", uid="local-connectivity-service-config"
-        )
-        sessiondal.connectivity_service = conn_svc_cfg
+    # 13-Aug-2026, KAB & ELF: removed the conditional execution of the following
+    # few lines based on the 'disable_connectivity_service' function argument.
+    # We believe that the ConnSvc config should always be added to the OKS Session
+    # when we generate a DAQ configuration with this function.
+    conn_svc_cfg = db.get_dal(
+        class_name="ConnectivityService", uid="local-connectivity-service-config"
+    )
+    sessiondal.connectivity_service = conn_svc_cfg
 
     db.update_dal(sessiondal)
 
