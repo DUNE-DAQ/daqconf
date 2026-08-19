@@ -84,14 +84,14 @@ class DalRichRenderer:
         import confmodel_dal
 
         """Helper function that returns the status of an object in a session"""
-        if not obj.isDalType('Resource'):
+        if not obj.isDalType('ExcludableEntity'):
             return None
 
         enabled = not confmodel_dal.entity_excluded(self._confdb._obj, session.id, obj.id)
         if enabled:
             resources = confmodel_dal.exclude_entity_set_contains(self._confdb._obj, obj.id)
             for res in resources:
-                rdal = self._confdb.get_dal(class_name="Resource", uid=res)
+                rdal = self._confdb.get_dal(class_name="ExcludableEntity", uid=res)
                 if self.is_enabled(session, rdal) != 1:
                     enabled = 2
                     break
@@ -210,7 +210,7 @@ class DalRichRenderer:
             level -= 1
         resources = confmodel_dal.exclude_entity_set_contains(self._confdb._obj, dal_obj.id)
         for res in resources:
-            rdal = self._confdb.get_dal(class_name="Resource", uid=res)
+            rdal = self._confdb.get_dal(class_name="ExcludableEntity", uid=res)
             tree.add(self.make_resource_tree(rdal, level, session))
         return tree
     
@@ -274,10 +274,10 @@ def show_sessions(obj, show_file_paths, list_sessions, session_name):
     \b
       Legend
       ------
-        ✅ : Resource enabled
-        ❎ : Resource set enabled but contains some disabled Resources
-        ❌ : Resource directly disabled (listed in the Session disable list)
-        ⭕️ : Resource indirectly disabled by algorithm
+        ✅ : ExcludableEntity enabled
+        ❎ : ExcludableEntity set enabled but contains some disabled ExcludableEntitys
+        ❌ : ExcludableEntity directly disabled (listed in the Session disable list)
+        ⭕️ : ExcludableEntity indirectly disabled by algorithm
         🔵 : Not a resource
 
     - The summary of session objects, including the count of referenced objects, the list of directly
@@ -335,7 +335,7 @@ def show_sessions(obj, show_file_paths, list_sessions, session_name):
         # Find all objects in the top segment (exclude disabled, variables and infra in the resource count))
         segment_objs = set()
         find_related(s.segment, segment_objs)        
-        res = [o for o in segment_objs if 'Resource' in o.oksTypes()]
+        res = [o for o in segment_objs if 'ExcludableEntity' in o.oksTypes()]
 
 
         # Object table
@@ -580,7 +580,7 @@ def show_object_tree(obj, uid, show_attrs, focus_path, level, session_name, show
             session = cfg.get_dal("Session", session_name)
             if not session:
                 raise click.BadArgumentUsage(f"Session '{session_name}' does not exist")
-        elif  do.isDalType('Resource'):
+        elif  do.isDalType('ExcludableEntity'):
             import confmodel_dal
             session_list = cfg.get_dals("Session")
             for sess in session_list:
@@ -857,7 +857,7 @@ def verify_smart_apps(obj):
 def show_smartapp_mods(obj, session_id, app_id, show_attrs, level, focus_path):
     """
     For the selected smart application and session, execute the generate modules method and displays the results in a hierarchical tree.
-    Resource objects are displayed with their status.
+    ExcludableEntity objects are displayed with their status.
 
     In case focussing on a relationship branch is helpful, the focus path option (see below for details) allows to specify the branch to focus on, starting from the top object.
     If a focus path is specified, the recursion level is applied starting from the last element of the focus path.
@@ -868,10 +868,10 @@ def show_smartapp_mods(obj, session_id, app_id, show_attrs, level, focus_path):
     \b
       Legend
       ------
-        ✅ : Resource enabled
-        ❎ : Resource set enabled but contains some disabled Resources
-        ❌ : Resource directly disabled (listed in the Session disable list)
-        ⭕️ : Resource indirectly disabled by algorithm
+        ✅ : ExcludableEntity enabled
+        ❎ : ExcludableEntity set enabled but contains some disabled ExcludableEntitys
+        ❌ : ExcludableEntity directly disabled (listed in the Session disable list)
+        ⭕️ : ExcludableEntity indirectly disabled by algorithm
         🔵 : Not a resource
     """
 
@@ -934,15 +934,15 @@ def show_smartapp_mods(obj, session_id, app_id, show_attrs, level, focus_path):
 @click.pass_obj
 def show_resources(obj, session_id, resource_id, level):
     """
-    Show Resource tree starting from the specified Resource
+    Show ExcludableEntity tree starting from the specified ExcludableEntity
 
     \b
       Legend
       ------
-        ✅ : Resource enabled
-        ❎ : Resource set enabled but contains some disabled Resources
-        ❌ : Resource directly disabled (listed in the Session disable list)
-        ⭕️ : Resource indirectly disabled by algorithm
+        ✅ : ExcludableEntity enabled
+        ❎ : ExcludableEntity set enabled but contains some disabled ExcludableEntitys
+        ❌ : ExcludableEntity directly disabled (listed in the Session disable list)
+        ⭕️ : ExcludableEntity indirectly disabled by algorithm
 
     """
 
@@ -951,7 +951,7 @@ def show_resources(obj, session_id, resource_id, level):
 
     session = cfg.get_dal('Session', session_id)
 
-    resource = cfg.get_dal('Resource', resource_id)
+    resource = cfg.get_dal('ExcludableEntity', resource_id)
 
     tree = drr.make_resource_tree(resource, level, session)
     print(tree)

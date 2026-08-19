@@ -15,7 +15,7 @@ Commandline utility to generate a graphical flow diagram of a full configuration
 ## Manipulation Tools
 
 ### `oks_enable`
-  Add Resource objects to or remove from the `disabled` relationship of a Session
+  Add ExcludableEntity objects to or remove from the `disabled` relationship of a Session
 
 ### `consolidate`
   Merge the contents of several database files, putting all objects into a single output file. The output file's include list will contain the schema files included by the source databases (or their includes), but will not contain any object databases (the schema themselves).

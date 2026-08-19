@@ -139,7 +139,7 @@ def dro_json_to_oks(
                     )
                     db.update_dal(daqcon_dal)
 
-                    rset_dal = dal.ResourceSetAND(
+                    rset_dal = dal.ExcludableEntitySetAND(
                         f"{last_eth_pars['rx_host']}-streams",
                         contains = eth_streams
                     )

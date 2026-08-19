@@ -113,10 +113,10 @@ Options:
 
 ### `show-resources`
 
-Show Resource tree starting from the specified Resource
+Show ExcludableEntity tree starting from the specified ExcludableEntity
 
-First display s the state of the `Resource` itself and if it is a
-`ResourceSet` it follows down the tree of `contained_reources` down to
+First display s the state of the `ExcludableEntity` itself and if it is a
+`ExcludableEntitySet` it follows down the tree of `contained_reources` down to
 the level specified (default is to go all the way).
 
 ```
@@ -132,10 +132,10 @@ Options:
     
   | Icon  | Meaning|
   |---|---|
-  | ✅ | Resource enabled |
-  | ❎ | Resource set enabled but contains some disabled Resources |
-  | ❌ | Resource directly disabled (included in the Session disable list) |
-  | ⭕️ | Resource indirectly disabled by algorithm |
+  | ✅ | ExcludableEntity enabled |
+  | ❎ | ExcludableEntity set enabled but contains some disabled ExcludableEntitys |
+  | ❌ | ExcludableEntity directly disabled (included in the Session disable list) |
+  | ⭕️ | ExcludableEntity indirectly disabled by algorithm |
 
 |**Example**|
 |---|
@@ -161,10 +161,10 @@ For each session found in the the database, `show-session` displays:
     
   | Icon  | Meaning|
   |---|---|
-  | ✅ | Resource enabled |
-  | ❎ | Resource set enabled but contains some disabled Resources |
-  | ❌ | Resource directly disabled (included in the Session disable list) |
-  | ⭕️ | Resource indirectly disabled by algorithm |
+  | ✅ | ExcludableEntity enabled |
+  | ❎ | ExcludableEntity set enabled but contains some disabled ExcludableEntitys |
+  | ❌ | ExcludableEntity directly disabled (included in the Session disable list) |
+  | ⭕️ | ExcludableEntity indirectly disabled by algorithm |
   | 🔵 | Not a resource |
 
 - The summary of objects included in the session, including the count of referenced objects,
@@ -190,7 +190,7 @@ Options:
 ### `show-smartapp-mods`
 
 Executes the generate modules method for the selected smart application and session, and displays the results as a hierarchical tree.
-Resource objects are displaied with their status.
+ExcludableEntity objects are displaied with their status.
 
 In case visualising a single relationship branch is desired, the focus path option (see below for details) allows to specify the branch to focus on, starting trom the top object.
 If a focus path is specified, the recursion level is applied starting from the last element of the focus path.
@@ -203,10 +203,10 @@ Note: specifiying the object name is required .
   
 | Icon  | Meaning|
 |---|---|
-| ✅ | Resource enabled |
-| ❎ | Resource set enabled but contains some disabled Resources |
-| ❌ | Resource directly disabled (included in the Session disable list) |
-| ⭕️ | Resource indirectly disabled by algorithm |
+| ✅ | ExcludableEntity enabled |
+| ❎ | ExcludableEntity set enabled but contains some disabled ExcludableEntitys |
+| ❌ | ExcludableEntity directly disabled (included in the Session disable list) |
+| ⭕️ | ExcludableEntity indirectly disabled by algorithm |
 | 🔵 | Not a resource |
 
 ```

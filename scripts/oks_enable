@@ -12,7 +12,7 @@ from daqconf.enable import enable
 @click.argument('oksfile')
 @click.argument('resource', required=True, nargs=-1)
 def oks_enable(oksfile, disable, resource, session_name):
-  """Script to enable or disable (-d) Resources from the first Session of the
+  """Script to enable or disable (-d) ExcludableEntitys from the first Session of the
   specified OKS database file"""
   enable(oksfile, disable, resource, session_name)
 

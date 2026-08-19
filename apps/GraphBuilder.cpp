@@ -150,7 +150,7 @@ GraphBuilder::GraphBuilder(const std::string& oksfilename, const std::string& se
 
         if (daqapp) {
 
-          auto res = daqapp->cast<dunedaq::confmodel::Resource>();
+          auto res = daqapp->cast<dunedaq::confmodel::ExcludableEntity>();
 
           if (res && res->is_excluded(*m_session)) {
             m_ignored_application_uids.push_back(appobj.UID());

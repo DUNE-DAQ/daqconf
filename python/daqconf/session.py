@@ -63,7 +63,7 @@ def enable_resource_in_session(
     resource: list[str],
     disable: bool,
 ) -> None:
-    """Script to enable or disable (-d) Resources from the first Session of the
+    """Script to enable or disable (-d) ExcludableEntitys from the first Session of the
     specified OKS database file"""
     if session_name == "":
         session_dals = db.get_dals(class_name="Session")
@@ -81,9 +81,9 @@ def enable_resource_in_session(
     disabled = session.disabled
     for res in resource:
         try:
-            res_dal = db.get_dal("Resource", res)
+            res_dal = db.get_dal("ExcludableEntity", res)
         except:
-            print(f"Error could not find Resource {res} in file {db.databases}")
+            print(f"Error could not find ExcludableEntity {res} in file {db.databases}")
             continue
 
         if disable:
