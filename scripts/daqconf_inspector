@@ -97,7 +97,7 @@ class DalRichRenderer:
                     break
             return enabled
         
-        enabled -= (obj in session.disabled)
+        enabled -= (obj in session.excluded)  # directly excluded
         return enabled
 
     def make_segment_tree(self, segment, session: None, show_ports: bool = False, show_path: bool = False) -> Tree:
@@ -344,12 +344,12 @@ def show_sessions(obj, show_file_paths, list_sessions, session_name):
         t.add_column('value')
 
         t.add_row('Objects', rh(str(len(session_objs))))
-        t.add_row('Disabled mask', rh(str([ i.id for i in s.disabled])))
+        t.add_row('Disabled mask', rh(str([ i.id for i in s.excluded])))
         t.add_row('Disabled resources', rh(str([ r.id for r in res if dr.is_enabled(s, r) != 1])))
         # print(t)
         grid.add_row(t)
 
-        disabled_not_in_session = set(s.disabled)-segment_objs
+        disabled_not_in_session = set(s.excluded)-segment_objs
         if disabled_not_in_session:
             print(f"⚠️ {sorted(disabled_not_in_session)}")
 
