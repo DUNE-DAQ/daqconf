@@ -39,12 +39,12 @@ ReadoutApplications of the specified OKS configuration"""
         try:
             roapp = db.get_dal(class_name="ReadoutApplication", uid=aa)
             if exclude:
-                roapp.tp_generation_included = 0
-                roapp.ta_generation_included = 0
+                roapp.tp_generation_enabled = 0
+                roapp.ta_generation_enabled = 0
                 print(f"Exclude TP generation in {roapp.id}.")
             else:
-                roapp.tp_generation_included = 1
-                roapp.ta_generation_included = 1
+                roapp.tp_generation_enabled = 1
+                roapp.ta_generation_enabled = 1
                 print(f"Include TP generation in {roapp.id}.")
             db.update_dal(roapp)
         except:
