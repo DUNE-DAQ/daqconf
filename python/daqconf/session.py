@@ -57,10 +57,10 @@ def get_apps_in_any_session(confdb: conffwk.Configuration) -> dict[str, list[obj
     return output
 
 
-def enable_resource_in_session(
+def enable_excludable_entity_in_session(
     db: conffwk.Configuration,
     session_name: str,
-    resource: list[str],
+    excludable_entity: list[str],
     disable: bool,
 ) -> None:
     """Script to enable or disable (-d) ExcludableEntitys from the first Session of the
@@ -79,7 +79,7 @@ def enable_resource_in_session(
             return
         
     disabled = session.disabled
-    for res in resource:
+    for res in excludable_entity:
         try:
             res_dal = db.get_dal("ExcludableEntity", res)
         except:

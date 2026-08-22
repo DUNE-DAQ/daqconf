@@ -5,7 +5,7 @@ import os
 import glob
 
 
-def enable(oksfile: str, disable: bool, resource: list[str], session_name: str) -> None:
+def enable(oksfile: str, disable: bool, excludable_entity: list[str], session_name: str) -> None:
     """Script to enable or disable (-d) ExcludableEntitys from the first Session of the
     specified OKS database file"""
     db = conffwk.Configuration("oksconflibs:" + oksfile)
@@ -22,7 +22,7 @@ def enable(oksfile: str, disable: bool, resource: list[str], session_name: str) 
             print(f"Error could not find Session {session_name} in file {oksfile}")
             return
     disabled = session.disabled
-    for res in resource:
+    for res in excludable_entity:
         try:
             res_dal = db.get_dal("ExcludableEntity", res)
         except:
