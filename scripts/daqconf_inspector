@@ -37,11 +37,11 @@ def ranges_to_str( int_ranges ):
     )
 
 
-def enabled_to_emoji(enabled: Union[int, None]) -> str:
+def included_to_emoji(included: Union[int, None]) -> str:
     """
-    Convert enabled values [enabled, disabled, disabled-by-logic] into standard emojis
+    Convert included values [included, excluded, excluded-by-logic] into standard emojis
     """
-    match enabled:
+    match included:
         case 1:
             return ':white_check_mark:'
         case 2:
@@ -78,27 +78,27 @@ class DalRichRenderer:
         self._confdb = confdb
 
     ##
-    # Enabled/disabled status visualization
+    # Included/excluded status visualization
     #
-    def is_enabled(self, session, obj):
+    def is_included(self, session, obj):
         import confmodel_dal
 
         """Helper function that returns the status of an object in a session"""
         if not obj.isDalType('ExcludableEntity'):
             return None
 
-        enabled = not confmodel_dal.entity_excluded(self._confdb._obj, session.id, obj.id)
-        if enabled:
+        included = not confmodel_dal.entity_excluded(self._confdb._obj, session.id, obj.id)
+        if included:
             excludable_entities = confmodel_dal.exclude_entity_set_contains(self._confdb._obj, obj.id)
             for res in excludable_entities:
                 rdal = self._confdb.get_dal(class_name="ExcludableEntity", uid=res)
-                if self.is_enabled(session, rdal) != 1:
-                    enabled = 2
+                if self.is_included(session, rdal) != 1:
+                    included = 2
                     break
-            return enabled
+            return included
         
-        enabled -= (obj in session.excluded)  # directly excluded
-        return enabled
+        included -= (obj in session.excluded)  # directly excluded
+        return included
 
     def make_segment_tree(self, segment, session: None, show_ports: bool = False, show_path: bool = False) -> Tree:
         '''
@@ -106,8 +106,8 @@ class DalRichRenderer:
         ''' 
 
         path = f"[blue]{self._confdb.get_obj(segment.className(), segment.id).contained_in()}[/blue]" if show_path else ""
-        enabled = self.is_enabled(session, segment) if session else None
-        tree = Tree(f"{enabled_to_emoji(enabled)} [yellow]{segment.id}[/yellow] {path}")
+        included = self.is_included(session, segment) if session else None
+        tree = Tree(f"{included_to_emoji(included)} [yellow]{segment.id}[/yellow] {path}")
 
         c = segment.controller
         path = f"[blue]{self._confdb.get_obj(c.className(), c.id).contained_in()}[/blue]" if show_path else ""
@@ -126,9 +126,9 @@ class DalRichRenderer:
                 # ports = ', '.join([f'{svc.port}([orange1]{svc.id}[/orange1])' for svc in get_network_services(a) ])
                 ports = ('[' + ', '.join([f'{svc.port}([orange1]{svc.id}[/orange1])' for svc in get_network_services(a) ]) + ']') if show_ports else ""
                 host = f"[medium_purple1]{a.runs_on.runs_on.id}[/medium_purple1]"
-                enabled = self.is_enabled(session, a) if session else None
+                included = self.is_included(session, a) if session else None
 
-                app_tree.add(f"{enabled_to_emoji(enabled)} [green]{a.id}[/green][magenta]@{a.className()}[/magenta] on {host} {ports} {path}")
+                app_tree.add(f"{included_to_emoji(included)} [green]{a.id}[/green][magenta]@{a.className()}[/magenta] on {host} {ports} {path}")
 
         if segment.segments:
             seg_tree = tree.add(f"[cyan]segments[/cyan]")
@@ -143,7 +143,7 @@ class DalRichRenderer:
     def make_obj_tree(self, dal_obj, show_attrs=True, path=[], level=None, session=None):
         """Helper function to generate object trees"""
 
-        en_status = enabled_to_emoji(self.is_enabled(session, dal_obj))+' ' if  session else ""
+        en_status = included_to_emoji(self.is_included(session, dal_obj))+' ' if  session else ""
 
         tree = Tree(f"{en_status}[green]{dal_obj.id}[/green][magenta]@{dal_obj.className()}[/magenta]")
         if level == 0:
@@ -200,7 +200,7 @@ class DalRichRenderer:
         """Helper function to generate object trees"""
         import confmodel_dal
 
-        en_status = enabled_to_emoji(self.is_enabled(session, dal_obj))+' ' if not session is None else ""
+        en_status = included_to_emoji(self.is_included(session, dal_obj))+' ' if not session is None else ""
 
         tree = Tree(f"{en_status}[green]{dal_obj.id}[/green][magenta]@{dal_obj.className()}[/magenta]")
         if level == 0:
@@ -267,21 +267,21 @@ def show_sessions(obj, show_file_paths, list_sessions, session_name):
     - The high-level session view, including segments, controllers and applications as
       hierarchical tree.
       ID and Class are shown for applications and controllers, along with their host and services (open ports)
-      The icon in front of segments and applications indicate the enable/disable.
+      The icon in front of segments and applications indicate the include/exclude.
 
       Optionally, it displays the path of the the database file where the object is defined
 
     \b
       Legend
       ------
-        ✅ : ExcludableEntity enabled
-        ❎ : ExcludableEntity set enabled but contains some disabled ExcludableEntitys
-        ❌ : ExcludableEntity directly disabled (listed in the Session disable list)
-        ⭕️ : ExcludableEntity indirectly disabled by algorithm
+        ✅ : ExcludableEntity included
+        ❎ : ExcludableEntity set included but contains some excluded ExcludableEntitys
+        ❌ : ExcludableEntity directly excluded (listed in the Session exclude list)
+        ⭕️ : ExcludableEntity indirectly excluded by algorithm
         🔵 : Not an excludable entity
 
     - The summary of session objects, including the count of referenced objects, the list of directly
-      disabled objects and the list of all disabled objects (directly or indirectly)
+      excluded objects and the list of all excluded objects (directly or indirectly)
     
     - The session environment table.
 
@@ -332,7 +332,7 @@ def show_sessions(obj, show_file_paths, list_sessions, session_name):
         session_objs = set()
         find_related(s, session_objs)
 
-        # Find all objects in the top segment (exclude disabled, variables and infra in the excludable entity count))
+        # Find all objects in the top segment (exclude excluded, variables and infra in the excludable entity count))
         segment_objs = set()
         find_related(s.segment, segment_objs)        
         res = [o for o in segment_objs if 'ExcludableEntity' in o.oksTypes()]
@@ -344,14 +344,14 @@ def show_sessions(obj, show_file_paths, list_sessions, session_name):
         t.add_column('value')
 
         t.add_row('Objects', rh(str(len(session_objs))))
-        t.add_row('Disabled mask', rh(str([ i.id for i in s.excluded])))
-        t.add_row('Disabled excludable entities', rh(str([ r.id for r in res if dr.is_enabled(s, r) != 1])))
+        t.add_row('Excluded mask', rh(str([ i.id for i in s.excluded])))
+        t.add_row('Excluded excludable entities', rh(str([ r.id for r in res if dr.is_included(s, r) != 1])))
         # print(t)
         grid.add_row(t)
 
-        disabled_not_in_session = set(s.excluded)-segment_objs
-        if disabled_not_in_session:
-            print(f"⚠️ {sorted(disabled_not_in_session)}")
+        excluded_not_in_session = set(s.excluded)-segment_objs
+        if excluded_not_in_session:
+            print(f"⚠️ {sorted(excluded_not_in_session)}")
 
 
         #
@@ -522,9 +522,9 @@ def show_objects_of_class(obj, klass, vtable):
 @click.option('-l','--level', "level", type=int, default=None, help="Recursion level in the object tree")
 @click.option('-f','--focus', "focus_path", default=None, help="Path within the object relationships to focus on")
 @click.option('-s','--session', "session_name", default=None, help="Session containing object to display")
-@click.option('+e/-e','--show-enabled/--hide-enabled', "show_enabled", default=False, help="Show enabled state of excludable entities")
+@click.option('+e/-e','--show-included/--hide-included', "show_included", default=False, help="Show included state of excludable entities")
 @click.pass_obj
-def show_object_tree(obj, uid, show_attrs, focus_path, level, session_name, show_enabled):
+def show_object_tree(obj, uid, show_attrs, focus_path, level, session_name, show_included):
     """
     Show the relationship tree of the OKS object with identifier UID.
 
@@ -575,7 +575,7 @@ def show_object_tree(obj, uid, show_attrs, focus_path, level, session_name, show
         raise click.BadArgumentUsage(f"Object '{id}' does not exist")
 
     session = False
-    if show_enabled:
+    if show_included:
         if  session_name:
             session = cfg.get_dal("Session", session_name)
             if not session:
@@ -590,7 +590,7 @@ def show_object_tree(obj, uid, show_attrs, focus_path, level, session_name, show
                         session = sess
                     else:
                         # object in more than one Session
-                        print(f"[red]{id}@{klass} is used in more than one session, cannot determine enabled status[/red]")
+                        print(f"[red]{id}@{klass} is used in more than one session, cannot determine included status[/red]")
                         raise SystemExit(-1)
 
     tree = drr.make_obj_tree(do, show_attrs, path, level, session)
@@ -752,12 +752,12 @@ def verify_detstreams(obj):
 
 
     for strm in streams:
-        enabled_marker = ':blue_circle:'
+        included_marker = ':blue_circle:'
         
         ds_attr_vals = [rh(str(getattr(strm,a))) for a in ds_attrs]
         gid_attr_vals = [rh(str(getattr(strm.geo_id,a))) for a in gid_attrs]
 
-        table.add_row(*([strm.id, enabled_marker]+ds_attr_vals+[strm.geo_id.id]+gid_attr_vals))
+        table.add_row(*([strm.id, included_marker]+ds_attr_vals+[strm.geo_id.id]+gid_attr_vals))
 
     print(table)
 
@@ -868,10 +868,10 @@ def show_smartapp_mods(obj, session_id, app_id, show_attrs, level, focus_path):
     \b
       Legend
       ------
-        ✅ : ExcludableEntity enabled
-        ❎ : ExcludableEntity set enabled but contains some disabled ExcludableEntitys
-        ❌ : ExcludableEntity directly disabled (listed in the Session disable list)
-        ⭕️ : ExcludableEntity indirectly disabled by algorithm
+        ✅ : ExcludableEntity included
+        ❎ : ExcludableEntity set included but contains some excluded ExcludableEntitys
+        ❌ : ExcludableEntity directly excluded (listed in the Session exclude list)
+        ⭕️ : ExcludableEntity indirectly excluded by algorithm
         🔵 : Not an excludable entity
     """
 
@@ -939,10 +939,10 @@ def show_excludable_entities(obj, session_id, excludable_entity_id, level):
     \b
       Legend
       ------
-        ✅ : ExcludableEntity enabled
-        ❎ : ExcludableEntity set enabled but contains some disabled ExcludableEntitys
-        ❌ : ExcludableEntity directly disabled (listed in the Session disable list)
-        ⭕️ : ExcludableEntity indirectly disabled by algorithm
+        ✅ : ExcludableEntity included
+        ❎ : ExcludableEntity set included but contains some excluded ExcludableEntitys
+        ❌ : ExcludableEntity directly excluded (listed in the Session exclude list)
+        ⭕️ : ExcludableEntity indirectly excluded by algorithm
 
     """
 

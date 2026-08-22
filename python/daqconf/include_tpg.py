@@ -16,9 +16,9 @@ def get_segment_apps(segment: object) -> list[str]:
 
     return apps
 
-def enable_tpg(oksfile: str, disable: bool, session_name: str) -> None:
-    """Script to enable or disable (-d) TP generation in ReadoutApplications of the
-    specified OKS configuration"""
+def include_tpg(oksfile: str, exclude: bool, session_name: str) -> None:
+    """Script to include or exclude (-d, for the old term disable) TP generation in 
+ReadoutApplications of the specified OKS configuration"""
     db = conffwk.Configuration("oksconflibs:" + oksfile)
     if session_name == "":
         session_dals = db.get_dals(class_name="Session")
@@ -32,20 +32,20 @@ def enable_tpg(oksfile: str, disable: bool, session_name: str) -> None:
         except:
             print(f"Error could not find Session {session_name} in file {oksfile}")
             return
-    # disabled = session.disabled
+    # excluded = session.excluded
     segment = session.segment
     apps = get_segment_apps(segment)
     for aa in apps:
         try:
             roapp = db.get_dal(class_name="ReadoutApplication", uid=aa)
-            if disable:
-                roapp.tp_generation_enabled = 0
-                roapp.ta_generation_enabled = 0
-                print(f"Disable TP generation in {roapp.id}.")
+            if exclude:
+                roapp.tp_generation_included = 0
+                roapp.ta_generation_included = 0
+                print(f"Exclude TP generation in {roapp.id}.")
             else:
-                roapp.tp_generation_enabled = 1
-                roapp.ta_generation_enabled = 1
-                print(f"Enable TP generation in {roapp.id}.")
+                roapp.tp_generation_included = 1
+                roapp.ta_generation_included = 1
+                print(f"Include TP generation in {roapp.id}.")
             db.update_dal(roapp)
         except:
             continue

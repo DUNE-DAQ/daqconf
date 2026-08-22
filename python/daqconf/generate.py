@@ -11,7 +11,7 @@ def generate_dataflow(
     oksfile: str,
     include: list[str],
     n_dfapps: int,
-    tpwriting_enabled: bool,
+    tpwriting_included: bool,
     generate_segment: bool,
     n_data_writers: int = 1,
     trmon_app: bool = False,
@@ -166,7 +166,7 @@ def generate_dataflow(
         dfapps.append(dfapp)
 
     tpwapps = []
-    if tpwriting_enabled:
+    if tpwriting_included:
         tpw_writer_conf = db.get_dal(
             class_name="TPStreamWriterConf", uid="tp-stream-writer-conf"
         )
@@ -366,7 +366,7 @@ def generate_readout(
     include: list[str],
     generate_segment: bool,
     emulated_file_name: str,
-    tpg_enabled: bool = True,
+    tpg_included: bool = True,
     hosts_to_use: list[str] = [],
 ) -> None:
     """Simple script to create an OKS configuration file for all
@@ -737,14 +737,14 @@ def generate_readout(
             data_reader=datareader,
             fragment_aggregator=fragagg,
             opmon_conf=opmon_conf,
-            tp_generation_enabled=tpg_enabled,
-            ta_generation_enabled=tpg_enabled,
+            tp_generation_included=tpg_included,
+            ta_generation_included=tpg_included,
             uses=rohw,
             exposes_service=[daqapp_control, dataRequests, timeSyncs],
             action_plans=[readout_start, readout_stop],
             callback_desc=cb_desc,
         )
-        if tpg_enabled:
+        if tpg_included:
             ru.tp_handler = tphandler
             tp_sources = []
             tpbaseid = (appnum * 3) + 100
@@ -955,8 +955,8 @@ def generate_trigger(
     oksfile: str,
     include: list[str],
     generate_segment: bool,
-    tpg_enabled: bool = True,
-    hsi_enabled: bool = False,
+    tpg_included: bool = True,
+    hsi_included: bool = False,
 ) -> None:
     """Simple script to create an OKS configuration file for a trigger segment.
 
@@ -1053,12 +1053,12 @@ def generate_trigger(
             uid="ft-trig-conf",
         )
         print(
-            f"FixedTimeTCMakerModule has been configured, disabling random triggers and HSI"
+            f"FixedTimeTCMakerModule has been configured, excluding random triggers and HSI"
         )
         tc_confs = [fixedtime_tc_generator]
     except:
         pass  # No FixedTimeTCMaker
-    if not hsi_enabled and len(tc_confs) == 0:
+    if not hsi_included and len(tc_confs) == 0:
         tc_confs = [random_tc_generator]
 
     mlt = dal.MLTApplication(
@@ -1082,7 +1082,7 @@ def generate_trigger(
     )
     db.update_dal(mlt)
 
-    if tpg_enabled:
+    if tpg_included:
         ta_subscriber = db.get_dal(class_name="DataReaderConf", uid="ta-subscriber-1")
         ta_handler = db.get_dal(class_name="DataHandlerConf", uid="def-ta-handler")
 
@@ -1119,7 +1119,7 @@ def generate_trigger(
         seg = dal.Segment(
             f"trg-segment",
             controller=controller,
-            applications=[mlt] + ([tcmaker] if tpg_enabled else []),
+            applications=[mlt] + ([tcmaker] if tpg_included else []),
         )
         db.update_dal(seg)
 

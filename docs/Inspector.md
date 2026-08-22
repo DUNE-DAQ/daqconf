@@ -77,8 +77,8 @@ Options:
   -f, --focus TEXT                Path within the object relationships to
                                   focus on
   -s, --session TEXT              Session containing object to display
-  +e, --show-enabled / -e, --hide-enabled
-                                  Show enabled state of excludable entities
+  +e, --show-included / -e, --hide-included
+                                  Show included state of excludable entities
   -h, --help                      Show this message and exit.
 ```
 
@@ -132,10 +132,10 @@ Options:
     
   | Icon  | Meaning|
   |---|---|
-  | ✅ | ExcludableEntity enabled |
-  | ❎ | ExcludableEntity set enabled but contains some disabled ExcludableEntitys |
-  | ❌ | ExcludableEntity directly disabled (included in the Session disable list) |
-  | ⭕️ | ExcludableEntity indirectly disabled by algorithm |
+  | ✅ | ExcludableEntity included |
+  | ❎ | ExcludableEntity set included but contains some excluded ExcludableEntitys |
+  | ❌ | ExcludableEntity directly excluded (included in the Session exclude list) |
+  | ⭕️ | ExcludableEntity indirectly excluded by algorithm |
 
 |**Example**|
 |---|
@@ -152,7 +152,7 @@ For each session found in the the database, `show-session` displays:
 - The high-level session view, including segments, controllers and applications as
   hierarchical tree.
   ID and Class are shown for applications and controllers, along with their host and services (open ports)
-  The icon in front of segments and appliations indicate the enable/disable.
+  The icon in front of segments and appliations indicate the include/exclude.
 
   Optionally, it displays the path of the the database file where the object
   is defined
@@ -161,14 +161,14 @@ For each session found in the the database, `show-session` displays:
     
   | Icon  | Meaning|
   |---|---|
-  | ✅ | ExcludableEntity enabled |
-  | ❎ | ExcludableEntity set enabled but contains some disabled ExcludableEntitys |
-  | ❌ | ExcludableEntity directly disabled (included in the Session disable list) |
-  | ⭕️ | EExcludbleEntity indirectly disabled by algorithm |
+  | ✅ | ExcludableEntity included |
+  | ❎ | ExcludableEntity set included but contains some excluded ExcludableEntitys |
+  | ❌ | ExcludableEntity directly excluded (included in the Session exclude list) |
+  | ⭕️ | EExcludbleEntity indirectly excluded by algorithm |
   | 🔵 | Not an excludable entity  |
 
 - The summary of objects included in the session, including the count of referenced objects,
-the list of directly  disabled objects and the list of all disabled objects
+the list of directly  excluded objects and the list of all excluded objects
 (directly or indirectly)
 
 - The session environment.
@@ -203,10 +203,10 @@ Note: specifiying the object name is required .
   
 | Icon  | Meaning|
 |---|---|
-| ✅ | ExcludableEntity enabled |
-| ❎ | ExcludableEntity set enabled but contains some disabled ExcludableEntitys |
-| ❌ | ExcludableEntity directly disabled (included in the Session disable list) |
-| ⭕️ | ExcludableEntity indirectly disabled by algorithm |
+| ✅ | ExcludableEntity included |
+| ❎ | ExcludableEntity set included but contains some excluded ExcludableEntitys |
+| ❌ | ExcludableEntity directly excluded (included in the Session exclude list) |
+| ⭕️ | ExcludableEntity indirectly excluded by algorithm |
 | 🔵 | Not an excludable entity |
 
 ```
