@@ -101,12 +101,13 @@ def oks_format(input_file: str, fix: bool = False) -> None:
         print(f"File {input_file} has differences after formatting:")
         print(diff_output)
 
-    if diff and fix:
-        shutil.copy2(tmpfile.name, input_file)
-
     if err:
         print(f"Leaving temporary file {tmpfile.name} for inspection due to errors. (e.g. check oks_dump -f {tmpfile.name})")
         return 2
+
+    if diff and fix:
+        shutil.copy2(tmpfile.name, input_file)
+        return 0
 
     os.remove(tmpfile.name)
     if diff:
