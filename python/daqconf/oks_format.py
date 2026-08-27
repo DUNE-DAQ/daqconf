@@ -3,7 +3,7 @@ import oks
 import shutil
 import tempfile
 import difflib
-import re
+import os
 from typing import Tuple
 
 
@@ -62,7 +62,7 @@ def filtered_diff(file1: str, file2: str) -> Tuple[bool, str]:
     return has_meaningful_diff, diff_output
 
 def oks_format(input_file: str, fix: bool = False) -> None:
-    tmpfile = tempfile.NamedTemporaryFile(delete=True)
+    tmpfile = tempfile.NamedTemporaryFile(delete=False)
     shutil.copy2(input_file, tmpfile.name)
 
     diff=False
@@ -72,7 +72,7 @@ def oks_format(input_file: str, fix: bool = False) -> None:
         if ".data.xml" in input_file:
             print(f"Formatting database file {input_file}")
             dal = conffwk.dal.module("generated", "schema/confmodel/dunedaq.schema.xml")
-            test_kernel = conffwk.Configuration(f"oksconflibs:{input_file}")
+            conffwk.Configuration(f"oksconflibs:{input_file}")
             oks_kernel = conffwk.Configuration(f"oksconflibs:{tmpfile.name}")
 
             testobj = dal.Service("Reformat-test-obj")
@@ -83,7 +83,7 @@ def oks_format(input_file: str, fix: bool = False) -> None:
         elif ".schema.xml" in input_file:
             print(f"Formatting schema file {input_file}")
 
-            oks_kernel = oks.OksKernel()
+            oks_kernel = oks.OksKernel(silence_mode=True)
             schema = oks_kernel.load_schema(str(input_file))
             #oks_kernel.save_all_schema()
             oks_kernel.save_as_schema(str(tmpfile.name), schema)
@@ -105,7 +105,10 @@ def oks_format(input_file: str, fix: bool = False) -> None:
         shutil.copy2(tmpfile.name, input_file)
 
     if err:
+        print(f"Leaving temporary file {tmpfile.name} for inspection due to errors. (e.g. check oks_dump -f {tmpfile.name})")
         return 2
+
+    os.remove(tmpfile.name)
     if diff:
         return 1
     return 0
