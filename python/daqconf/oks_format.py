@@ -104,12 +104,12 @@ def oks_format(input_file: str, fix: bool = False) -> None:
     if err:
         print(f"Leaving temporary file {tmpfile.name} for inspection due to errors. (e.g. check oks_dump -f {tmpfile.name})")
         return 2
+    os.remove(tmpfile.name)
 
     if diff and fix:
         shutil.copy2(tmpfile.name, input_file)
         return 0
 
-    os.remove(tmpfile.name)
     if diff:
         return 1
     return 0
