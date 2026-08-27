@@ -58,7 +58,7 @@ def filtered_diff(file1: str, file2: str) -> Tuple[bool, str]:
         if line.startswith('+') or line.startswith('-'):
             has_meaningful_diff = True
 
-    diff_output = '\n'.join(filtered_lines)
+    diff_output = '\n'.join(filtered_lines).replace("\n\n", "\n")
     return has_meaningful_diff, diff_output
 
 def oks_format(input_file: str, fix: bool = False) -> None:
