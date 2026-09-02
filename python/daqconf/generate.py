@@ -47,7 +47,7 @@ def generate_dataflow(
         if vhost.id == "vlocalhost":
             host = vhost
     if "vlocalhost" not in hosts:
-        cpus = dal.ProcessingResource("cpus", cpu_cores=[0, 1, 2, 3])
+        cpus = dal.HostCores("cpus", cpu_cores=[0, 1, 2, 3])
         db.update_dal(cpus)
         phdal = dal.PhysicalHost("localhost", contains=[cpus])
         db.update_dal(phdal)
@@ -271,7 +271,7 @@ def generate_hsi(
         if vhost.id == "vlocalhost":
             host = vhost
     if "vlocalhost" not in hosts:
-        cpus = dal.ProcessingResource("cpus", cpu_cores=[0, 1, 2, 3])
+        cpus = dal.HostCores("cpus", cpu_cores=[0, 1, 2, 3])
         db.update_dal(cpus)
         phdal = dal.PhysicalHost("localhost", contains=[cpus])
         db.update_dal(phdal)
@@ -509,7 +509,7 @@ def generate_readout(
             if vhost.id == "vlocalhost":
                 hosts.append(vhost.id)
         if "vlocalhost" not in hosts:
-            cpus = dal.ProcessingResource("cpus", cpu_cores=[0, 1, 2, 3])
+            cpus = dal.HostCores("cpus", cpu_cores=[0, 1, 2, 3])
             db.update_dal(cpus)
             phdal = dal.PhysicalHost("localhost", contains=[cpus])
             db.update_dal(phdal)
@@ -833,7 +833,7 @@ def generate_fakedata(
         if vhost.id == "vlocalhost":
             host = vhost
     if "vlocalhost" not in hosts:
-        cpus = dal.ProcessingResource("cpus", cpu_cores=[0, 1, 2, 3])
+        cpus = dal.HostCores("cpus", cpu_cores=[0, 1, 2, 3])
         db.update_dal(cpus)
         phdal = dal.PhysicalHost("localhost", contains=[cpus])
         db.update_dal(phdal)
@@ -991,7 +991,7 @@ def generate_trigger(
         if vhost.id == "vlocalhost":
             host = vhost
     if "vlocalhost" not in hosts:
-        cpus = dal.ProcessingResource("cpus", cpu_cores=[0, 1, 2, 3])
+        cpus = dal.HostCores("cpus", cpu_cores=[0, 1, 2, 3])
         db.update_dal(cpus)
         phdal = dal.PhysicalHost("localhost", contains=[cpus])
         db.update_dal(phdal)
@@ -1053,7 +1053,7 @@ def generate_trigger(
             uid="ft-trig-conf",
         )
         print(
-            f"FixedTimeTCMakerModule has been configured, disabling random triggers and HSI"
+            f"FixedTimeTCMakerModule has been configured, excluding random triggers and HSI"
         )
         tc_confs = [fixedtime_tc_generator]
     except:
@@ -1165,7 +1165,7 @@ def generate_session(
         if vhost.id == "vlocalhost":
             host = vhost
     if "vlocalhost" not in hosts:
-        cpus = dal.ProcessingResource("cpus", cpu_cores=[0, 1, 2, 3])
+        cpus = dal.HostCores("cpus", cpu_cores=[0, 1, 2, 3])
         db.update_dal(cpus)
         phdal = dal.PhysicalHost("localhost", contains=[cpus])
         db.update_dal(phdal)

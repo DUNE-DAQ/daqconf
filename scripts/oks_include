@@ -1,0 +1,20 @@
+#!/bin/env python3
+
+import click
+from daqconf.include import include
+
+@click.command()
+@click.option('--exclude', '-d', default=False, is_flag=True,
+              help='exclude rather than include the specified excludable entities')
+@click.option('--session_name', '-s', type=str, default='',
+              help='Name of session to manipulate if not specified the first '
+              'session found in the database will be used')
+@click.argument('oksfile')
+@click.argument('excludable_entity', required=True, nargs=-1)
+def oks_include(oksfile, exclude, excludable_entity, session_name):
+  """Script to include or exclude (-d, for the old name disabled) ExcludableEntitys from 
+the first Session of the specified OKS database file"""
+  include(oksfile, exclude, excludable_entity, session_name)
+
+if __name__ == '__main__':
+  oks_include()

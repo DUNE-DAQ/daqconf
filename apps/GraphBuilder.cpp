@@ -101,10 +101,10 @@ GraphBuilder::GraphBuilder(const std::string& oksfilename, const std::string& se
 
   // The following not-brief section of code is dedicated to
   // determining which applications in the configuration are
-  // disabled
+  // excluded
 
   // First, we need the session object to check if an application
-  // has been disabled
+  // has been excluded
 
   // Note the "const_cast" is needed since "m_confdb->get"
   // returns a const pointer, but since m_session is a member needed
@@ -150,11 +150,11 @@ GraphBuilder::GraphBuilder(const std::string& oksfilename, const std::string& se
 
         if (daqapp) {
 
-          auto res = daqapp->cast<dunedaq::confmodel::Resource>();
+          auto res = daqapp->cast<dunedaq::confmodel::ExcludableEntity>();
 
-          if (res && res->is_disabled(*m_session)) {
+          if (res && res->is_excluded(*m_session)) {
             m_ignored_application_uids.push_back(appobj.UID());
-            TLOG() << "Skipping disabled application " << appobj.UID() << "@" << daqapp->class_name();
+            TLOG() << "Skipping excluded application " << appobj.UID() << "@" << daqapp->class_name();
             continue;
           }
         } else {
