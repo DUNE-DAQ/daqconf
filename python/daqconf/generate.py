@@ -551,6 +551,20 @@ def generate_readout(
                 cb_desc = db.get_dal(
                     class_name="DataMoveCallbackDescriptor", uid="pds-stream-raw-input"
                 )
+            elif "DAPHNEEthStream" in emulated_file_name:
+                linkhandler = db.get_dal(
+                    class_name="DataHandlerConf", uid="def-pds-eth-stream-link-handler"
+                )
+                cb_desc = db.get_dal(
+                    class_name="DataMoveCallbackDescriptor", uid="pds-eth-stream-raw-input"
+                )
+            elif "DAPHNEEth" in emulated_file_name:
+                linkhandler = db.get_dal(
+                    class_name="DataHandlerConf", uid="def-pds-eth-link-handler"
+                )
+                cb_desc = db.get_dal(
+                    class_name="DataMoveCallbackDescriptor", uid="pds-eth-raw-input"
+                )
             else:
                 linkhandler = db.get_dal(
                     class_name="DataHandlerConf", uid="def-pds-link-handler"
