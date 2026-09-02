@@ -66,13 +66,19 @@ def generate_dataflow(
     trigger_record_q_rule = db.get_dal(
         class_name="QueueConnectionRule", uid="trigger-record-q-rule"
     )
-    dfapp_qrules = [trigger_record_q_rule]
+    token_q_rule = db.get_dal(
+        class_name="QueueConnectionRule", uid="token-q-rule"
+    )
+    trigger_decision_q_rule = db.get_dal(
+        class_name="QueueConnectionRule", uid="trb-td-q-rule"
+    )
+    trb_complete_q_rule = db.get_dal(
+        class_name="QueueConnectionRule", uid="trb-completion-queue-rule"
+    )
+    dfapp_qrules = [trigger_record_q_rule, token_q_rule, trigger_decision_q_rule, trb_complete_q_rule]
 
     # Net Rules
     frag_net_rule = db.get_dal(class_name="NetworkConnectionRule", uid="frag-net-rule")
-    df_token_net_rule = db.get_dal(
-        class_name="NetworkConnectionRule", uid="df-token-net-rule"
-    )
     tpset_net_rule = db.get_dal(
         class_name="NetworkConnectionRule", uid="tpset-net-rule"
     )
@@ -80,9 +86,9 @@ def generate_dataflow(
     td_dfo_net_rule = db.get_dal(
         class_name="NetworkConnectionRule", uid="td-dfo-net-rule"
     )
-    td_trb_net_rule = db.get_dal(
-        class_name="NetworkConnectionRule", uid="td-trb-net-rule"
-    )
+    td_df_net_rule = db.get_dal(class_name="NetworkConnectionRule", uid="td-df-net-rule")
+    df_status_req_net_rule = db.get_dal(class_name="NetworkConnectionRule", uid="df-status-req-net-rule")
+    df_status_net_rule = db.get_dal(class_name="NetworkConnectionRule", uid="df-status-net-rule")
     data_req_trig_net_rule = db.get_dal(
         class_name="NetworkConnectionRule", uid="data-req-trig-net-rule"
     )
@@ -93,9 +99,9 @@ def generate_dataflow(
         class_name="NetworkConnectionRule", uid="data-req-readout-net-rule"
     )
     dfapp_netrules = [
-        td_trb_net_rule,
+        df_status_req_net_rule,
+        td_df_net_rule,
         frag_net_rule,
-        df_token_net_rule,
         data_req_hsi_net_rule,
         data_req_readout_net_rule,
         data_req_trig_net_rule,
@@ -119,7 +125,7 @@ def generate_dataflow(
         )
         trmon_qrules.append(trigger_decision_token_q_rule)
 
-    dfo_netrules = [td_dfo_net_rule, ti_net_rule, df_token_net_rule]
+    dfo_netrules = [td_dfo_net_rule, ti_net_rule, df_status_net_rule]
     tpw_netrules = [tpset_net_rule]
 
     opmon_conf = db.get_dal(class_name="OpMonConf", uid="slow-all-monitoring")
@@ -136,6 +142,7 @@ def generate_dataflow(
     )
     db.update_dal(dfo)
 
+    dfs_conf = db.get_dal(class_name="DataflowStatusModuleConf", uid="dfs-01")
     trb_conf = db.get_dal(class_name="TRBConf", uid="trb-01")
     dw_conf = db.get_dal(class_name="DataWriterConf", uid="dw-01")
     dfhw = db.get_dal(class_name="DFHWConf", uid="dfhw-01")
@@ -158,6 +165,7 @@ def generate_dataflow(
             queue_rules=dfapp_qrules,
             network_rules=dfapp_netrules,
             opmon_conf=opmon_conf,
+            dfs=dfs_conf,
             trb=trb_conf,
             data_writers=[dw_conf] * n_data_writers,
             uses=dfhw,
