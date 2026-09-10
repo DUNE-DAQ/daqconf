@@ -68,11 +68,11 @@ def check_unique_relationship(objects: list[object], relationship: str) -> bool:
 
 def validate_readout(db: conffwk.Configuration, session: object) -> int:
   errcount = 0
-  # Find all enabled readout apps and check that
+  # Find all included readout apps and check that
   # DetectorToDaqConnection's are unique
   ru_apps = []
   for app in confmodel_dal.session_get_all_applications(db._obj, session.id):
-    if confmodel_dal.component_disabled(db._obj, session.id, app.id):
+    if confmodel_dal.entity_excluded(db._obj, session.id, app.id):
       continue
 
     app_dal = db.get_dal(app.class_name, app.id)
@@ -80,7 +80,7 @@ def validate_readout(db: conffwk.Configuration, session: object) -> int:
       ru_apps.append(app_dal)
 
   if len(ru_apps) == 0:
-    print(f"No enabled readout applicatios in session")
+    print(f"No included readout applicatios in session")
     errcount += 1
   d2d_seen = {}
   d2d_dals = []
