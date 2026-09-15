@@ -174,8 +174,8 @@ class ConfigurationController(Static):
             self._logger.write_error("No object selected")
             return False
         
-        if self._current_selected_object not in self._handler.configuration_handler.get_all_conf_classes()['Resource']:
-            self._logger.write_error(f"Cannot disable {self.generate_rich_string(self._current_selected_object)} must inherit from [red]Resource[/red]!")
+        if self._current_selected_object not in self._handler.configuration_handler.get_all_conf_classes()['ExcludableEntity']:
+            self._logger.write_error(f"Cannot disable {self.generate_rich_string(self._current_selected_object)} must inherit from [red]ExcludableEntity[/red]!")
             return False
 
         return True
