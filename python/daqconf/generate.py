@@ -915,7 +915,7 @@ def generate_fakedata(
     for appidx in range(n_apps):
 
         fakeapp = dal.FakeDataApplication(
-            f"fakedata_{appidx}",
+            f"fakedata-{appidx}",
             runs_on=host,
             application_name="daq_application",
             exposes_service=[daqapp_control, dataRequests, timeSyncs],
@@ -927,7 +927,7 @@ def generate_fakedata(
 
         for streamidx in range(n_streams):
             stream = dal.FakeDataProdConf(
-                f"fakedata_{appidx}_stream_{streamidx}",
+                f"fakedata-{appidx}-stream-{streamidx}",
                 system_type="Detector_Readout",
                 source_id=source_id,
                 time_tick_diff=time_tick_diff,
