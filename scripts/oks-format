@@ -1,12 +1,18 @@
 #!/bin/env python3
 import click
+import sys
 from daqconf.oks_format import oks_format
 
 @click.command()
+@click.option('--fix', '-f', is_flag=True,
+              help='Whether to fix formatting issues')
 @click.argument('oksfiles', type=click.Path(exists=True), nargs=-1)
-def oks_format_main(oksfiles):
+def oks_format_main(fix, oksfiles):
+    return_value = 0
     for file in oksfiles:
-        oks_format(file)  
+        return_value += oks_format(file, fix=fix)
+
+    sys.exit(return_value)
 
 if __name__ == '__main__':
     oks_format_main()

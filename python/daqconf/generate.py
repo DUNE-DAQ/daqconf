@@ -551,6 +551,20 @@ def generate_readout(
                 cb_desc = db.get_dal(
                     class_name="DataMoveCallbackDescriptor", uid="pds-stream-raw-input"
                 )
+            elif "DAPHNEEthStream" in emulated_file_name:
+                linkhandler = db.get_dal(
+                    class_name="DataHandlerConf", uid="def-pds-eth-stream-link-handler"
+                )
+                cb_desc = db.get_dal(
+                    class_name="DataMoveCallbackDescriptor", uid="pds-eth-stream-raw-input"
+                )
+            elif "DAPHNEEth" in emulated_file_name:
+                linkhandler = db.get_dal(
+                    class_name="DataHandlerConf", uid="def-pds-eth-link-handler"
+                )
+                cb_desc = db.get_dal(
+                    class_name="DataMoveCallbackDescriptor", uid="pds-eth-raw-input"
+                )
             else:
                 linkhandler = db.get_dal(
                     class_name="DataHandlerConf", uid="def-pds-link-handler"
@@ -901,7 +915,7 @@ def generate_fakedata(
     for appidx in range(n_apps):
 
         fakeapp = dal.FakeDataApplication(
-            f"fakedata_{appidx}",
+            f"fakedata-{appidx}",
             runs_on=host,
             application_name="daq_application",
             exposes_service=[daqapp_control, dataRequests, timeSyncs],
@@ -913,7 +927,7 @@ def generate_fakedata(
 
         for streamidx in range(n_streams):
             stream = dal.FakeDataProdConf(
-                f"fakedata_{appidx}_stream_{streamidx}",
+                f"fakedata-{appidx}-stream-{streamidx}",
                 system_type="Detector_Readout",
                 source_id=source_id,
                 time_tick_diff=time_tick_diff,
