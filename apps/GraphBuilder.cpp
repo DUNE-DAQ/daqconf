@@ -24,14 +24,14 @@
 #include "appmodel/appmodelIssues.hpp"
 
 #include "appmodel/DataHandlerModule.hpp"
-#include "appmodel/DataReaderModule.hpp"
 #include "appmodel/DataMoveCallbackConf.hpp"
+#include "appmodel/DataReaderModule.hpp"
 
 #include "conffwk/Configuration.hpp"
 #include "conffwk/Schema.hpp"
 #include "confmodel/Connection.hpp"
-#include "confmodel/NetworkConnection.hpp"
 #include "confmodel/DaqModule.hpp"
+#include "confmodel/NetworkConnection.hpp"
 #include "confmodel/Session.hpp"
 #include "ers/ers.hpp"
 
@@ -447,7 +447,7 @@ GraphBuilder::find_objects_and_connections(const ConfigObject& object)
 
           if (in->config_object().class_name() == "NetworkConnection") {
             auto innc = in->cast<dunedaq::confmodel::NetworkConnection>();
-            key += "@" +  innc->get_connection_type();
+            key += "@" + innc->get_connection_type();
           }
 
           if (std::ranges::find(allowed_conns, in->config_object().class_name()) != allowed_conns.end()) {
@@ -714,9 +714,7 @@ GraphBuilder::write_graph(const std::string& outputfilename) const
         add_vertex_info();
         add_legend_entry('D', "DAQModule");
         if (!internal_legend_added) {
-          legend_entries.insert(legend_entries.end(),
-                                internal_legend_entries.begin(),
-                                internal_legend_entries.end());
+          legend_entries.insert(legend_entries.end(), internal_legend_entries.begin(), internal_legend_entries.end());
           internal_legend_added = true;
         }
         break;
@@ -796,12 +794,13 @@ GraphBuilder::write_graph(const std::string& outputfilename) const
   }
 
   // Replace the connection types with color information
-  std::vector<std::pair<std::string, std::string>> connection_colors = { { "@NetworkConnection@kSendRecv\"", "\", color=black" },
-                                                                         { "@NetworkConnection@kPubSub\"", "\", color=blue" },
-                                                                         { "@QueueWithSourceId\"", "\", color=orange" },
-                                                                         { "@Queue\"", "\", color=red" },
-                                                                         { "@DataMoveCallbackConf\"",
-                                                                           "\", color=green" } };
+  std::vector<std::pair<std::string, std::string>> connection_colors = {
+    { "@NetworkConnection@kSendRecv\"", "\", color=black" },
+    { "@NetworkConnection@kPubSub\"", "\", color=blue" },
+    { "@QueueWithSourceId\"", "\", color=orange" },
+    { "@Queue\"", "\", color=red" },
+    { "@DataMoveCallbackConf\"", "\", color=green" }
+  };
   for (auto& color_pair : connection_colors) {
     auto conn_type = color_pair.first;
     auto color_info = color_pair.second;
